@@ -1,1 +1,131 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UNIT 501</title><link rel="stylesheet" href="style.css"></head><body><main><header><div><small>UNIT 501</small><h1>Football Command Center</h1></div><span id="status">Checking data…</span></header><section class="card controls"><input id="date" type="date"><select id="league"><option value="2">College Football</option><option value="1">NFL</option></select><button id="load">Load Slate</button></section><section id="games" class="grid"></section><section id="lab" class="card hidden"><h2 id="matchup">Game Lab</h2><div class="inputs"><label>Away spread<input id="spread" type="number" step=".5"></label><label>Total<input id="total" type="number" step=".5"></label><label>Away rating<input id="awayRating" type="number" step=".5" value="0"></label><label>Home rating<input id="homeRating" type="number" step=".5" value="0"></label></div><button id="sim">Run 50,000 Sims</button><div class="results"><div><small>Projected</small><b id="score">—</b></div><div><small>Away cover</small><b id="cover">—</b></div><div><small>Over</small><b id="over">—</b></div><div><small>Away win</small><b id="win">—</b></div></div><p id="note"></p></section></main><script src="app.js"></script></body></html>
+
+
+<!doctype html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>UNIT 501</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<main>
+
+<header>
+
+<div>
+
+<small>UNIT 501</small>
+
+<h1>Football Command Center</h1>
+
+</div>
+
+<span id="status">Checking data…</span>
+
+</header>
+
+<section class="card controls">
+
+<input id="date" type="date">
+
+<select id="league">
+
+<option value="2">College Football</option>
+
+<option value="1">NFL</option>
+
+</select>
+
+<button id="load">Load Slate</button>
+
+</section>
+
+<section id="games" class="grid"></section>
+
+<section id="lab" class="card hidden">
+
+<h2 id="matchup">Game Lab</h2>
+
+<div class="inputs">
+
+<label>Away spread
+
+<input id="spread" type="number" step=".5">
+
+</label>
+
+<label>Total
+
+<input id="total" type="number" step=".5">
+
+</label>
+
+<label>Away rating
+
+<input id="awayRating" type="number" step=".5" value="0">
+
+</label>
+
+<label>Home rating
+
+<input id="homeRating" type="number" step=".5" value="0">
+
+</label>
+
+</div>
+
+<button id="sim">Run 50,000 Sims</button>
+
+<div class="results">
+
+<div><small>Projected</small><b id="score">—</b></div>
+
+<div><small>Away cover</small><b id="cover">—</b></div>
+
+<div><small>Over</small><b id="over">—</b></div>
+
+<div><small>Away win</small><b id="win">—</b></div>
+
+</div>
+
+<p id="note"></p>
+
+</section>
+
+<section id="player-lab" class="card hidden">
+
+<h2>Player Projections</h2>
+
+<p id="predict-status">Select a game to load players.</p>
+
+<select id="predict-player" disabled>
+
+<option value="">Select a player</option>
+
+</select>
+
+<button id="predict" disabled>Load Player Projections</button>
+
+<div id="predict-results"></div>
+
+</section>
+
+</main>
+
+<script src="app.js"></script>
+
+<script src="predictions.js"></script>
+
+</body>
+
+</html>
