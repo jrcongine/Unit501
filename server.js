@@ -1,5 +1,241 @@
-const http=require('http'),fs=require('fs'),path=require('path');
-const PORT=process.env.PORT||5010, API='https://v1.american-football.api-sports.io';
-function send(res,code,obj,type='application/json'){res.writeHead(code,{'Content-Type':type});res.end(type==='application/json'?JSON.stringify(obj):obj)}
-async function api(endpoint){if(!process.env.API_SPORTS_KEY) throw new Error('API_SPORTS_KEY is not set'); const r=await fetch(API+endpoint,{headers:{'x-apisports-key':process.env.API_SPORTS_KEY}}); if(!r.ok) throw new Error('API error '+r.status); return r.json()}
-const server=http.createServer(async(req,res)=>{try{let u=new URL(req.url,'http://localhost'); if(u.pathname==='/api/health')return send(res,200,{ok:true,liveData:Boolean(process.env.API_SPORTS_KEY)}); if(u.pathname==='/api/leagues')return send(res,200,await api('/leagues?current=true')); if(u.pathname==='/api/games'){let date=u.searchParams.get('date'),league=u.searchParams.get('league')||'2',season=u.searchParams.get('season')||'2026',tz=u.searchParams.get('timezone')||'America/Chicago'; return send(res,200,await api(`/games?league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}&date=${encodeURIComponent(date)}&timezone=${encodeURIComponent(tz)}`));} if(u.pathname==='/api/odds'){let id=u.searchParams.get('game');return send(res,200,await api('/odds?game='+encodeURIComponent(id)));} let file=u.pathname==='/'?'index.html':u.pathname.slice(1),p=path.join(__dirname,'public',file); if(!p.startsWith(path.join(__dirname,'public'))||!fs.existsSync(p))return send(res,404,{error:'Not found'}); let ext=path.extname(p),type=ext==='.html'?'text/html':ext==='.js'?'text/javascript':'text/css';send(res,200,fs.readFileSync(p),type)}catch(e){send(res,500,{error:e.message})}}); server.listen(PORT,()=>console.log(`UNIT 501 running on http://localhost:${PORT}`));
+
+
+const http = require('http');
+
+const fs = require('fs');
+
+const path = require('path');
+
+const PORT = process.env.PORT || 5010;
+
+const API = 'https://v1.american-football.api-sports.io';
+
+function send(res, code, obj, type = 'application/json') {
+
+  res.writeHead(code, { 'Content-Type': type });
+
+  res.end(type === 'application/json' ? JSON.stringify(obj) : obj);
+
+}
+
+async function api(endpoint) {
+
+  if (!process.env.API_SPORTS_KEY) {
+
+    throw new Error('API key is not configured');
+
+  }
+
+  const r = await fetch(API + endpoint, {
+
+    headers: {
+
+      'x-apisports-key': process.env.API_SPORTS_KEY
+
+    }
+
+  });
+
+  if (!r.ok) throw new Error('API error ' + r.status);
+
+  return r.json();
+
+}
+
+const server = http.createServer(async (req, res) => {
+
+  try {
+
+    const u = new URL(req.url, 'http://localhost');
+
+    if (u.pathname === '/api/health') {
+
+      return send(res, 200, {
+
+        ok: true,
+
+        liveData: Boolean(process.env.API_SPORTS_KEY)
+
+      });
+
+    }
+
+    if (u.pathname === '/api/leagues') {
+
+      return send(res, 200, await api('/leagues?current=true'));
+
+    }
+
+    if (u.pathname === '/api/games') {
+
+      const date = u.searchParams.get('date');
+
+      const league = u.searchParams.get('league') || '2';
+
+      const season = u.searchParams.get('season') || '2026';
+
+      const tz = u.searchParams.get('timezone') || 'America/Chicago';
+
+      if (!date) {
+
+        return send(res, 400, { error: 'Date is required' });
+
+      }
+
+      const params = new URLSearchParams({
+
+        league,
+
+        season,
+
+        date,
+
+        timezone: tz
+
+      });
+
+      return send(res, 200, await api('/games?' + params));
+
+    }
+
+    if (u.pathname === '/api/odds') {
+
+      const id = u.searchParams.get('game');
+
+      if (!id || !/^\d+$/.test(id)) {
+
+        return send(res, 400, { error: 'Valid game ID required' });
+
+      }
+
+      return send(
+
+        res,
+
+        200,
+
+        await api('/odds?game=' + encodeURIComponent(id))
+
+      );
+
+    }
+
+    // Automatic betting markets, including player props
+
+    // when supplied by the data provider.
+
+    if (u.pathname === '/api/markets') {
+
+      const id = u.searchParams.get('game');
+
+      if (!id || !/^\d+$/.test(id)) {
+
+        return send(res, 400, { error: 'Valid game ID required' });
+
+      }
+
+      const data = await api('/odds?game=' + encodeURIComponent(id));
+
+      const markets = [];
+
+      for (const entry of data.response || []) {
+
+        for (const bookmaker of entry.bookmakers || []) {
+
+          for (const bet of bookmaker.bets || []) {
+
+            markets.push({
+
+              bookmaker: bookmaker.name,
+
+              market: bet.name,
+
+              values: bet.values || []
+
+            });
+
+          }
+
+        }
+
+      }
+
+      return send(res, 200, {
+
+        game: id,
+
+        markets
+
+      });
+
+    }
+
+    // Serve the existing app.
+
+    const publicDir = path.resolve(__dirname, 'public');
+
+    const file = u.pathname === '/'
+
+      ? 'index.html'
+
+      : decodeURIComponent(u.pathname.slice(1));
+
+    const p = path.resolve(publicDir, file);
+
+    if (!p.startsWith(publicDir + path.sep)) {
+
+      return send(res, 403, { error: 'Forbidden' });
+
+    }
+
+    if (!fs.existsSync(p) || !fs.statSync(p).isFile()) {
+
+      return send(res, 404, { error: 'Not found' });
+
+    }
+
+    const ext = path.extname(p);
+
+    const types = {
+
+      '.html': 'text/html',
+
+      '.js': 'text/javascript',
+
+      '.css': 'text/css',
+
+      '.png': 'image/png',
+
+      '.svg': 'image/svg+xml',
+
+      '.ico': 'image/x-icon'
+
+    };
+
+    send(
+
+      res,
+
+      200,
+
+      fs.readFileSync(p),
+
+      types[ext] || 'application/octet-stream'
+
+    );
+
+  } catch (e) {
+
+    console.error(e);
+
+    send(res, 500, { error: e.message });
+
+  }
+
+});
+
+server.listen(PORT, () => {
+
+  console.log('UNIT 501 running on port ' + PORT);
+
+});
