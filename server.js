@@ -47,7 +47,39 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+// Get player statistics for a game
 
+if (u.pathname === '/api/player-stats') {
+
+  const id = u.searchParams.get('game');
+
+  if (!id || !/^\d+$/.test(id)) {
+
+    return send(res, 400, {
+
+      error: 'Valid game ID required'
+
+    });
+
+  }
+
+  return send(
+
+    res,
+
+    200,
+
+    await api(
+
+      '/games/statistics/players?id=' +
+
+      encodeURIComponent(id)
+
+    )
+
+  );
+
+}
     if (u.pathname === '/api/health') {
 
       return send(res, 200, {
