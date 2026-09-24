@@ -9,6 +9,7 @@
   let loadedFor = null;
   let choices = [];
   let opponentDefense = new Map();
+  let teamOffense = new Map();
   let sequence = 0;
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -74,6 +75,7 @@
   .find(id => id !== record.teamId);
 
 const opponentStats = opponentDefense.get(opponentId);
+    const ownOffense = teamOffense.get(record.teamId);
     let shown = 0;
     for (const def of definitions) {
       const values = history.map(x => x[def.key]).filter(x => x !== undefined);
@@ -83,6 +85,25 @@ const opponentStats = opponentDefense.get(opponentId);
       const weighted = values.reduce((sum, value, index) =>
   sum + value * (values.length - index), 0
 ) / (values.length * (values.length + 1) / 2);
+      let adjusted = weighted;
+
+if (def.key === 'rushYds' || def.key === 'passYds') {
+  const offenseKey = def.key === 'rushYds' ? 'rushYards' : 'passYards';
+  const defenseKey = def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed';
+
+  const offense = ownOffense?.[offenseKey] || [];
+  const defense = opponentStats?.[defenseKey] || [];
+
+  if (offense.length >= 2 && defense.length >= 2) {
+    const offenseAvg = offense.reduce((a, b) => a + b, 0) / offense.length;
+    const defenseAvg = defense.reduce((a, b) => a + b, 0) / defense.length;
+
+    if (offenseAvg > 0) {
+      const factor = Math.max(0.85, Math.min(1.15, defenseAvg / offenseAvg));
+      adjusted = weighted * (1 + (factor - 1) * 0.5);
+    }
+  }
+}
       const recent = values.slice(0, Math.min(2, values.length));
 const earlier = values.slice(Math.min(2, values.length));
 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
@@ -100,7 +121,7 @@ const trend = earlierAvg === null
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
       const heading = document.createElement('b');
-     heading.textContent = `${def.title}: ${weighted.toFixed(1)} projected | ${average.toFixed(1)} average`;
+  heading.textContent = `${def.title}: ${adjusted.toFixed(1)} projected | ${average.toFixed(1)} average`;
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
@@ -130,6 +151,7 @@ const trend = earlierAvg === null
     loadedFor = null;
     choices = [];
     opponentDefense.clear();
+    teamOffense.clear();
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
@@ -194,6 +216,9 @@ const trend = earlierAvg === null
       opponentDefense = new Map(teamIds.map(id => [
   id, { rushAllowed: [], passAllowed: [] }
 ]));
+    teamOffense = new Map(teamIds.map(id => [
+  id, { rushYards: [], passYards: [] }
+]));  
      // Sequential requests are intentionally gentler on rate limits.
          for (const id of ids) {
         const rows = await json(`/api/player-stats?game=${id}`);
@@ -221,6 +246,24 @@ const allowed = opponentDefense.get(defendingTeam);
         for (const teamEntry of rows) {
           if (teamIds.includes(String(teamEntry.team?.id))) {
             accumulate(map, teamEntry, id, past.get(id).date, past.get(id).opponent);
+          const offense = teamOffense.get(String(teamEntry.team?.id));
+
+if (offense) {
+  for (const group of teamEntry.groups || []) {
+    const category = normalize(group.name);
+    if (category !== 'rushing' && category !== 'passing') continue;
+
+    const yards = (group.players || [])
+      .map(player => extract(player.statistics, category, ['yards']))
+      .filter(value => value !== null);
+
+    if (yards.length) {
+      const total = yards.reduce((sum, value) => sum + value, 0);
+
+      offense[category === 'rushing' ? 'rushYards' : 'passYards'].push(total);
+    }
+  }
+}  
           }
         }
       }
