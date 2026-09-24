@@ -8,6 +8,7 @@
   const results = el('predict-results');
   let loadedFor = null;
   let choices = [];
+  let opponentDefense = new Map();
   let sequence = 0;
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -69,6 +70,10 @@
     title.textContent = `${record.name} — ${record.team}`;
     results.appendChild(title);
     const history = Array.from(record.games.values()).sort((a, b) => b.gameDate - a.gameDate);
+    const opponentId = Array.from(opponentDefense.keys())
+  .find(id => id !== record.teamId);
+
+const opponentStats = opponentDefense.get(opponentId);
     let shown = 0;
     for (const def of definitions) {
       const values = history.map(x => x[def.key]).filter(x => x !== undefined);
@@ -100,6 +105,18 @@ const trend = earlierAvg === null
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
+      if (def.key === 'rushYds' || def.key === 'passYds') {
+  const allowed = opponentStats?.[
+    def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
+  ] || [];
+
+  if (allowed.length) {
+    const avgAllowed = allowed.reduce((a, b) => a + b, 0) / allowed.length;
+    const defense = document.createElement('p');
+    defense.textContent = `Opponent defense: ${avgAllowed.toFixed(1)} team yards allowed per game (${allowed.length} games)`;
+    card.appendChild(defense);
+  }
+}
       shown++;
     }
     if (!shown) results.textContent = 'Not enough recent games with this player’s recorded stats to estimate a projection.';
@@ -112,6 +129,7 @@ const trend = earlierAvg === null
     sequence++;
     loadedFor = null;
     choices = [];
+    opponentDefense.clear();
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
@@ -173,10 +191,33 @@ const trend = earlierAvg === null
       status.textContent = `Reading player stats from ${past.size} recent team games…`;
       const ids = Array.from(past.keys());
       const map = new Map();
-      // Sequential requests are intentionally gentler on rate limits.
-      for (const id of ids) {
+      opponentDefense = new Map(teamIds.map(id => [
+  id, { rushAllowed: [], passAllowed: [] }
+]));
+     // Sequential requests are intentionally gentler on rate limits.
+         for (const id of ids) {
         const rows = await json(`/api/player-stats?game=${id}`);
         if (task !== sequence) return;
+        const defendingTeam = past.get(id).teamId;
+const opponentBox = rows.find(team =>
+  String(team.team?.id) !== defendingTeam
+);
+const allowed = opponentDefense.get(defendingTeam);   
+        if (opponentBox && allowed) {
+  for (const group of opponentBox.groups || []) {
+    const category = normalize(group.name);
+    if (category !== 'rushing' && category !== 'passing') continue;
+
+    const yards = (group.players || [])
+      .map(player => extract(player.statistics, category, ['yards']))
+      .filter(value => value !== null);
+
+    if (yards.length) {
+      const total = yards.reduce((sum, value) => sum + value, 0);
+      allowed[category === 'rushing' ? 'rushAllowed' : 'passAllowed'].push(total);
+    }
+  }
+}   
         for (const teamEntry of rows) {
           if (teamIds.includes(String(teamEntry.team?.id))) {
             accumulate(map, teamEntry, id, past.get(id).date, past.get(id).opponent);
