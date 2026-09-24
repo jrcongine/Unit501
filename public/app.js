@@ -143,6 +143,7 @@ async function load() {
 async function choose(game) {
   selected = game;
   $('lab').classList.remove('hidden');
+  $('player-lab').classList.remove('hidden');
   $('matchup').textContent = `${game.a} @ ${game.h}`;
 
   // Do not invent a betting line when current odds are unavailable.
