@@ -75,6 +75,9 @@
       const gameDetails = history.filter(x => x[def.key] !== undefined);
       if (values.length < 2) continue;
       const average = values.reduce((a, b) => a + b, 0) / values.length;
+      const weighted = values.reduce((sum, value, index) =>
+  sum + value * (values.length - index), 0
+) / (values.length * (values.length + 1) / 2);
       const recent = values.slice(0, Math.min(2, values.length));
 const earlier = values.slice(Math.min(2, values.length));
 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
@@ -92,7 +95,7 @@ const trend = earlierAvg === null
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
       const heading = document.createElement('b');
-      heading.textContent = `${def.title}: ${average.toFixed(def.key.endsWith('Yds') ? 0 : 1)}`;
+     heading.textContent = `${def.title}: ${weighted.toFixed(1)} projected | ${average.toFixed(1)} average`;
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
