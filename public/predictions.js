@@ -73,13 +73,27 @@
       const values = history.map(x => x[def.key]).filter(x => x !== undefined);
       if (values.length < 2) continue;
       const average = values.reduce((a, b) => a + b, 0) / values.length;
+      const recent = values.slice(0, Math.min(2, values.length));
+const earlier = values.slice(Math.min(2, values.length));
+const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+const earlierAvg = earlier.length
+  ? earlier.reduce((a, b) => a + b, 0) / earlier.length
+  : null;
+
+const trend = earlierAvg === null
+  ? 'Not enough games to determine a trend'
+  : recentAvg > earlierAvg
+    ? 'Trending up'
+    : recentAvg < earlierAvg
+      ? 'Trending down'
+      : 'Holding steady';
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
       const heading = document.createElement('b');
       heading.textContent = `${def.title}: ${average.toFixed(def.key.endsWith('Yds') ? 0 : 1)}`;
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
-      context.textContent = `Recent games (${values.length}): ${values.join(', ')} • observed range ${Math.min(...values)}–${Math.max(...values)}`;
+     context.textContent = `Recent games (${values.length}, newest first): ${values.join(', ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
       shown++;
     }
