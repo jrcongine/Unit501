@@ -79,6 +79,25 @@ if (u.pathname === '/api/player-stats') {
 
   );
 
+}// Get a team's games for a season
+if (u.pathname === '/api/team-games') {
+  const team = u.searchParams.get('team');
+  const season = u.searchParams.get('season');
+
+  if (!team || !/^\d+$/.test(team) ||
+      !season || !/^\d{4}$/.test(season)) {
+    return send(res, 400, {
+      error: 'Valid team ID and season required'
+    });
+  }
+
+  const params = new URLSearchParams({ team, season });
+
+  return send(
+    res,
+    200,
+    await api('/games?' + params)
+  );
 }
     if (u.pathname === '/api/health') {
 
