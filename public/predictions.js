@@ -37,8 +37,9 @@
     const row = stats.find(item => keys.includes(normalize(item.name)));
     return row ? n(row.value) : null;
   };
-  function accumulate(map, teamEntry, gameId, gameDate) {
+  function accumulate(map, teamEntry, gameId, gameDate, opponent) {
     const team = teamEntry.team || {};
+   
     for (const group of teamEntry.groups || []) {
       const groupName = normalize(group.name);
       for (const item of group.players || []) {
@@ -50,7 +51,7 @@
           teamId: String(team.id || ''), games: new Map()
         });
         const record = map.get(id);
-        if (!record.games.has(gameId)) record.games.set(gameId, { gameDate });
+       if (!record.games.has(gameId)) record.games.set(gameId, { gameDate, opponent });
         const line = record.games.get(gameId);
         for (const def of definitions) {
           if (normalize(def.group) !== groupName) continue;
@@ -71,6 +72,7 @@
     let shown = 0;
     for (const def of definitions) {
       const values = history.map(x => x[def.key]).filter(x => x !== undefined);
+      const gameDetails = history.filter(x => x[def.key] !== undefined);
       if (values.length < 2) continue;
       const average = values.reduce((a, b) => a + b, 0) / values.length;
       const recent = values.slice(0, Math.min(2, values.length));
@@ -93,7 +95,7 @@ const trend = earlierAvg === null
       heading.textContent = `${def.title}: ${average.toFixed(def.key.endsWith('Yds') ? 0 : 1)}`;
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
-     context.textContent = `Recent games (${values.length}, newest first): ${values.join(', ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
+     context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
       shown++;
     }
@@ -150,9 +152,18 @@ const trend = earlierAvg === null
           const code = String(g.game?.status?.short || '').toUpperCase();
           return id && time < kickoff && (['FT', 'AOT', 'FINAL'].includes(code) || /finish|final|after overtime/i.test(g.game?.status?.long || ''));
         }).sort((a, b) => (b.game?.date?.timestamp || 0) - (a.game?.date?.timestamp || 0)).slice(0, 4);
-        previous.forEach(g => past.set(String(g.game?.id || g.id), {
-          date: g.game?.date?.timestamp || 0, teamId: teamIds[i]
-        }));
+        previous.forEach(g => {
+  const teams = g.teams || {};
+  const opponent = String(teams.home?.id) === teamIds[i]
+    ? teams.away?.name
+    : teams.home?.name;
+
+  past.set(String(g.game?.id || g.id), {
+    date: g.game?.date?.timestamp || 0,
+    teamId: teamIds[i],
+    opponent: opponent || 'Opponent unknown'
+  });
+});
       });
       if (!past.size) throw new Error('No completed games available this season for these teams yet.');
       if (task !== sequence) return;
@@ -165,7 +176,7 @@ const trend = earlierAvg === null
         if (task !== sequence) return;
         for (const teamEntry of rows) {
           if (teamIds.includes(String(teamEntry.team?.id))) {
-            accumulate(map, teamEntry, id, past.get(id).date);
+            accumulate(map, teamEntry, id, past.get(id).date, past.get(id).opponent);
           }
         }
       }
