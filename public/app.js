@@ -62,7 +62,7 @@ function parseGame(g) {
 async function load() {
   selected = null;
   $('lab').classList.add('hidden');
-  $('player-lab').classList.add('hidden');
+
   showMessage('Loading games…');
 
   const date = $('date').value;
