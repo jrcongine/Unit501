@@ -1,291 +1,236 @@
 
-
 const $ = id => document.getElementById(id);
-
 const games = $('games');
-
 let selected = null;
 
 const today = new Intl.DateTimeFormat('en-CA', {
-
   timeZone: 'America/Chicago',
-
   year: 'numeric',
-
   month: '2-digit',
-
-  
-
   day: '2-digit'
-
 }).format(new Date());
 
 $('date').value = today;
 
-const normal = () => {
-
-  let u = 0, v = 0;
-
-  while (!u) u = Math.random();
-
-  while (!v) v = Math.random();
-
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-
-};
+function showMessage(message) {
+  games.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.textContent = message;
+  games.appendChild(card);
+}
 
 async function health() {
-
   try {
+    const response = await fetch('/api/health');
+    if (!response.ok) throw new Error('Health check failed');
 
-    const r = await fetch('/api/health');
-
-    const x = await r.json();
-
-    $('status').textContent = x.liveData
-
-      ? 'LIVE DATA READY'
-
-      : 'DATA NOT CONNECTED';
-
+    const data = await response.json();
+    $('status').textContent = data.liveData
+      ? 'DATA KEY CONNECTED · CHECKING GAMES'
+      : 'DATA KEY NOT CONNECTED';
   } catch {
-
-    $('status').textContent = 'CONNECTION ERROR';
-
+    $('status').textContent = 'APP CONNECTION ERROR';
   }
-
 }
 
 function parseGame(g) {
-
   const away = g.teams?.away || g.teams?.visitors || {};
-
   const home = g.teams?.home || {};
-
   const date = g.game?.date || {};
-
   const status = g.game?.status || {};
 
   return {
-
     id: g.game?.id || g.id,
-
     a: away.name || 'Away team TBD',
-
     h: home.name || 'Home team TBD',
-
-    awayLogo: away.logo,
-
-    homeLogo: home.logo,
-
     time: date.timestamp
-
       ? new Date(date.timestamp * 1000).toLocaleTimeString('en-US', {
-
           timeZone: 'America/Chicago',
-
           hour: 'numeric',
-
           minute: '2-digit'
-
         }) + ' CT'
-
       : date.time
-
         ? date.time + ' CT'
-
         : 'Time TBD',
-
     status: status.long || 'Scheduled',
-
-    statusCode: status.short || 'NS',
-
     awayScore: g.scores?.away?.total,
-
     homeScore: g.scores?.home?.total
-
   };
-
 }
 
 async function load() {
+  selected = null;
+  $('lab').classList.add('hidden');
+  $('player-lab').classList.add('hidden');
+  showMessage('Loading games…');
 
-  games.innerHTML = '<div class="card">Loading games...</div>';
+  const date = $('date').value;
+  const league = $('league').value;
+
+  if (!date) {
+    showMessage('Choose a date first.');
+    return;
+  }
 
   try {
-
-    const date = $('date').value;
-
-    const league = $('league').value;
-
-    const r = await fetch(
-
-      `/api/games?date=${date}&league=${league}&season=2026&timezone=America/Chicago`
-
-    );
-
-    const j = await r.json();
-
-    if (!r.ok || j.error || (j.errors && Object.keys(j.errors).length)) {
-
-      throw new Error(j.error || JSON.stringify(j.errors) || 'Unable to load games');
-
-    }
-
-    const arr = (j.response || []).map(parseGame);
-
-    games.innerHTML = '';
-
-    if (!arr.length) {
-
-      games.innerHTML = '<div class="card">No games scheduled for this date.</div>';
-
-      return;
-
-    }
-
-    arr.forEach(g => {
-
-      const d = document.createElement('div');
-
-      d.className = 'card game';
-
-      const matchup = document.createElement('b');
-
-      matchup.textContent = `${g.a} @ ${g.h}`;
-
-      const details = document.createElement('p');
-
-      const hasScore = g.awayScore != null && g.homeScore != null;
-
-      const score = hasScore
-
-        ? ` | ${g.a} ${g.awayScore} - ${g.h} ${g.homeScore}`
-
-        : '';
-
-      details.textContent = `${g.time} | ${g.status}${score}`;
-
-      d.append(matchup, details);
-
-      d.onclick = () => choose(g);
-
-      games.appendChild(d);
-
+    const params = new URLSearchParams({
+      date,
+      league,
+      season: date.slice(0, 4),
+      timezone: 'America/Chicago'
     });
 
-  } catch (e) {
+    const response = await fetch('/api/games?' + params);
+    const data = await response.json();
 
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Game request failed');
+    }
+
+    if (data.errors && Object.keys(data.errors).length) {
+      throw new Error(
+        typeof data.errors === 'string'
+          ? data.errors
+          : JSON.stringify(data.errors)
+      );
+    }
+
+    if (!Array.isArray(data.response)) {
+      throw new Error('The data provider did not return a game list.');
+    }
+
+    const slate = data.response.map(parseGame);
+
+    if (!slate.length) {
+      $('status').textContent = 'NO GAMES RETURNED';
+      showMessage(
+        'No games were returned for this date. This could mean there are no games scheduled, or your data plan does not include this season.'
+      );
+      return;
+    }
+
+    $('status').textContent = 'GAME DATA RECEIVED';
     games.innerHTML = '';
 
-    const d = document.createElement('div');
+    slate.forEach(game => {
+      const card = document.createElement('div');
+      card.className = 'card game';
 
-    d.className = 'card';
+      const matchup = document.createElement('b');
+      matchup.textContent = `${game.a} @ ${game.h}`;
 
-    d.textContent = 'Unable to load games: ' + e.message;
+      const details = document.createElement('p');
+      const hasScore =
+        game.awayScore != null && game.homeScore != null;
 
-    games.appendChild(d);
+      details.textContent =
+        `${game.time} | ${game.status}` +
+        (hasScore
+          ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}`
+          : '');
 
+      card.append(matchup, details);
+      card.onclick = () => choose(game);
+      games.appendChild(card);
+    });
+  } catch (error) {
+    $('status').textContent = 'GAME DATA UNAVAILABLE';
+    showMessage('Unable to load games: ' + error.message);
   }
-
 }
 
-async function choose(g) {
-
-  selected = g;
-
+async function choose(game) {
+  selected = game;
   $('lab').classList.remove('hidden');
+  $('matchup').textContent = `${game.a} @ ${game.h}`;
 
-  $('matchup').textContent = g.a + ' @ ' + g.h;
+  // Do not invent a betting line when current odds are unavailable.
+  $('spread').value = '';
+  $('total').value = '';
+  $('awayRating').value = 0;
+  $('homeRating').value = 0;
 
-  $('spread').value = 3;
+  $('score').textContent = '—';
+  $('cover').textContent = '—';
+  $('over').textContent = '—';
+  $('win').textContent = '—';
 
-  $('total').value = 48.5;
-
-  $('note').textContent = 'Loading bookmaker odds...';
-
-  try {
-
-    const j = await fetch('/api/odds?game=' + g.id).then(r => r.json());
-
-    $('note').textContent = (j.response || []).length
-
-      ? 'Odds received. Confirm the FanDuel line before simulating.'
-
-      : 'No current odds returned. Enter the FanDuel line manually.';
-
-  } catch {
-
-    $('note').textContent = 'Odds unavailable. Enter the FanDuel line manually.';
-
-  }
+  $('note').textContent =
+    'Enter the current FanDuel spread and total to run a simulation.';
 
   $('lab').scrollIntoView({ behavior: 'smooth' });
+}
 
+function normal() {
+  let u = 0;
+  let v = 0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+
+  return Math.sqrt(-2 * Math.log(u)) *
+    Math.cos(2 * Math.PI * v);
 }
 
 function sim() {
-
   if (!selected) return;
 
-  const sp = +$('spread').value;
+  if ($('spread').value === '' || $('total').value === '') {
+    $('note').textContent =
+      'Enter both the away spread and the game total first.';
+    return;
+  }
 
-  const tot = +$('total').value;
+  const spread = Number($('spread').value);
+  const total = Number($('total').value);
+  const awayRating = Number($('awayRating').value);
+  const homeRating = Number($('homeRating').value);
 
-  const ar = +$('awayRating').value;
+  if (![spread, total, awayRating, homeRating].every(Number.isFinite) ||
+      total <= 0) {
+    $('note').textContent = 'Check your numbers and try again.';
+    return;
+  }
 
-  const hr = +$('homeRating').value;
+  const meanMargin = homeRating - awayRating + 2.5;
+  const meanTotal = 48 + (awayRating + homeRating) * 0.25;
+  const expectedAway = (meanTotal - meanMargin) / 2;
+  const expectedHome = (meanTotal + meanMargin) / 2;
 
-  const meanMargin = hr - ar + 2.5;
+  let covers = 0;
+  let overs = 0;
+  let awayWins = 0;
+  let awayPoints = 0;
+  let homePoints = 0;
 
-  const meanTotal = 48 + (ar + hr) * .25;
+  const runs = 50000;
 
-  const ea = (meanTotal - meanMargin) / 2;
+  for (let i = 0; i < runs; i++) {
+    const shared = normal() * 4;
+    const away = Math.max(0, expectedAway + normal() * 7.5 + shared);
+    const home = Math.max(0, expectedHome + normal() * 7.5 + shared);
 
-  const eh = (meanTotal + meanMargin) / 2;
+    awayPoints += away;
+    homePoints += home;
 
-  let c = 0, o = 0, w = 0, sa = 0, sh = 0;
-
-  for (let i = 0; i < 50000; i++) {
-
-    const common = normal() * 4;
-
-    const A = Math.max(0, ea + normal() * 7.5 + common);
-
-    const H = Math.max(0, eh + normal() * 7.5 + common);
-
-    sa += A;
-
-    sh += H;
-
-    if (A + sp > H) c++;
-
-    if (A + H > tot) o++;
-
-    if (A > H) w++;
-
+    if (away + spread > home) covers++;
+    if (away + home > total) overs++;
+    if (away > home) awayWins++;
   }
 
   $('score').textContent =
+    `${Math.round(awayPoints / runs)}–${Math.round(homePoints / runs)}`;
 
-    Math.round(sa / 50000) + '–' + Math.round(sh / 50000);
-
-  $('cover').textContent = (c / 500).toFixed(1) + '%';
-
-  $('over').textContent = (o / 500).toFixed(1) + '%';
-
-  $('win').textContent = (w / 500).toFixed(1) + '%';
+  $('cover').textContent = (covers / runs * 100).toFixed(1) + '%';
+  $('over').textContent = (overs / runs * 100).toFixed(1) + '%';
+  $('win').textContent = (awayWins / runs * 100).toFixed(1) + '%';
 
   $('note').textContent =
-
-    'Illustrative simulation based on entered ratings, not a validated betting prediction.';
-
+    'Illustrative simulation using manually entered ratings—not a validated betting prediction.';
 }
 
 $('load').onclick = load;
-
 $('sim').onclick = sim;
 
 health();
-
 load();
