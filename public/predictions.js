@@ -11,6 +11,7 @@
   let opponentDefense = new Map();
   let teamOffense = new Map();
   let matchupTeams = [];
+  const enteredLines = new Map();
   let sequence = 0;
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -73,6 +74,53 @@
         }
       }
     }
+  }
+  function addLineComparison(card, record, def, projection, values) {
+    const key = `${record.teamId}:${record.id}:${def.key}`;
+    const label = document.createElement('label');
+    label.style.cssText = 'display:block;margin-top:12px';
+    label.textContent = 'FanDuel line (enter manually)';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.5';
+    input.placeholder = 'Enter line';
+    input.id = `line-${record.id}-${def.key}`;
+    input.style.cssText = 'display:block;box-sizing:border-box;width:100%;max-width:220px;margin-top:6px';
+    input.value = enteredLines.get(key) || '';
+    if (!def.key.endsWith('Yds')) input.min = '0';
+    label.appendChild(input);
+    const comparison = document.createElement('p');
+    comparison.id = `comparison-${record.id}-${def.key}`;
+    comparison.setAttribute('aria-live', 'polite');
+    comparison.style.cssText = 'margin:8px 0 0';
+    function update() {
+      enteredLines.set(key, input.value);
+      const line = n(input.value);
+      if (input.validity?.badInput) {
+        comparison.textContent = 'Enter a valid number.';
+        return;
+      }
+      if (input.value.trim() === '') {
+        comparison.textContent = 'Enter the current line to compare with this projection.';
+        return;
+      }
+      if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) {
+        comparison.textContent = 'Use a whole number or half point' + (def.key.endsWith('Yds') ? '.' : ', zero or higher.');
+        return;
+      }
+      // Compare the same rounded projection that is visible in the card heading.
+      const difference = Number((Number(projection.toFixed(1)) - line).toFixed(1));
+      const above = values.filter(value => value > line).length;
+      const below = values.filter(value => value < line).length;
+      const equal = values.length - above - below;
+      const summary = difference === 0
+        ? 'Projection equals the line.'
+        : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
+      comparison.textContent = `${summary} Recent recorded games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
+    }
+    input.addEventListener('input', update);
+    card.append(label, comparison);
+    update();
   }
   function showPlayer() {
     results.replaceChildren();
@@ -147,6 +195,7 @@ const trend = earlierAvg === null
     : `Recent weighted baseline: ${weighted.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
   card.appendChild(explanation);
 }
+      addLineComparison(card, record, def, adjusted, values);
       shown++;
     }
     if (!shown) results.textContent = 'Not enough recent games with this player’s recorded stats to estimate a projection.';
@@ -162,6 +211,7 @@ const trend = earlierAvg === null
     opponentDefense.clear();
     teamOffense.clear();
     matchupTeams = [];
+    enteredLines.clear();
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
