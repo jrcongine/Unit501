@@ -76,8 +76,8 @@
       }
     }
   }
-  function addLineComparison(card, record, def, projection, values) {
-    const key = `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.id}:${def.key}`;
+  const lineKey = (record, def) => `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.id}:${def.key}`;
+  function readLine(key) {
     let entry = enteredLines.get(key);
     if (!entry) {
       entry = { value: '', savedAt: null, persisted: false };
@@ -91,6 +91,98 @@
       } catch { /* Missing, blocked or damaged storage must not stop projections. */ }
       enteredLines.set(key, entry);
     }
+    return entry;
+  }
+  const board = document.createElement('section');
+  board.id = 'saved-line-comparisons';
+  results.before(board);
+  function renderComparisons() {
+    board.replaceChildren();
+    if (!loadedFor) return;
+    const title = document.createElement('h3');
+    title.textContent = 'Saved line comparisons';
+    const note = document.createElement('p');
+    note.textContent = 'Selected game only. Historical comparisons, not ranked picks or win probabilities. Recheck current FanDuel lines.';
+    note.style.cssText = 'font-size:.9em;opacity:.8';
+    board.append(title, note);
+    const rows = [];
+    for (const record of choices) {
+      for (const def of definitions) {
+        const entry = readLine(lineKey(record, def));
+        const line = n(entry.value);
+        if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) continue;
+        const model = projectionFor(record, def);
+        if (!model) continue;
+        rows.push({record, def, entry, line, ...model});
+      }
+    }
+    if (!rows.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Enter a line on any player card below. Your comparisons will appear here together.';
+      board.append(empty);
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'overflow-x:auto;margin-bottom:18px';
+    wrap.tabIndex = 0;
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', 'Saved player line comparisons');
+    const table = document.createElement('table');
+    table.style.cssText = 'width:100%;border-collapse:collapse;text-align:left;font-size:.9em';
+    const caption = document.createElement('caption');
+    caption.textContent = `${rows.length} entered ${rows.length === 1 ? 'line' : 'lines'} — ${matchupTeams.map(t => t.name).join(' vs ')}`;
+    caption.style.cssText = 'text-align:left;padding:8px 0;font-weight:bold';
+    table.append(caption);
+    const head = document.createElement('thead');
+    const header = document.createElement('tr');
+    for (const name of ['Player / team', 'Stat', 'Projection', 'Line', 'Difference', 'Recent above / below / equal', 'Saved (CT)']) {
+      const cell = document.createElement('th');
+      cell.scope = 'col';
+      cell.textContent = name;
+      cell.style.cssText = 'padding:10px;border-bottom:1px solid #45495b';
+      header.append(cell);
+    }
+    head.append(header);
+    table.append(head);
+    const body = document.createElement('tbody');
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+      const projection = Number(row.adjusted.toFixed(1));
+      const diff = Number((projection - row.line).toFixed(1));
+      const above = row.values.filter(v => v > row.line).length;
+      const below = row.values.filter(v => v < row.line).length;
+      const equal = row.values.length - above - below;
+      const fields = [null, row.def.title, projection.toFixed(1), String(row.line),
+        diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
+        `${above} / ${below} / ${equal} (${row.values.length} games)`,
+        row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
+      fields.forEach((value, index) => {
+        const cell = document.createElement('td');
+        cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
+        if (index === 0) {
+          const open = document.createElement('button');
+          open.type = 'button';
+          open.textContent = `${row.record.name} — ${row.record.team}`;
+          open.addEventListener('click', () => {
+            picker.value = row.record.id;
+            showPlayer();
+            const input = el(`line-${row.record.id}-${row.def.key}`);
+            input?.scrollIntoView?.({block:'center', behavior:'smooth'});
+            input?.focus({preventScroll:true});
+          });
+          cell.append(open);
+        } else cell.textContent = value;
+        tr.append(cell);
+      });
+      body.append(tr);
+    }
+    table.append(body);
+    wrap.append(table);
+    board.append(wrap);
+  }
+  function addLineComparison(card, record, def, projection, values) {
+    const key = lineKey(record, def);
+    let entry = readLine(key);
     const label = document.createElement('label');
     label.style.cssText = 'display:block;margin-top:12px';
     label.textContent = 'FanDuel line (enter manually)';
@@ -122,6 +214,7 @@
           entry.persisted = true;
         } catch { /* Continue with this session's entry if saving is unavailable. */ }
         enteredLines.set(key, entry);
+        renderComparisons();
       }
       savedInfo.textContent = entry.persisted && valid
         ? `Saved in this browser ${new Date(entry.savedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} CT. Recheck the current FanDuel line.`
@@ -154,22 +247,14 @@
     card.append(label, savedInfo, comparison);
     update();
   }
-  function showPlayer() {
-    results.replaceChildren();
-    const record = choices.find(x => x.id === picker.value);
-    if (!record) return;
-    const title = document.createElement('h3');
-    title.textContent = `${record.name} — ${record.team}`;
-    results.appendChild(title);
+  function projectionFor(record, def) {
     const history = Array.from(record.games.values()).sort((a, b) => b.gameDate - a.gameDate);
     const opponent = matchupTeams.find(team => team.id !== record.teamId);
     const opponentStats = opponentDefense.get(opponent?.id);
     const ownOffense = teamOffense.get(record.teamId);
-    let shown = 0;
-    for (const def of definitions) {
       const values = history.map(x => x[def.key]).filter(x => x !== undefined);
       const gameDetails = history.filter(x => x[def.key] !== undefined);
-      if (values.length < 2) continue;
+      if (values.length < 2) return null;
       const average = values.reduce((a, b) => a + b, 0) / values.length;
       const weighted = values.reduce((sum, value, index) =>
         sum + value * (values.length - index), 0
@@ -188,6 +273,21 @@
           adjusted = weighted * (1 + adjustment);
         }
       }
+    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats};
+  }
+  function showPlayer() {
+    renderComparisons();
+    results.replaceChildren();
+    const record = choices.find(x => x.id === picker.value);
+    if (!record) return;
+    const title = document.createElement('h3');
+    title.textContent = `${record.name} — ${record.team}`;
+    results.appendChild(title);
+    let shown = 0;
+    for (const def of definitions) {
+      const model = projectionFor(record, def);
+      if (!model) continue;
+      const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats} = model;
       const recent = values.slice(0, Math.min(2, values.length));
 const earlier = values.slice(Math.min(2, values.length));
 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
@@ -245,6 +345,7 @@ const trend = earlierAvg === null
     matchupTeams = [];
     enteredLines.clear();
     lineScope = '';
+    board.replaceChildren();
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
