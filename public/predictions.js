@@ -10,6 +10,7 @@
   let choices = [];
   let opponentDefense = new Map();
   let teamOffense = new Map();
+  let matchupTeams = [];
   let sequence = 0;
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -22,9 +23,19 @@
     if (!res.ok || x.error || (x.errors && Object.keys(x.errors).length)) {
       throw new Error(x.error || JSON.stringify(x.errors) || 'Data could not be loaded');
     }
-    return x.response || [];
+    if (!Array.isArray(x.response)) throw new Error('The data provider did not return a list.');
+    return x.response;
   };
   const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const gameTime = g => n(g.game?.date?.timestamp) || Date.parse(g.game?.date?.date || '') / 1000;
+  const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
+  function teamYards(team, category) {
+    const values = (team?.groups || [])
+      .filter(group => normalize(group.name) === category)
+      .flatMap(group => (group.players || []).map(player => extract(player.statistics, category, ['yards'])))
+      .filter(value => value !== null);
+    return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+  }
   const definitions = [
     { key: 'passYds', title: 'Passing yards', group: 'passing', keys: ['yards'] },
     { key: 'passTD', title: 'Passing TDs', group: 'passing', keys: ['passing touch downs', 'passing touchdowns'] },
@@ -71,10 +82,8 @@
     title.textContent = `${record.name} — ${record.team}`;
     results.appendChild(title);
     const history = Array.from(record.games.values()).sort((a, b) => b.gameDate - a.gameDate);
-    const opponentId = Array.from(opponentDefense.keys())
-  .find(id => id !== record.teamId);
-
-const opponentStats = opponentDefense.get(opponentId);
+    const opponent = matchupTeams.find(team => team.id !== record.teamId);
+    const opponentStats = opponentDefense.get(opponent?.id);
     const ownOffense = teamOffense.get(record.teamId);
     let shown = 0;
     for (const def of definitions) {
@@ -83,27 +92,22 @@ const opponentStats = opponentDefense.get(opponentId);
       if (values.length < 2) continue;
       const average = values.reduce((a, b) => a + b, 0) / values.length;
       const weighted = values.reduce((sum, value, index) =>
-  sum + value * (values.length - index), 0
-) / (values.length * (values.length + 1) / 2);
+        sum + value * (values.length - index), 0
+      ) / (values.length * (values.length + 1) / 2);
       let adjusted = weighted;
-
-if (def.key === 'rushYds' || def.key === 'passYds') {
-  const offenseKey = def.key === 'rushYds' ? 'rushYards' : 'passYards';
-  const defenseKey = def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed';
-
-  const offense = ownOffense?.[offenseKey] || [];
-  const defense = opponentStats?.[defenseKey] || [];
-
-  if (offense.length >= 2 && defense.length >= 2) {
-    const offenseAvg = offense.reduce((a, b) => a + b, 0) / offense.length;
-    const defenseAvg = defense.reduce((a, b) => a + b, 0) / defense.length;
-
-    if (offenseAvg > 0) {
-      const factor = Math.max(0.85, Math.min(1.15, defenseAvg / offenseAvg));
-      adjusted = weighted * (1 + (factor - 1) * 0.5);
-    }
-  }
-}
+      let adjustment = null;
+      if (def.key === 'rushYds' || def.key === 'passYds') {
+        const offenseKey = def.key === 'rushYds' ? 'rushYards' : 'passYards';
+        const defenseKey = def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed';
+        const offense = ownOffense?.[offenseKey] || [];
+        const defense = opponentStats?.[defenseKey] || [];
+        if (offense.length >= 2 && defense.length >= 2 && mean(offense) > 0) {
+          // A cautious heuristic, capped at +/-7.5%; not a calibrated forecast.
+          const factor = Math.max(0.85, Math.min(1.15, mean(defense) / mean(offense)));
+          adjustment = (factor - 1) * 0.5;
+          adjusted = weighted * (1 + adjustment);
+        }
+      }
       const recent = values.slice(0, Math.min(2, values.length));
 const earlier = values.slice(Math.min(2, values.length));
 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
@@ -124,7 +128,7 @@ const trend = earlierAvg === null
   heading.textContent = `${def.title}: ${adjusted.toFixed(1)} projected | ${average.toFixed(1)} average`;
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
-     context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
+     context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
       if (def.key === 'rushYds' || def.key === 'passYds') {
   const allowed = opponentStats?.[
@@ -134,9 +138,14 @@ const trend = earlierAvg === null
   if (allowed.length) {
     const avgAllowed = allowed.reduce((a, b) => a + b, 0) / allowed.length;
     const defense = document.createElement('p');
-    defense.textContent = `Opponent defense: ${avgAllowed.toFixed(1)} team yards allowed per game (${allowed.length} games)`;
+    defense.textContent = `${opponent?.name || 'Opponent'} defense: ${avgAllowed.toFixed(1)} team yards allowed per game (${allowed.length} ${allowed.length === 1 ? 'game' : 'games'}, from recorded player stats).`;
     card.appendChild(defense);
   }
+  const explanation = document.createElement('p');
+  explanation.textContent = adjustment === null
+    ? `Recent weighted baseline: ${weighted.toFixed(1)}. No defense adjustment: need at least two games of offense and defense yardage, with a positive offense average.`
+    : `Recent weighted baseline: ${weighted.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
+  card.appendChild(explanation);
 }
       shown++;
     }
@@ -152,15 +161,14 @@ const trend = earlierAvg === null
     choices = [];
     opponentDefense.clear();
     teamOffense.clear();
+    matchupTeams = [];
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
-    status.textContent = 'Tap Get player projections for this matchup.';
-    button.disabled = false;
+    status.textContent = 'Tap Load Player Projections for this matchup.';
+    button.disabled = typeof selected === 'undefined' || !selected;
   }
-  el('games').addEventListener('click', event => {
-    if (event.target.closest('.game')) reset();
-  });
+  document.addEventListener('unit501:selection-changed', reset);
   button.addEventListener('click', async () => {
     if (typeof selected === 'undefined' || !selected || !selected.id) {
       status.textContent = 'Choose a game first.'; return;
@@ -183,36 +191,38 @@ const trend = earlierAvg === null
       const slate = await json(`/api/games?date=${encodeURIComponent(date)}&league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`);
       const target = slate.find(g => String(g.game?.id || g.id) === gameId);
       if (!target) throw new Error('Selected game not found on this date. Reload the slate and try again.');
-      const teamIds = [target.teams?.away?.id || target.teams?.visitors?.id, target.teams?.home?.id].map(String);
+      const teams = [target.teams?.away || target.teams?.visitors, target.teams?.home];
+      const teamIds = teams.map(team => String(team?.id));
       if (teamIds.some(x => !/^\d+$/.test(x))) throw new Error('Team IDs were not provided for this game.');
-      const kickoff = target.game?.date?.timestamp ? target.game.date.timestamp * 1000 : new Date(`${date}T23:59:59`).getTime();
+      const kickoff = gameTime(target);
+      if (!Number.isFinite(kickoff) || kickoff <= 0) throw new Error('Kickoff time is missing for this game.');
       const history = await Promise.all(teamIds.map(team => json(`/api/team-games?team=${team}&season=${season}`)));
       const past = new Map();
       history.forEach((list, i) => {
         const previous = list.filter(g => {
           const id = g.game?.id || g.id;
-          const time = g.game?.date?.timestamp ? g.game.date.timestamp * 1000 : Date.parse(g.game?.date?.date || '');
+          const time = gameTime(g);
           const code = String(g.game?.status?.short || '').toUpperCase();
           return id && time < kickoff && (['FT', 'AOT', 'FINAL'].includes(code) || /finish|final|after overtime/i.test(g.game?.status?.long || ''));
-        }).sort((a, b) => (b.game?.date?.timestamp || 0) - (a.game?.date?.timestamp || 0)).slice(0, 4);
+        }).sort((a, b) => gameTime(b) - gameTime(a)).slice(0, 4);
         previous.forEach(g => {
-  const teams = g.teams || {};
-  const opponent = String(teams.home?.id) === teamIds[i]
-    ? teams.away?.name
-    : teams.home?.name;
-
-  past.set(String(g.game?.id || g.id), {
-    date: g.game?.date?.timestamp || 0,
-    teamId: teamIds[i],
-    opponent: opponent || 'Opponent unknown'
-  });
-});
+          const away = g.teams?.away || g.teams?.visitors;
+          const home = g.teams?.home;
+          const opponent = String(home?.id) === teamIds[i] ? away : home;
+          if (![String(away?.id), String(home?.id)].includes(teamIds[i])) return;
+          const id = String(g.game?.id || g.id);
+          if (!past.has(id)) past.set(id, { date: gameTime(g), teams: new Map() });
+          past.get(id).teams.set(teamIds[i], {
+            id: String(opponent?.id || ''), name: opponent?.name || 'Opponent unknown'
+          });
+        });
       });
       if (!past.size) throw new Error('No completed games available this season for these teams yet.');
       if (task !== sequence) return;
       status.textContent = `Reading player stats from ${past.size} recent team games…`;
       const ids = Array.from(past.keys());
       const map = new Map();
+      matchupTeams = teams.map(team => ({ id: String(team.id), name: team.name || 'Opponent' }));
       opponentDefense = new Map(teamIds.map(id => [
   id, { rushAllowed: [], passAllowed: [] }
 ]));
@@ -223,47 +233,16 @@ const trend = earlierAvg === null
          for (const id of ids) {
         const rows = await json(`/api/player-stats?game=${id}`);
         if (task !== sequence) return;
-        const defendingTeam = past.get(id).teamId;
-const opponentBox = rows.find(team =>
-  String(team.team?.id) !== defendingTeam
-);
-const allowed = opponentDefense.get(defendingTeam);   
-        if (opponentBox && allowed) {
-  for (const group of opponentBox.groups || []) {
-    const category = normalize(group.name);
-    if (category !== 'rushing' && category !== 'passing') continue;
-
-    const yards = (group.players || [])
-      .map(player => extract(player.statistics, category, ['yards']))
-      .filter(value => value !== null);
-
-    if (yards.length) {
-      const total = yards.reduce((sum, value) => sum + value, 0);
-      allowed[category === 'rushing' ? 'rushAllowed' : 'passAllowed'].push(total);
-    }
-  }
-}   
-        for (const teamEntry of rows) {
-          if (teamIds.includes(String(teamEntry.team?.id))) {
-            accumulate(map, teamEntry, id, past.get(id).date, past.get(id).opponent);
-          const offense = teamOffense.get(String(teamEntry.team?.id));
-
-if (offense) {
-  for (const group of teamEntry.groups || []) {
-    const category = normalize(group.name);
-    if (category !== 'rushing' && category !== 'passing') continue;
-
-    const yards = (group.players || [])
-      .map(player => extract(player.statistics, category, ['yards']))
-      .filter(value => value !== null);
-
-    if (yards.length) {
-      const total = yards.reduce((sum, value) => sum + value, 0);
-
-      offense[category === 'rushing' ? 'rushYards' : 'passYards'].push(total);
-    }
-  }
-}  
+        const pastGame = past.get(id);
+        for (const [teamId, opponent] of pastGame.teams) {
+          const teamEntry = rows.find(row => String(row.team?.id) === teamId);
+          const opponentBox = rows.find(row => String(row.team?.id) === opponent.id);
+          if (teamEntry) accumulate(map, teamEntry, id, pastGame.date, opponent.name);
+          for (const category of ['rushing', 'passing']) {
+            const ownYards = teamYards(teamEntry, category);
+            const allowedYards = teamYards(opponentBox, category);
+            if (ownYards !== null) teamOffense.get(teamId)[category === 'rushing' ? 'rushYards' : 'passYards'].push(ownYards);
+            if (allowedYards !== null) opponentDefense.get(teamId)[category === 'rushing' ? 'rushAllowed' : 'passAllowed'].push(allowedYards);
           }
         }
       }

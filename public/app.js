@@ -2,6 +2,14 @@
 const $ = id => document.getElementById(id);
 const games = $('games');
 let selected = null;
+let slateSequence = 0;
+
+function clearSelection() {
+  selected = null;
+  $('lab').classList.add('hidden');
+  $('player-lab').classList.add('hidden');
+  document.dispatchEvent(new Event('unit501:selection-changed'));
+}
 
 const today = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Chicago',
@@ -60,8 +68,8 @@ function parseGame(g) {
 }
 
 async function load() {
-  selected = null;
-  $('lab').classList.add('hidden');
+  const task = ++slateSequence;
+  clearSelection();
 
   showMessage('Loading games…');
 
@@ -83,6 +91,7 @@ async function load() {
 
     const response = await fetch('/api/games?' + params);
     const data = await response.json();
+    if (task !== slateSequence) return;
 
     if (!response.ok || data.error) {
       throw new Error(data.error || 'Game request failed');
@@ -135,6 +144,7 @@ async function load() {
       games.appendChild(card);
     });
   } catch (error) {
+    if (task !== slateSequence) return;
     $('status').textContent = 'GAME DATA UNAVAILABLE';
     showMessage('Unable to load games: ' + error.message);
   }
@@ -142,6 +152,7 @@ async function load() {
 
 async function choose(game) {
   selected = game;
+  document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
   $('player-lab').classList.remove('hidden');
   $('matchup').textContent = `${game.a} @ ${game.h}`;
@@ -232,6 +243,13 @@ function sim() {
 
 $('load').onclick = load;
 $('sim').onclick = sim;
+for (const id of ['date', 'league']) {
+  $(id).addEventListener('change', () => {
+    slateSequence++;
+    clearSelection();
+    showMessage('Tap Load Slate to see games for this date and league.');
+  });
+}
 
 health();
 load();
