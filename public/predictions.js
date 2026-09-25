@@ -12,6 +12,7 @@
   let teamOffense = new Map();
   let matchupTeams = [];
   const enteredLines = new Map();
+  let lineScope = '';
   let sequence = 0;
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -76,7 +77,20 @@
     }
   }
   function addLineComparison(card, record, def, projection, values) {
-    const key = `${record.teamId}:${record.id}:${def.key}`;
+    const key = `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.id}:${def.key}`;
+    let entry = enteredLines.get(key);
+    if (!entry) {
+      entry = { value: '', savedAt: null, persisted: false };
+      try {
+        const saved = JSON.parse(localStorage.getItem(key));
+        if (saved && typeof saved.value === 'string' && n(saved.value) !== null &&
+            Number.isFinite(saved.savedAt) && saved.savedAt > 0 &&
+            Number.isFinite(new Date(saved.savedAt).getTime())) {
+          entry = { value: saved.value, savedAt: saved.savedAt, persisted: true };
+        }
+      } catch { /* Missing, blocked or damaged storage must not stop projections. */ }
+      enteredLines.set(key, entry);
+    }
     const label = document.createElement('label');
     label.style.cssText = 'display:block;margin-top:12px';
     label.textContent = 'FanDuel line (enter manually)';
@@ -86,16 +100,34 @@
     input.placeholder = 'Enter line';
     input.id = `line-${record.id}-${def.key}`;
     input.style.cssText = 'display:block;box-sizing:border-box;width:100%;max-width:220px;margin-top:6px';
-    input.value = enteredLines.get(key) || '';
+    input.value = entry.value;
     if (!def.key.endsWith('Yds')) input.min = '0';
     label.appendChild(input);
     const comparison = document.createElement('p');
     comparison.id = `comparison-${record.id}-${def.key}`;
     comparison.setAttribute('aria-live', 'polite');
     comparison.style.cssText = 'margin:8px 0 0';
-    function update() {
-      enteredLines.set(key, input.value);
+    const savedInfo = document.createElement('p');
+    savedInfo.id = `saved-line-${record.id}-${def.key}`;
+    savedInfo.style.cssText = 'margin:6px 0 0;font-size:.85em;opacity:.8';
+    function update(persist = false) {
       const line = n(input.value);
+      const valid = !input.validity?.badInput && line !== null &&
+        Number.isInteger(line * 2) && (def.key.endsWith('Yds') || line >= 0);
+      if (persist) {
+        entry = { value: input.value, savedAt: valid ? Date.now() : null, persisted: false };
+        try {
+          if (valid) localStorage.setItem(key, JSON.stringify({ value: entry.value, savedAt: entry.savedAt }));
+          else localStorage.removeItem(key);
+          entry.persisted = true;
+        } catch { /* Continue with this session's entry if saving is unavailable. */ }
+        enteredLines.set(key, entry);
+      }
+      savedInfo.textContent = entry.persisted && valid
+        ? `Saved in this browser ${new Date(entry.savedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} CT. Recheck the current FanDuel line.`
+        : persist && !entry.persisted
+          ? 'Browser saving is unavailable. This change lasts only until you leave or refresh.'
+          : input.value === '' ? 'Enter a line to save it in this browser.' : 'Enter a valid line to save it.';
       if (input.validity?.badInput) {
         comparison.textContent = 'Enter a valid number.';
         return;
@@ -118,8 +150,8 @@
         : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
       comparison.textContent = `${summary} Recent recorded games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
     }
-    input.addEventListener('input', update);
-    card.append(label, comparison);
+    input.addEventListener('input', () => update(true));
+    card.append(label, savedInfo, comparison);
     update();
   }
   function showPlayer() {
@@ -212,6 +244,7 @@ const trend = earlierAvg === null
     teamOffense.clear();
     matchupTeams = [];
     enteredLines.clear();
+    lineScope = '';
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
@@ -307,6 +340,7 @@ const trend = earlierAvg === null
         picker.appendChild(option);
       }
       loadedFor = gameId;
+      lineScope = `${league}:${season}:${date}:${gameId}`;
       picker.disabled = false;
       status.textContent = `${choices.length} players with recent stats. Select a player.`;
       showPlayer();
