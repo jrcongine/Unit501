@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const path = require('path');
 const fanduel = require('./fanduel');
+const getRankings = require('./rankings').createRankings(api);
 
 const PORT = process.env.PORT || 5010;
 
@@ -28,6 +29,7 @@ async function api(endpoint) {
   }
 
   const r = await fetch(API + endpoint, {
+    signal: AbortSignal.timeout(15000),
 
     headers: {
 
@@ -48,6 +50,17 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if (u.pathname === '/api/rankings') {
+      const query = Object.fromEntries(u.searchParams);
+      query.before = Number(query.before);
+      if (!['1','2'].includes(query.league) || !/^\d{4}$/.test(query.season || '') ||
+          !/^\d+$/.test(query.away || '') || !/^\d+$/.test(query.home || '') ||
+          !Number.isFinite(query.before) || query.before <= 0 ||
+          query.before > Date.now() + 366 * 86400000) {
+        return send(res,400,{error:'Valid season, league, team IDs and cutoff required.'});
+      }
+      return send(res,200,getRankings(query));
+    }
     if (u.pathname === '/api/fanduel') {
       const query = Object.fromEntries(u.searchParams);
       query.kickoff = Number(query.kickoff);
