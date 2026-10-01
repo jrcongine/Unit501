@@ -51,8 +51,97 @@ async function loadFanDuel() {
   }
 }
 refreshOdds.addEventListener('click', loadFanDuel);
+const teamContext = document.createElement('section');
+teamContext.id = 'team-context';
+teamContext.style.cssText = 'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
+refreshOdds.after(teamContext);
+let contextSequence = 0;
+let contextTimer;
+function contextMessage(message) {
+  teamContext.replaceChildren();
+  const title = document.createElement('h3');
+  title.textContent = 'Offense & defense';
+  title.style.marginTop = '0';
+  const text = document.createElement('p');
+  text.setAttribute('role','status');
+  text.textContent = message;
+  teamContext.append(title,text);
+}
+function showTeamContext(data, game) {
+  contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
+  for (const [id,name] of [[game.awayId,game.a],[game.homeId,game.h]]) {
+    const team = data.teams.find(team => team.id === id);
+    const column = document.createElement('div');
+    const heading = document.createElement('h4');
+    heading.textContent = name;
+    column.append(heading);
+    if (!team || !team.games) {
+      const missing = document.createElement('p');
+      missing.textContent = 'No completed season games available.';
+      column.append(missing);
+    } else {
+      const count = document.createElement('p');
+      count.textContent = `${team.games} completed ${team.games === 1 ? 'game' : 'games'}${team.games < 4 ? ' • Small early-season sample' : ''}`;
+      column.append(count);
+      for (const [key,label] of data.metrics) {
+        const metric = team.metrics[key];
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:10px 0;border-top:1px solid #293142';
+        const title = document.createElement('div');
+        title.textContent = label;
+        const value = document.createElement('strong');
+        value.textContent = metric.average === null ? 'Unavailable' :
+          `${metric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
+        const rank = document.createElement('span');
+        rank.textContent = metric.rank === null ? ' • Rank unavailable' : ` • #${metric.rank} of ${metric.pool}`;
+        if (metric.rank !== null) rank.style.color = metric.rank <= 8 ? '#83e2ba' : metric.rank >= 25 ? '#ffc184' : '#c5cede';
+        row.append(title,value,rank);
+        if (metric.games !== team.games) {
+          const coverage = document.createElement('div');
+          coverage.style.cssText = 'font-size:.85em;color:#ffc184';
+          coverage.textContent = `${metric.games}/${team.games} games have this stat • incomplete average`;
+          row.append(coverage);
+        }
+        column.append(row);
+      }
+    }
+    grid.append(column);
+  }
+  const note = document.createElement('p');
+  note.style.cssText = 'font-size:.85em;color:#aeb9c9';
+  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Raw averages are not adjusted for schedule strength. These stats do not yet change projections.';
+  teamContext.append(grid,note);
+}
+function loadTeamContext(game) {
+  clearTimeout(contextTimer);
+  const task = ++contextSequence;
+  const params = new URLSearchParams({league:$('league').value, season:$('date').value.slice(0,4),
+    before:game.kickoff,away:game.awayId,home:game.homeId});
+  let polls = 0;
+  contextMessage('Loading season stats… The first load gathers completed game box scores and may take a few minutes.');
+  async function poll() {
+    try {
+      const response = await fetch('/api/rankings?' + params);
+      const result = await response.json();
+      if (task !== contextSequence || selected !== game) return;
+      if (!response.ok || result.error || result.state === 'error') throw new Error(result.error || result.message || 'Stats unavailable.');
+      if (result.state === 'ready') { showTeamContext(result.data, game); return; }
+      if (++polls >= 240) throw new Error('Still gathering season stats. Select the game again shortly to check progress.');
+      contextMessage(result.total ? `Reading completed games: ${result.completed} of ${result.total}. Saved results make later loads faster.` : result.message || 'Finding completed season games…');
+      contextTimer = setTimeout(poll,3000);
+    } catch (error) {
+      if (task === contextSequence && selected === game) contextMessage('Team comparison unavailable: ' + error.message);
+    }
+  }
+  poll();
+}
 
 function clearSelection() {
+  contextSequence++;
+  clearTimeout(contextTimer);
+  teamContext.replaceChildren();
   oddsSequence++;
   selected = null;
   $('lab').classList.add('hidden');
@@ -99,6 +188,8 @@ function parseGame(g) {
 
   return {
     id: g.game?.id || g.id,
+    awayId: String(away.id || ''),
+    homeId: String(home.id || ''),
     kickoff: date.timestamp ? Number(date.timestamp) * 1000 : Date.parse(date.date + 'T' + date.time),
     a: away.name || 'Away team TBD',
     h: home.name || 'Home team TBD',
@@ -223,6 +314,7 @@ async function choose(game) {
 
   $('lab').scrollIntoView({ behavior: 'smooth' });
   loadFanDuel();
+  loadTeamContext(game);
 }
 
 function normal() {
