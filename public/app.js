@@ -3,8 +3,57 @@ const $ = id => document.getElementById(id);
 const games = $('games');
 let selected = null;
 let slateSequence = 0;
+let oddsSequence = 0;
+let lineEdits = 0;
+const oddsStatus = document.createElement('p');
+oddsStatus.setAttribute('aria-live', 'polite');
+const refreshOdds = document.createElement('button');
+refreshOdds.textContent = 'Refresh FanDuel lines';
+refreshOdds.type = 'button';
+$('matchup').after(oddsStatus, refreshOdds);
+for (const id of ['spread', 'total']) $(id).addEventListener('input', () => {
+  lineEdits++;
+  oddsStatus.textContent = 'Manual lines — refresh FanDuel lines to replace them.';
+});
+async function loadFanDuel() {
+  if (!selected) return;
+  const game = selected;
+  const task = ++oddsSequence;
+  const edits = lineEdits;
+  refreshOdds.disabled = true;
+  oddsStatus.textContent = 'Loading FanDuel spread and total…';
+  try {
+    const params = new URLSearchParams({ away: game.a, home: game.h,
+      league: $('league').value, kickoff: game.kickoff });
+    const response = await fetch('/api/fanduel?' + params);
+    const data = await response.json();
+    if (task !== oddsSequence || selected !== game || edits !== lineEdits) return;
+    if (!response.ok || data.error) throw new Error(data.error || 'FanDuel feed unavailable.');
+    if (!data.available) { oddsStatus.textContent = data.message; return; }
+    const messages = [];
+    for (const [id, key, stamp] of [['spread', 'awaySpread', 'spreadUpdated'], ['total', 'total', 'totalUpdated']]) {
+      if (Number.isFinite(data[key])) {
+        $(id).value = data[key];
+        const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
+        messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)`);
+      } else {
+        $(id).value = '';
+        messages.push(`${id} unavailable — enter manually`);
+      }
+    }
+    oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
+    $('note').textContent = 'Review the lines and ratings, then run the simulation.';
+  } catch (error) {
+    if (task === oddsSequence && selected === game && edits === lineEdits)
+      oddsStatus.textContent = error.message + ' Enter lines manually.';
+  } finally {
+    if (task === oddsSequence) refreshOdds.disabled = false;
+  }
+}
+refreshOdds.addEventListener('click', loadFanDuel);
 
 function clearSelection() {
+  oddsSequence++;
   selected = null;
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
@@ -50,6 +99,7 @@ function parseGame(g) {
 
   return {
     id: g.game?.id || g.id,
+    kickoff: date.timestamp ? Number(date.timestamp) * 1000 : Date.parse(date.date + 'T' + date.time),
     a: away.name || 'Away team TBD',
     h: home.name || 'Home team TBD',
     time: date.timestamp
@@ -172,6 +222,7 @@ async function choose(game) {
     'Enter the current FanDuel spread and total to run a simulation.';
 
   $('lab').scrollIntoView({ behavior: 'smooth' });
+  loadFanDuel();
 }
 
 function normal() {
