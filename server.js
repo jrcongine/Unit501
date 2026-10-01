@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 
 const path = require('path');
+const fanduel = require('./fanduel');
 
 const PORT = process.env.PORT || 5010;
 
@@ -47,6 +48,16 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if (u.pathname === '/api/fanduel') {
+      const query = Object.fromEntries(u.searchParams);
+      query.kickoff = Number(query.kickoff);
+      if (!fanduel.sports[query.league] || !query.away || !query.home ||
+          query.away.length > 120 || query.home.length > 120 ||
+          !Number.isFinite(query.kickoff) || query.kickoff <= 0) {
+        return send(res, 400, { error: 'Valid league, teams and kickoff required' });
+      }
+      return send(res, 200, await fanduel.getLines(query));
+    }
 // Get player statistics for a game
 
 if (u.pathname === '/api/player-stats') {
