@@ -14,6 +14,55 @@
   const enteredLines = new Map();
   let lineScope = '';
   let sequence = 0;
+  let propSequence = 0;
+  const propStatus = document.createElement('p');
+  const refreshProps = document.createElement('button');
+  refreshProps.type = 'button';
+  refreshProps.textContent = 'Refresh FanDuel props';
+  refreshProps.disabled = true;
+  results.before(refreshProps, propStatus);
+  const playerName = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  async function loadProps() {
+    if (!loadedFor || !selected) return;
+    const task = ++propSequence;
+    const selection = sequence;
+    const game = selected;
+    refreshProps.disabled = true;
+    propStatus.textContent = 'Loading FanDuel prop lines…';
+    // Clear old automatic quotes, keeping all manual entries.
+    for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
+    showPlayer();
+    try {
+      const params = new URLSearchParams({away:game.a,home:game.h,league:game.league || el('league').value,kickoff:game.kickoff});
+      const res = await fetch('/api/fanduel-props?' + params);
+      const data = await res.json();
+      if (task !== propSequence || selection !== sequence) return;
+      if (!res.ok || data.error) throw new Error(data.error || 'FanDuel props unavailable.');
+      let count = 0;
+      for (const record of choices) {
+        // Never guess abbreviated names or select between duplicate player names.
+        if (choices.filter(p => playerName(p.name) === playerName(record.name)).length !== 1) continue;
+        for (const def of definitions) {
+          const quotes = (data.props || []).filter(p => p.stat === def.key && playerName(p.name) === playerName(record.name));
+          if (quotes.length !== 1) continue;
+          const quote = quotes[0];
+          if (!Number.isFinite(quote.line) || Date.now() - quote.updatedAt > 1800000) continue;
+          const key = lineKey(record, def);
+          const entry = readLine(key);
+          if (entry.value !== '') continue;
+          enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto'});
+          count++;
+        }
+      }
+      propStatus.textContent = `${data.message || ''} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
+      showPlayer();
+    } catch (e) {
+      if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' You can enter lines manually.';
+    } finally {
+      if (task === propSequence && selection === sequence) refreshProps.disabled = false;
+    }
+  }
+  refreshProps.addEventListener('click', loadProps);
   const n = v => {
     if (typeof v === 'number') return Number.isFinite(v) ? v : null;
     if (typeof v !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(v.trim())) return null;
@@ -79,6 +128,10 @@
   const lineKey = (record, def) => `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.id}:${def.key}`;
   function readLine(key) {
     let entry = enteredLines.get(key);
+    if (entry?.source === 'auto' && Date.now() - entry.savedAt > 1800000) {
+      enteredLines.delete(key);
+      entry = null;
+    }
     if (!entry) {
       entry = { value: '', savedAt: null, persisted: false };
       try {
@@ -100,7 +153,7 @@
     board.replaceChildren();
     if (!loadedFor) return;
     const title = document.createElement('h3');
-    title.textContent = 'Saved line comparisons';
+    title.textContent = 'Player line comparisons';
     const note = document.createElement('p');
     note.textContent = 'Selected game only. Historical comparisons, not ranked picks or win probabilities. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
@@ -135,7 +188,7 @@
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Projection', 'Line', 'Difference', 'Recent above / below / equal', 'Saved (CT)']) {
+    for (const name of ['Player / team', 'Stat', 'Projection', 'Line', 'Difference', 'Recent above / below / equal', 'Source / time (CT)']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -155,7 +208,7 @@
       const fields = [null, row.def.title, projection.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
-        row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
+        row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
@@ -185,7 +238,7 @@
     let entry = readLine(key);
     const label = document.createElement('label');
     label.style.cssText = 'display:block;margin-top:12px';
-    label.textContent = 'FanDuel line (enter manually)';
+    label.textContent = 'FanDuel line (automatic when available; editable)';
     const input = document.createElement('input');
     input.type = 'number';
     input.step = '0.5';
@@ -216,7 +269,9 @@
         enteredLines.set(key, entry);
         renderComparisons();
       }
-      savedInfo.textContent = entry.persisted && valid
+      savedInfo.textContent = entry.source === 'auto' && valid
+        ? `FanDuel feed updated ${new Date(entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} CT. Refresh to check for changes.`
+        : entry.persisted && valid
         ? `Saved in this browser ${new Date(entry.savedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} CT. Recheck the current FanDuel line.`
         : persist && !entry.persisted
           ? 'Browser saving is unavailable. This change lasts only until you leave or refresh.'
@@ -338,6 +393,9 @@ const trend = earlierAvg === null
   }
   function reset() {
     sequence++;
+    propSequence++;
+    refreshProps.disabled = true;
+    propStatus.textContent = '';
     loadedFor = null;
     choices = [];
     opponentDefense.clear();
@@ -445,6 +503,7 @@ const trend = earlierAvg === null
       picker.disabled = false;
       status.textContent = `${choices.length} players with recent stats. Select a player.`;
       showPlayer();
+      loadProps();
     } catch (e) {
       if (task === sequence) status.textContent = 'Could not load projections: ' + e.message;
     } finally {
