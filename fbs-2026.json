@@ -1,0 +1,1010 @@
+{
+  "season": "2026",
+  "scope": "FBS",
+  "verifiedOn": "2026-10-02",
+  "source": "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?region=us&lang=en&contentorigin=espn&season=2026&type=0&level=2",
+  "teams": [
+    {
+      "name": "Air Force",
+      "aliases": [
+        "Air Force",
+        "Air Force Falcons"
+      ]
+    },
+    {
+      "name": "Akron",
+      "aliases": [
+        "Akron",
+        "Akron Zips"
+      ]
+    },
+    {
+      "name": "Alabama",
+      "aliases": [
+        "Alabama",
+        "Alabama Crimson Tide"
+      ]
+    },
+    {
+      "name": "App State",
+      "aliases": [
+        "App State",
+        "App State Mountaineers",
+        "Appalachian State"
+      ]
+    },
+    {
+      "name": "Arizona",
+      "aliases": [
+        "Arizona",
+        "Arizona Wildcats"
+      ]
+    },
+    {
+      "name": "Arizona State",
+      "aliases": [
+        "Arizona State",
+        "Arizona State Sun Devils"
+      ]
+    },
+    {
+      "name": "Arkansas",
+      "aliases": [
+        "Arkansas",
+        "Arkansas Razorbacks"
+      ]
+    },
+    {
+      "name": "Arkansas State",
+      "aliases": [
+        "Arkansas State",
+        "Arkansas State Red Wolves"
+      ]
+    },
+    {
+      "name": "Army",
+      "aliases": [
+        "Army",
+        "Army Black Knights"
+      ]
+    },
+    {
+      "name": "Auburn",
+      "aliases": [
+        "Auburn",
+        "Auburn Tigers"
+      ]
+    },
+    {
+      "name": "BYU",
+      "aliases": [
+        "BYU",
+        "BYU Cougars",
+        "Brigham Young"
+      ]
+    },
+    {
+      "name": "Ball State",
+      "aliases": [
+        "Ball State",
+        "Ball State Cardinals"
+      ]
+    },
+    {
+      "name": "Baylor",
+      "aliases": [
+        "Baylor",
+        "Baylor Bears"
+      ]
+    },
+    {
+      "name": "Boise State",
+      "aliases": [
+        "Boise State",
+        "Boise State Broncos"
+      ]
+    },
+    {
+      "name": "Boston College",
+      "aliases": [
+        "Boston College",
+        "Boston College Eagles"
+      ]
+    },
+    {
+      "name": "Bowling Green",
+      "aliases": [
+        "Bowling Green",
+        "Bowling Green Falcons",
+        "Bowling Green State"
+      ]
+    },
+    {
+      "name": "Buffalo",
+      "aliases": [
+        "Buffalo",
+        "Buffalo Bulls"
+      ]
+    },
+    {
+      "name": "California",
+      "aliases": [
+        "California",
+        "California Golden Bears"
+      ]
+    },
+    {
+      "name": "Central Michigan",
+      "aliases": [
+        "Central Michigan",
+        "Central Michigan Chippewas"
+      ]
+    },
+    {
+      "name": "Charlotte",
+      "aliases": [
+        "Charlotte",
+        "Charlotte 49ers"
+      ]
+    },
+    {
+      "name": "Cincinnati",
+      "aliases": [
+        "Cincinnati",
+        "Cincinnati Bearcats"
+      ]
+    },
+    {
+      "name": "Clemson",
+      "aliases": [
+        "Clemson",
+        "Clemson Tigers"
+      ]
+    },
+    {
+      "name": "Coastal Carolina",
+      "aliases": [
+        "Coastal Carolina",
+        "Coastal Carolina Chanticleers"
+      ]
+    },
+    {
+      "name": "Colorado",
+      "aliases": [
+        "Colorado",
+        "Colorado Buffaloes"
+      ]
+    },
+    {
+      "name": "Colorado State",
+      "aliases": [
+        "Colorado State",
+        "Colorado State Rams"
+      ]
+    },
+    {
+      "name": "Delaware",
+      "aliases": [
+        "Delaware",
+        "Delaware Blue Hens"
+      ]
+    },
+    {
+      "name": "Duke",
+      "aliases": [
+        "Duke",
+        "Duke Blue Devils"
+      ]
+    },
+    {
+      "name": "East Carolina",
+      "aliases": [
+        "East Carolina",
+        "East Carolina Pirates"
+      ]
+    },
+    {
+      "name": "Eastern Michigan",
+      "aliases": [
+        "Eastern Michigan",
+        "Eastern Michigan Eagles"
+      ]
+    },
+    {
+      "name": "Florida",
+      "aliases": [
+        "Florida",
+        "Florida Gators"
+      ]
+    },
+    {
+      "name": "Florida Atlantic",
+      "aliases": [
+        "Florida Atlantic",
+        "Florida Atlantic Owls",
+        "FAU"
+      ]
+    },
+    {
+      "name": "Florida International",
+      "aliases": [
+        "Florida International",
+        "Florida International Panthers",
+        "FIU"
+      ]
+    },
+    {
+      "name": "Florida State",
+      "aliases": [
+        "Florida State",
+        "Florida State Seminoles"
+      ]
+    },
+    {
+      "name": "Fresno State",
+      "aliases": [
+        "Fresno State",
+        "Fresno State Bulldogs"
+      ]
+    },
+    {
+      "name": "Georgia",
+      "aliases": [
+        "Georgia",
+        "Georgia Bulldogs"
+      ]
+    },
+    {
+      "name": "Georgia Southern",
+      "aliases": [
+        "Georgia Southern",
+        "Georgia Southern Eagles"
+      ]
+    },
+    {
+      "name": "Georgia State",
+      "aliases": [
+        "Georgia State",
+        "Georgia State Panthers"
+      ]
+    },
+    {
+      "name": "Georgia Tech",
+      "aliases": [
+        "Georgia Tech",
+        "Georgia Tech Yellow Jackets"
+      ]
+    },
+    {
+      "name": "Hawai'i",
+      "aliases": [
+        "Hawai'i",
+        "Hawai'i Rainbow Warriors",
+        "Hawaii"
+      ]
+    },
+    {
+      "name": "Houston",
+      "aliases": [
+        "Houston",
+        "Houston Cougars"
+      ]
+    },
+    {
+      "name": "Illinois",
+      "aliases": [
+        "Illinois",
+        "Illinois Fighting Illini"
+      ]
+    },
+    {
+      "name": "Indiana",
+      "aliases": [
+        "Indiana",
+        "Indiana Hoosiers"
+      ]
+    },
+    {
+      "name": "Iowa",
+      "aliases": [
+        "Iowa",
+        "Iowa Hawkeyes"
+      ]
+    },
+    {
+      "name": "Iowa State",
+      "aliases": [
+        "Iowa State",
+        "Iowa State Cyclones"
+      ]
+    },
+    {
+      "name": "Jacksonville State",
+      "aliases": [
+        "Jacksonville State",
+        "Jacksonville State Gamecocks"
+      ]
+    },
+    {
+      "name": "James Madison",
+      "aliases": [
+        "James Madison",
+        "James Madison Dukes"
+      ]
+    },
+    {
+      "name": "Kansas",
+      "aliases": [
+        "Kansas",
+        "Kansas Jayhawks"
+      ]
+    },
+    {
+      "name": "Kansas State",
+      "aliases": [
+        "Kansas State",
+        "Kansas State Wildcats"
+      ]
+    },
+    {
+      "name": "Kennesaw State",
+      "aliases": [
+        "Kennesaw State",
+        "Kennesaw State Owls"
+      ]
+    },
+    {
+      "name": "Kent State",
+      "aliases": [
+        "Kent State",
+        "Kent State Golden Flashes"
+      ]
+    },
+    {
+      "name": "Kentucky",
+      "aliases": [
+        "Kentucky",
+        "Kentucky Wildcats"
+      ]
+    },
+    {
+      "name": "LSU",
+      "aliases": [
+        "LSU",
+        "LSU Tigers",
+        "Louisiana State"
+      ]
+    },
+    {
+      "name": "Liberty",
+      "aliases": [
+        "Liberty",
+        "Liberty Flames"
+      ]
+    },
+    {
+      "name": "Louisiana",
+      "aliases": [
+        "Louisiana",
+        "Louisiana Ragin' Cajuns",
+        "Louisiana Lafayette",
+        "Louisiana-Lafayette",
+        "UL Lafayette"
+      ]
+    },
+    {
+      "name": "Louisiana Tech",
+      "aliases": [
+        "Louisiana Tech",
+        "Louisiana Tech Bulldogs"
+      ]
+    },
+    {
+      "name": "Louisville",
+      "aliases": [
+        "Louisville",
+        "Louisville Cardinals"
+      ]
+    },
+    {
+      "name": "Marshall",
+      "aliases": [
+        "Marshall",
+        "Marshall Thundering Herd"
+      ]
+    },
+    {
+      "name": "Maryland",
+      "aliases": [
+        "Maryland",
+        "Maryland Terrapins"
+      ]
+    },
+    {
+      "name": "Massachusetts",
+      "aliases": [
+        "Massachusetts",
+        "Massachusetts Minutemen",
+        "UMass"
+      ]
+    },
+    {
+      "name": "Memphis",
+      "aliases": [
+        "Memphis",
+        "Memphis Tigers"
+      ]
+    },
+    {
+      "name": "Miami",
+      "aliases": [
+        "Miami",
+        "Miami Hurricanes",
+        "Miami (FL)",
+        "Miami Florida"
+      ]
+    },
+    {
+      "name": "Miami (OH)",
+      "aliases": [
+        "Miami (OH)",
+        "Miami (OH) RedHawks",
+        "Miami Ohio"
+      ]
+    },
+    {
+      "name": "Michigan",
+      "aliases": [
+        "Michigan",
+        "Michigan Wolverines"
+      ]
+    },
+    {
+      "name": "Michigan State",
+      "aliases": [
+        "Michigan State",
+        "Michigan State Spartans"
+      ]
+    },
+    {
+      "name": "Middle Tennessee",
+      "aliases": [
+        "Middle Tennessee",
+        "Middle Tennessee Blue Raiders",
+        "Middle Tennessee State"
+      ]
+    },
+    {
+      "name": "Minnesota",
+      "aliases": [
+        "Minnesota",
+        "Minnesota Golden Gophers"
+      ]
+    },
+    {
+      "name": "Mississippi State",
+      "aliases": [
+        "Mississippi State",
+        "Mississippi State Bulldogs"
+      ]
+    },
+    {
+      "name": "Missouri",
+      "aliases": [
+        "Missouri",
+        "Missouri Tigers"
+      ]
+    },
+    {
+      "name": "Missouri State",
+      "aliases": [
+        "Missouri State",
+        "Missouri State Bears"
+      ]
+    },
+    {
+      "name": "NC State",
+      "aliases": [
+        "NC State",
+        "NC State Wolfpack",
+        "North Carolina State"
+      ]
+    },
+    {
+      "name": "Navy",
+      "aliases": [
+        "Navy",
+        "Navy Midshipmen"
+      ]
+    },
+    {
+      "name": "Nebraska",
+      "aliases": [
+        "Nebraska",
+        "Nebraska Cornhuskers"
+      ]
+    },
+    {
+      "name": "Nevada",
+      "aliases": [
+        "Nevada",
+        "Nevada Wolf Pack"
+      ]
+    },
+    {
+      "name": "New Mexico",
+      "aliases": [
+        "New Mexico",
+        "New Mexico Lobos"
+      ]
+    },
+    {
+      "name": "New Mexico State",
+      "aliases": [
+        "New Mexico State",
+        "New Mexico State Aggies"
+      ]
+    },
+    {
+      "name": "North Carolina",
+      "aliases": [
+        "North Carolina",
+        "North Carolina Tar Heels"
+      ]
+    },
+    {
+      "name": "North Dakota State",
+      "aliases": [
+        "North Dakota State",
+        "North Dakota State Bison"
+      ]
+    },
+    {
+      "name": "North Texas",
+      "aliases": [
+        "North Texas",
+        "North Texas Mean Green"
+      ]
+    },
+    {
+      "name": "Northern Illinois",
+      "aliases": [
+        "Northern Illinois",
+        "Northern Illinois Huskies"
+      ]
+    },
+    {
+      "name": "Northwestern",
+      "aliases": [
+        "Northwestern",
+        "Northwestern Wildcats"
+      ]
+    },
+    {
+      "name": "Notre Dame",
+      "aliases": [
+        "Notre Dame",
+        "Notre Dame Fighting Irish"
+      ]
+    },
+    {
+      "name": "Ohio",
+      "aliases": [
+        "Ohio",
+        "Ohio Bobcats"
+      ]
+    },
+    {
+      "name": "Ohio State",
+      "aliases": [
+        "Ohio State",
+        "Ohio State Buckeyes"
+      ]
+    },
+    {
+      "name": "Oklahoma",
+      "aliases": [
+        "Oklahoma",
+        "Oklahoma Sooners"
+      ]
+    },
+    {
+      "name": "Oklahoma State",
+      "aliases": [
+        "Oklahoma State",
+        "Oklahoma State Cowboys"
+      ]
+    },
+    {
+      "name": "Old Dominion",
+      "aliases": [
+        "Old Dominion",
+        "Old Dominion Monarchs"
+      ]
+    },
+    {
+      "name": "Ole Miss",
+      "aliases": [
+        "Ole Miss",
+        "Ole Miss Rebels",
+        "Mississippi"
+      ]
+    },
+    {
+      "name": "Oregon",
+      "aliases": [
+        "Oregon",
+        "Oregon Ducks"
+      ]
+    },
+    {
+      "name": "Oregon State",
+      "aliases": [
+        "Oregon State",
+        "Oregon State Beavers"
+      ]
+    },
+    {
+      "name": "Penn State",
+      "aliases": [
+        "Penn State",
+        "Penn State Nittany Lions",
+        "Pennsylvania State"
+      ]
+    },
+    {
+      "name": "Pittsburgh",
+      "aliases": [
+        "Pittsburgh",
+        "Pittsburgh Panthers"
+      ]
+    },
+    {
+      "name": "Purdue",
+      "aliases": [
+        "Purdue",
+        "Purdue Boilermakers"
+      ]
+    },
+    {
+      "name": "Rice",
+      "aliases": [
+        "Rice",
+        "Rice Owls"
+      ]
+    },
+    {
+      "name": "Rutgers",
+      "aliases": [
+        "Rutgers",
+        "Rutgers Scarlet Knights"
+      ]
+    },
+    {
+      "name": "SMU",
+      "aliases": [
+        "SMU",
+        "SMU Mustangs",
+        "Southern Methodist"
+      ]
+    },
+    {
+      "name": "Sacramento State",
+      "aliases": [
+        "Sacramento State",
+        "Sacramento State Hornets"
+      ]
+    },
+    {
+      "name": "Sam Houston",
+      "aliases": [
+        "Sam Houston",
+        "Sam Houston Bearkats",
+        "Sam Houston State"
+      ]
+    },
+    {
+      "name": "San Diego State",
+      "aliases": [
+        "San Diego State",
+        "San Diego State Aztecs"
+      ]
+    },
+    {
+      "name": "San Jos\u00e9 State",
+      "aliases": [
+        "San Jos\u00e9 State",
+        "San Jos\u00e9 State Spartans"
+      ]
+    },
+    {
+      "name": "South Alabama",
+      "aliases": [
+        "South Alabama",
+        "South Alabama Jaguars"
+      ]
+    },
+    {
+      "name": "South Carolina",
+      "aliases": [
+        "South Carolina",
+        "South Carolina Gamecocks"
+      ]
+    },
+    {
+      "name": "South Florida",
+      "aliases": [
+        "South Florida",
+        "South Florida Bulls"
+      ]
+    },
+    {
+      "name": "Southern Miss",
+      "aliases": [
+        "Southern Miss",
+        "Southern Miss Golden Eagles",
+        "Southern Mississippi"
+      ]
+    },
+    {
+      "name": "Stanford",
+      "aliases": [
+        "Stanford",
+        "Stanford Cardinal"
+      ]
+    },
+    {
+      "name": "Syracuse",
+      "aliases": [
+        "Syracuse",
+        "Syracuse Orange"
+      ]
+    },
+    {
+      "name": "TCU",
+      "aliases": [
+        "TCU",
+        "TCU Horned Frogs",
+        "Texas Christian"
+      ]
+    },
+    {
+      "name": "Temple",
+      "aliases": [
+        "Temple",
+        "Temple Owls"
+      ]
+    },
+    {
+      "name": "Tennessee",
+      "aliases": [
+        "Tennessee",
+        "Tennessee Volunteers"
+      ]
+    },
+    {
+      "name": "Texas",
+      "aliases": [
+        "Texas",
+        "Texas Longhorns"
+      ]
+    },
+    {
+      "name": "Texas A&M",
+      "aliases": [
+        "Texas A&M",
+        "Texas A&M Aggies"
+      ]
+    },
+    {
+      "name": "Texas State",
+      "aliases": [
+        "Texas State",
+        "Texas State Bobcats"
+      ]
+    },
+    {
+      "name": "Texas Tech",
+      "aliases": [
+        "Texas Tech",
+        "Texas Tech Red Raiders"
+      ]
+    },
+    {
+      "name": "Toledo",
+      "aliases": [
+        "Toledo",
+        "Toledo Rockets"
+      ]
+    },
+    {
+      "name": "Troy",
+      "aliases": [
+        "Troy",
+        "Troy Trojans"
+      ]
+    },
+    {
+      "name": "Tulane",
+      "aliases": [
+        "Tulane",
+        "Tulane Green Wave"
+      ]
+    },
+    {
+      "name": "Tulsa",
+      "aliases": [
+        "Tulsa",
+        "Tulsa Golden Hurricane"
+      ]
+    },
+    {
+      "name": "UAB",
+      "aliases": [
+        "UAB",
+        "UAB Blazers",
+        "Alabama Birmingham",
+        "Alabama-Birmingham"
+      ]
+    },
+    {
+      "name": "UCF",
+      "aliases": [
+        "UCF",
+        "UCF Knights",
+        "Central Florida"
+      ]
+    },
+    {
+      "name": "UCLA",
+      "aliases": [
+        "UCLA",
+        "UCLA Bruins",
+        "California Los Angeles"
+      ]
+    },
+    {
+      "name": "UConn",
+      "aliases": [
+        "UConn",
+        "UConn Huskies",
+        "Connecticut"
+      ]
+    },
+    {
+      "name": "UL Monroe",
+      "aliases": [
+        "UL Monroe",
+        "UL Monroe Warhawks",
+        "Louisiana Monroe",
+        "Louisiana-Monroe"
+      ]
+    },
+    {
+      "name": "UNLV",
+      "aliases": [
+        "UNLV",
+        "UNLV Rebels",
+        "Nevada Las Vegas",
+        "Nevada-Las Vegas"
+      ]
+    },
+    {
+      "name": "USC",
+      "aliases": [
+        "USC",
+        "USC Trojans",
+        "Southern California"
+      ]
+    },
+    {
+      "name": "UTEP",
+      "aliases": [
+        "UTEP",
+        "UTEP Miners",
+        "Texas El Paso",
+        "Texas-El Paso"
+      ]
+    },
+    {
+      "name": "UTSA",
+      "aliases": [
+        "UTSA",
+        "UTSA Roadrunners",
+        "Texas San Antonio",
+        "Texas-San Antonio"
+      ]
+    },
+    {
+      "name": "Utah",
+      "aliases": [
+        "Utah",
+        "Utah Utes"
+      ]
+    },
+    {
+      "name": "Utah State",
+      "aliases": [
+        "Utah State",
+        "Utah State Aggies"
+      ]
+    },
+    {
+      "name": "Vanderbilt",
+      "aliases": [
+        "Vanderbilt",
+        "Vanderbilt Commodores"
+      ]
+    },
+    {
+      "name": "Virginia",
+      "aliases": [
+        "Virginia",
+        "Virginia Cavaliers"
+      ]
+    },
+    {
+      "name": "Virginia Tech",
+      "aliases": [
+        "Virginia Tech",
+        "Virginia Tech Hokies"
+      ]
+    },
+    {
+      "name": "Wake Forest",
+      "aliases": [
+        "Wake Forest",
+        "Wake Forest Demon Deacons"
+      ]
+    },
+    {
+      "name": "Washington",
+      "aliases": [
+        "Washington",
+        "Washington Huskies"
+      ]
+    },
+    {
+      "name": "Washington State",
+      "aliases": [
+        "Washington State",
+        "Washington State Cougars"
+      ]
+    },
+    {
+      "name": "West Virginia",
+      "aliases": [
+        "West Virginia",
+        "West Virginia Mountaineers"
+      ]
+    },
+    {
+      "name": "Western Kentucky",
+      "aliases": [
+        "Western Kentucky",
+        "Western Kentucky Hilltoppers"
+      ]
+    },
+    {
+      "name": "Western Michigan",
+      "aliases": [
+        "Western Michigan",
+        "Western Michigan Broncos"
+      ]
+    },
+    {
+      "name": "Wisconsin",
+      "aliases": [
+        "Wisconsin",
+        "Wisconsin Badgers"
+      ]
+    },
+    {
+      "name": "Wyoming",
+      "aliases": [
+        "Wyoming",
+        "Wyoming Cowboys"
+      ]
+    }
+  ]
+}

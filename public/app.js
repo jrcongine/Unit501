@@ -95,8 +95,12 @@ function showTeamContext(data, game) {
         value.textContent = metric.average === null ? 'Unavailable' :
           `${metric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
         const rank = document.createElement('span');
-        rank.textContent = metric.rank === null ? ' • Rank unavailable' : ` • #${metric.rank} of ${metric.pool}`;
-        if (metric.rank !== null) rank.style.color = metric.rank <= 8 ? '#83e2ba' : metric.rank >= 25 ? '#ffc184' : '#c5cede';
+        const coverage = data.coverage?.[key];
+        rank.textContent = metric.rank === null
+          ? (data.scope.includes('FBS rankings') && !team.fbsName ? ' • Outside FBS ranking pool'
+            : coverage ? ` • Rank unavailable (${coverage.complete}/${coverage.expected} teams complete)` : ' • Rank unavailable')
+          : ` • #${metric.rank} of ${metric.pool}${team.fbsName ? ' FBS' : ''}`;
+        if (metric.rank !== null) rank.style.color = metric.rank <= Math.ceil(metric.pool / 4) ? '#83e2ba' : metric.rank > Math.floor(metric.pool * .75) ? '#ffc184' : '#c5cede';
         row.append(title,value,rank);
         if (metric.games !== team.games) {
           const coverage = document.createElement('div');
@@ -126,10 +130,25 @@ function loadTeamContext(game) {
       const response = await fetch('/api/rankings?' + params);
       const result = await response.json();
       if (task !== contextSequence || selected !== game) return;
+      if (result.state === 'error' && result.data) {
+        showTeamContext(result.data, game);
+        const warning = document.createElement('p');
+        warning.setAttribute('role', 'status');
+        warning.textContent = 'Rankings could not finish: ' + result.message + ' Select the game again in a minute to retry.';
+        teamContext.append(warning);
+        return;
+      }
       if (!response.ok || result.error || result.state === 'error') throw new Error(result.error || result.message || 'Stats unavailable.');
       if (result.state === 'ready') { showTeamContext(result.data, game); return; }
-      if (++polls >= 240) throw new Error('Still gathering season stats. Select the game again shortly to check progress.');
-      contextMessage(result.total ? `Reading completed games: ${result.completed} of ${result.total}. Saved results make later loads faster.` : result.message || 'Finding completed season games…');
+      if (++polls >= 1200) throw new Error('Still gathering season stats. Select the game again shortly to check progress.');
+      const progress = result.total ? `Building rankings: ${result.completed} of ${result.total} completed games checked. Saved results make later loads faster.` : result.message || 'Finding completed season games…';
+      if (result.data) {
+        showTeamContext(result.data, game);
+        const status = document.createElement('p');
+        status.setAttribute('role', 'status');
+        status.textContent = progress;
+        teamContext.append(status);
+      } else contextMessage(progress);
       contextTimer = setTimeout(poll,3000);
     } catch (error) {
       if (task === contextSequence && selected === game) contextMessage('Team comparison unavailable: ' + error.message);
