@@ -2,6 +2,14 @@
 const $ = id => document.getElementById(id);
 const games = $('games');
 let selected = null;
+let scoringContext = null;
+function invalidateSimulation(message) {
+  for (const id of ['score','cover','over','win']) $(id).textContent = '—';
+  if (message) $('note').textContent = message;
+}
+for (const id of ['spread','total','awayRating','homeRating']) {
+  $(id).addEventListener('input', () => invalidateSimulation('Inputs changed. Run the simulation again.'));
+}
 let slateSequence = 0;
 let oddsSequence = 0;
 let lineEdits = 0;
@@ -22,6 +30,7 @@ async function loadFanDuel() {
   const edits = lineEdits;
   refreshOdds.disabled = true;
   oddsStatus.textContent = 'Loading FanDuel spread and total…';
+  invalidateSimulation('Refreshing lines…');
   try {
     const params = new URLSearchParams({ away: game.a, home: game.h,
       league: $('league').value, kickoff: game.kickoff });
@@ -68,6 +77,12 @@ function contextMessage(message) {
   teamContext.append(title,text);
 }
 function showTeamContext(data, game) {
+  const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
+    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst])]);
+  if (scoringContext?.signature !== nextSignature) {
+    scoringContext = {game,data,signature:nextSignature};
+    invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
+  }
   contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
@@ -115,7 +130,7 @@ function showTeamContext(data, game) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Raw averages are not adjusted for schedule strength. These stats do not yet change projections.';
+  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Raw averages are not adjusted for schedule strength. Game predictions use scoring offense and opposing scoring defense, softened toward the league average for small samples. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
 }
 function loadTeamContext(game) {
@@ -158,6 +173,8 @@ function loadTeamContext(game) {
 }
 
 function clearSelection() {
+  scoringContext = null;
+  invalidateSimulation();
   contextSequence++;
   clearTimeout(contextTimer);
   teamContext.replaceChildren();
@@ -311,6 +328,9 @@ async function load() {
 }
 
 async function choose(game) {
+  scoringContext = null;
+  game.league = $('league').value;
+  game.season = $('date').value.slice(0,4);
   selected = game;
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
@@ -336,71 +356,34 @@ async function choose(game) {
   loadTeamContext(game);
 }
 
-function normal() {
-  let u = 0;
-  let v = 0;
-  while (!u) u = Math.random();
-  while (!v) v = Math.random();
-
-  return Math.sqrt(-2 * Math.log(u)) *
-    Math.cos(2 * Math.PI * v);
-}
-
 function sim() {
   if (!selected) return;
-
-  if ($('spread').value === '' || $('total').value === '') {
-    $('note').textContent =
-      'Enter both the away spread and the game total first.';
+  invalidateSimulation();
+  if (['spread','total','awayRating','homeRating'].some(id => $(id).value === '')) {
+    $('note').textContent = 'Enter spread, total and both point adjustments (0 is fine).';
     return;
   }
-
   const spread = Number($('spread').value);
   const total = Number($('total').value);
-  const awayRating = Number($('awayRating').value);
-  const homeRating = Number($('homeRating').value);
-
-  if (![spread, total, awayRating, homeRating].every(Number.isFinite) ||
-      total <= 0) {
-    $('note').textContent = 'Check your numbers and try again.';
+  if (![spread,total].every(Number.isFinite) || total <= 0) {
+    $('note').textContent = 'Check the spread and total.';
     return;
   }
-
-  const meanMargin = homeRating - awayRating + 2.5;
-  const meanTotal = 48 + (awayRating + homeRating) * 0.25;
-  const expectedAway = (meanTotal - meanMargin) / 2;
-  const expectedHome = (meanTotal + meanMargin) / 2;
-
-  let covers = 0;
-  let overs = 0;
-  let awayWins = 0;
-  let awayPoints = 0;
-  let homePoints = 0;
-
-  const runs = 50000;
-
-  for (let i = 0; i < runs; i++) {
-    const shared = normal() * 4;
-    const away = Math.max(0, expectedAway + normal() * 7.5 + shared);
-    const home = Math.max(0, expectedHome + normal() * 7.5 + shared);
-
-    awayPoints += away;
-    homePoints += home;
-
-    if (away + spread > home) covers++;
-    if (away + home > total) overs++;
-    if (away > home) awayWins++;
+  const data = scoringContext?.game === selected ? scoringContext.data : null;
+  const prediction = Unit501TeamModel.project(data, selected, {
+    away:Number($('awayRating').value),home:Number($('homeRating').value)
+  });
+  if (!prediction.available) {
+    $('note').textContent = prediction.reason;
+    return;
   }
-
-  $('score').textContent =
-    `${Math.round(awayPoints / runs)}–${Math.round(homePoints / runs)}`;
-
-  $('cover').textContent = (covers / runs * 100).toFixed(1) + '%';
-  $('over').textContent = (overs / runs * 100).toFixed(1) + '%';
-  $('win').textContent = (awayWins / runs * 100).toFixed(1) + '%';
-
-  $('note').textContent =
-    'Illustrative simulation using manually entered ratings—not a validated betting prediction.';
+  const result = Unit501TeamModel.simulate(prediction,spread,total);
+  const percent = value => (value*100).toFixed(1) + '%';
+  $('score').textContent = `${Math.round(prediction.away)}–${Math.round(prediction.home)}`;
+  $('cover').textContent = percent(result.cover);
+  $('over').textContent = percent(result.over);
+  $('win').textContent = percent(result.win);
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. No schedule-strength, injury, weather or venue adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;

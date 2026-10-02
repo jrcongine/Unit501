@@ -70,15 +70,15 @@
 
 </label>
 
-<label>Away rating
+<label>Away point adjustment
 
-<input id="awayRating" type="number" step=".5" value="0">
+<input id="awayRating" type="number" step=".5" min="-14" max="14" value="0">
 
 </label>
 
-<label>Home rating
+<label>Home point adjustment
 
-<input id="homeRating" type="number" step=".5" value="0">
+<input id="homeRating" type="number" step=".5" min="-14" max="14" value="0">
 
 </label>
 
@@ -122,6 +122,7 @@
 
 </main>
 
+<script src="team-model.js"></script>
 <script src="app.js"></script>
 
 <script src="predictions.js"></script>
