@@ -338,6 +338,10 @@
     const title = document.createElement('h3');
     title.textContent = `${record.name} — ${record.team}`;
     results.appendChild(title);
+    const availability = document.createElement('p');
+    availability.textContent = window.Unit501Availability?.describe(record.teamId, record.id) || 'Availability unknown.';
+    availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
+    results.appendChild(availability);
     let shown = 0;
     for (const def of definitions) {
       const model = projectionFor(record, def);
@@ -510,6 +514,7 @@ const trend = earlierAvg === null
       if (task === sequence) button.disabled = false;
     }
   });
+  document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
   picker.addEventListener('change', showPlayer);
   reset();
 })();

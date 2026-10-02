@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const fanduel = require('./fanduel');
 const getRankings = require('./rankings').createRankings(api);
+const getAvailability = require('./availability').createAvailability(api);
 
 const PORT = process.env.PORT || 5010;
 
@@ -50,6 +51,14 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if (u.pathname === '/api/availability') {
+      const q = Object.fromEntries(u.searchParams);
+      if (!['1','2'].includes(q.league) || !/^\d{4}$/.test(q.season || '') ||
+          !/^\d{1,6}$/.test(q.away || '') || !/^\d{1,6}$/.test(q.home || '')) {
+        return send(res,400,{error:'Valid league, season and team IDs required.'});
+      }
+      return send(res,200,await getAvailability(q));
+    }
     if (u.pathname === '/api/rankings') {
       const query = Object.fromEntries(u.searchParams);
       query.before = Number(query.before);
