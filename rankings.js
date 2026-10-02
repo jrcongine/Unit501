@@ -7,7 +7,15 @@ const membership = require('./fbs-2026.json');
 const normalize = name => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const fbsAliases = new Map(membership.teams.flatMap(team => team.aliases.map(alias => [normalize(alias), team.name])));
 function fbsName(team, season) {
-  return String(season) === membership.season ? fbsAliases.get(normalize(team?.name)) || null : null;
+  if (String(season) !== membership.season) return null;
+  // API-Sports mislabeled these IDs in its 2026 NCAA feed. Verified Oct 2
+  // against all 12 opponents and the four completed-game scores at:
+  // https://ubbulls.com/sports/football/schedule/text/2026
+  // https://riceowls.com/sports/football/schedule/text
+  // Scope corrections to both ID and exact name; Buffalo State is a different school.
+  if (String(team?.id) === '141' && team.name === 'Buffalo State') return 'Buffalo';
+  if (String(team?.id) === '36' && team.name === 'Jerry Rice Team') return 'Rice';
+  return fbsAliases.get(normalize(team?.name)) || null;
 }
 const metrics = [
   ['rushFor', 'Rushing offense', false], ['passFor', 'Passing offense', false],
