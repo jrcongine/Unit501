@@ -224,6 +224,22 @@
             input?.focus({preventScroll:true});
           });
           cell.append(open);
+          const availabilityText = window.Unit501Availability?.describe(
+  row.record.teamId, row.record.id
+) || 'Availability not checked yet.';
+
+const details = document.createElement('details');
+details.style.cssText = 'margin-top:8px;font-size:.85em;color:#e8b95b';
+
+const summary = document.createElement('summary');
+summary.textContent = /AVAILABILITY WARNING|Reported /i.test(availabilityText)
+  ? '⚠ Review roster / injury report'
+  : 'Playing status unconfirmed';
+
+const explanation = document.createElement('p');
+explanation.textContent = availabilityText;
+details.append(summary, explanation);
+cell.append(details);
         } else cell.textContent = value;
         tr.append(cell);
       });
