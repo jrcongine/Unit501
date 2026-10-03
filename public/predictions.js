@@ -316,7 +316,7 @@
       ) / (values.length * (values.length + 1) / 2);
       let adjusted = weighted;
       let adjustment = null;
-      if (def.key === 'rushYds' || def.key === 'passYds') {
+      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
         const offenseKey = def.key === 'rushYds' ? 'rushYards' : 'passYards';
         const defenseKey = def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed';
         const offense = ownOffense?.[offenseKey] || [];
@@ -369,7 +369,7 @@ const trend = earlierAvg === null
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
-      if (def.key === 'rushYds' || def.key === 'passYds') {
+     if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
   ] || [];
