@@ -21,6 +21,13 @@
       const lines=[];
       const roster=t.roster.rows.find(p=>p.id===String(playerId));
       lines.push(!t.roster.available?'Roster unavailable.':roster?`Provider roster: ${roster.position}; ${roster.group}.`:'Not found on the provider team roster—verify current team before using this projection.');
+      if (roster && /injured reserve/i.test(roster.group || '')) {
+  lines.push(
+    'AVAILABILITY WARNING: The roster lists an injured-reserve category. ' +
+    'Confirm current game status before using this projection; ' +
+    'a missing injury report does not clear this warning.'
+  );
+}
       const reports=t.injuries.rows.filter(p=>p.id===String(playerId));
       if(!t.injuries.available) lines.push('Injury status unknown: report unavailable.');
       else if(!reports.length) lines.push('No injury entry returned; playing status is not confirmed.');
