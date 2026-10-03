@@ -462,6 +462,8 @@ const trend = earlierAvg === null
       const past = new Map();
       history.forEach((list, i) => {
         const previous = list.filter(g => {
+const stage = String(g.game?.stage || '').toLowerCase();
+if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
           const id = g.game?.id || g.id;
           const time = gameTime(g);
           const code = String(g.game?.status?.short || '').toUpperCase();
