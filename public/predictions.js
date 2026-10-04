@@ -169,10 +169,58 @@
         rows.push({record, def, entry, line, ...model});
       }
     }
+    if (board.dataset.scope !== lineScope) {
+  board.dataset.scope = lineScope;
+  board.dataset.team = '';
+  board.dataset.stat = '';
+}
+
+const filters = document.createElement('div');
+filters.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin:12px 0';
+
+function addFilter(key, title, options) {
+  const label = document.createElement('label');
+  label.textContent = title + ' ';
+  const select = document.createElement('select');
+
+  for (const [value, text] of options) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    select.append(option);
+  }
+
+  select.value = board.dataset[key] || '';
+  select.addEventListener('change', () => {
+    board.dataset[key] = select.value;
+    renderComparisons();
+  });
+
+  label.append(select);
+  filters.append(label);
+}
+
+addFilter('team', 'Team', [
+  ['', 'Both teams'],
+  ...matchupTeams.map(team => [team.id, team.name])
+]);
+
+addFilter('stat', 'Stat', [
+  ['', 'All stats'],
+  ...definitions.map(def => [def.key, def.title])
+]);
+
+board.append(filters);
+
+for (let i = rows.length - 1; i >= 0; i--) {
+  if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
+      (board.dataset.stat && rows[i].def.key !== board.dataset.stat)) {
+    rows.splice(i, 1);
+  }
+}
     if (!rows.length) {
       const empty = document.createElement('p');
-      empty.textContent = 'Enter a line on any player card below. Your comparisons will appear here together.';
-      board.append(empty);
+     empty.textContent = 'No lines match these filters. Try Both teams / All stats, or enter a line on a player card below.';
       return;
     }
     const wrap = document.createElement('div');
