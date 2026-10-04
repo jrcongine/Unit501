@@ -117,6 +117,14 @@
         const record = map.get(id);
        if (!record.games.has(gameId)) record.games.set(gameId, { gameDate, opponent });
         const line = record.games.get(gameId);
+        if (groupName === 'rushing') {
+  const carries = extract(item.statistics, groupName, ['total rushes']);
+  if (carries !== null) line.carries = carries;
+}
+if (groupName === 'receiving') {
+  const targets = extract(item.statistics, groupName, ['targets']);
+  if (targets !== null) line.targets = targets;
+}
         for (const def of definitions) {
           if (normalize(def.group) !== groupName) continue;
           const value = extract(item.statistics, groupName, def.keys);
