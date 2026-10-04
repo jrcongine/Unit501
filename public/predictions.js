@@ -221,7 +221,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     if (!rows.length) {
       const empty = document.createElement('p');
      empty.textContent = 'No lines match these filters. Try Both teams / All stats, or enter a line on a player card below.';
-      return;
+     board.append(empty); return;
     }
     const wrap = document.createElement('div');
     wrap.style.cssText = 'overflow-x:auto;margin-bottom:18px';
