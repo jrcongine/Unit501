@@ -414,6 +414,24 @@ cell.append(details);
     availability.textContent = window.Unit501Availability?.describe(record.teamId, record.id) || 'Availability unknown.';
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
     results.appendChild(availability);
+    const workload = document.createElement('p');
+const history = Array.from(record.games.values())
+  .sort((a, b) => b.gameDate - a.gameDate);
+
+const workloadParts = [];
+for (const [key, label] of [['carries', 'Carries'], ['targets', 'Targets']]) {
+  const values = history.map(g => g[key]).filter(Number.isFinite);
+  if (!values.length) continue;
+  workloadParts.push(
+    `${label}: ${values.join(', ')} (newest first) — ` +
+    `${mean(values).toFixed(1)} average across ${values.length} recorded games`
+  );
+}
+
+workload.textContent = workloadParts.length
+  ? workloadParts.join(' • ')
+  : 'Carries and targets unavailable in the recent box scores.';
+results.appendChild(workload);
     let shown = 0;
     for (const def of definitions) {
       const model = projectionFor(record, def);
