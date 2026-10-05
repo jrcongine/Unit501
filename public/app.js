@@ -91,7 +91,7 @@ document.addEventListener('unit501:selection-changed', () => {
 
   const roof = document.createElement('p');
   roof.id = 'game-roof-status';
-  roof.textContent = 'Roof type and game-day roof status not verified.';
+  const venueKey = String(selected.venueName || '')   .toLowerCase().replace(/[^a-z0-9]/g, '');  const isSuperdome = [   'caesarssuperdome',   'mercedesbenzsuperdome',   'louisianasuperdome' ].includes(venueKey);  roof.textContent = isSuperdome   ? 'Fixed dome — indoor playing conditions.'   : 'Roof type and game-day roof status not verified.';  if (isSuperdome) {   conditions.textContent =     'Outside wind and precipitation do not directly affect play inside this enclosed stadium.'; }
 
   weatherPanel.append(heading, venue, conditions, roof);
 });
