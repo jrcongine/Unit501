@@ -73,11 +73,21 @@ async function loadVenueForecast(game, conditions, roof) {
   const key = String(game.venueName || '')
     .toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  const locations = {
-    soldierfield: [41.8625, -87.6167],
-    lambeaufield: [44.5014, -88.0622]
-  };
+const locations = {
+  soldierfield: [41.8625, -87.6167],
+  lambeaufield: [44.5014, -88.0622],
 
+  arrowheadstadium: [39.0488, -94.4846],
+  gehafieldatarrowheadstadium: [39.0488, -94.4846],
+
+  gillettestadium: [42.0909, -71.2647],
+  metlifestadium: [40.8135, -74.0750],
+  lincolnfinancialfield: [39.9009, -75.1681],
+
+  hardrockstadium: [25.9578, -80.2393],
+  levisstadium: [37.4033, -121.9698],
+  lumenfield: [47.5951, -122.3319]
+};
   const location = locations[key];
 
   if (!location) {
