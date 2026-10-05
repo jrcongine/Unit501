@@ -51,6 +51,37 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if (u.pathname === '/api/weather') {
+  const names = ['latitude', 'longitude', 'kickoff'];
+  const values = names.map(name => u.searchParams.get(name));
+
+  if (values.some(value =>
+    value === null || value.trim() === '' ||
+    !Number.isFinite(Number(value))
+  )) {
+    return send(res, 400, {
+      error: 'Stadium coordinates and kickoff are required.'
+    });
+  }
+
+  const [latitude, longitude, kickoff] = values.map(Number);
+
+  if (Math.abs(latitude) > 90 ||
+      Math.abs(longitude) > 180 ||
+      kickoff <= 0) {
+    return send(res, 400, {
+      error: 'Invalid stadium coordinates or kickoff.'
+    });
+  }
+
+  const forecast = await require('./weather').getForecast({
+    latitude,
+    longitude,
+    kickoff
+  });
+
+  return send(res, 200, forecast);
+}
     if (u.pathname === '/api/availability') {
       const q = Object.fromEntries(u.searchParams);
       if (!['1','2'].includes(q.league) || !/^\d{4}$/.test(q.season || '') ||
