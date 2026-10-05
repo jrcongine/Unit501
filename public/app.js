@@ -64,6 +64,37 @@ const teamContext = document.createElement('section');
 teamContext.id = 'team-context';
 teamContext.style.cssText = 'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
 refreshOdds.after(teamContext);
+const weatherPanel = document.createElement('section');
+weatherPanel.id = 'game-weather';
+weatherPanel.style.cssText =
+  'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
+teamContext.before(weatherPanel);
+
+document.addEventListener('unit501:selection-changed', () => {
+  weatherPanel.replaceChildren();
+  weatherPanel.hidden = !selected;
+  if (!selected) return;
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'Weather & venue';
+  heading.style.marginTop = '0';
+
+  const venue = document.createElement('p');
+  venue.textContent = [
+    selected.venueName,
+    selected.venueCity
+  ].filter(Boolean).join(' • ') || 'Venue unavailable from the game feed.';
+
+  const conditions = document.createElement('p');
+  conditions.id = 'game-weather-status';
+  conditions.textContent = 'Weather forecast not connected yet.';
+
+  const roof = document.createElement('p');
+  roof.id = 'game-roof-status';
+  roof.textContent = 'Roof type and game-day roof status not verified.';
+
+  weatherPanel.append(heading, venue, conditions, roof);
+});
 let contextSequence = 0;
 let contextTimer;
 function contextMessage(message) {
