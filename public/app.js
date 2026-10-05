@@ -224,8 +224,10 @@ function parseGame(g) {
 
   return {
     id: g.game?.id || g.id,
-    awayId: String(away.id || ''),
-    homeId: String(home.id || ''),
+   awayId: String(away.id || ''),
+homeId: String(home.id || ''),
+venueName: g.game?.venue?.name || '',
+venueCity: g.game?.venue?.city || '',
     kickoff: date.timestamp ? Number(date.timestamp) * 1000 : Date.parse(date.date + 'T' + date.time),
     a: away.name || 'Away team TBD',
     h: home.name || 'Home team TBD',
