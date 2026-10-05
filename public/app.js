@@ -69,7 +69,94 @@ weatherPanel.id = 'game-weather';
 weatherPanel.style.cssText =
   'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
 teamContext.before(weatherPanel);
+async function loadVenueForecast(game, conditions, roof) {
+  const key = String(game.venueName || '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
 
+  const locations = {
+    soldierfield: [41.8625, -87.6167],
+    lambeaufield: [44.5014, -88.0622]
+  };
+
+  const location = locations[key];
+
+  if (!location) {
+    conditions.textContent =
+      'Forecast unavailable: this stadium location has not been added yet.';
+    return;
+  }
+
+  roof.textContent = 'Open-air stadium.';
+  conditions.textContent = 'Loading forecast near kickoff…';
+
+  try {
+    const params = new URLSearchParams({
+      latitude: String(location[0]),
+      longitude: String(location[1]),
+      kickoff: String(game.kickoff)
+    });
+
+    const response = await fetch('/api/weather?' + params, {
+      signal: AbortSignal.timeout(20000)
+    });
+    const data = await response.json();
+
+    if (selected !== game || !conditions.isConnected) return;
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Weather unavailable.');
+    }
+
+    if (!data.available) {
+      conditions.textContent = data.message || 'Forecast unavailable.';
+      return;
+    }
+
+    const format = (value, unit) =>
+      Number.isFinite(value) ? `${Math.round(value)}${unit}` : 'Unavailable';
+
+    const timeOptions = {
+      timeZone: 'America/Chicago',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    };
+
+    const forecastTime = new Date(data.forecastTime)
+      .toLocaleString('en-US', timeOptions);
+    const fetchedTime = new Date(data.fetchedAt)
+      .toLocaleString('en-US', timeOptions);
+
+    conditions.textContent =
+      `Forecast near kickoff (${forecastTime} CT): ` +
+      `${format(data.temperatureF, '°F')} • ` +
+      `Wind: ${format(data.windMph, ' mph')} • ` +
+      `Gusts: ${format(data.gustMph, ' mph')} • ` +
+      `Precipitation chance: ${format(data.precipitationChance, '%')}`;
+
+    const source = document.createElement('p');
+    source.style.cssText = 'font-size:.85em;opacity:.8';
+
+    const link = document.createElement('a');
+    link.href = 'https://open-meteo.com/';
+    link.textContent = 'Weather data by Open-Meteo';
+    link.style.color = '#83e2ba';
+
+    source.append(
+      link,
+      ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
+      'Outdoor forecast near the stadium; actual field conditions may differ. ' +
+      'Weather does not yet change projections.'
+    );
+    conditions.after(source);
+  } catch {
+    if (selected === game && conditions.isConnected) {
+      conditions.textContent =
+        'Weather could not be loaded. Select the matchup again to retry.';
+    }
+  }
+}
 document.addEventListener('unit501:selection-changed', () => {
   weatherPanel.replaceChildren();
   weatherPanel.hidden = !selected;
@@ -94,6 +181,9 @@ document.addEventListener('unit501:selection-changed', () => {
   const venueKey = String(selected.venueName || '')   .toLowerCase().replace(/[^a-z0-9]/g, '');  const isSuperdome = [   'caesarssuperdome',   'mercedesbenzsuperdome',   'louisianasuperdome' ].includes(venueKey);  roof.textContent = isSuperdome   ? 'Fixed dome — indoor playing conditions.'   : 'Roof type and game-day roof status not verified.';  if (isSuperdome) {   conditions.textContent =     'Outside wind and precipitation do not directly affect play inside this enclosed stadium.'; }
 
   weatherPanel.append(heading, venue, conditions, roof);
+  if (!isSuperdome) {
+  loadVenueForecast(selected, conditions, roof);
+}
 });
 let contextSequence = 0;
 let contextTimer;
