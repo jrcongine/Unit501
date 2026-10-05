@@ -607,6 +607,6 @@ if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
     }
   });
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
-  picker.addEventListener('change', showPlayer);
+  picker.addEventListener('change', () => {   showPlayer();   results.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
   reset();
 })();
