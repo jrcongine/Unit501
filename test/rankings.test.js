@@ -109,3 +109,12 @@ test('opponent history is deduplicated, team-scoped and excludes games at or aft
  const other=result.teams.find(t=>t.id==='1000');
  assert.deepEqual(other.opponents[0],{id:'1',scored:138,allowed:0});
 });
+
+test('home venue history counts only deduplicated pre-kickoff home appearances',()=>{
+ const {games,boxes}=fixture();
+ games[0].game.venue={name:'Test Stadium'};
+ const future={...games[0],game:{...games[0].game,id:999,date:{timestamp:2000}}};
+ const data=summarize([...games,games[0],future],boxes,query,[...teams,opponent]);
+ assert.deepEqual(data.teams.find(t=>t.id==='1').homeVenues,{});
+ assert.equal(data.teams.find(t=>t.id==='1000').homeVenues.teststadium,1);
+});

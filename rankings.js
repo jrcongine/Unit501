@@ -37,7 +37,7 @@ function readYards(row) {
 }
 function summarize(games, boxes, query, roster) {
   const teams = new Map(roster.map(team => [String(team.id), {
-    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [],
+    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [], homeVenues: {},
     metrics: Object.fromEntries(metrics.map(([key]) => [key, {sum:0, games:0}]))
   }]));
   const seen = new Set();
@@ -52,6 +52,8 @@ function summarize(games, boxes, query, roster) {
       const team = teams.get(String(own?.id));
       if (!team) continue;
       team.games++;
+      const venue = String(game.game?.venue?.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+      if (side === 'home' && venue) team.homeVenues[venue] = (team.homeVenues[venue] || 0) + 1;
       team.opponents.push({id:String(opponent?.id || ''),
         scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
       const ownStats = readYards(rows.find(row => String(row.team?.id) === String(own.id)));

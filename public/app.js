@@ -10,6 +10,7 @@ function invalidateSimulation(message) {
 for (const id of ['spread','total','awayRating','homeRating']) {
   $(id).addEventListener('input', () => invalidateSimulation('Inputs changed. Run the simulation again.'));
 }
+$('venueMode').addEventListener('change', () => invalidateSimulation('Game location changed. Run the simulation again.'));
 let slateSequence = 0;
 let oddsSequence = 0;
 let lineEdits = 0;
@@ -209,7 +210,7 @@ function contextMessage(message) {
 }
 function showTeamContext(data, game) {
   const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
-    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents])]);
+    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues])]);
   if (scoringContext?.signature !== nextSignature) {
     scoringContext = {game,data,signature:nextSignature};
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
@@ -475,6 +476,7 @@ async function choose(game) {
   $('total').value = '';
   $('awayRating').value = 0;
   $('homeRating').value = 0;
+  $('venueMode').value = 'auto';
 
   $('score').textContent = '—';
   $('cover').textContent = '—';
@@ -504,7 +506,7 @@ function sim() {
   }
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const prediction = Unit501TeamModel.project(data, selected, {
-    away:Number($('awayRating').value),home:Number($('homeRating').value)
+    away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value
   });
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
@@ -518,9 +520,9 @@ function sim() {
   $('win').textContent = percent(result.win);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
-    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)} points (same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.`
+    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} points (before home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing or outside-pool opponents are not guessed.`;
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} No automatic team-score injury, weather or venue adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Applied home-margin change: +${prediction.venue.appliedMargin.toFixed(1)} points. No automatic team-score injury or weather adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;
