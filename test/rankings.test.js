@@ -97,3 +97,15 @@ test('build fetches whole league, prioritizes selected games, shares cached boxe
     assert.equal(requested.filter(p=>p.includes('statistics')).length,138);
   } finally {await fs.rm(cacheDir,{recursive:true,force:true});}
 });
+
+test('opponent history is deduplicated, team-scoped and excludes games at or after cutoff',()=>{
+ const {games,boxes}=fixture();
+ const original=games[0];
+ const future={...original,game:{...original.game,id:999,date:{timestamp:2000}}};
+ const result=summarize([...games,original,future],boxes,query,[...teams,opponent]);
+ const team=result.teams.find(t=>t.id==='1');
+ assert.equal(team.opponents.length,1);
+ assert.deepEqual(team.opponents[0],{id:'1000',scored:0,allowed:138});
+ const other=result.teams.find(t=>t.id==='1000');
+ assert.deepEqual(other.opponents[0],{id:'1',scored:138,allowed:0});
+});

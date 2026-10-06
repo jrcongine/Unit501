@@ -66,3 +66,61 @@ test('college pool supported with 138 complete teams; insufficient pool is block
  data.teams.pop();
  assert.equal(project(data,game).available,false);
 });
+
+function scheduled() {
+ const value=setup();
+ for(const team of value.data.teams) team.opponents=Array.from({length:4},()=>({id:'2',scored:24,allowed:24}));
+ return value;
+}
+test('average schedule has zero correction and manual adjustments remain additive',()=>{
+ const {game,data}=scheduled();
+ const p=project(data,game);
+ assert.equal(p.schedule.applied,true);
+ assert.equal(p.away,p.unadjustedAway);
+ assert.equal(p.home,p.unadjustedHome);
+ const adjusted=project(data,game,{away:2,home:-3});
+ assert.equal(adjusted.away,p.away+2);
+ assert.equal(adjusted.home,p.home-3);
+});
+test('weak past defenses lower offensive projection; strong past offenses improve defensive projection',()=>{
+ const {game,data}=scheduled();
+ data.teams[1].opponents.forEach(p=>p.id='3');
+ data.teams[2].metrics.pointsAgainst.average=40;
+ data.teams[2].metrics.pointsFor.average=40;
+ const p=project(data,game);
+ assert.equal(p.schedule.applied,true);
+ assert.ok(p.away<p.unadjustedAway);
+ assert.ok(p.home<p.unadjustedHome);
+ assert.ok(p.schedule.away.offense<0);
+ assert.ok(p.schedule.away.defense<0);
+});
+test('opponent correction excludes the observed head-to-head result',()=>{
+ const {game,data}=scheduled();
+ data.teams[2].metrics.pointsAgainst.average=30;
+ data.teams[0].opponents.forEach(p=>p.scored=48);
+ // Opponent allowed 120 total, minus 48 head-to-head = 72 in three other games.
+ const p=project(data,game);
+ assert.equal(p.schedule.away.offense,0);
+});
+test('missing, outside-pool, one-game and invalid opponent samples keep both baseline scores',()=>{
+ for(const modify of [
+  d=>d.teams[0].opponents.pop(),
+  d=>d.teams[0].opponents[0].id='FCS',
+  d=>d.teams[0].opponents[0].allowed=null,
+  d=>d.teams[2].games=1,
+  d=>d.teams[0].opponents[0].scored=999
+ ]) {
+  const {game,data}=scheduled();modify(data);
+  const p=project(data,game);
+  assert.equal(p.schedule.applied,false);
+  assert.equal(p.away,p.unadjustedAway);
+  assert.equal(p.home,p.unadjustedHome);
+ }
+});
+test('extreme opponent averages are capped before team sample smoothing',()=>{
+ const {game,data}=scheduled();
+ data.teams[2].metrics.pointsAgainst.average=1000;
+ const p=project(data,game);
+ assert.equal(p.schedule.away.offense,-6);
+ assert.ok(Math.abs(p.away-p.unadjustedAway)<=3);
+});

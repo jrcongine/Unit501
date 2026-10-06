@@ -209,7 +209,7 @@ function contextMessage(message) {
 }
 function showTeamContext(data, game) {
   const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
-    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst])]);
+    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents])]);
   if (scoringContext?.signature !== nextSignature) {
     scoringContext = {game,data,signature:nextSignature};
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
@@ -261,7 +261,7 @@ function showTeamContext(data, game) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Raw averages are not adjusted for schedule strength. Game predictions use scoring offense and opposing scoring defense, softened toward the league average for small samples. Rushing and passing ranks are context only. Player projections use their separate model.';
+  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions use scoring offense and opposing scoring defense, softened toward the league average for small samples. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
 }
 function loadTeamContext(game) {
@@ -516,7 +516,11 @@ function sim() {
   $('cover').textContent = percent(result.cover);
   $('over').textContent = percent(result.over);
   $('win').textContent = percent(result.win);
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. No schedule-strength, injury, weather or venue adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  const strength = prediction.schedule;
+  const scheduleNote = strength.applied
+    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)} points (same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.`
+    : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing or outside-pool opponents are not guessed.`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} No automatic team-score injury, weather or venue adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;

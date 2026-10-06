@@ -32,11 +32,43 @@
     const homeAdjustment = adjustments.home ?? 0;
     if (![awayAdjustment,homeAdjustment].every(x => Number.isFinite(x) && Math.abs(x) <= 14))
       return {available:false,reason:'Point adjustments must be between -14 and +14.'};
+    // One-pass opponent correction. Exclude the head-to-head result from each
+    // opponent average; shrink their remaining sample toward four average games.
+    // These are conservative assumptions, not fitted or calibrated parameters.
+    function schedule(team) {
+      let offense = 0, defense = 0, covered = 0;
+      for (const past of team.opponents || []) {
+        const opponent = pool.find(t => t.id === past.id);
+        if (!opponent || !complete(opponent) ||
+            ![past.scored,past.allowed].every(x => Number.isFinite(x) && x >= 0)) continue;
+        const otherGames = opponent.games - 1;
+        const otherFor = opponent.metrics.pointsFor.average * opponent.games - past.allowed;
+        const otherAgainst = opponent.metrics.pointsAgainst.average * opponent.games - past.scored;
+        if (otherFor < -1e-8 || otherAgainst < -1e-8) continue;
+        offense += baseline - (Math.max(0,otherAgainst) + baseline * 4) / (otherGames + 4);
+        defense += baseline - (Math.max(0,otherFor) + baseline * 4) / (otherGames + 4);
+        covered++;
+      }
+      const available = team.opponents?.length === team.games && covered === team.games;
+      const cap = value => Math.max(-6,Math.min(6,value));
+      return {available,covered,total:team.games,
+        offense:available ? cap(offense / team.games * 0.5) : 0,
+        defense:available ? cap(defense / team.games * 0.5) : 0};
+    }
+    const awaySchedule = schedule(away), homeSchedule = schedule(home);
+    // Apply as a pair, or keep the baseline when either schedule is incomplete.
+    const scheduleApplied = awaySchedule.available && homeSchedule.available;
+    const corrections = new Map([[away.id,awaySchedule],[home.id,homeSchedule]]);
     // Four league-average pseudo-games soften small early-season samples.
     const shrink = (team,key) => (team.metrics[key].average * team.games + baseline * 4) / (team.games + 4);
-    const score = (offense,defense,adjustment) => Math.max(0,
-      (shrink(offense,'pointsFor') + shrink(defense,'pointsAgainst')) / 2 + adjustment);
-    return {available:true,away:score(away,home,awayAdjustment),home:score(home,away,homeAdjustment),
+    const corrected = (team,key) => shrink(team,key) + (scheduleApplied
+      ? corrections.get(team.id)[key === 'pointsFor' ? 'offense' : 'defense'] * team.games / (team.games + 4) : 0);
+    const score = (offense,defense,adjustment,adjusted) => Math.max(0,
+      ((adjusted ? corrected : shrink)(offense,'pointsFor') +
+       (adjusted ? corrected : shrink)(defense,'pointsAgainst')) / 2 + adjustment);
+    return {available:true,away:score(away,home,awayAdjustment,true),home:score(home,away,homeAdjustment,true),
+      unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
+      schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
