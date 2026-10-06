@@ -124,3 +124,36 @@ test('extreme opponent averages are capped before team sample smoothing',()=>{
  assert.equal(p.schedule.away.offense,-6);
  assert.ok(Math.abs(p.away-p.unadjustedAway)<=3);
 });
+
+test('inferred home venue changes margin while preserving total and manual adjustments',()=>{
+ const {game,data}=scheduled(); game.venueName='Test Stadium';
+ data.teams[1].homeVenues={teststadium:2};
+ const p=project(data,game,{away:2,home:-1});
+ assert.equal(p.venue.appliedMargin,2);
+ assert.equal(p.away,p.preVenueAway-1);
+ assert.equal(p.home,p.preVenueHome+1);
+ assert.equal(p.away+p.home,p.preVenueAway+p.preVenueHome);
+ assert.match(p.venue.reason,/inferred/);
+});
+test('neutral selection overrides inferred home venue; unknown and shared venues get no boost',()=>{
+ const {game,data}=scheduled();game.venueName='Test Stadium';
+ data.teams[1].homeVenues={teststadium:2};
+ assert.equal(project(data,game,{venueMode:'neutral'}).venue.appliedMargin,0);
+ data.teams[0].homeVenues={teststadium:1};
+ assert.equal(project(data,game).venue.appliedMargin,0);
+ delete data.teams[0].homeVenues;
+ data.teams[1].homeVenues.teststadium=1;
+ assert.equal(project(data,game).venue.appliedMargin,0);
+ game.venueName='';
+ assert.equal(project(data,game).venue.appliedMargin,0);
+ assert.equal(project(data,game,{venueMode:'home'}).venue.appliedMargin,2);
+ assert.equal(project(data,game,{venueMode:'invalid'}).available,false);
+});
+test('college home assumption is explicit and nonnegative scores preserve the total',()=>{
+ const {venueEffect}=require('../public/team-model');
+ assert.equal(venueEffect({league:'2'},{},{},'home').margin,3);
+ const {game,data}=setup();
+ for(const team of data.teams) for(const m of Object.values(team.metrics)) m.average=0;
+ const p=project(data,game,{venueMode:'home'});
+ assert.equal(p.away,0);assert.equal(p.home,0);assert.equal(p.venue.appliedMargin,0);
+});

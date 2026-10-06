@@ -1,6 +1,17 @@
 /* Experimental scoring model; constants are assumptions, not fitted parameters. */
 (function (root) {
   'use strict';
+  function venueEffect(game, home, away, mode = 'auto') {
+    if (!['auto','home','neutral'].includes(mode)) return {valid:false};
+    if (mode === 'neutral') return {valid:true,margin:0,reason:'Neutral site selected: no home-field adjustment.'};
+    const key = String(game.venueName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const inferred = key && home.homeVenues?.[key] >= 2 && !(away.homeVenues?.[key] > 0);
+    if (mode === 'auto' && !inferred) return {valid:true,margin:0,
+      reason:'Home venue unverified: no home-field adjustment. Select Home stadium or Neutral site if you know the location.'};
+    const margin = game.league === '1' ? 2 : 3;
+    return {valid:true,margin,reason:(mode === 'home' ? 'Home stadium selected.' : 'Home venue inferred from at least two earlier home games; verify neutral-site exceptions.') +
+      ` Experimental home-field assumption: +${margin} points to the home margin; projected total unchanged.`};
+  }
   function project(data, game, adjustments = {}) {
     if (!data || data.before !== game.kickoff || String(data.season) !== String(game.season))
       return {available:false,reason:'Waiting for scoring stats for this matchup.'};
@@ -66,7 +77,15 @@
     const score = (offense,defense,adjustment,adjusted) => Math.max(0,
       ((adjusted ? corrected : shrink)(offense,'pointsFor') +
        (adjusted ? corrected : shrink)(defense,'pointsAgainst')) / 2 + adjustment);
-    return {available:true,away:score(away,home,awayAdjustment,true),home:score(home,away,homeAdjustment,true),
+    const venue = venueEffect(game,home,away,adjustments.venueMode);
+    if (!venue.valid) return {available:false,reason:'Choose a valid venue setting.'};
+    const preVenueAway = score(away,home,awayAdjustment,true);
+    const preVenueHome = score(home,away,homeAdjustment,true);
+    // Transfer half the margin between teams; cap at away score to preserve total and nonnegativity.
+    const transfer = Math.min(venue.margin / 2,preVenueAway);
+    venue.appliedMargin = transfer * 2;
+    return {available:true,away:preVenueAway-transfer,home:preVenueHome+transfer,
+      preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games};
@@ -89,7 +108,7 @@
     }
     return {cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs};
   }
-  const model={project,simulate};
+  const model={project,simulate,venueEffect};
   if (typeof module !== 'undefined' && module.exports) module.exports=model;
   else root.Unit501TeamModel=model;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
