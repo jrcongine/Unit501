@@ -1,5 +1,5 @@
 'use strict';
-// Season-to-date context. No changes to the projection or simulation models.
+// Season-to-date context and pre-kickoff opponent scoring history.
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
@@ -37,7 +37,7 @@ function readYards(row) {
 }
 function summarize(games, boxes, query, roster) {
   const teams = new Map(roster.map(team => [String(team.id), {
-    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0,
+    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [],
     metrics: Object.fromEntries(metrics.map(([key]) => [key, {sum:0, games:0}]))
   }]));
   const seen = new Set();
@@ -52,6 +52,8 @@ function summarize(games, boxes, query, roster) {
       const team = teams.get(String(own?.id));
       if (!team) continue;
       team.games++;
+      team.opponents.push({id:String(opponent?.id || ''),
+        scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
       const ownStats = readYards(rows.find(row => String(row.team?.id) === String(own.id)));
       const against = readYards(rows.find(row => String(row.team?.id) === String(opponent?.id)));
       const values = {
