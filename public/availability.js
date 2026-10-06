@@ -13,6 +13,9 @@
     return 'report date '+date;
   }
   window.Unit501Availability={
+    assess(teamId,playerId) {
+      return Unit501InjuryModel.assess(game === selected ? data : null, selected, teamId, playerId);
+    },
     describe(teamId,playerId) {
       if(!data || !game || game!==selected) return 'Roster and injury status not checked yet.';
       if(!data.current) return data.message;
@@ -32,7 +35,7 @@
       if(!t.injuries.available) lines.push('Injury status unknown: report unavailable.');
       else if(!reports.length) lines.push('No injury entry returned; playing status is not confirmed.');
       else for(const r of reports) lines.push(`Reported ${r.status}: ${r.description} (${reportAge(r.date)}).`);
-      lines.push('Injuries checked '+timestamp(t.injuries.checkedAt)+'. Projection does not adjust for availability.');
+      lines.push('Injuries checked '+timestamp(t.injuries.checkedAt)+'. ' + this.assess(teamId,playerId).reason);
       return lines.join(' ');
     }
   };
