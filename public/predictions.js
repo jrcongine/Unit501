@@ -12,6 +12,7 @@
   let teamOffense = new Map();
   let matchupTeams = [];
   const enteredLines = new Map();
+  const workloadScenarios = new Map();
   let lineScope = '';
   let sequence = 0;
   let propSequence = 0;
@@ -163,11 +164,12 @@ if (groupName === 'receiving') {
     const title = document.createElement('h3');
     title.textContent = 'Player line comparisons';
     const note = document.createElement('p');
-    note.textContent = 'Selected game only. Historical comparisons, not ranked picks or win probabilities. Recheck current FanDuel lines.';
+    note.textContent = 'Selected game only. Historical comparisons, not ranked picks or win probabilities. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     const rows = [];
     for (const record of choices) {
+      if (window.Unit501Availability?.assess(record.teamId, record.id).blocked) continue;
       for (const def of definitions) {
         const entry = readLine(lineKey(record, def));
         const line = n(entry.value);
@@ -261,7 +263,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, projection.toFixed(1), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, projection.toFixed(1) + ` (${row.workload}% workload)`, median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
@@ -400,7 +402,9 @@ cell.append(details);
           adjusted = weighted * (1 + adjustment);
         }
       }
-    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats};
+    const workload = workloadScenarios.get(record.id) ?? 100;
+    adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
+    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload};
   }
   function showPlayer() {
     renderComparisons();
@@ -414,6 +418,34 @@ cell.append(details);
     availability.textContent = window.Unit501Availability?.describe(record.teamId, record.id) || 'Availability unknown.';
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
     results.appendChild(availability);
+    const assessment = window.Unit501Availability?.assess(record.teamId, record.id);
+    if (assessment?.blocked) {
+      const withheld = document.createElement('p');
+      withheld.textContent = assessment.reason;
+      withheld.setAttribute('role', 'status');
+      results.appendChild(withheld);
+      return;
+    }
+    const scenarioLabel = document.createElement('label');
+    scenarioLabel.textContent = 'Expected workload scenario (% of normal): ';
+    const scenario = document.createElement('select');
+    scenario.setAttribute('aria-label', 'Expected workload scenario');
+    for (const percent of [100, 75, 50, 25, 0]) {
+      const option = document.createElement('option');
+      option.value = String(percent);
+      option.textContent = percent + '%';
+      scenario.appendChild(option);
+    }
+    scenario.value = String(workloadScenarios.get(record.id) ?? 100);
+    scenario.onchange = () => {
+      workloadScenarios.set(record.id, Number(scenario.value));
+      showPlayer();
+    };
+    scenarioLabel.appendChild(scenario);
+    results.appendChild(scenarioLabel);
+    const scenarioNote = document.createElement('p');
+    scenarioNote.textContent = 'Your scenario scales this player’s stats linearly, not their chance of playing. It does not redistribute touches or adjust team scores. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
+    results.appendChild(scenarioNote);
     const workload = document.createElement('p');
 const history = Array.from(record.games.values())
   .sort((a, b) => b.gameDate - a.gameDate);
@@ -436,7 +468,7 @@ results.appendChild(workload);
     for (const def of definitions) {
       const model = projectionFor(record, def);
       if (!model) continue;
-      const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats} = model;
+      const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
       const recent = values.slice(0, Math.min(2, values.length));
 const earlier = values.slice(Math.min(2, values.length));
 const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
@@ -454,7 +486,7 @@ const trend = earlierAvg === null
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
       const heading = document.createElement('b');
-  const sortedValues = [...values].sort((a, b) => a - b); const middle = Math.floor(sortedValues.length / 2); const median = sortedValues.length % 2   ? sortedValues[middle]   : (sortedValues[middle - 1] + sortedValues[middle]) / 2;  heading.textContent =   `${def.title}: ${adjusted.toFixed(1)} projected | ` +   `${average.toFixed(1)} average | ${median.toFixed(1)} median`;  if (values.length < 5) {   const warning = document.createElement('p');   warning.style.cssText = 'color:#e8b95b;margin:8px 0;';   warning.textContent =     `Small sample: ${values.length} recorded games. ` +     'One unusually high or low game can strongly affect the projection.';   card.appendChild(warning); }
+  const sortedValues = [...values].sort((a, b) => a - b); const middle = Math.floor(sortedValues.length / 2); const median = sortedValues.length % 2   ? sortedValues[middle]   : (sortedValues[middle - 1] + sortedValues[middle]) / 2;  heading.textContent =   `${def.title}: ${adjusted.toFixed(1)} projected (${workload}% workload) | ` +   `${average.toFixed(1)} average | ${median.toFixed(1)} median`;  if (values.length < 5) {   const warning = document.createElement('p');   warning.style.cssText = 'color:#e8b95b;margin:8px 0;';   warning.textContent =     `Small sample: ${values.length} recorded games. ` +     'One unusually high or low game can strongly affect the projection.';   card.appendChild(warning); }
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
@@ -496,6 +528,7 @@ const trend = earlierAvg === null
     teamOffense.clear();
     matchupTeams = [];
     enteredLines.clear();
+    workloadScenarios.clear();
     lineScope = '';
     board.replaceChildren();
     picker.disabled = true;
