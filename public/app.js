@@ -210,7 +210,7 @@ function contextMessage(message) {
 }
 function showTeamContext(data, game) {
   const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
-    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues])]);
+    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues,t.opponentScheduleVerified])]);
   if (scoringContext?.signature !== nextSignature) {
     scoringContext = {game,data,signature:nextSignature};
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
@@ -520,8 +520,8 @@ function sim() {
   $('win').textContent = percent(result.win);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
-    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} points (before home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.`
-    : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing or outside-pool opponents are not guessed.`;
+    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} points (before home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
+    : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Applied home-margin change: +${prediction.venue.appliedMargin.toFixed(1)} points. No automatic team-score injury or weather adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 

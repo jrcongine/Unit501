@@ -167,6 +167,39 @@ function createRankings(api, options = {}) {
       const selectedGame = g => [g.teams?.away || g.teams?.visitors, g.teams?.home].some(team => [query.away,query.home].includes(String(team?.id)));
       past.sort((a,b) => Number(selectedGame(b)) - Number(selectedGame(a)));
       const selectedCount = past.filter(selectedGame).length;
+      // Fetch full scoring schedules for selected teams' non-FBS opponents.
+      // Keep these teams outside the national ranking pool and avoid extra box-score requests.
+      const supplemental = new Map();
+      const opponents = new Map();
+      if (nationalCollege) for (const g of past.filter(selectedGame)) {
+        for (const t of [g.teams?.away || g.teams?.visitors,g.teams?.home]) {
+          if (t?.id && !roster.has(String(t.id))) opponents.set(String(t.id),t);
+        }
+      }
+      const reports = new Map();
+      for (const [id,team] of opponents) {
+        roster.set(id,team);
+        try {
+          const rows = await request(`/games?team=${id}&season=${query.season}`);
+          const own = rows.filter(g => eligible(g,query) &&
+            [g.teams?.away || g.teams?.visitors,g.teams?.home].some(t => String(t?.id) === id));
+          // Existing head-to-head games must be present in the team schedule.
+          const known = past.filter(g => [g.teams?.away || g.teams?.visitors,g.teams?.home].some(t => String(t?.id) === id));
+          const ids = new Set(own.map(g => String(g.game?.id)));
+          if (!known.every(g => ids.has(String(g.game?.id)))) throw new Error('Incomplete opponent schedule');
+          for (const g of own) supplemental.set(String(g.game?.id),g);
+          reports.set(id,true);
+        } catch { reports.set(id,false); }
+      }
+      const scoringGames = [...new Map([...supplemental.values(),...past].map(g => [String(g.game?.id),g])).values()];
+      function summary(boxes) {
+        const data = summarize(scoringGames,boxes,query,[...roster.values()]);
+        for (const t of data.teams) if (reports.has(t.id)) {
+          t.opponentScheduleVerified = reports.get(t.id);
+          t.scoringOnly = true;
+        }
+        return data;
+      }
       const boxes = new Map();
       job.total = past.length;
       for (const g of past) {
@@ -176,10 +209,10 @@ function createRankings(api, options = {}) {
         job.completed++;
         if (job.completed === selectedCount) {
           // Publish the selected teams' complete averages while national coverage loads.
-          job.data = summarize(past, boxes, query, [...roster.values()]);
+          job.data = summary(boxes);
         }
       }
-      job.data = summarize(past, boxes, query, [...roster.values()]);
+      job.data = summary(boxes);
       job.state = 'ready';
     } catch (error) {
       job.state = 'error';
