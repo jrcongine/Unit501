@@ -1,5 +1,6 @@
 'use strict';
 const { sports } = require('./fanduel');
+const { matches, missingMatchMessage } = require('./odds-matching');
 const markets = {player_pass_yds:'passYds',player_pass_tds:'passTD',player_rush_yds:'rushYds',player_rush_tds:'rushTD',player_reception_yds:'recYds',player_receptions:'rec',player_reception_tds:'recTD'};
 const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const cache = new Map();
@@ -22,16 +23,6 @@ async function request(path, params = {}) {
   // Bound the cache across changing slates; share in-flight requests between visitors.
   if (cache.size > 200) cache.delete(cache.keys().next().value);
   return pending;
-}
-function matches(event,q) {
-  const team = (a,b) => {
-    a=String(a||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-    b=String(b||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-    const suffix = a.startsWith(b + ' ') ? a.slice(b.length + 1) : '';
-    const otherSchool = /^(state|tech|a m|southern|northern|eastern|western|central|oh|ohio|fl|florida)( |$)/.test(suffix);
-    return a && b && (a===b || (q.league==='2' && suffix && !otherSchool));
-  };
-  return team(event.away_team,q.away) && team(event.home_team,q.home) && Math.abs(Date.parse(event.commence_time)-q.kickoff)<10800000;
 }
 function parseProps(event,now=Date.now()) {
   const book=event.bookmakers?.find(b=>b.key==='fanduel');
@@ -59,7 +50,7 @@ async function getProps(q) {
   const events=await request(`${sport}/events`);
   if(!Array.isArray(events)) throw new Error('FanDuel returned an invalid event list.');
   const found=events.filter(e=>matches(e,q));
-  if(found.length!==1) return {props:[],message:'No unique FanDuel matchup found. Enter prop lines manually.'};
+  if(found.length!==1) return {props:[],message:missingMatchMessage(events,q)};
   const data=await request(`${sport}/events/${encodeURIComponent(found[0].id)}/odds`,{bookmakers:'fanduel',markets:Object.keys(markets).join(','),oddsFormat:'american'});
   if(data.id!==found[0].id || !matches(data,q)) throw new Error('FanDuel prop matchup could not be verified.');
   const props=parseProps(data);
