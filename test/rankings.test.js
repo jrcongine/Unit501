@@ -88,7 +88,9 @@ test('build fetches whole league, prioritizes selected games, shares cached boxe
     while(job.state==='loading' && Date.now()<deadline) await new Promise(r=>setTimeout(r,5));
     assert.equal(job.state,'ready');
     assert.equal(requested[0],'/games?league=2&season=2026');
-    assert.deepEqual(requested.slice(1,3),['/games/statistics/teams?id=1','/games/statistics/teams?id=2']);
+    assert.deepEqual(requested.filter(p=>p.includes('statistics')).slice(0,2),['/games/statistics/teams?id=1','/games/statistics/teams?id=2']);
+    assert.ok(requested.includes('/games?team=1000&season=2026'));
+    assert.equal(job.data.teams.find(t=>t.id==='1000').opponentScheduleVerified,true);
     assert.equal(job.completed,138);
     assert.equal(job.data.teams[137].metrics.pointsFor.rank,1);
     const next=get({...query,away:'3',home:'4'});
@@ -117,4 +119,24 @@ test('home venue history counts only deduplicated pre-kickoff home appearances',
  const data=summarize([...games,games[0],future],boxes,query,[...teams,opponent]);
  assert.deepEqual(data.teams.find(t=>t.id==='1').homeVenues,{});
  assert.equal(data.teams.find(t=>t.id==='1000').homeVenues.teststadium,1);
+});
+
+test('supplemental failures preserve rankings and never mark an opponent schedule verified',async()=>{
+ const {games,boxes}=fixture();
+ const cacheDir=await fs.mkdtemp(path.join(os.tmpdir(),'unit501-extra-'));
+ const api=async endpoint=>{
+  if(endpoint.startsWith('/games?league='))return {response:games};
+  if(endpoint.startsWith('/games?team='))return {response:[],paging:{total:2}};
+  return {response:boxes.get(endpoint.split('=')[1])};
+ };
+ try {
+  const job=createRankings(api,{delayMs:0,cacheDir})(query);
+  const deadline=Date.now()+10000;
+  while(job.state==='loading' && Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
+  assert.equal(job.state,'ready');
+  assert.equal(job.data.coverage.pointsFor.ranked,true);
+  const extra=job.data.teams.find(t=>t.id==='1000');
+  assert.equal(extra.opponentScheduleVerified,false);
+  assert.equal(extra.metrics.pointsFor.rank,null);
+ }finally{await fs.rm(cacheDir,{recursive:true,force:true});}
 });

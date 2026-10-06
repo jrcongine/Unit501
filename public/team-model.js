@@ -47,11 +47,16 @@
     // opponent average; shrink their remaining sample toward four average games.
     // These are conservative assumptions, not fitted or calibrated parameters.
     function schedule(team) {
-      let offense = 0, defense = 0, covered = 0;
+      let offense = 0, defense = 0, covered = 0, supplemental = 0;
+      const missing = [];
       for (const past of team.opponents || []) {
-        const opponent = pool.find(t => t.id === past.id);
+        const opponent = pool.find(t => t.id === past.id) || data.teams.find(t => t.id === past.id && t.opponentScheduleVerified === true);
         if (!opponent || !complete(opponent) ||
-            ![past.scored,past.allowed].every(x => Number.isFinite(x) && x >= 0)) continue;
+            ![past.scored,past.allowed].every(x => Number.isFinite(x) && x >= 0)) {
+          missing.push(data.teams.find(t => t.id === past.id)?.name || `Team ${past.id}`);
+          continue;
+        }
+        if (opponent.scoringOnly) supplemental++;
         const otherGames = opponent.games - 1;
         const otherFor = opponent.metrics.pointsFor.average * opponent.games - past.allowed;
         const otherAgainst = opponent.metrics.pointsAgainst.average * opponent.games - past.scored;
@@ -62,7 +67,7 @@
       }
       const available = team.opponents?.length === team.games && covered === team.games;
       const cap = value => Math.max(-6,Math.min(6,value));
-      return {available,covered,total:team.games,
+      return {available,covered,total:team.games,supplemental,missing:[...new Set(missing)],
         offense:available ? cap(offense / team.games * 0.5) : 0,
         defense:available ? cap(defense / team.games * 0.5) : 0};
     }

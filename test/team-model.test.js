@@ -157,3 +157,21 @@ test('college home assumption is explicit and nonnegative scores preserve the to
  const p=project(data,game,{venueMode:'home'});
  assert.equal(p.away,0);assert.equal(p.home,0);assert.equal(p.venue.appliedMargin,0);
 });
+
+test('separately verified opponent schedules fill gaps without entering the ranking pool',()=>{
+ const {game,data}=scheduled();
+ data.teams[0].opponents[0].id='outside';
+ const extra={...data.teams[2],id:'outside',name:'Outside opponent',scoringOnly:true,opponentScheduleVerified:true,
+  metrics:{pointsFor:{average:24,games:4,rank:null,pool:0},pointsAgainst:{average:24,games:4,rank:null,pool:0}}};
+ data.teams.push(extra);
+ const p=project(data,game);
+ assert.equal(p.schedule.applied,true);
+ assert.equal(p.schedule.away.supplemental,1);
+ assert.equal(p.baseline,24);
+ extra.opponentScheduleVerified=false;
+ const unavailable=project(data,game);
+ assert.equal(unavailable.schedule.applied,false);
+ assert.deepEqual(unavailable.schedule.away.missing,['Outside opponent']);
+ extra.opponentScheduleVerified=true;extra.metrics.pointsAgainst.games=3;
+ assert.equal(project(data,game).schedule.applied,false);
+});
