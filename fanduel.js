@@ -1,17 +1,11 @@
 'use strict';
 const sports = { '1': 'americanfootball_nfl', '2': 'americanfootball_ncaaf' };
 const cache = new Map();
-const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-function teamMatches(provider, requested, college) {
-  const a = normalize(provider), b = normalize(requested);
-  return Boolean(a && b && (a === b || (college && a.startsWith(b + ' '))));
-}
+const { matches: matchupMatches, missingMatchMessage } = require('./odds-matching');
 function selectLines(events, { away, home, kickoff, league }, now = Date.now()) {
-  const matches = events.filter(event =>
-    teamMatches(event.away_team, away, league === '2') &&
-    teamMatches(event.home_team, home, league === '2') &&
-    Math.abs(Date.parse(event.commence_time) - kickoff) < 3 * 60 * 60 * 1000);
-  if (matches.length !== 1) return { available: false, message: 'No unique FanDuel matchup found. Enter lines manually.' };
+  const query = {away,home,kickoff,league};
+  const matches = events.filter(event => matchupMatches(event,query));
+  if (matches.length !== 1) return { available: false, message: missingMatchMessage(events,query) };
   const book = matches[0].bookmakers?.find(book => book.key === 'fanduel');
   const markets = book?.markets || [];
   function fresh(key) {
