@@ -1,6 +1,25 @@
 /* Experimental scoring model; constants are assumptions, not fitted parameters. */
 (function (root) {
   'use strict';
+  function weatherEffect(game, forecast, enabled = true, now = Date.now()) {
+    const skip = reason => ({applied:false,reduction:0,reason});
+    if (!enabled) return skip('Weather adjustment switched off.');
+    if (forecast?.roof === 'indoor') return skip('Enclosed stadium: no outdoor weather adjustment.');
+    if (forecast?.roof !== 'outdoor') return skip('Roof or stadium location unverified: no weather adjustment.');
+    if (!forecast.available) return skip('Forecast unavailable or loading: no weather adjustment.');
+    if (forecast.kickoff !== game.kickoff || !Number.isFinite(game.kickoff) || game.kickoff <= now ||
+        !Number.isFinite(forecast.fetchedAt) || forecast.fetchedAt > now || now - forecast.fetchedAt > 15 * 60000 ||
+        !Number.isFinite(forecast.forecastTime) || Math.abs(forecast.forecastTime - game.kickoff) > 30 * 60000)
+      return skip('Forecast expired or does not match this kickoff: reselect the matchup to refresh.');
+    if (!Number.isFinite(forecast.windMph) || forecast.windMph < 0 || forecast.windMph > 200)
+      return skip('Sustained wind unavailable: no weather adjustment.');
+    // Explicit uncalibrated assumption: reduce both scores by 1% per mph over
+    // 15 mph, capped at 15%. Gusts and rain probability are display-only.
+    const reduction = Math.min(0.15,Math.max(0,forecast.windMph - 15) * 0.01);
+    return {applied:reduction > 0,reduction,reason:reduction > 0
+      ? `Experimental wind adjustment: sustained wind ${forecast.windMph.toFixed(1)} mph reduces both projected scores by ${(reduction*100).toFixed(1)}%. Assumption, not calibrated; player props unchanged.`
+      : 'Sustained wind at or below 15 mph: no scoring reduction.'};
+  }
   function venueEffect(game, home, away, mode = 'auto') {
     if (!['auto','home','neutral'].includes(mode)) return {valid:false};
     if (mode === 'neutral') return {valid:true,margin:0,reason:'Neutral site selected: no home-field adjustment.'};
@@ -89,7 +108,10 @@
     // Transfer half the margin between teams; cap at away score to preserve total and nonnegativity.
     const transfer = Math.min(venue.margin / 2,preVenueAway);
     venue.appliedMargin = transfer * 2;
-    return {available:true,away:preVenueAway-transfer,home:preVenueHome+transfer,
+    const preWeatherAway = preVenueAway-transfer, preWeatherHome = preVenueHome+transfer;
+    const weather = weatherEffect(game,adjustments.forecast,adjustments.weatherEnabled,adjustments.now);
+    return {available:true,away:preWeatherAway*(1-weather.reduction),home:preWeatherHome*(1-weather.reduction),
+      weather,preWeatherAway,preWeatherHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
@@ -113,7 +135,7 @@
     }
     return {cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs};
   }
-  const model={project,simulate,venueEffect};
+  const model={project,simulate,venueEffect,weatherEffect};
   if (typeof module !== 'undefined' && module.exports) module.exports=model;
   else root.Unit501TeamModel=model;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
