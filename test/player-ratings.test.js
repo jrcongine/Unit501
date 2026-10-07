@@ -67,3 +67,32 @@ test('league job builds all 32 rosters, excludes future boxes and shares cached 
  assert.equal(requested.filter(x=>x.startsWith('/players?')).length,32);
  assert.equal(requested.filter(x=>x.includes('/statistics/players')).length,32);
 });
+
+test('breakout production raises the rating over successive weekly cutoffs',()=>{
+ const f=fixture();
+ for(const g of f.games){const stats=f.boxes.get(String(g.game.id))[0].groups[0].players[3].statistics;
+  const breakout=g.game.id>4;
+  stats[0].value=breakout?500:100;stats[1].value=breakout?140:60;
+  stats[2].value=breakout?5:0;stats[3].value=breakout?0:4;
+ }
+ const at=cutoff=>buildRatings(f.games,f.boxes,f.rosters,cutoff).find(p=>p.id==='4');
+ const early=at(5000),middle=at(8000),late=at(11000);
+ assert.equal(early.games,4);assert.equal(middle.games,7);assert.equal(late.games,10);
+ assert.ok(middle.rating>early.rating);assert.ok(late.rating>middle.rating);
+ assert.equal(late.trend,'Rising');
+ const original=at(5000);
+ for(const g of f.games.filter(g=>g.game.id>=5))for(const p of f.boxes.get(String(g.game.id))[0].groups[0].players)for(const s of p.statistics)s.value=9999;
+ assert.deepEqual(at(5000),original);
+});
+
+test('declining production lowers the rating as subsequent games are recorded',()=>{
+ const f=fixture();
+ for(const g of f.games){const stats=f.boxes.get(String(g.game.id))[0].groups[0].players[3].statistics;
+  const decline=g.game.id>4;
+  stats[0].value=decline?50:500;stats[1].value=decline?40:140;
+  stats[2].value=decline?0:5;stats[3].value=decline?5:0;
+ }
+ const at=cutoff=>buildRatings(f.games,f.boxes,f.rosters,cutoff).find(p=>p.id==='4');
+ assert.ok(at(11000).rating<at(5000).rating);
+ assert.equal(at(11000).trend,'Falling');
+});
