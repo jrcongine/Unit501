@@ -46,6 +46,24 @@ function setup() {
  const teams=Array.from({length:32},(_,i)=>({id:String(i),games:4,metrics:Object.fromEntries(['pointsFor','pointsAgainst'].map(key=>[key,{average:24,games:4,rank:i+1,pool:32}]))}));
  return {game,data:{before:100,season:'2026',teams,coverage:{pointsFor:{ranked:true,expected:32},pointsAgainst:{ranked:true,expected:32}}}};
 }
+test('injury scenario lowers own offense and raises opponent scoring for a defense loss',()=>{
+ const {game,data}=setup();
+ const p=project(data,game,{injury:{awayOffense:4,awayDefense:3,homeOffense:2,homeDefense:1}});
+ assert.equal(p.away,21);assert.equal(p.home,25);
+ assert.equal(p.injury.awayChange,-3);assert.equal(p.injury.homeChange,1);
+ assert.equal(p.injury.applied,true);
+ assert.equal(project(data,game).injury.applied,false);
+});
+test('injury estimates validate independently and preserve manual, venue and wind ordering',()=>{
+ const {game,data}=setup();
+ for(const value of [-1,15,NaN,'4']) assert.equal(project(data,game,{injury:{awayOffense:value}}).available,false);
+ const p=project(data,game,{away:2,home:-1,venueMode:'home',injury:{awayOffense:4,homeDefense:1},
+   forecast:{roof:'outdoor',available:true,kickoff:100,forecastTime:100,fetchedAt:0,windMph:25},now:0});
+ assert.equal(p.preInjuryAway,26);assert.equal(p.preVenueAway,23);
+ assert.equal(p.preWeatherAway,22);assert.equal(p.away,19.8);
+ for(const t of data.teams) for(const m of Object.values(t.metrics)) m.average=0;
+ assert.equal(project(data,game,{injury:{awayOffense:14}}).away,0);
+});
 test('equal teams project league average; stronger scoring offense raises its own score',()=>{
  const {game,data}=setup();
  assert.equal(project(data,game).away,24);

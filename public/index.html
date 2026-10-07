@@ -84,6 +84,16 @@
 
 </div>
 
+<details>
+<summary>Injury impact scenario — optional</summary>
+<p>Review the roster and injury reports below, then enter your estimated impact in points. Reports do not determine player value or replacement quality. Zero means no scenario adjustment, not confirmed health. These estimates change team scores and simulations, not player props.</p>
+<div class="grid">
+<label>Away offense loss (points)<input id="awayOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
+<label>Away defense loss (extra opponent points)<input id="awayDefenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
+<label>Home offense loss (points)<input id="homeOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
+<label>Home defense loss (extra opponent points)<input id="homeDefenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
+</div>
+</details>
 <label for="venueMode">Game location</label>
 <select id="venueMode">
 <option value="auto">Automatic — check venue history</option>

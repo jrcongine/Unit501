@@ -48,6 +48,9 @@
     panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour.'));
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
+      const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
+      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries. ${summary.reason}`));
+      if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));
       panel.append(node('p','Injuries checked: '+timestamp(t.injuries.checkedAt)));
       if(!t.injuries.available) panel.append(node('p',t.injuries.message));
       else if(!t.injuries.rows.length) panel.append(node('p','No injury entries returned. This does not confirm everyone is healthy or available.'));
