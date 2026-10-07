@@ -8,7 +8,8 @@ function invalidateSimulation(message) {
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
 }
-for (const id of ['spread','total','awayRating','homeRating']) {
+for (const id of ['spread','total','awayRating','homeRating',
+  'awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) {
   $(id).addEventListener('input', () => invalidateSimulation('Inputs changed. Run the simulation again.'));
 }
 $('venueMode').addEventListener('change', () => invalidateSimulation('Game location changed. Run the simulation again.'));
@@ -490,6 +491,7 @@ async function choose(game) {
   $('total').value = '';
   $('awayRating').value = 0;
   $('homeRating').value = 0;
+  for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
   $('venueMode').value = 'auto';
 
   $('score').textContent = '—';
@@ -508,8 +510,8 @@ async function choose(game) {
 function sim() {
   if (!selected) return;
   invalidateSimulation();
-  if (['spread','total','awayRating','homeRating'].some(id => $(id).value === '')) {
-    $('note').textContent = 'Enter spread, total and both point adjustments (0 is fine).';
+  if (['spread','total','awayRating','homeRating','awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'].some(id => $(id).value === '')) {
+    $('note').textContent = 'Enter spread, total, point adjustments and injury scenarios (0 is fine).';
     return;
   }
   const spread = Number($('spread').value);
@@ -522,6 +524,8 @@ function sim() {
   const prediction = Unit501TeamModel.project(data, selected, {
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
+    injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
+      homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
     weatherEnabled:$('weatherEnabled').checked
   });
   if (!prediction.available) {
@@ -536,11 +540,14 @@ function sim() {
   $('win').textContent = percent(result.win);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
-    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} points (before home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
+    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
+  const injuryNote = prediction.injury.applied
+    ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates; no automatic player valuation.`
+    : 'No injury scenario entered; this does not confirm either team is healthy. No automatic team-score injury valuation.';
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} No automatic team-score injury adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;

@@ -103,8 +103,17 @@
        (adjusted ? corrected : shrink)(defense,'pointsAgainst')) / 2 + adjustment);
     const venue = venueEffect(game,home,away,adjustments.venueMode);
     if (!venue.valid) return {available:false,reason:'Choose a valid venue setting.'};
-    const preVenueAway = score(away,home,awayAdjustment,true);
-    const preVenueHome = score(home,away,homeAdjustment,true);
+    const injury = Object.fromEntries(['awayOffense','awayDefense','homeOffense','homeDefense']
+      .map(key => [key,adjustments.injury?.[key] ?? 0]));
+    if (!Object.values(injury).every(value => Number.isFinite(value) && value >= 0 && value <= 14))
+      return {available:false,reason:'Each injury scenario must be between 0 and 14 points.'};
+    const preInjuryAway = score(away,home,awayAdjustment,true);
+    const preInjuryHome = score(home,away,homeAdjustment,true);
+    const preVenueAway = Math.max(0,preInjuryAway-injury.awayOffense+injury.homeDefense);
+    const preVenueHome = Math.max(0,preInjuryHome-injury.homeOffense+injury.awayDefense);
+    injury.applied = Object.values(injury).some(value => value > 0);
+    injury.awayChange = preVenueAway-preInjuryAway;
+    injury.homeChange = preVenueHome-preInjuryHome;
     // Transfer half the margin between teams; cap at away score to preserve total and nonnegativity.
     const transfer = Math.min(venue.margin / 2,preVenueAway);
     venue.appliedMargin = transfer * 2;
@@ -112,6 +121,7 @@
     const weather = weatherEffect(game,adjustments.forecast,adjustments.weatherEnabled,adjustments.now);
     return {available:true,away:preWeatherAway*(1-weather.reduction),home:preWeatherHome*(1-weather.reduction),
       weather,preWeatherAway,preWeatherHome,
+      injury,preInjuryAway,preInjuryHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},

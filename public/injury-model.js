@@ -35,7 +35,22 @@
       throw new Error('Workload must be between 0 and 100 percent.');
     return baseline * percent / 100;
   }
-  const api = {assess, workloadProjection};
+  function teamSummary(data, game, teamId, now = Date.now()) {
+    const team = data?.teams?.find(t => String(t.id) === String(teamId));
+    if (!data?.current || !team || !Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
+      return {unavailable:[],conditional:[],unknown:[],reason:'Current reports cannot establish availability for this matchup.'};
+    const players = new Map();
+    for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);
+    for (const p of team.roster?.rows || []) if (p.id && /\binjured reserve\b/.test(normalize(p.group))) players.set(String(p.id),p);
+    const result = {unavailable:[],conditional:[],unknown:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
+    for (const [id,p] of players) {
+      const status = assess(data,game,teamId,id,now);
+      result[status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
+        .push({id,name:p.name || 'Unknown player',reason:status.reason});
+    }
+    return result;
+  }
+  const api = {assess, workloadProjection,teamSummary};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Unit501InjuryModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

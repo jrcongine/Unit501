@@ -63,3 +63,25 @@ test('explicit workload scenario scales stats and rejects invalid inputs', () =>
   assert.equal(workloadProjection(80,0),0);
   for (const p of [-1,101,NaN,'75']) assert.throws(() => workloadProjection(80,p));
 });
+test('team review deduplicates reports and keeps unavailable, conditional and unknown separate',()=>{
+  const {teamSummary}=require('../public/injury-model');
+  const data=fixture();
+  data.teams[0].injuries.rows.push({...data.teams[0].injuries.rows[0]},
+    {id:'11',name:'Conditional',status:'Questionable',date:'2026-10-06T12:00:00Z'},
+    {id:'12',name:'Stale',status:'Out',date:'2026-09-01'},
+    {id:'13',teamId:'2',status:'Out',date:'2026-10-06T12:00:00Z'});
+  const result=teamSummary(data,game,'1',now);
+  assert.deepEqual(result.unavailable.map(p=>p.id),['10']);
+  assert.deepEqual(result.conditional.map(p=>p.id),['11']);
+  assert.deepEqual(result.unknown.map(p=>p.id),['12']);
+  assert.equal(teamSummary(data,{kickoff:now-1},'1',now).unavailable.length,0);
+  assert.equal(teamSummary(data,game,'2',now).unavailable.length,0);
+});
+test('empty injury review never asserts health and expired reports are unresolved',()=>{
+  const {teamSummary}=require('../public/injury-model');
+  const data=fixture();data.teams[0].injuries.rows=[];
+  assert.match(teamSummary(data,game,'1',now).reason,/do not confirm health/);
+  data.teams[0].injuries.rows=[{id:'10',status:'Out',date:'2026-10-06T12:00:00Z'}];
+  data.teams[0].injuries.checkedAt=now-900001;
+  assert.equal(teamSummary(data,game,'1',now).unknown.length,1);
+});
