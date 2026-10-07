@@ -8,6 +8,7 @@ const path = require('path');
 const fanduel = require('./fanduel');
 const getRankings = require('./rankings').createRankings(api);
 const getAvailability = require('./availability').createAvailability(api);
+const getPlayerRatings = require('./player-ratings').createRatings(api);
 
 const PORT = process.env.PORT || 5010;
 
@@ -51,6 +52,12 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if (u.pathname === '/api/player-ratings') {
+      const q={season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
+      if (!/^\d{4}$/.test(q.season || '') || !Number.isFinite(q.before) || q.before <= 0 || q.before > Date.now()+366*86400000)
+        return send(res,400,{error:'Valid NFL season and kickoff cutoff required.'});
+      return send(res,200,getPlayerRatings(q));
+    }
     if (u.pathname === '/api/weather') {
   const names = ['latitude', 'longitude', 'kickoff'];
   const values = names.map(name => u.searchParams.get(name));
