@@ -26,3 +26,22 @@ test('small samples and sparse trends are labeled; negative values and invalid d
  assert.equal(form.values.length,2);assert.equal(form.sample,'Limited sample');
  assert.equal(form.trend,'Insufficient history for a trend');
 });
+
+test('workload review flags limited appearances without inferring starter status',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ assert.match(workloadWarning([{gameDate:1,attempts:2},{gameDate:2,attempts:3}],'passYds'),/Limited recorded workload/);
+ assert.match(workloadWarning([{gameDate:1},{gameDate:2}],'recYds'),/Workload unverified/);
+ assert.equal(workloadWarning([{gameDate:1,attempts:30},{gameDate:2,attempts:32}],'passYds'),null);
+});
+test('workload review detects both increasing and decreasing recent usage',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ const rows=values=>values.map((carries,i)=>({gameDate:i+1,carries}));
+ assert.match(workloadWarning(rows([3,3,15,15]),'rushYds'),/Workload change/);
+ assert.match(workloadWarning(rows([15,15,3,3]),'rushYds'),/Workload change/);
+ assert.equal(workloadWarning(rows([10,11,12,11]),'rushYds'),null);
+});
+test('workload review uses targets for receiving and ignores invalid usage',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ assert.match(workloadWarning([{gameDate:1,targets:1},{gameDate:2,targets:2}],'rec'),/Limited recorded workload/);
+ assert.match(workloadWarning([{gameDate:1,attempts:-1},{gameDate:2,attempts:NaN}],'passTD'),/Workload unverified/);
+});
