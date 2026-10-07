@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const games = $('games');
 let selected = null;
 let scoringContext = null;
+let forecastContext = null;
 function invalidateSimulation(message) {
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
@@ -11,6 +12,7 @@ for (const id of ['spread','total','awayRating','homeRating']) {
   $(id).addEventListener('input', () => invalidateSimulation('Inputs changed. Run the simulation again.'));
 }
 $('venueMode').addEventListener('change', () => invalidateSimulation('Game location changed. Run the simulation again.'));
+$('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
 let slateSequence = 0;
 let oddsSequence = 0;
 let lineEdits = 0;
@@ -98,6 +100,7 @@ const locations = {
   }
 
   roof.textContent = 'Open-air stadium.';
+  forecastContext = {game, data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
   conditions.textContent = 'Loading forecast near kickoff…';
 
   try {
@@ -122,6 +125,9 @@ const locations = {
       conditions.textContent = data.message || 'Forecast unavailable.';
       return;
     }
+
+    forecastContext = {game,data:{...data,roof:'outdoor',kickoff:game.kickoff}};
+    invalidateSimulation('Weather forecast loaded. Run the simulation to use it.');
 
     const format = (value, unit) =>
       Number.isFinite(value) ? `${Math.round(value)}${unit}` : 'Unavailable';
@@ -158,7 +164,7 @@ const locations = {
       link,
       ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
       'Outdoor forecast near the stadium; actual field conditions may differ. ' +
-      'Weather does not yet change projections.'
+      'The experimental wind setting affects team scores only; rain chance, gusts and temperature are context.'
     );
     conditions.after(source);
   } catch {
@@ -169,6 +175,7 @@ const locations = {
   }
 }
 document.addEventListener('unit501:selection-changed', () => {
+  forecastContext = null;
   weatherPanel.replaceChildren();
   weatherPanel.hidden = !selected;
   if (!selected) return;
@@ -189,7 +196,14 @@ document.addEventListener('unit501:selection-changed', () => {
 
   const roof = document.createElement('p');
   roof.id = 'game-roof-status';
-  const venueKey = String(selected.venueName || '')   .toLowerCase().replace(/[^a-z0-9]/g, '');  const isIndoor = [   'caesarssuperdome',   'mercedesbenzsuperdome',   'louisianasuperdome', 'fordfield', 'usbankstadium', 'allegiantstadium' ].includes(venueKey);  roof.textContent = isIndoor   ? 'Fixed dome — indoor playing conditions.'   : 'Roof type and game-day roof status not verified.';  if (isIndoor) {   conditions.textContent =     'Outside wind and precipitation do not directly affect play inside this enclosed stadium.'; }
+  const venueKey = String(selected.venueName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const isIndoor = ['caesarssuperdome','mercedesbenzsuperdome','louisianasuperdome',
+    'fordfield','usbankstadium','allegiantstadium'].includes(venueKey);
+  roof.textContent = isIndoor ? 'Fixed dome — indoor playing conditions.' : 'Roof type and game-day roof status not verified.';
+  if (isIndoor) {
+    forecastContext = {game:selected,data:{roof:'indoor'}};
+    conditions.textContent = 'Outside wind and precipitation do not directly affect play inside this enclosed stadium.';
+  }
 
   weatherPanel.append(heading, venue, conditions, roof);
   if (!isIndoor) {
@@ -506,7 +520,9 @@ function sim() {
   }
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const prediction = Unit501TeamModel.project(data, selected, {
-    away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value
+    away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
+    forecast:forecastContext?.game === selected ? forecastContext.data : null,
+    weatherEnabled:$('weatherEnabled').checked
   });
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
@@ -522,7 +538,9 @@ function sim() {
   const scheduleNote = strength.applied
     ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} points (before home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Applied home-margin change: +${prediction.venue.appliedMargin.toFixed(1)} points. No automatic team-score injury or weather adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  const weatherNote = prediction.weather.reason + (prediction.weather.applied
+    ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} No automatic team-score injury adjustment. Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;

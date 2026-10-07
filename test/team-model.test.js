@@ -1,6 +1,46 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {project,simulate}=require('../public/team-model');
+const {weatherEffect}=require('../public/team-model');
+function forecast(windMph = 25) {
+ const now=2000000, game={kickoff:3000000};
+ return {now,game,data:{roof:'outdoor',available:true,kickoff:game.kickoff,
+   fetchedAt:now,forecastTime:game.kickoff,windMph}};
+}
+test('wind affects scores only above threshold, with a bounded reduction',()=>{
+ for (const [wind,reduction] of [[0,0],[15,0],[20,.05],[25,.1],[30,.15],[90,.15]]) {
+  const {game,data,now}=forecast(wind);
+  assert.equal(weatherEffect(game,data,true,now).reduction,reduction);
+ }
+});
+test('domes, unknown roofs, disabled weather, stale and mismatched forecasts retain scores',()=>{
+ const {game,data,now}=forecast();
+ const variants=[null,{...data,roof:'indoor'},{...data,roof:'unknown'},
+  {...data,available:false},{...data,kickoff:game.kickoff+1},
+  {...data,fetchedAt:now-900001},{...data,fetchedAt:now+1},
+  {...data,forecastTime:game.kickoff+1800001},
+  {...data,windMph:null},{...data,windMph:-1},{...data,windMph:Infinity},
+  {...data,windMph:201}];
+ for(const value of variants) assert.equal(weatherEffect(game,value,true,now).reduction,0);
+ assert.equal(weatherEffect(game,data,false,now).reduction,0);
+ assert.equal(weatherEffect(game,data,true,game.kickoff).reduction,0);
+});
+test('rain probability and gusts alone never substitute for sustained wind',()=>{
+ const {game,data,now}=forecast(10);
+ assert.equal(weatherEffect(game,{...data,gustMph:60,precipitationChance:100,temperatureF:0},true,now).reduction,0);
+});
+test('weather flows into final scores and simulator after home-field and manual adjustments',()=>{
+ const {game,data}=setup();
+ const now=0;
+ const weather={roof:'outdoor',available:true,kickoff:100,forecastTime:100,fetchedAt:0,windMph:25};
+ const baseline=project(data,game,{away:2,home:-1,venueMode:'home',weatherEnabled:false});
+ const p=project(data,game,{away:2,home:-1,venueMode:'home',forecast:weather,now});
+ assert.equal(p.weather.applied,true);
+ assert.equal(p.away,baseline.away*.9);
+ assert.equal(p.home,baseline.home*.9);
+ assert.equal(p.preWeatherAway,baseline.away);
+ assert.ok(simulate(p,0,48,10000,rng()).over<simulate(baseline,0,48,10000,rng()).over);
+});
 function setup() {
  const game={kickoff:100,season:'2026',league:'1',awayId:'0',homeId:'1'};
  const teams=Array.from({length:32},(_,i)=>({id:String(i),games:4,metrics:Object.fromEntries(['pointsFor','pointsAgainst'].map(key=>[key,{average:24,games:4,rank:i+1,pool:32}]))}));

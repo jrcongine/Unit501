@@ -91,6 +91,8 @@
 <option value="neutral">Neutral site</option>
 </select>
 <p>Automatic uses a matching venue from at least two earlier home games. Unknown locations receive no home-field boost. This changes team scores, not player props.</p>
+<label><input id="weatherEnabled" type="checkbox" checked> Apply experimental wind adjustment</label>
+<p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
 <button id="sim">Run 50,000 Sims</button>
 
 <div class="results">
