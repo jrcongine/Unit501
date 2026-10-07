@@ -1,0 +1,7 @@
+# Season progression foundation
+
+Player projections now load all completed pre-kickoff games returned for the selected teams' season, excluding preseason and exhibition games. There is no four-game cutoff. Only recorded stats count; missing player rows/statistics are not inferred as zero or as proof of participation. The provider's schedule completeness has not been independently verified.
+
+Each prop baseline blends 50% recorded season average with 50% exponentially weighted recent form, with weights halving every three recorded team games in that player's history. This is an explicit, uncalibrated assumption. Existing matchup yardage adjustments and explicit workload scenarios then apply. Historical comparisons use all recorded season values and remain historical frequencies, not probabilities. Cards show the sample size and a recent-three-versus-earlier trend when at least two earlier records exist.
+
+This is a foundation for position-specific player ratings, not an overall talent grade. Only existing passing, rushing and receiving props use it. Defense, special teams, blocking and coverage ratings, full roster participation, league-wide position benchmarks, historical opponent adjustment, automatic injury valuation and team-score integration remain unfinished. Full-season player box scores require more requests than the previous four-game window; live quota and response coverage need verification.

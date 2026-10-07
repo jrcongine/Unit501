@@ -370,7 +370,7 @@ cell.append(details);
       const summary = difference === 0
         ? 'Projection equals the line.'
         : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
-      comparison.textContent = `${summary} Recent recorded games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
+      comparison.textContent = `${summary} Recorded season games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
     }
     input.addEventListener('input', () => update(true));
     card.append(label, savedInfo, comparison);
@@ -381,13 +381,9 @@ cell.append(details);
     const opponent = matchupTeams.find(team => team.id !== record.teamId);
     const opponentStats = opponentDefense.get(opponent?.id);
     const ownOffense = teamOffense.get(record.teamId);
-      const values = history.map(x => x[def.key]).filter(x => x !== undefined);
-      const gameDetails = history.filter(x => x[def.key] !== undefined);
-      if (values.length < 2) return null;
-      const average = values.reduce((a, b) => a + b, 0) / values.length;
-      const weighted = values.reduce((sum, value, index) =>
-        sum + value * (values.length - index), 0
-      ) / (values.length * (values.length + 1) / 2);
+      const form = Unit501PlayerForm.summarize(history,def.key);
+      if (!form) return null;
+      const {values,gameDetails,average,weighted} = form;
       let adjusted = weighted;
       let adjustment = null;
       if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
@@ -404,7 +400,7 @@ cell.append(details);
       }
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
-    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload};
+    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload,form};
   }
   function showPlayer() {
     renderComparisons();
@@ -469,27 +465,14 @@ results.appendChild(workload);
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
-      const recent = values.slice(0, Math.min(2, values.length));
-const earlier = values.slice(Math.min(2, values.length));
-const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
-const earlierAvg = earlier.length
-  ? earlier.reduce((a, b) => a + b, 0) / earlier.length
-  : null;
-
-const trend = earlierAvg === null
-  ? 'Not enough games to determine a trend'
-  : recentAvg > earlierAvg
-    ? 'Trending up'
-    : recentAvg < earlierAvg
-      ? 'Trending down'
-      : 'Holding steady';
+      const trend = model.form.trend + ' • ' + model.form.sample;
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
       const heading = document.createElement('b');
   const sortedValues = [...values].sort((a, b) => a - b); const middle = Math.floor(sortedValues.length / 2); const median = sortedValues.length % 2   ? sortedValues[middle]   : (sortedValues[middle - 1] + sortedValues[middle]) / 2;  heading.textContent =   `${def.title}: ${adjusted.toFixed(1)} projected (${workload}% workload) | ` +   `${average.toFixed(1)} average | ${median.toFixed(1)} median`;  if (values.length < 5) {   const warning = document.createElement('p');   warning.style.cssText = 'color:#e8b95b;margin:8px 0;';   warning.textContent =     `Small sample: ${values.length} recorded games. ` +     'One unusually high or low game can strongly affect the projection.';   card.appendChild(warning); }
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
-     context.textContent = `Recent games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
+     context.textContent = `Recorded season games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context); results.appendChild(card);
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
@@ -504,8 +487,8 @@ const trend = earlierAvg === null
   }
   const explanation = document.createElement('p');
   explanation.textContent = adjustment === null
-    ? `Recent weighted baseline: ${weighted.toFixed(1)}. No defense adjustment: need at least two games of offense and defense yardage, with a positive offense average.`
-    : `Recent weighted baseline: ${weighted.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
+    ? `Season/form baseline: ${weighted.toFixed(1)}. No defense adjustment: need at least two games of offense and defense yardage, with a positive offense average.`
+    : `Season/form baseline: ${weighted.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
   card.appendChild(explanation);
 }
       addLineComparison(card, record, def, adjusted, values);
@@ -514,7 +497,7 @@ const trend = earlierAvg === null
     if (!shown) results.textContent = 'Not enough recent games with this player’s recorded stats to estimate a projection.';
     const note = document.createElement('p');
     note.style.opacity = '.8';
-    note.textContent = 'Simple historical baseline only. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
+    note.textContent = 'Baseline blends 50% recorded season average with 50% recent form (weights halve every three recorded team games). Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; team-score injury valuation is unchanged. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
     results.appendChild(note);
   }
   function reset() {
@@ -552,7 +535,7 @@ const trend = earlierAvg === null
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
-    status.textContent = 'Finding recent games…';
+    status.textContent = 'Finding completed season games…';
     try {
       const date = el('date').value;
       const season = date.slice(0, 4);
@@ -575,7 +558,7 @@ if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
           const time = gameTime(g);
           const code = String(g.game?.status?.short || '').toUpperCase();
           return id && time < kickoff && (['FT', 'AOT', 'FINAL'].includes(code) || /finish|final|after overtime/i.test(g.game?.status?.long || ''));
-        }).sort((a, b) => gameTime(b) - gameTime(a)).slice(0, 4);
+        }).sort((a, b) => gameTime(b) - gameTime(a));
         previous.forEach(g => {
           const away = g.teams?.away || g.teams?.visitors;
           const home = g.teams?.home;
@@ -590,7 +573,7 @@ if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
       });
       if (!past.size) throw new Error('No completed games available this season for these teams yet.');
       if (task !== sequence) return;
-      status.textContent = `Reading player stats from ${past.size} recent team games…`;
+      status.textContent = `Reading player stats from ${past.size} season team games…`;
       const ids = Array.from(past.keys());
       const map = new Map();
       matchupTeams = teams.map(team => ({ id: String(team.id), name: team.name || 'Opponent' }));
