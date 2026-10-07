@@ -16,7 +16,7 @@
     if(d.state!=='ready'){status.textContent=d.total?`Building league player ratings: ${d.completed}/${d.total} roster and game reports checked.`:d.message||'Finding NFL season history…';if(++polls>=1200)throw new Error('Still building. Select the matchup again to check progress.');timer=setTimeout(poll,3000);return;}
     status.textContent='League build complete. Sample labels use the fewest recorded games among rated metrics: Limited (2–4), Developing (5–8), Larger (9+). These describe data quantity, not validated prediction confidence. Ratings use recorded box-score production, not participation or verified starting roles. Missing metrics are omitted; a low score does not establish low talent.';
     for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
-     results.append(node('h3',name));const table=node('table','');table.style.width='100%';
+     results.append(node('h3',name));const table=node('table','');table.className='player-ratings-table';
      const head=node('tr','');for(const text of ['Player','Position','Production','Trend','Sample'])head.append(node('th',text));table.append(head);
      const players=d.data.players.filter(p=>p.teamId===id).sort((a,b)=>(b.rating??-1)-(a.rating??-1)||a.name.localeCompare(b.name));
      for(const p of players){const tr=node('tr','');tr.title=p.reason;
