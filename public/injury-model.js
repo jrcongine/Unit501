@@ -23,6 +23,15 @@
     if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
         /\binjured reserve\b/.test(normalize(roster.group)))
       return {blocked:true,state:'unavailable',reason:'Provider roster lists injured reserve. Projection withheld until the roster changes; this is not a confirmed game-day inactive list.'};
+    const official = team.official;
+    const officialRows = official?.available && String(official.gameId) === String(game.id) && official.kickoff === game.kickoff &&
+      fresh(official.checkedAt,900000) ? official.rows.filter(p => String(p.id) === String(playerId) && String(p.teamId) === String(teamId)) : [];
+    const officialStatuses = [...new Set(officialRows.map(p=>normalize(p.status)).filter(Boolean))];
+    if(officialStatuses.length > 1)
+      return {blocked:true,state:'conflict',reason:'Conflicting official game statuses. Projection and line comparison withheld until resolved.'};
+    const officialStatus=officialStatuses[0];
+    if(officialStatus === 'out' || officialStatus === 'inactive')
+      return {blocked:true,state:'unavailable',reason:`Official NFL Week ${official.week}: ${officialStatus}. Projection and line comparison withheld; not treated as a zero-yard under.`};
     if (!team.injuries?.available || !fresh(team.injuries.checkedAt, 900000))
       return unknown('Injury feed unavailable or fetch expired. Refresh the reports.');
     const reports = team.injuries.rows.filter(p => String(p.id) === String(playerId) &&
@@ -32,7 +41,9 @@
     const latest = Math.max(...dated.map(p => Date.parse(p.date)));
     const current = dated.filter(p => Date.parse(p.date) === latest);
     const statuses = [...new Set(current.map(p => normalize(p.status)))];
-    if (statuses.length !== 1) return unknown('Conflicting current injury statuses; verify before using the projection.');
+    if (statuses.length !== 1) return {blocked:true,state:'conflict',reason:'Conflicting current injury statuses. Projection and line comparison withheld until resolved.'};
+    if (officialStatus && statuses[0] && officialStatus !== statuses[0])
+      return {blocked:true,state:'conflict',reason:`Official NFL report (${officialStatus}) conflicts with provider (${statuses[0]}). Projection and line comparison withheld; starter and workload need verification.`};
     const status = statuses[0];
     if (['out','injured reserve','ir','inactive','sidelined','i l','pup','physically unable to perform','suspended'].includes(status))
       return {blocked:true,state:'unavailable',reason:`Latest provider report: ${status}. Projection and line comparison withheld; not treated as a zero-yard under.`};
@@ -48,12 +59,13 @@
     if (!data?.current || !team || !Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
       return {unavailable:[],conditional:[],unknown:[],reason:'Current reports cannot establish availability for this matchup.'};
     const players = new Map();
+    for (const p of team.official?.rows || []) if (p.id && p.status) players.set(String(p.id),p);
     for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);
     for (const p of team.roster?.rows || []) if (p.id && /\binjured reserve\b/.test(normalize(p.group))) players.set(String(p.id),p);
-    const result = {unavailable:[],conditional:[],unknown:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
+    const result = {unavailable:[],conditional:[],unknown:[],conflicts:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
     for (const [id,p] of players) {
       const status = assess(data,game,teamId,id,now);
-      result[status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
+      result[status.state === 'conflict' ? 'conflicts' : status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
         .push({id,name:p.name || 'Unknown player',reason:status.reason});
     }
     return result;

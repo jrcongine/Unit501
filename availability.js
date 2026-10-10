@@ -2,6 +2,7 @@
 // Team-season player lists are provider rosters, not verified transaction histories.
 function createAvailability(api, now = Date.now) {
   const cache = new Map();
+  const official = require('./official-injuries').createOfficialInjuries(api,now);
   async function read(path, ttl) {
     const old = cache.get(path);
     if (old && now() - old.at < ttl) return old.pending;
@@ -38,6 +39,7 @@ function createAvailability(api, now = Date.now) {
       injuries.rows=injuries.rows.filter(p=>!p.teamId || p.teamId===id);
       return {id,roster,injuries};
     }));
+    await official(q,teams);
     return {current:true,teams,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
   };
 }

@@ -32,6 +32,10 @@
     'a missing injury report does not clear this warning.'
   );
 }
+      if(t.official?.available) {
+        const reports=t.official.rows.filter(p=>p.id===String(playerId));
+        for(const r of reports)lines.push(`Official NFL Week ${t.official.week}: ${r.status || 'no game status'}; ${r.description}; ${r.practice}.`);
+      }
       const reports=t.injuries.rows.filter(p=>p.id===String(playerId));
       if(!t.injuries.available) lines.push('Injury status unknown: report unavailable.');
       else if(!reports.length) lines.push('No injury entry returned; playing status is not confirmed.');
@@ -50,8 +54,15 @@
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
-      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries. ${summary.reason}`));
+      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries, ${summary.conflicts?.length || 0} conflicting entries. ${summary.reason}`));
+      if(summary.conflicts?.length)panel.append(node('p','Conflicting reports — projections withheld: '+summary.conflicts.map(p=>p.name).join(', ')+'.'));
       if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));
+      if(t.official) {
+        panel.append(node('p',t.official.available ? `Official NFL Week ${t.official.week} cross-check: checked ${timestamp(t.official.checkedAt)}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
+        if(t.official.available) {
+          const link=node('a','Review official NFL report');link.href=t.official.url;link.target='_blank';link.rel='noopener';panel.append(link);
+        }
+      }
       panel.append(node('p','Injuries checked: '+timestamp(t.injuries.checkedAt)));
       if(!t.injuries.available) panel.append(node('p',t.injuries.message));
       else if(!t.injuries.rows.length) panel.append(node('p','No injury entries returned. This does not confirm everyone is healthy or available.'));
@@ -79,7 +90,7 @@
     if(!game){loading=false;panel.classList.add('hidden');return;}
     panel.classList.remove('hidden');
     render('Loading current provider reports…',true);
-    const q=new URLSearchParams({league:game.league,season:game.season,away:game.awayId,home:game.homeId});
+    const q=new URLSearchParams({league:game.league,season:game.season,away:game.awayId,home:game.homeId,game:game.id});
     try {
       const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(20000)});const result=await r.json();
       if(task!==version)return;
