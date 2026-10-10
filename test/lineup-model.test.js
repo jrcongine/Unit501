@@ -37,3 +37,12 @@ test('better replacements raise output only for transferred workload and score c
 test('without complete team yardage, props change but team scores stay unchanged',()=>{
  const r=evaluate(players,[scenario],null,game);assert.equal(r.teams['10'].points,0);assert.equal(r.applied,true);assert.ok(r.withheld.length);
 });
+test('partial replacement shares add only assigned touches and withhold incomplete team impact',()=>{
+ const r=evaluate(players,[{...scenario,replacementShare:50}],context,game);
+ assert.equal(adjustProp(100,'rushYds',r.props['10:1']),0);
+ assert.equal(adjustProp(5,'carries',r.props['10:2']),15);
+ assert.equal(adjustProp(15,'rushYds',r.props['10:2']),45);
+ assert.equal(r.details[0].unassignedUsage,10);
+ assert.equal(r.teams['10'].points,0);assert.match(r.withheld.join(' '),/no assigned replacement/);
+ for(const replacementShare of [-1,101,NaN,'50'])assert.equal(evaluate(players,[{...scenario,replacementShare}],context,game).applied,false);
+});
