@@ -135,7 +135,7 @@ const server = http.createServer(async (req, res) => {
     }
 // Get player statistics for a game
 
-if (u.pathname === '/api/player-stats') {
+if (u.pathname === '/api/player-stats' || u.pathname === '/api/team-stats') {
 
   const id = u.searchParams.get('game');
 
@@ -157,7 +157,7 @@ if (u.pathname === '/api/player-stats') {
 
     await api(
 
-      '/games/statistics/players?id=' +
+      (u.pathname === '/api/team-stats' ? '/games/statistics/teams?id=' : '/games/statistics/players?id=') +
 
       encodeURIComponent(id)
 

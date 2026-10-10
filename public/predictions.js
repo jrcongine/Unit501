@@ -354,6 +354,12 @@ cell.append(details);
     return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function showPlayer() {
+    for (const option of Array.from(picker.children)) {
+      const player=choices.find(p=>p.id===option.value);
+      if(!player)continue;
+      const assessment=window.Unit501Availability?.assess(player.teamId,player.playerId);
+      option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?.state==='conditional'?' — Conditional availability':''}`;
+    }
     renderComparisons();
     results.replaceChildren();
     const record = choices.find(x => x.id === picker.value);

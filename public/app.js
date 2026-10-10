@@ -224,8 +224,10 @@ function contextMessage(message) {
   teamContext.append(title,text);
 }
 function showTeamContext(data, game) {
+  const nextModel=Unit501TeamModel.project(data,game);
   const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
-    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues,t.opponentScheduleVerified])]);
+    data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues,t.opponentScheduleVerified]),
+    nextModel.modelVersion,nextModel.away,nextModel.home,nextModel.calibration,nextModel.probabilityCalibration]);
   if (scoringContext?.signature !== nextSignature) {
     scoringContext = {game,data,signature:nextSignature};
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
@@ -281,6 +283,11 @@ function showTeamContext(data, game) {
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
   note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
+  for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
+    const team=data.teams.find(t=>t.id===id),pace=team?.pace;
+    if(pace?.games||pace?.playGames){const line=document.createElement('p');line.textContent=`${name} pace: ${pace.games?(pace.drives/pace.games).toFixed(1)+' recorded drives/game ('+pace.games+'/'+team.games+' games)':'drive counts unavailable'}; ${pace.playGames?(pace.plays/pace.playGames).toFixed(1)+' plays/game ('+pace.playGames+'/'+team.games+' games)':'play counts unavailable'}. Recorded drives are a possession proxy, including end-of-half drives and overtime when present.`;teamContext.append(line);}
+  }
+  if(data.paceValidation){const check=data.paceValidation,line=document.createElement('p');line.textContent=`Pace model check: ${check.evaluatedGames} later games. ${check.evaluatedGames?`Score error ${check.scoreError.toFixed(1)} vs current ${check.baselineScoreError.toFixed(1)}; total error ${check.totalError.toFixed(1)} vs current ${check.baselineTotalError.toFixed(1)}. `:''}${check.accepted?'Drive-based scoring enabled.':'Current scoring retained; the pace candidate has not passed both improvement gates.'} ${check.explanation}`;teamContext.append(line);}
   const validation=data.validation;
   if(validation) {
     const details=document.createElement('details');
@@ -585,14 +592,17 @@ function sim() {
   $('win').textContent = percent(result.calibrated.win??result.win);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
-    ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
+    ? prediction.pace?.applied ? 'Schedule strength corrections are included in scoring per drive, using opponents’ other pre-kickoff games with conservative limits. Cross-division strength remains experimental.'
+    : `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
   const injuryNote = prediction.injury.applied
     ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates in addition to any replacement scenario.`
     : 'No injury scenario entered; this does not confirm either team is healthy. Confirmed replacement scenarios can change scores after the player-ratings build; missing role or replacement data is withheld.';
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
+  const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Manual injury points are additional: avoid entering the same loss twice. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent+=' '+paceNote;
 }
 
 $('load').onclick = load;

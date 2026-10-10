@@ -24,10 +24,18 @@ function readYards(row) {
   const stats = row?.statistics;
   return { rush: number(stats?.rushings?.total), pass: number(stats?.passing?.total) };
 }
+function readPace(row) {
+  const stats=row?.statistics;
+  const drives=number(stats?.yards?.total_drives);
+  const plays=number(typeof stats?.plays==='object'?stats.plays?.total:stats?.plays);
+  return {drives:drives!==null&&Number.isInteger(drives)&&drives>=1&&drives<=40?drives:null,
+    plays:plays!==null&&Number.isInteger(plays)&&plays>=1&&plays<=200?plays:null};
+}
 function summarize(games, boxes, query, roster) {
   const teams = new Map(roster.map(team => [String(team.id), {
     id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [], homeVenues: {},
-    metrics: Object.fromEntries(metrics.map(([key]) => [key, {sum:0, games:0}]))
+    metrics: Object.fromEntries(metrics.map(([key]) => [key, {sum:0, games:0}])),
+    pace:{games:0,drives:0,opponentDrives:0,plays:0,playGames:0}
   }]));
   const seen = new Set();
   for (const game of games) {
@@ -47,6 +55,10 @@ function summarize(games, boxes, query, roster) {
         scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
       const ownStats = readYards(rows.find(row => String(row.team?.id) === String(own.id)));
       const against = readYards(rows.find(row => String(row.team?.id) === String(opponent?.id)));
+      const ownPace=readPace(rows.find(row=>String(row.team?.id)===String(own.id)));
+      const opposingPace=readPace(rows.find(row=>String(row.team?.id)===String(opponent?.id)));
+      if(ownPace.drives!==null&&opposingPace.drives!==null){team.pace.games++;team.pace.drives+=ownPace.drives;team.pace.opponentDrives+=opposingPace.drives;}
+      if(ownPace.plays!==null){team.pace.playGames++;team.pace.plays+=ownPace.plays;}
       const values = {
         rushFor: ownStats.rush, passFor: ownStats.pass,
         rushAgainst: against.rush, passAgainst: against.pass,
@@ -216,6 +228,11 @@ function createRankings(api, options = {}) {
       }
       job.data = summary(boxes);
       job.data.validation=validation;
+      job.data.paceValidation=require('./pace-backtest').validatePace(past,query,before=>{
+        const data=summarize(scoringGames,boxes,{...query,before},[...roster.values()]);
+        for(const t of data.teams)if(reports.has(t.id)){t.opponentScheduleVerified=reports.get(t.id);t.scoringOnly=true;}
+        return data;
+      });
       job.state = 'ready';
     } catch (error) {
       job.state = 'error';
@@ -236,4 +253,4 @@ function createRankings(api, options = {}) {
     return job;
   };
 }
-module.exports = {createRankings,summarize,eligible,readYards,fbsName};
+module.exports = {createRankings,summarize,eligible,readYards,readPace,fbsName};

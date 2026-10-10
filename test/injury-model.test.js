@@ -25,6 +25,12 @@ test('fresh unavailable status withholds projection only for matching team and p
   data.teams[0].injuries.rows[0].teamId = '2';
   assert.equal(check(data).blocked, false);
 });
+test('provider sidelined and reserve aliases withhold normal projections',()=>{
+ for(const status of ['Sidelined','I.L.','PUP','Physically Unable to Perform','Suspended']) {
+  const result=check(fixture(status));assert.equal(result.blocked,true);assert.equal(result.state,'unavailable');
+ }
+ const stale=fixture('Sidelined');stale.teams[0].injuries.rows[0].date='2026-09-01';assert.equal(check(stale).blocked,false);
+});
 test('questionable and doubtful are conditional, never invented participation probabilities', () => {
   for (const status of ['Questionable','Doubtful','Probable','Active']) {
     assert.equal(check(fixture(status)).blocked, false);
