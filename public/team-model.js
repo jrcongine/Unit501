@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const probability=typeof module!=='undefined'&&module.exports?require('./probability-calibration'):root.Unit501ProbabilityCalibration;
+  const paceModel=typeof module!=='undefined'&&module.exports?require('./pace-model'):root.Unit501PaceModel;
   function weatherEffect(game, forecast, enabled = true, now = Date.now()) {
     const skip = reason => ({applied:false,reduction:0,reason});
     if (!enabled) return skip('Weather adjustment switched off.');
@@ -116,8 +117,14 @@
       .map(key => [key,adjustments.injury?.[key] ?? 0]));
     if (!Object.values(injury).every(value => Number.isFinite(value) && value >= 0 && value <= 14))
       return {available:false,reason:'Each injury scenario must be between 0 and 14 points.'};
-    const preInjuryAway = score(away,home,awayAdjustment,true);
-    const preInjuryHome = score(home,away,homeAdjustment,true);
+    const candidate=paceModel?.project(pool,away,home,baseline,{applied:scheduleApplied,[away.id]:awaySchedule,[home.id]:homeSchedule});
+    const paceCheck=data.paceValidation;
+    const paceAccepted=paceCheck?.accepted===true&&paceCheck.before===game.kickoff&&String(paceCheck.league)===String(game.league)&&String(paceCheck.season)===String(game.season);
+    const paceApplied=!legacy&&adjustments.pace!==false&&candidate?.available&&(adjustments.pace===true||paceAccepted);
+    const pace={...candidate,applied:!!paceApplied};
+    if(candidate?.available&&!paceApplied)pace.reason='Drive data available; current scoring retained until the chronological pace comparison improves both score and total error on at least 30 later games.';
+    const preInjuryAway = paceApplied?Math.max(0,candidate.away+awayAdjustment):score(away,home,awayAdjustment,true);
+    const preInjuryHome = paceApplied?Math.max(0,candidate.home+homeAdjustment):score(home,away,homeAdjustment,true);
     const lineup=adjustments.lineup;
     const lineupValid=lineup?.applied&&lineup.gameId===String(game.id)&&lineup.kickoff===game.kickoff;
     const lineupAway=lineupValid?lineup.teams?.[game.awayId]?.points??0:0;
@@ -140,8 +147,8 @@
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      modelVersion:legacy?'scoring-v1':'scoring-v2',calibration:data.validation?.calibration || null,
-      probabilityCalibration:!legacy&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2',calibration:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
@@ -149,7 +156,7 @@
       throw new Error('Valid projected scores, lines and run count required.');
     const normal = () => Math.sqrt(-2 * Math.log(Math.max(Number.EPSILON,random()))) * Math.cos(2*Math.PI*random());
     const fit=prediction.calibration;
-    const fitted=fit?.modelVersion==='scoring-v2' && fit.games>=30 &&
+    const fitted=fit?.modelVersion===(prediction.modelVersion||'scoring-v2') && fit.games>=30 &&
       [fit.awaySD,fit.homeSD,fit.correlation].every(Number.isFinite) &&
       fit.awaySD>=3 && fit.awaySD<=30 && fit.homeSD>=3 && fit.homeSD<=30 && Math.abs(fit.correlation)<=.8;
     const awaySD=fitted?fit.awaySD:Math.sqrt(7.5**2+4**2);

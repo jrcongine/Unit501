@@ -34,7 +34,7 @@
     const statuses = [...new Set(current.map(p => normalize(p.status)))];
     if (statuses.length !== 1) return unknown('Conflicting current injury statuses; verify before using the projection.');
     const status = statuses[0];
-    if (['out','injured reserve','ir','inactive'].includes(status))
+    if (['out','injured reserve','ir','inactive','sidelined','i l','pup','physically unable to perform','suspended'].includes(status))
       return {blocked:true,state:'unavailable',reason:`Latest provider report: ${status}. Projection and line comparison withheld; not treated as a zero-yard under.`};
     return {blocked:false,state:'conditional',reason:`Latest provider report: ${status || 'unknown'}. Projection assumes normal workload if the player participates; no playing probability is inferred.`};
   }

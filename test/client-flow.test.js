@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','team-model.js','app.js','injury-model.js','player-form.js','player-stats.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','app.js','injury-model.js','player-form.js','player-stats.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context};
@@ -82,6 +82,14 @@ test('open matchup refreshes expired reports, skips hidden tabs and preserves da
  h.context.document.hidden=false;tick=h.timers.findLast(t=>t.active&&t.delay===60000);
  const refreshing=tick.fn();await h.settle();assert.equal(calls,2);release();await refreshing;
 });
+test('completing an accepted pace model invalidates an older scoring simulation only once',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ for(const t of h.data.teams)t.pace={games:4,drives:40,opponentDrives:40};
+ h.data.paceValidation={accepted:true,league:'1',season:'2026',before:h.data.before,evaluatedGames:30,scoreError:8,baselineScoreError:9,totalError:10,baselineTotalError:11,explanation:'Fixture'};
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'—');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'24–24');
+});
 
 test('actual ratings, roster, replacement, score and prop flows share one scenario and refresh gates it',async()=>{
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
@@ -108,4 +116,8 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  confirm.checked=true;confirm.onchange();
  assert.equal(h.run('window.Unit501Lineups.evaluate().props["1:7"].rushing.scale'),0);
  replacement.value='';replacement.onchange();assert.equal(confirm.checked,false);assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
+ h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'7',teamId:'1',status:'Sidelined',date:new Date().toISOString()}];document.dispatchEvent(new Event('unit501:availability-updated'))");
+ h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Projection and line comparison withheld/);
+ assert.ok(h.nodes.get('predict-player').children.some(option=>option.value==='1:7'&&/Projection withheld/.test(option.textContent)));
 });
