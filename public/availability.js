@@ -3,7 +3,7 @@
   const panel=document.createElement('section');
   panel.className='card hidden';
   document.getElementById('player-lab').before(panel);
-  let version=0, data=null, game=null;
+  let version=0, data=null, game=null, timer, loading=false, lastAttempt=0;
   const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
   const timestamp=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT':'unknown';
   function reportAge(date) {
@@ -42,11 +42,11 @@
   };
   function render(message,loading=false) {
     panel.replaceChildren(node('h2','Rosters & injury reports'));
-    const refresh=node('button','Refresh roster & injuries');refresh.type='button';refresh.disabled=loading;
+    const refresh=node('button','Refresh roster & injuries');refresh.id='refresh-availability';refresh.type='button';refresh.disabled=loading;
     refresh.onclick=load;
     panel.append(refresh,node('p',message));
     if(!data?.current) return;
-    panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour.'));
+    panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour. Expired reports refresh automatically while this tab is visible for an upcoming matchup within seven days.'));
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
@@ -72,20 +72,33 @@
       panel.append(details);
     }
   }
-  async function load() {
-    const task=++version;data=null;game=selected;
-    document.dispatchEvent(new Event('unit501:availability-updated'));
-    if(!game){panel.classList.add('hidden');return;}
+  async function load(background=false) {
+    if(background===true && loading)return;
+    const task=++version;const same=game===selected;game=selected;loading=true;lastAttempt=Date.now();
+    if(!same){data=null;document.dispatchEvent(new Event('unit501:availability-updated'));}
+    if(!game){loading=false;panel.classList.add('hidden');return;}
     panel.classList.remove('hidden');
     render('Loading current provider reports…',true);
     const q=new URLSearchParams({league:game.league,season:game.season,away:game.awayId,home:game.homeId});
     try {
-      const r=await fetch('/api/availability?'+q);const result=await r.json();
+      const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(20000)});const result=await r.json();
       if(task!==version)return;
       if(!r.ok || result.error)throw new Error('Roster and injury reports could not be loaded. Availability remains unknown.');
       data=result;render(data.message);
-    }catch(e){if(task===version)render(e.message);}
-    if(task===version)document.dispatchEvent(new Event('unit501:availability-updated'));
+    }catch(e){if(task===version){data=null;render(e.message);}}
+    if(task===version){loading=false;document.dispatchEvent(new Event('unit501:availability-updated'));}
   }
-  document.addEventListener('unit501:selection-changed',load);
+  function watch(){
+    clearTimeout(timer);
+    timer=setTimeout(async()=>{
+      if(game===selected&&game&&!document.hidden){
+        // Re-evaluate freshness even if a request is unavailable or kickoff passed.
+        document.dispatchEvent(new Event('unit501:availability-updated'));
+        if(Date.now()-lastAttempt>=300000&&Unit501InjuryModel.refreshDue(data,game))await load(true);
+      }
+      if(game===selected&&game)watch();
+    },60000);
+  }
+  document.addEventListener('unit501:selection-changed',()=>{clearTimeout(timer);load().then(()=>{if(game)watch();});});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game===selected&&game){clearTimeout(timer);watch();if(Date.now()-lastAttempt>=300000&&Unit501InjuryModel.refreshDue(data,game))load(true);}});
 })();

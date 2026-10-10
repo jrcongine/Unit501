@@ -3,6 +3,12 @@
   'use strict';
   const day = 86400000;
   const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  function refreshDue(data, game, now = Date.now()) {
+    if (!Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day) return false;
+    if (!data?.current || !data.teams?.length) return true;
+    return data.teams.some(team => [[team.injuries,900000],[team.roster,3600000]].some(([report,age]) =>
+      !report?.available || !Number.isFinite(report.checkedAt) || report.checkedAt > now || now-report.checkedAt >= age));
+  }
   function assess(data, game, teamId, playerId, now = Date.now(), requireMembership = false) {
     const unknown = reason => ({blocked:false, state:'unknown', reason});
     if (!game || !Number.isFinite(game.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
@@ -52,7 +58,7 @@
     }
     return result;
   }
-  const api = {assess, workloadProjection,teamSummary};
+  const api = {assess, workloadProjection,teamSummary,refreshDue};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Unit501InjuryModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
