@@ -5,7 +5,8 @@ const path = require('node:path');
 const os = require('node:os');
 const membership = require('./fbs-2026.json');
 const {validate}=require('./backtest');
-const normalize = name => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const {decodePunctuation}=require('./team-names');
+const normalize = name => decodePunctuation(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const fbsAliases = new Map(membership.teams.flatMap(team => team.aliases.map(alias => [normalize(alias), team.name])));
 function fbsName(team, season) {
   if (String(season) !== membership.season) return null;

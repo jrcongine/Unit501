@@ -24,3 +24,11 @@ test('ambiguous and stale markets remain unavailable; reasons distinguish missin
  assert.match(missingMatchMessage([e],{...q,kickoff:q.kickoff+86400000}),/kickoff differs/);
  assert.match(missingMatchMessage([],q),/not found/);
 });
+test('encoded Hawaii apostrophe matches the same school for game and prop odds',()=>{
+ const query={away:'Hawai&#x27;i',home:'Arizona State',league:'2',kickoff:q.kickoff};
+ const event={away_team:"Hawai'i Rainbow Warriors",home_team:'Arizona State Sun Devils',commence_time:new Date(q.kickoff).toISOString()};
+ assert.equal(matches(event,query),true);
+ assert.equal(require('../fanduel-props').matches(event,query),true);
+ assert.equal(teamMatches('Hawai&#39;i','Hawaii',true),true);
+ assert.equal(teamMatches('Hawai&#x27;i','Arizona State',true),false);
+});

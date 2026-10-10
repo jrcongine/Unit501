@@ -17,6 +17,7 @@
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
     const trend=earlier.length<2?'Insufficient history for a trend':mean(recent)>mean(earlier)?'Trending up':mean(recent)<mean(earlier)?'Trending down':'Holding steady';
     return {values,gameDetails,average,recentWeighted,weighted,trend,
+      coverage:{recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0])},
       sample:values.length<5?'Limited sample':values.length<9?'Developing sample':'Larger sample'};
   }
   function workloadWarning(history,key) {
@@ -36,6 +37,8 @@
   function project(history,key) {
     const form=summarize(history,key);
     if(!form)return null;
+    if(form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total)
+      return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
     const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
     const pairs=usageKey?history.filter(g=>Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
     let baseline=form.weighted,usage=null;

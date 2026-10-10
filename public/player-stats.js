@@ -49,7 +49,14 @@
       }
     }
   }
-  const api={definitions,extract,teamYards,accumulate};
+  function completeCalendar(records,calendar) {
+    for(const record of records.values())for(const [gameId,past]of calendar) {
+      const opponent=past.teams.get(record.teamId);
+      if(opponent&&!record.games.has(gameId))
+        record.games.set(gameId,{gameDate:past.date,opponent:opponent.name});
+    }
+  }
+  const api={definitions,extract,teamYards,accumulate,completeCalendar};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -29,6 +29,8 @@ test('verified list is unique and aliases do not confuse FBS/FCS or Miami school
   assert.equal(fbsName({name:'North Dakota State'},'2026'),'North Dakota State');
   assert.equal(fbsName({name:'Sacramento State'},'2026'),'Sacramento State');
   assert.equal(fbsName({name:'Arkansas'},'2027'),null);
+  assert.equal(fbsName({name:'Hawai&#x27;i'},'2026'),"Hawai'i");
+  assert.equal(fbsName({name:'Hawai&#39;i'},'2026'),"Hawai'i");
 });
 test('complete FBS pool ranks offense descending, defense ascending; FCS excluded', () => {
   const {games,boxes}=fixture();

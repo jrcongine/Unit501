@@ -80,7 +80,7 @@
   };
   const gameTime = g => n(g.game?.date?.timestamp) || Date.parse(g.game?.date?.date || '') / 1000;
   const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
-  const {definitions,teamYards,accumulate} = Unit501PlayerStats;
+  const {definitions,teamYards,accumulate,completeCalendar} = Unit501PlayerStats;
   const lineKey = (record, def) => `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.playerId}:${def.key}`;
   function readLine(key) {
     let entry = enteredLines.get(key);
@@ -328,7 +328,7 @@ cell.append(details);
     const opponent = matchupTeams.find(team => team.id !== record.teamId);
     const opponentStats = opponentDefense.get(opponent?.id);
     const form = Unit501PlayerForm.project(history,def.key);
-    if (!form) return null;
+    if (!form || form.withheld) return null;
     const {values,gameDetails,average,weighted} = form;
     let adjusted = form.baseline;
     let adjustment = null;
@@ -410,6 +410,14 @@ workload.textContent = workloadParts.length
 results.appendChild(workload);
     let shown = 0;
     for (const def of definitions) {
+      const coverageReview=Unit501PlayerForm.project(history,def.key);
+      if(coverageReview?.withheld) {
+        const explanation=document.createElement('p');
+        explanation.style.color='#e8b95b';
+        explanation.textContent=def.title+': '+coverageReview.reason;
+        results.append(explanation);
+        continue;
+      }
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
@@ -426,6 +434,12 @@ results.appendChild(workload);
         const usage=document.createElement('p');
         usage.textContent=`Usage estimate: ${model.form.usage.workload.toFixed(1)} ${model.form.usage.key==='rec'?'receptions':model.form.usage.key} × ${model.form.usage.efficiency.toFixed(1)} yards each (${model.form.usage.games} paired games).`;
         card.append(usage);
+      }
+      if(model.form.coverage.missing) {
+        const coverage=document.createElement('p');
+        coverage.style.color='#e8b95b';
+        coverage.textContent=`${model.form.coverage.recorded} recorded stat games out of ${model.form.coverage.total} completed team games. Missing records are not zeros; this estimate is conditional on recorded stats.${model.form.coverage.latestMissing?' The latest team game has no recorded stat for this market; verify the current role.':''}`;
+        card.append(coverage);
       }
       const heading = document.createElement('b');
   const sortedValues = [...values].sort((a, b) => a - b); const middle = Math.floor(sortedValues.length / 2); const median = sortedValues.length % 2   ? sortedValues[middle]   : (sortedValues[middle - 1] + sortedValues[middle]) / 2;  heading.textContent =   `${def.title}: ${adjusted.toFixed(1)} projected (${workload}% workload) | ` +   `${average.toFixed(1)} average | ${median.toFixed(1)} median`;  if (values.length < 5) {   const warning = document.createElement('p');   warning.style.cssText = 'color:#e8b95b;margin:8px 0;';   warning.textContent =     `Small sample: ${values.length} recorded games. ` +     'One unusually high or low game can strongly affect the projection.';   card.appendChild(warning); }
@@ -458,7 +472,9 @@ results.appendChild(workload);
       addLineComparison(card, record, def, adjusted, values);
       shown++;
     }
-    if (!shown) results.textContent = 'Not enough recent games with this player’s recorded stats to estimate a projection.';
+    if (!shown) {
+      const empty=document.createElement('p');empty.textContent='No supported projection available from this player’s recorded stats.';results.append(empty);
+    }
     const note = document.createElement('p');
     note.style.opacity = '.8';
     note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses season/form yardage. Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; team-score injury valuation is unchanged. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
@@ -562,6 +578,7 @@ if (league === '1' && stage !== 'regular season') return false;
           }
         }
       }
+      completeCalendar(map,past);
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));

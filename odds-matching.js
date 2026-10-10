@@ -1,5 +1,6 @@
 'use strict';
-const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const {decodePunctuation}=require('./team-names');
+const normalize = value => decodePunctuation(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const aliases = new Map(require('./fbs-2026.json').teams.flatMap(team =>
   team.aliases.map(alias => [normalize(alias), normalize(team.name)])));
 aliases.set('southern mississippi golden eagles', 'southern miss');

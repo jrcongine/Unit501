@@ -32,3 +32,18 @@ test('yardage losses are valid results and sparse paired usage falls back to for
   const rows=[{gameDate:1,rushYds:30,carries:5},{gameDate:2,rushYds:40}];
   assert.equal(project(rows,'rushYds').baseline,summarize(rows,'rushYds').weighted);
 });
+test('missing team-game calendar entries stay unknown and a sparse recent market is withheld',()=>{
+ const {completeCalendar}=require('../public/player-stats');
+ const records=new Map([['90:10904',{teamId:'90',games:new Map([
+  ['1',{gameDate:1,opponent:'A',rec:2,recYds:34}],['4',{gameDate:4,opponent:'D',rec:7,recYds:150}]
+ ])}]]);
+ const calendar=new Map(Array.from({length:5},(_,i)=>[String(i+1),{date:i+1,teams:new Map([['90',{name:'Opponent '+i}]])}]));
+ completeCalendar(records,calendar);
+ const history=[...records.get('90:10904').games.values()];
+ assert.equal(history.length,5);assert.equal(records.get('90:10904').games.get('5').recYds,undefined);
+ const review=project(history,'recYds');assert.equal(review.withheld,true);
+ assert.equal(review.coverage.recorded,2);assert.match(review.reason,/not zeros/);
+ // A single missing latest record does not discard a much fuller history.
+ const full=project([{gameDate:6},...Array.from({length:5},(_,i)=>({gameDate:i+1,rec:4,recYds:40}))],'recYds');
+ assert.equal(full.withheld,undefined);assert.equal(full.coverage.latestMissing,true);
+});
