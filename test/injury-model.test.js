@@ -8,6 +8,14 @@ function fixture(status = 'Out') {
     injuries:{available:true,checkedAt:now,rows:[{id:'10',teamId:'1',status,date:'2026-10-06T12:00:00Z'}]}}]};
 }
 const game = {kickoff:now + 86400000};
+test('availability refresh waits for cache expiry and applies only to upcoming matchups',()=>{
+ const {refreshDue}=require('../public/injury-model');
+ const data=fixture();assert.equal(refreshDue(data,game,now),false);
+ data.teams[0].injuries.checkedAt=now-900000;assert.equal(refreshDue(data,game,now),true);
+ data.teams[0].injuries.checkedAt=now;data.teams[0].roster.checkedAt=now-3600000;assert.equal(refreshDue(data,game,now),true);
+ assert.equal(refreshDue(null,game,now),true);
+ for(const kickoff of [now-1,now,now+8*86400000,NaN])assert.equal(refreshDue(null,{kickoff},now),false);
+});
 const check = data => assess(data, game, '1', '10', now);
 test('fresh unavailable status withholds projection only for matching team and player', () => {
   const data = fixture();

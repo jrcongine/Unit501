@@ -46,14 +46,16 @@
      const key=id+':'+p.id;
      const s=scenarios.get(key)||{teamId:id,playerId:String(p.id),replacementId:'',workload:100,confirmed:false};scenarios.set(key,s);
      const confirm=node('input','');confirm.type='checkbox';confirm.checked=s.confirmed;confirm.id='baseline-'+key;
-     const label=node('label','');label.append(confirm,' I verified this player’s baseline role and the replacement’s expected usage');
+     const label=node('label','');label.append(confirm,' I verified this player’s baseline role and the replacement’s expected usage');label.title='Changing the replacement or workload clears this confirmation. Review the revised scenario before checking it again.';
      const workload=node('select','');workload.setAttribute('aria-label',p.name+' expected workload');workload.id='workload-'+key;
      for(const value of [100,75,50,25,0]){const option=node('option',`${value}% of normal workload`);option.value=String(value);workload.append(option);}workload.value=String(s.workload);
      const replacement=node('select','');replacement.id='replacement-'+key;replacement.setAttribute('aria-label',p.name+' replacement');
      const empty=node('option','Choose same-position replacement');empty.value='';replacement.append(empty);
      for(const r of ratings.players.filter(r=>String(r.teamId)===id&&r.id!==p.id&&r.role===p.role)){const option=node('option',r.name+` (${r.rating===null?'unrated':r.rating+'/99'})`);option.value=String(r.id);replacement.append(option);}replacement.value=s.replacementId;
      const update=()=>{s.confirmed=confirm.checked;s.workload=Number(workload.value);s.replacementId=replacement.value;changed();showScenario();};
-     confirm.onchange=update;workload.onchange=update;replacement.onchange=update;
+     confirm.onchange=update;
+     const revise=()=>{confirm.checked=false;s.confirmed=false;update();};
+     workload.onchange=revise;replacement.onchange=revise;
      cell.append(label,workload,replacement);
     }else cell.textContent='Automatic replacement valuation unavailable for this position. Use the separate point scenario only with supporting information.';
     tr.append(cell);table.append(tr);

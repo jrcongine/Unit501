@@ -24,7 +24,7 @@ function harness(storage=new Map(),extras=false) {
  const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
  for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)){const node=new Node(match[1]);node.id=match[2];}
  nodes.get('date').value='2026-10-10';nodes.get('league').value='1';nodes.get('weatherEnabled').checked=true;
- const context={document,console,URLSearchParams,AbortSignal,Date,Event:class{constructor(type){this.type=type;}},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
+ const context={document,console,URLSearchParams,AbortSignal,Date,Event:class{constructor(type){this.type=type;}},setTimeout:(fn,delay)=>{timers.push({fn,delay,active:true});return timers.length;},clearTimeout:id=>{if(timers[id-1])timers[id-1].active=false;},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
  context.window=context;vm.createContext(context);
  const stamp=Math.floor((Date.now()+86400000)/1000);
  const game={league:{id:1,season:2026},game:{id:999,stage:'Regular Season',date:{timestamp:stamp},status:{short:'NS',long:'Scheduled'},venue:{name:'Test Stadium'}},teams:{away:{id:1,name:'Team A'},home:{id:2,name:'Team B'}},scores:{away:{total:null},home:{total:null}}};
@@ -68,13 +68,28 @@ test('actual client flow allows scoring during ranking build and persists manual
  next.run(`showTeamContext(${JSON.stringify(next.data)},selected)`);await next.settle();assert.equal(next.nodes.get('line-1:7-carries').value,'21.5');
 });
 
+test('open matchup refreshes expired reports, skips hidden tabs and preserves data during a fresh refresh',async()=>{
+ const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ h.run('sim()');const before=h.run('Unit501Availability.snapshot()');
+ const originalFetch=h.context.fetch;let release,calls=0;
+ h.context.fetch=async url=>{if(String(url).startsWith('/api/availability')){calls++;await new Promise(resolve=>{release=resolve;});}return originalFetch(url);};
+ const pending=h.nodes.get('refresh-availability').onclick();await h.settle();
+ assert.equal(h.run('Unit501Availability.snapshot()'),before);assert.equal(h.nodes.get('score').textContent,'24–24');
+ release();await pending;assert.equal(h.nodes.get('score').textContent,'24–24');
+ const clock=Date.now()+900001;h.context.Date=class extends Date{static now(){return clock;}};
+ let tick=h.timers.findLast(t=>t.active&&t.delay===60000);assert.ok(tick);
+ h.context.document.hidden=true;await tick.fn();assert.equal(calls,1);
+ h.context.document.hidden=false;tick=h.timers.findLast(t=>t.active&&t.delay===60000);
+ const refreshing=tick.fn();await h.settle();assert.equal(calls,2);release();await refreshing;
+});
+
 test('actual ratings, roster, replacement, score and prop flows share one scenario and refresh gates it',async()=>{
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('build-player-ratings').onclick();await h.settle();
  const confirm=h.nodes.get('baseline-1:7'),replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7');
  h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
  h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'24–24');
- assert.ok(confirm);confirm.checked=true;replacement.value='9';workload.value='0';workload.onchange();
+ assert.ok(confirm);replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
  const scenario=JSON.parse(h.run('JSON.stringify(window.Unit501Lineups.evaluate())'));assert.equal(scenario.applied,true);assert.equal(scenario.props['1:9'].rushing.extraUsage,20);
  h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–24');
  h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–24');
@@ -89,5 +104,8 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  // A confirmed baseline starter newly reported out loses all normal workload,
  // even if the scenario dropdown previously remained at 100 percent.
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'7',teamId:'1',status:'Out',date:new Date().toISOString()}]");workload.value='100';workload.onchange();
+ assert.equal(confirm.checked,false);assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
+ confirm.checked=true;confirm.onchange();
  assert.equal(h.run('window.Unit501Lineups.evaluate().props["1:7"].rushing.scale'),0);
+ replacement.value='';replacement.onchange();assert.equal(confirm.checked,false);assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
 });
