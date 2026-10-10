@@ -7,7 +7,20 @@ const fs = require('fs');
 const path = require('path');
 const fanduel = require('./fanduel');
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
-function api(endpoint){return cachedAPI(endpoint);}
+async function api(endpoint){
+  const data=await cachedAPI(endpoint);
+  const u=new URL(endpoint,'https://provider.local');
+  if(u.pathname==='/games'&&u.searchParams.get('league')==='2'&&Array.isArray(data.response)){
+    let reference=data.response;
+    if(u.searchParams.has('date')){
+      try{const all=await cachedAPI('/games?league=2&season='+u.searchParams.get('season'));
+        if(Array.isArray(all.response)&&!(all.paging?.total>1)){if(!all.errors||!Object.keys(all.errors).length)reference=all.response;}
+      }catch{/* Keep original provider IDs when identity cannot be established. */}
+    }
+    return {...data,response:require('./team-identity').canonicalizeGames(data.response,reference,u.searchParams.get('season'))};
+  }
+  return data;
+}
 const getRankings = require('./rankings').createRankings(api);
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
