@@ -119,6 +119,7 @@ test('college league build uses all verified FBS rosters and rejects missing mem
  const job=get({league:'2',season:'2026',before:20000});
  for(let i=0;i<400&&job.state==='loading';i++)await new Promise(r=>setTimeout(r,2));
  assert.equal(job.state,'ready');assert.equal(job.data.league,'2');assert.equal(job.data.players.length,138);
+ assert.equal(job.completed,job.total);assert.ok(job.total>=138);
  assert.ok(calls.includes('/games?league=2&season=2026'));assert.equal(calls.filter(p=>p.startsWith('/players?')).length,138);
  assert.ok(job.data.players.every(p=>p.rating===null&&p.role==='OL'));
 });

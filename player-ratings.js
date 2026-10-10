@@ -101,7 +101,7 @@ function createRatings(api,{delayMs=1000}={}){
   if(teamIds.size!==(league==='1'?32:138)||(league==='2'&&new Set([...teamRows.values()].map(t=>fbsName(t,q.season))).size!==138))throw new Error('Complete verified league team pool is required; conflicting provider school IDs remain unresolved.');
   const games=[...new Map(all.filter(g=>String(g.league?.id)===league&&String(g.league?.season)===q.season&&(league!=='1'||g.game?.stage==='Regular Season')&&['FT','AOT','FINAL'].includes(g.game?.status?.short)&&Number(g.game?.date?.timestamp)>0&&Number(g.game?.date?.timestamp)*1000<q.before&&[g.teams?.away?.id,g.teams?.home?.id].some(id=>teamIds.has(String(id)))).map(g=>[String(g.game?.id),g])).values()];
   if(games.some(g=>!/^\d+$/.test(String(g.game?.id))))throw new Error('Invalid game identifier in schedule.');
-  job.total=32+games.length;const rosters=new Map(),boxes=new Map();
+  job.total=teamIds.size+games.length;const rosters=new Map(),boxes=new Map();
   for(const id of teamIds){const key=league+':'+q.season+':'+id;const cached=rosterCache.get(key);const rows=cached&&Date.now()-cached.at<3600000?cached.rows:await paced(`/players?team=${id}&season=${q.season}`);if(!rows.length)throw new Error('A team roster is unavailable; league player ratings withheld.');rosterCache.set(key,{at:Date.now(),rows});rosters.set(id,rows);job.completed++;}
   for(const g of games){const id=String(g.game.id);const cached=boxCache.get(id);const rows=cached&&Date.now()-cached.at<86400000?cached.rows:await paced('/games/statistics/players?id='+id);
    const ids=new Set(rows.map(r=>String(r.team?.id)));if(![g.teams.away.id,g.teams.home.id].every(id=>ids.has(String(id))))throw new Error('A player box score is missing a team; league ratings withheld.');
