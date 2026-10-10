@@ -72,9 +72,12 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('build-player-ratings').onclick();await h.settle();
  const confirm=h.nodes.get('baseline-1:7'),replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'24–24');
  assert.ok(confirm);confirm.checked=true;replacement.value='9';workload.value='0';workload.onchange();
  const scenario=JSON.parse(h.run('JSON.stringify(window.Unit501Lineups.evaluate())'));assert.equal(scenario.applied,true);assert.equal(scenario.props['1:9'].rushing.extraUsage,20);
  h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–24');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–24');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('predict-results').textContent,/0.0 projected/);
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});

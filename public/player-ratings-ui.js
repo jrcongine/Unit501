@@ -2,10 +2,15 @@
  'use strict';
  const panel=document.createElement('section');panel.className='card hidden';
  document.getElementById('player-lab').before(panel);
- let version=0,timer,ratings=null,game=null;
+ let version=0,timer,ratings=null,game=null,lastEffect='';
  const scenarios=new Map();
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
- const changed=()=>{invalidateSimulation();document.dispatchEvent(new Event('unit501:lineup-updated'));};
+ const changed=()=>{
+  const result=window.Unit501Lineups?.evaluate();
+  const effect=JSON.stringify({props:result?.props||{},points:Object.fromEntries(Object.entries(result?.teams||{}).map(([id,t])=>[id,t.points]))});
+  if(effect===lastEffect)return;
+  lastEffect=effect;invalidateSimulation();document.dispatchEvent(new Event('unit501:lineup-updated'));
+ };
  window.Unit501Lineups={evaluate(){
   if(!ratings||game!==selected||ratings.before!==game.kickoff||String(ratings.league)!==game.league||String(ratings.season)!==String(game.season))return null;
   const rows=[],reasons=[];

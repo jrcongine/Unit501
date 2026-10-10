@@ -5,6 +5,7 @@ const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const numeric=v=>typeof v==='number' && Number.isFinite(v)?v:typeof v==='string' && /^-?\d+(\.\d+)?$/.test(v.trim())?Number(v):null;
 function role(position) {
  const p=String(position||'').toUpperCase();
+ if(p==='PK')return 'K';
  if(['QB','RB','WR','TE','K','P','FB'].includes(p))return p;
  if(['C','G','OG','OT','T','LG','RG','LT','RT','OL'].includes(p))return 'OL';
  if(p==='LS')return 'LS';
