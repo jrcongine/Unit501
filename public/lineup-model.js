@@ -10,6 +10,8 @@
       const replacement=players.find(p=>String(p.teamId)===String(s.teamId)&&String(p.id)===String(s.replacementId));
       const key=String(s.teamId)+':'+String(s.playerId),replacementKey=String(s.teamId)+':'+String(s.replacementId);
       if(used.has(key)||!s.confirmed||!original||!replacement||key===replacementKey||replaced.has(replacementKey)||original.role!==replacement.role||!Number.isFinite(s.workload)||s.workload<0||s.workload>=100){result.withheld.push('Verify the baseline role, same-position replacement and workload; replacement chains and duplicate scenarios are not supported.');continue;}
+      const share=s.replacementShare===undefined?100:s.replacementShare;
+      if(!Number.isFinite(share)||share<0||share>100){result.withheld.push('Replacement share must be between 0 and 100 percent.');continue;}
       used.add(key);
       const categories=original.role==='QB'?['passing']:['RB','FB'].includes(original.role)?['rushing','receiving']:['WR','TE'].includes(original.role)?['receiving']:[];
       const available=categories.filter(k=>valid(original.profiles?.[k])&&valid(replacement.profiles?.[k]));
@@ -20,15 +22,18 @@
         const removed=from.usage*(1-s.workload/100);
         // An efficiency difference changes output on transferred touches only.
         // Existing normal production is already in team scores and props.
-        const delta=removed*(to.efficiency-from.efficiency);
+        const transferred=removed*share/100;
+        if(share<100)team.unassignedWorkload=true;
+        const delta=transferred*(to.efficiency-from.efficiency);
         team[category]+=delta;
         const originalProp=result.props[key]??={};originalProp[category]={scale:s.workload/100,extraUsage:0,efficiency:from.efficiency};
         const replacementProp=result.props[replacementKey]??={};
-        const change=replacementProp[category]??={scale:1,extraUsage:0,efficiency:to.efficiency};change.extraUsage+=removed;
-        result.details.push({teamId:String(s.teamId),player:original.name,replacement:replacement.name,category,transferredUsage:removed,yardChange:delta,workload:s.workload});
+        const change=replacementProp[category]??={scale:1,extraUsage:0,efficiency:to.efficiency};change.extraUsage+=transferred;
+        result.details.push({teamId:String(s.teamId),player:original.name,replacement:replacement.name,category,transferredUsage:transferred,unassignedUsage:removed-transferred,replacementShare:share,yardChange:delta,workload:s.workload});
       }
     }
     for(const [id,change]of Object.entries(result.teams)){
+      if(change.unassignedWorkload){result.withheld.push('Team '+id+': score impact withheld because some removed workload has no assigned replacement. Player workload scenarios still apply.');continue;}
       const t=teamContext?.teams?.find(t=>String(t.id)===id);
       const rush=t?.metrics?.rushFor,pass=t?.metrics?.passFor,points=t?.metrics?.pointsFor;
       if(t?.games>=2&&[rush,pass,points].every(m=>m?.games===t.games&&Number.isFinite(m.average))&&rush.average+pass.average>0){
