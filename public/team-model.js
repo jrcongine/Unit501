@@ -1,6 +1,7 @@
 /* Experimental scoring model; constants are assumptions, not fitted parameters. */
 (function (root) {
   'use strict';
+  const probability=typeof module!=='undefined'&&module.exports?require('./probability-calibration'):root.Unit501ProbabilityCalibration;
   function weatherEffect(game, forecast, enabled = true, now = Date.now()) {
     const skip = reason => ({applied:false,reduction:0,reason});
     if (!enabled) return skip('Weather adjustment switched off.');
@@ -117,11 +118,16 @@
       return {available:false,reason:'Each injury scenario must be between 0 and 14 points.'};
     const preInjuryAway = score(away,home,awayAdjustment,true);
     const preInjuryHome = score(home,away,homeAdjustment,true);
-    const preVenueAway = Math.max(0,preInjuryAway-injury.awayOffense+injury.homeDefense);
-    const preVenueHome = Math.max(0,preInjuryHome-injury.homeOffense+injury.awayDefense);
+    const lineup=adjustments.lineup;
+    const lineupValid=lineup?.applied&&lineup.gameId===String(game.id)&&lineup.kickoff===game.kickoff;
+    const lineupAway=lineupValid?lineup.teams?.[game.awayId]?.points??0:0;
+    const lineupHome=lineupValid?lineup.teams?.[game.homeId]?.points??0:0;
+    if(![lineupAway,lineupHome].every(v=>Number.isFinite(v)&&Math.abs(v)<=8))return {available:false,reason:'Invalid lineup score scenario.'};
+    const preVenueAway = Math.max(0,preInjuryAway+lineupAway-injury.awayOffense+injury.homeDefense);
+    const preVenueHome = Math.max(0,preInjuryHome+lineupHome-injury.homeOffense+injury.awayDefense);
     injury.applied = Object.values(injury).some(value => value > 0);
-    injury.awayChange = preVenueAway-preInjuryAway;
-    injury.homeChange = preVenueHome-preInjuryHome;
+    injury.awayChange = Math.max(0,preInjuryAway-injury.awayOffense+injury.homeDefense)-preInjuryAway;
+    injury.homeChange = Math.max(0,preInjuryHome-injury.homeOffense+injury.awayDefense)-preInjuryHome;
     // Transfer half the margin between teams; cap at away score to preserve total and nonnegativity.
     const transfer = Math.min(venue.margin / 2,preVenueAway);
     venue.appliedMargin = transfer * 2;
@@ -129,12 +135,14 @@
     const weather = weatherEffect(game,adjustments.forecast,adjustments.weatherEnabled,adjustments.now);
     return {available:true,away:preWeatherAway*(1-weather.reduction),home:preWeatherHome*(1-weather.reduction),
       weather,preWeatherAway,preWeatherHome,
-      injury,preInjuryAway,preInjuryHome,
+      injury,lineup:{applied:lineupValid,awayChange:lineupAway,homeChange:lineupHome},preInjuryAway,preInjuryHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      modelVersion:legacy?'scoring-v1':'scoring-v2',calibration:data.validation?.calibration || null};
+      modelVersion:legacy?'scoring-v1':'scoring-v2',calibration:data.validation?.calibration || null,
+      probabilityCalibration:!legacy&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+        data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
     if (!prediction.available || ![prediction.away,prediction.home,spread,total].every(Number.isFinite) || total <= 0 || !Number.isInteger(runs) || runs < 1)
@@ -178,7 +186,10 @@
       if (away>home) wins++;
       if (away===home) ties++;
     }
-    return {cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
+    const calibration=prediction.probabilityCalibration?.modelVersion==='scoring-v2'?prediction.probabilityCalibration:null;
+    const conditional={win:wins/(runs-ties),cover:covers/(runs-spreadPushes),over:overs/(runs-totalPushes)};
+    const calibrated=Object.fromEntries(['win','cover','over'].map(key=>[key,probability?.apply(conditional[key],calibration?.[key])??null]));
+    return {calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
       varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
   const model={project,simulate,venueEffect,weatherEffect};

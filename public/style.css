@@ -7,3 +7,7 @@
 .player-ratings-table th:first-child,.player-ratings-table td:first-child{padding-left:0;min-width:160px}
 .player-ratings-table td:nth-child(2),.player-ratings-table td:nth-child(3),.player-ratings-table td:nth-child(4){white-space:nowrap}
 .player-ratings-table th:last-child,.player-ratings-table td:last-child{min-width:220px}
+.player-ratings-table td:last-child{white-space:normal;min-width:280px;max-width:360px}
+.player-ratings-table td:last-child label{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.4}
+.player-ratings-table td:last-child input[type=checkbox]{min-height:20px;width:20px;flex-shrink:0;margin-top:2px}
+.player-ratings-table td:last-child select{display:block;width:100%;max-width:340px;margin-top:8px}

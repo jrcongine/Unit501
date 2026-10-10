@@ -346,6 +346,9 @@ cell.append(details);
           matchupDefense={average:defense.average,games:defense.games,rank:defense.rank,pool:defense.pool};
         }
       }
+    const lineup=window.Unit501Lineups?.evaluate();
+    const lineupChange=lineup?.props?.[record.teamId+':'+record.playerId];
+    if(window.Unit501LineupModel)adjusted=Unit501LineupModel.adjustProp(adjusted,def.key,lineupChange);
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
     return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
@@ -477,7 +480,7 @@ results.appendChild(workload);
     }
     const note = document.createElement('p');
     note.style.opacity = '.8';
-    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses season/form yardage. Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; team-score injury valuation is unchanged. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
+    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses season/form yardage. Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
     results.appendChild(note);
   }
   function reset() {
@@ -602,6 +605,7 @@ if (league === '1' && stage !== 'regular season') return false;
     }
   });
   document.addEventListener('unit501:team-context-updated', () => { if (loadedFor) showPlayer(); });
+  document.addEventListener('unit501:lineup-updated', () => { if (loadedFor) showPlayer(); });
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
   picker.addEventListener('change', () => {   showPlayer();   results.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
   reset();

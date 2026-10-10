@@ -1,0 +1,31 @@
+# Football ratings, replacement scenarios and probability calibration
+
+## Player production ratings
+
+Select a football matchup, then **Build league player ratings**. The build reads the full 32-team NFL or verified 138-team FBS pool, current provider rosters, and completed player reports strictly before kickoff. NFL preseason is excluded. First builds can take several minutes and use one roster request per team plus one player-report request per completed game. Requests are paced; cached reports are shared. A missing roster, missing team box or incomplete pagination fails the build rather than fabricating grades.
+
+Every roster player is displayed. Supported QB, RB, FB, WR, TE, DL, LB, DB, K and P grades compare recorded production with same-position peers. Two recorded games for at least two metrics and eight peers per metric are required. Four neutral pseudo-games soften small samples. Season and recent performance update the grades and rising/falling trend. Offensive linemen, long snappers, unsupported metrics and small samples remain explicitly unrated. These are production percentiles, not Madden talent grades. Current roster assignment is not an archived transaction or historical starter record.
+
+## Injury and replacement impact
+
+The normal team and player baselines already include recorded performance. For an upcoming game within seven days, confirm a player's baseline role, choose a same-position replacement and set expected workload. Fresh current roster membership is required for both players. A fresh unavailable report overrides the original player's expected workload to zero, including a previously selected 100% workload. A blocked replacement withholds the scenario. Questionable/doubtful/no-report cases remain conditional; no playing probability is invented.
+
+Both players need two paired workload/yardage records, at least half-calendar stat coverage, and a recorded latest game for each affected category. Missing records are unknown, not zeros. A scenario transfers the original player's removed normal workload to the replacement. Yardage change is transferred touches multiplied by the difference in efficiency. Efficiency blends pooled and median per-game efficiency, matching the prop baseline approach. This changes only the replacement scenario; grades are not multiplied into scores or props and normal production is not counted twice. Duplicate original-player scenarios and replacement chains are withheld.
+
+Supported original-player props scale down with workload; replacement rushing attempts, receptions and yardage receive transferred workload. Replacement TD increases are not inferred from touches; reduced original-player workload scales its existing TD baseline down. Separate player-card workload percentages remain additional.
+
+When full team offensive yardage and scoring exist, team point change is half the team's recorded points per offensive yard multiplied by scenario yardage change, capped at ±8 points. QB and receiver passing-yard perspectives are not added: the larger absolute passing change is used, then combined with rushing. This is a bounded assumption, not a fitted injury valuation. It excludes verified blocking/coverage/replacement-quality effects that the current feed does not measure. Existing manual offense/defense point scenarios remain additional; avoid entering the same injury loss twice. Past-game/current-roster mismatches, stale rosters, unavailable replacements and incomplete recent stats withhold effects.
+
+## Probability calibration
+
+Chronological replay freezes all training at each kickoff. Score-error variance starts after 30 prior scored predictions. Symmetric temperature scaling fits separate win, spread-cover and total-over probability slopes after 100 distinct prior evaluated games, with at least 20 distinct games containing each outcome. A neutral slope prior limits instability. Three reference spread/total thresholds per game carry one game's aggregate fitting weight; they are model-centered thresholds, not archived sportsbook lines.
+
+Later games evaluate raw and calibrated Brier error and ten reliability bands. Calibration activates only after at least 30 later distinct games and lower aggregate calibrated Brier error than raw frequencies. This rolling in-season gate is not independent external validation or a guarantee of future improvement. The full historical model check displays the comparison, distinct-game counts, threshold counts and observed frequency by band. Monte Carlo frequencies at 0 or 1 are clipped for calibration, avoiding an inferred certainty from a finite simulation sample.
+
+Calibrated percentages are conditional on no push or tied score; pushes/ties are reported separately. A market without enough training or an improving later-game check keeps its raw frequency. Fits are league/season/cutoff/model scoped. Manual point changes, injury/replacement scenarios, wind reductions and explicit venue overrides use raw frequencies because those scenarios have not been historically replayed. The display explains which applies and retains raw frequencies for comparison. Historical injuries/weather, prop probabilities, archived bookmaker-line profitability and overtime are not modeled.
+
+## Verification
+
+Automated tests cover chronological fitting and future-result isolation, distinct-game sample gates, symmetric probabilities, later-game activation gates, tied outcomes, NFL/college roster builds, supported position ratings, missing-game profiles, paired efficiency, same-team replacement identity, workload transfer, score ordering/caps, report refreshes and actual client-script interactions. The DOM harness checks behavior; visual rendering is checked separately. No production API secrets are stored in the repository.
+
+Football remains the only active modeling scope. These additions do not make the model complete: independently measured talent/blocking/coverage grades, verified starters and transactions, historical availability/weather and real sportsbook-line/prop calibration still require additional data and validation.

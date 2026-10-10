@@ -305,6 +305,13 @@ function showTeamContext(data, game) {
         for(const text of [`${Math.round(bin.lower*100)}–${Math.round(bin.upper*100)}%`,bin.games,`${(bin.predicted*100).toFixed(1)}%`,`${(bin.observed*100).toFixed(1)}%`]){const cell=document.createElement('td');cell.textContent=text;tr.append(cell);}table.append(tr);
       }details.append(table);
     }
+    if(validation.probabilityChecks){
+      for(const [market,check]of Object.entries(validation.probabilityChecks)){
+        const label=document.createElement('p');label.textContent=check.games?`${market} calibration: ${check.games} later games (${check.thresholds} evaluated thresholds); Brier ${check.brier.toFixed(3)} vs raw ${check.rawBrier.toFixed(3)}. Lower is better; reference spread/total thresholds are not historical sportsbook lines.`:`${market}: not enough earlier training and later evaluation for calibration yet.`;details.append(label);
+        const table=document.createElement('table');const header=document.createElement('tr');for(const title of ['Calibrated band','Distinct games / checks','Mean probability','Observed']){const cell=document.createElement('th');cell.textContent=title;header.append(cell);}table.append(header);
+        for(const bin of check.bins.filter(b=>b.thresholds)){const row=document.createElement('tr');for(const value of [`${Math.round(bin.lower*100)}–${Math.round(bin.upper*100)}%`,`${bin.games} / ${bin.thresholds}`,`${(bin.predicted*100).toFixed(1)}%`,`${(bin.observed*100).toFixed(1)}%`]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}table.append(row);}details.append(table);
+      }
+    }
     teamContext.append(details);
   }
 }
@@ -562,6 +569,7 @@ function sim() {
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
     injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
+    lineup:window.Unit501Lineups?.evaluate(),
     weatherEnabled:$('weatherEnabled').checked
   });
   if (!prediction.available) {
@@ -571,19 +579,19 @@ function sim() {
   const result = Unit501TeamModel.simulate(prediction,spread,total);
   const percent = value => (value*100).toFixed(1) + '%';
   $('score').textContent = `${Math.round(prediction.away)}–${Math.round(prediction.home)}`;
-  $('cover').textContent = percent(result.cover);
-  $('over').textContent = percent(result.over);
-  $('win').textContent = percent(result.win);
+  $('cover').textContent = percent(result.calibrated.cover??result.cover);
+  $('over').textContent = percent(result.calibrated.over??result.over);
+  $('win').textContent = percent(result.calibrated.win??result.win);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
     ? `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
   const injuryNote = prediction.injury.applied
-    ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates; no automatic player valuation.`
-    : 'No injury scenario entered; this does not confirm either team is healthy. No automatic team-score injury valuation.';
+    ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates in addition to any replacement scenario.`
+    : 'No injury scenario entered; this does not confirm either team is healthy. Confirmed replacement scenarios can change scores after the player-ratings build; missing role or replacement data is withheld.';
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Model frequencies; variance: ${result.varianceSource}. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${['win','cover','over'].filter(k=>result.calibrated[k]!==null).length?'Calibrated percentages exclude pushes/tied scores; any market without enough training remains a raw frequency.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Manual injury points are additional: avoid entering the same loss twice. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;
