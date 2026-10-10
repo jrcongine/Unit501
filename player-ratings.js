@@ -1,6 +1,6 @@
 'use strict';
 const {summarize}=require('./public/player-form');
-const {fbsName}=require('./rankings');
+const {fbsName,canonicalizeGames}=require('./team-identity');
 const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const numeric=v=>typeof v==='number' && Number.isFinite(v)?v:typeof v==='string' && /^-?\d+(\.\d+)?$/.test(v.trim())?Number(v):null;
 function role(position) {
@@ -93,10 +93,11 @@ function createRatings(api,{delayMs=1000}={}){
  async function paced(endpoint){try{return await read(endpoint);}finally{await new Promise(r=>setTimeout(r,delayMs));}}
  async function build(job,q){active=true;try{
   const league=q.league||'1';
-  const all=await paced(`/games?league=${league}&season=${q.season}`);
+  const raw=await paced(`/games?league=${league}&season=${q.season}`);
+  const all=league==='2'?canonicalizeGames(raw,raw,q.season):raw;
   const teamRows=new Map(all.filter(g=>String(g.league?.id)===league&&String(g.league?.season)===q.season&&(league!=='1'||g.game?.stage==='Regular Season')).flatMap(g=>[g.teams?.away,g.teams?.home]).filter(t=>t?.id&&(league==='1'||fbsName(t,q.season))).map(t=>[String(t.id),t]));
   const teamIds=new Set(teamRows.keys());
-  if(teamIds.size!==(league==='1'?32:138))throw new Error('Complete verified league team pool is required.');
+  if(teamIds.size!==(league==='1'?32:138)||(league==='2'&&new Set([...teamRows.values()].map(t=>fbsName(t,q.season))).size!==138))throw new Error('Complete verified league team pool is required; conflicting provider school IDs remain unresolved.');
   const games=[...new Map(all.filter(g=>String(g.league?.id)===league&&String(g.league?.season)===q.season&&(league!=='1'||g.game?.stage==='Regular Season')&&['FT','AOT','FINAL'].includes(g.game?.status?.short)&&Number(g.game?.date?.timestamp)>0&&Number(g.game?.date?.timestamp)*1000<q.before&&[g.teams?.away?.id,g.teams?.home?.id].some(id=>teamIds.has(String(id)))).map(g=>[String(g.game?.id),g])).values()];
   if(games.some(g=>!/^\d+$/.test(String(g.game?.id))))throw new Error('Invalid game identifier in schedule.');
   job.total=32+games.length;const rosters=new Map(),boxes=new Map();
