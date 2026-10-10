@@ -32,7 +32,7 @@ test('future games, exact cutoff and preseason excluded; duplicate games do not 
  assert.equal(buildRatings(f.games,f.boxes,f.rosters,10000)[0].games,8);
 });
 test('position families remain separate and unsupported blockers are not guessed',()=>{
- for(const [position,expected]of [['QB','QB'],['WR','WR'],['TE','TE'],['DT','DL'],['MLB','LB'],['CB','DB'],['K','K'],['P','P'],['OT','OL'],['LS','LS']])assert.equal(role(position),expected);
+ for(const [position,expected]of [['QB','QB'],['WR','WR'],['TE','TE'],['DT','DL'],['MLB','LB'],['CB','DB'],['K','K'],['PK','K'],['P','P'],['OT','OL'],['LS','LS']])assert.equal(role(position),expected);
 });
 test('recent improvement appears in trend without using a future box score',()=>{
  const f=fixture();
