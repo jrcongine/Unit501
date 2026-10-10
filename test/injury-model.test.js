@@ -44,7 +44,8 @@ test('missing, stale, future and conflicting reports remain unknown', () => {
   }
   const data=fixture();
   data.teams[0].injuries.rows.push({...data.teams[0].injuries.rows[0],status:'Active'});
-  assert.equal(check(data).state,'unknown');
+  assert.equal(check(data).state,'conflict');
+  assert.equal(check(data).blocked,true);
   data.teams[0].injuries.rows=[];
   assert.equal(check(data).state,'unknown');
   assert.equal(check(null).state,'unknown');
