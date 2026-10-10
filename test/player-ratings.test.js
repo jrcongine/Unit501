@@ -32,7 +32,7 @@ test('future games, exact cutoff and preseason excluded; duplicate games do not 
  assert.equal(buildRatings(f.games,f.boxes,f.rosters,10000)[0].games,8);
 });
 test('position families remain separate and unsupported blockers are not guessed',()=>{
- for(const [position,expected]of [['QB','QB'],['WR','WR'],['TE','TE'],['DT','DL'],['MLB','LB'],['CB','DB'],['K','K'],['P','P'],['OT',null],['LS',null]])assert.equal(role(position),expected);
+ for(const [position,expected]of [['QB','QB'],['WR','WR'],['TE','TE'],['DT','DL'],['MLB','LB'],['CB','DB'],['K','K'],['P','P'],['OT','OL'],['LS','LS']])assert.equal(role(position),expected);
 });
 test('recent improvement appears in trend without using a future box score',()=>{
  const f=fixture();
@@ -95,4 +95,30 @@ test('declining production lowers the rating as subsequent games are recorded',(
  const at=cutoff=>buildRatings(f.games,f.boxes,f.rosters,cutoff).find(p=>p.id==='4');
  assert.ok(at(11000).rating<at(5000).rating);
  assert.equal(at(11000).trend,'Falling');
+});
+
+test('replacement profiles parse combined attempts, keep missing latest games unknown and separate team histories',()=>{
+ const f=fixture();
+ for(const g of f.games)for(const p of f.boxes.get(String(g.game.id))[0].groups[0].players)p.statistics.push({name:'Comp/Att',value:'18/30'});
+ const p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8');
+ assert.equal(p.profiles.passing.usage,30);assert.equal(p.profiles.passing.games,10);assert.equal(p.profiles.passing.latestMissing,false);
+ const latest=f.games.at(-1);f.boxes.set(String(latest.game.id),[{team:{id:1},groups:[]}]);
+ assert.equal(buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8').profiles.passing.latestMissing,true);
+});
+test('college production includes completed non-NFL stages; NFL retains the regular-season gate',()=>{
+ const f=fixture();for(const g of f.games)g.game.stage='NCAA';
+ assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000,'2').some(p=>p.rating!==null));
+ assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000,'1').every(p=>p.rating===null));
+});
+test('college league build uses all verified FBS rosters and rejects missing membership',async()=>{
+ const membership=require('../fbs-2026.json');
+ const teams=membership.teams.map((t,i)=>({id:i+1,name:t.name}));
+ const games=teams.filter((t,i)=>i%2===0).map((t,i)=>({league:{id:2,season:2026},game:{id:i+1,date:{timestamp:1},stage:'NCAA',status:{short:'NS'}},teams:{away:t,home:teams[i*2+1]}}));
+ const calls=[];
+ const get=createRatings(async endpoint=>{calls.push(endpoint);return {response:endpoint.startsWith('/games?')?games:[{id:1,position:'OL',name:'Lineman'}]};},{delayMs:0});
+ const job=get({league:'2',season:'2026',before:20000});
+ for(let i=0;i<400&&job.state==='loading';i++)await new Promise(r=>setTimeout(r,2));
+ assert.equal(job.state,'ready');assert.equal(job.data.league,'2');assert.equal(job.data.players.length,138);
+ assert.ok(calls.includes('/games?league=2&season=2026'));assert.equal(calls.filter(p=>p.startsWith('/players?')).length,138);
+ assert.ok(job.data.players.every(p=>p.rating===null&&p.role==='OL'));
 });

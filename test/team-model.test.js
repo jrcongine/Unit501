@@ -257,3 +257,23 @@ test('separately verified opponent schedules fill gaps without entering the rank
  extra.opponentScheduleVerified=true;extra.metrics.pointsAgainst.games=3;
  assert.equal(project(data,game).schedule.applied,false);
 });
+
+test('lineup effects require the exact matchup and run before venue/weather; manual points remain additional',()=>{
+ const {data,game}=setup();game.id='99';
+ const lineup={applied:true,gameId:'99',kickoff:game.kickoff,teams:{[game.awayId]:{points:-3},[game.homeId]:{points:2}}};
+ const p=project(data,game,{lineup,injury:{awayOffense:1}});
+ assert.equal(p.away,20);assert.equal(p.home,26);assert.equal(p.lineup.awayChange,-3);assert.equal(p.injury.awayChange,-1);
+ assert.equal(project(data,game,{lineup:{...lineup,gameId:'98'}}).away,24);
+ assert.equal(project(data,game,{lineup:{...lineup,teams:{[game.awayId]:{points:NaN}}}}).available,false);
+});
+test('probability fits are cutoff, league and season scoped and withheld for adjusted scenarios',()=>{
+ const {data,game}=setup();
+ const fit={method:'temperature-v1',games:150,slope:.5};
+ data.validation={probabilityCalibration:{modelVersion:'scoring-v2',before:game.kickoff,league:game.league,season:game.season,win:fit,cover:fit,over:fit}};
+ let p=project(data,game);assert.ok(p.probabilityCalibration);
+ const r=simulate(p,7.5,48.5,100,()=>.5);assert.ok(Number.isFinite(r.calibrated.win));
+ assert.equal(project(data,game,{away:1}).probabilityCalibration,null);
+ assert.equal(project(data,game,{injury:{awayOffense:1}}).probabilityCalibration,null);
+ assert.equal(project(data,game,{venueMode:'home'}).probabilityCalibration,null);
+ data.validation.probabilityCalibration.league='2';assert.equal(project(data,game).probabilityCalibration,null);
+});

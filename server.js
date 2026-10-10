@@ -55,9 +55,9 @@ const server = http.createServer(async (req, res) => {
 
     const u = new URL(req.url, 'http://localhost');
     if (u.pathname === '/api/player-ratings') {
-      const q={season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
-      if (!/^\d{4}$/.test(q.season || '') || !Number.isFinite(q.before) || q.before <= 0 || q.before > Date.now()+366*86400000)
-        return send(res,400,{error:'Valid NFL season and kickoff cutoff required.'});
+      const q={league:u.searchParams.get('league')||'1',season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
+      if (!['1','2'].includes(q.league) || !/^\d{4}$/.test(q.season || '') || !Number.isFinite(q.before) || q.before <= 0 || q.before > Date.now()+366*86400000)
+        return send(res,400,{error:'Valid football league, season and kickoff cutoff required.'});
       return send(res,200,getPlayerRatings(q));
     }
     if (u.pathname === '/api/weather') {

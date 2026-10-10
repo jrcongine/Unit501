@@ -24,7 +24,7 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - Mobile/iPhone-friendly UI
 
 ## Current football extensions
-FanDuel game/prop matching, historical team ranks, roster/injury review, optional NFL production ratings, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
+FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
 
 ## College team rankings
@@ -45,3 +45,5 @@ The current scoring/projection changes, validation method and remaining live-dat
 Scoring uses offense plus opposing defense deviations around the game-weighted league scoring environment, with four league-average pseudo-games for sample smoothing. Schedule, venue, user injury scenarios and fresh outdoor wind adjustments then apply. Complete schedule scores are available before national yardage rankings finish. Simulation variance can use earlier chronological replay errors when at least 30 predictions are available; frequencies remain experimental. The Historical model check compares new and previous score errors and shows later-game away-win reliability.
 
 Run `npm test` for regression and client-flow checks. Actual provider coverage, current prop quotes and production accuracy require deployment validation with the configured API keys.
+
+Football player ratings, confirmed replacement scenarios and gated probability calibration are described in [FOOTBALL-MODEL.md](FOOTBALL-MODEL.md). Basketball/baseball remain deferred. Unsupported positions and incomplete data stay explicitly unrated or withheld.

@@ -13,6 +13,7 @@
     return 'report date '+date;
   }
   window.Unit501Availability={
+    snapshot(){return game===selected?data:null;},
     assess(teamId,playerId) {
       return Unit501InjuryModel.assess(game === selected ? data : null, selected, teamId, playerId, Date.now(), true);
     },
