@@ -3,7 +3,7 @@
   'use strict';
   const day = 86400000;
   const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  function assess(data, game, teamId, playerId, now = Date.now()) {
+  function assess(data, game, teamId, playerId, now = Date.now(), requireMembership = false) {
     const unknown = reason => ({blocked:false, state:'unknown', reason});
     if (!game || !Number.isFinite(game.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
       return unknown('Current reports cannot establish availability for a past game or a matchup more than seven days away.');
@@ -12,6 +12,8 @@
     if (!team) return unknown('Team availability is unknown.');
     const roster = team.roster?.rows?.find(p => String(p.id) === String(playerId));
     const fresh = (time, age) => Number.isFinite(time) && time <= now && now - time <= age;
+    if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
+      return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};
     if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
         /\binjured reserve\b/.test(normalize(roster.group)))
       return {blocked:true,state:'unavailable',reason:'Provider roster lists injured reserve. Projection withheld until the roster changes; this is not a confirmed game-day inactive list.'};

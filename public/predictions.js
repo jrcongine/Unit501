@@ -9,7 +9,6 @@
   let loadedFor = null;
   let choices = [];
   let opponentDefense = new Map();
-  let teamOffense = new Map();
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
@@ -35,7 +34,7 @@
     showPlayer();
     try {
       const params = new URLSearchParams({away:game.a,home:game.h,league:game.league || el('league').value,kickoff:game.kickoff});
-      const res = await fetch('/api/fanduel-props?' + params);
+      const res = await fetch('/api/fanduel-props?' + params, {signal:AbortSignal.timeout(20000)});
       const data = await res.json();
       if (task !== propSequence || selection !== sequence) return;
       if (!res.ok || data.error) throw new Error(data.error || 'FanDuel props unavailable.');
@@ -70,76 +69,19 @@
     const x = Number(v); return Number.isFinite(x) ? x : null;
   };
   const json = async url => {
-    const res = await fetch(url);
+    const res = await fetch(url, {signal:AbortSignal.timeout(20000)});
     const x = await res.json();
     if (!res.ok || x.error || (x.errors && Object.keys(x.errors).length)) {
       throw new Error(x.error || JSON.stringify(x.errors) || 'Data could not be loaded');
     }
+    if (x.paging?.total > 1) throw new Error('Season data is paginated and incomplete. Projections withheld.');
     if (!Array.isArray(x.response)) throw new Error('The data provider did not return a list.');
     return x.response;
   };
-  const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const gameTime = g => n(g.game?.date?.timestamp) || Date.parse(g.game?.date?.date || '') / 1000;
   const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
-  function teamYards(team, category) {
-    const values = (team?.groups || [])
-      .filter(group => normalize(group.name) === category)
-      .flatMap(group => (group.players || []).map(player => extract(player.statistics, category, ['yards'])))
-      .filter(value => value !== null);
-    return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
-  }
-  const definitions = [
-    { key: 'passYds', title: 'Passing yards', group: 'passing', keys: ['yards'] },
-    { key: 'passTD', title: 'Passing TDs', group: 'passing', keys: ['passing touch downs', 'passing touchdowns'] },
-    { key: 'rushYds', title: 'Rushing yards', group: 'rushing', keys: ['yards'] },
-    { key: 'rushTD', title: 'Rushing TDs', group: 'rushing', keys: ['rushing touch downs', 'rushing touchdowns'] },
-    { key: 'recYds', title: 'Receiving yards', group: 'receiving', keys: ['yards'] },
-    { key: 'rec', title: 'Receptions', group: 'receiving', keys: ['receptions', 'total receptions'] },
-    { key: 'recTD', title: 'Receiving TDs', group: 'receiving', keys: ['receiving touch downs', 'receiving touchdowns'] }
-  ];
-  const extract = (stats, group, keys) => {
-    if (!Array.isArray(stats)) return null;
-    const row = stats.find(item => keys.includes(normalize(item.name)));
-    return row ? n(row.value) : null;
-  };
-  function accumulate(map, teamEntry, gameId, gameDate, opponent) {
-    const team = teamEntry.team || {};
-   
-    for (const group of teamEntry.groups || []) {
-      const groupName = normalize(group.name);
-      for (const item of group.players || []) {
-        const person = item.player || {};
-        if (!person.id || !person.name) continue;
-        const id = String(person.id);
-        if (!map.has(id)) map.set(id, {
-          id, name: person.name, team: team.name || 'Team',
-          teamId: String(team.id || ''), games: new Map()
-        });
-        const record = map.get(id);
-       if (!record.games.has(gameId)) record.games.set(gameId, { gameDate, opponent });
-        const line = record.games.get(gameId);
-        if (groupName === 'passing') {
-          const combined = (item.statistics || []).find(s => normalize(s.name) === 'comp att');
-          const match = String(combined?.value || '').match(/^\s*\d+\s*\/\s*(\d+)\s*$/);
-          if (match) line.attempts = Number(match[1]);
-        }
-        if (groupName === 'rushing') {
-  const carries = extract(item.statistics, groupName, ['total rushes']);
-  if (carries !== null) line.carries = carries;
-}
-if (groupName === 'receiving') {
-  const targets = extract(item.statistics, groupName, ['targets']);
-  if (targets !== null) line.targets = targets;
-}
-        for (const def of definitions) {
-          if (normalize(def.group) !== groupName) continue;
-          const value = extract(item.statistics, groupName, def.keys);
-          if (value !== null) line[def.key] = value;
-        }
-      }
-    }
-  }
-  const lineKey = (record, def) => `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.id}:${def.key}`;
+  const {definitions,teamYards,accumulate,completeCalendar} = Unit501PlayerStats;
+  const lineKey = (record, def) => `unit501:player-line:v1:${lineScope}:${record.teamId}:${record.playerId}:${def.key}`;
   function readLine(key) {
     let entry = enteredLines.get(key);
     if (entry?.source === 'auto' && Date.now() - entry.savedAt > 1800000) {
@@ -174,7 +116,7 @@ if (groupName === 'receiving') {
     board.append(title, note);
     const rows = [];
     for (const record of choices) {
-      if (window.Unit501Availability?.assess(record.teamId, record.id).blocked) continue;
+      if (window.Unit501Availability?.assess(record.teamId, record.playerId).blocked) continue;
       for (const def of definitions) {
         const entry = readLine(lineKey(record, def));
         const line = n(entry.value);
@@ -288,7 +230,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
           });
           cell.append(open);
           const availabilityText = window.Unit501Availability?.describe(
-  row.record.teamId, row.record.id
+  row.record.teamId, row.record.playerId
 ) || 'Availability not checked yet.';
 
 const details = document.createElement('details');
@@ -385,27 +327,28 @@ cell.append(details);
     const history = Array.from(record.games.values()).sort((a, b) => b.gameDate - a.gameDate);
     const opponent = matchupTeams.find(team => team.id !== record.teamId);
     const opponentStats = opponentDefense.get(opponent?.id);
-    const ownOffense = teamOffense.get(record.teamId);
-      const form = Unit501PlayerForm.summarize(history,def.key);
-      if (!form) return null;
-      const {values,gameDetails,average,weighted} = form;
-      let adjusted = weighted;
-      let adjustment = null;
-      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
-        const offenseKey = def.key === 'rushYds' ? 'rushYards' : 'passYards';
-        const defenseKey = def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed';
-        const offense = ownOffense?.[offenseKey] || [];
-        const defense = opponentStats?.[defenseKey] || [];
-        if (offense.length >= 2 && defense.length >= 2 && mean(offense) > 0) {
+    const form = Unit501PlayerForm.project(history,def.key);
+    if (!form || form.withheld) return null;
+    const {values,gameDetails,average,weighted} = form;
+    let adjusted = form.baseline;
+    let adjustment = null;
+    let matchupDefense = null;
+    if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
+        const metricKey = def.key === 'rushYds' ? 'rushAgainst' : 'passAgainst';
+        const context = typeof scoringContext !== 'undefined' && scoringContext?.game === selected ? scoringContext.data : null;
+        const league = (context?.teams || []).filter(t => t.metrics?.[metricKey]?.rank !== null && t.metrics?.[metricKey]?.games === t.games).map(t => t.metrics[metricKey].average).filter(Number.isFinite);
+        const defense = context?.teams.find(t=>t.id===opponent?.id)?.metrics[metricKey];
+        if (league.length === (selected.league === '1' ? 32 : 138) && defense?.games >= 2 && Number.isFinite(defense.average) && mean(league) > 0) {
           // A cautious heuristic, capped at +/-7.5%; not a calibrated forecast.
-          const factor = Math.max(0.85, Math.min(1.15, mean(defense) / mean(offense)));
+          const factor = Math.max(0.85, Math.min(1.15, defense.average / mean(league)));
           adjustment = (factor - 1) * 0.5;
-          adjusted = weighted * (1 + adjustment);
+          adjusted = form.baseline * (1 + adjustment);
+          matchupDefense={average:defense.average,games:defense.games,rank:defense.rank,pool:defense.pool};
         }
       }
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
-    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function showPlayer() {
     renderComparisons();
@@ -416,10 +359,10 @@ cell.append(details);
     title.textContent = `${record.name} — ${record.team}`;
     results.appendChild(title);
     const availability = document.createElement('p');
-    availability.textContent = window.Unit501Availability?.describe(record.teamId, record.id) || 'Availability unknown.';
+    availability.textContent = window.Unit501Availability?.describe(record.teamId, record.playerId) || 'Availability unknown.';
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
     results.appendChild(availability);
-    const assessment = window.Unit501Availability?.assess(record.teamId, record.id);
+    const assessment = window.Unit501Availability?.assess(record.teamId, record.playerId);
     if (assessment?.blocked) {
       const withheld = document.createElement('p');
       withheld.textContent = assessment.reason;
@@ -467,6 +410,14 @@ workload.textContent = workloadParts.length
 results.appendChild(workload);
     let shown = 0;
     for (const def of definitions) {
+      const coverageReview=Unit501PlayerForm.project(history,def.key);
+      if(coverageReview?.withheld) {
+        const explanation=document.createElement('p');
+        explanation.style.color='#e8b95b';
+        explanation.textContent=def.title+': '+coverageReview.reason;
+        results.append(explanation);
+        continue;
+      }
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
@@ -479,6 +430,17 @@ results.appendChild(workload);
         warning.textContent = model.workloadWarning;
         card.appendChild(warning);
       }
+      if(model.form.usage) {
+        const usage=document.createElement('p');
+        usage.textContent=`Usage estimate: ${model.form.usage.workload.toFixed(1)} ${model.form.usage.key==='rec'?'receptions':model.form.usage.key} × ${model.form.usage.efficiency.toFixed(1)} yards each (${model.form.usage.games} paired games).`;
+        card.append(usage);
+      }
+      if(model.form.coverage.missing) {
+        const coverage=document.createElement('p');
+        coverage.style.color='#e8b95b';
+        coverage.textContent=`${model.form.coverage.recorded} recorded stat games out of ${model.form.coverage.total} completed team games. Missing records are not zeros; this estimate is conditional on recorded stats.${model.form.coverage.latestMissing?' The latest team game has no recorded stat for this market; verify the current role.':''}`;
+        card.append(coverage);
+      }
       const heading = document.createElement('b');
   const sortedValues = [...values].sort((a, b) => a - b); const middle = Math.floor(sortedValues.length / 2); const median = sortedValues.length % 2   ? sortedValues[middle]   : (sortedValues[middle - 1] + sortedValues[middle]) / 2;  heading.textContent =   `${def.title}: ${adjusted.toFixed(1)} projected (${workload}% workload) | ` +   `${average.toFixed(1)} average | ${median.toFixed(1)} median`;  if (values.length < 5) {   const warning = document.createElement('p');   warning.style.cssText = 'color:#e8b95b;margin:8px 0;';   warning.textContent =     `Small sample: ${values.length} recorded games. ` +     'One unusually high or low game can strongly affect the projection.';   card.appendChild(warning); }
       const context = document.createElement('p');
@@ -490,7 +452,12 @@ results.appendChild(workload);
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
   ] || [];
 
-  if (allowed.length) {
+  if(model.matchupDefense) {
+    const defense=document.createElement('p');
+    const metric=model.matchupDefense;
+    defense.textContent=`${opponent?.name || 'Opponent'} defense: ${metric.average.toFixed(1)} team yards allowed per game (${metric.games} games), rank ${metric.rank}/${metric.pool}. Matchup compares this with the same league metric.`;
+    card.appendChild(defense);
+  } else if (allowed.length) {
     const avgAllowed = allowed.reduce((a, b) => a + b, 0) / allowed.length;
     const defense = document.createElement('p');
     defense.textContent = `${opponent?.name || 'Opponent'} defense: ${avgAllowed.toFixed(1)} team yards allowed per game (${allowed.length} ${allowed.length === 1 ? 'game' : 'games'}, from recorded player stats).`;
@@ -498,17 +465,19 @@ results.appendChild(workload);
   }
   const explanation = document.createElement('p');
   explanation.textContent = adjustment === null
-    ? `Season/form baseline: ${weighted.toFixed(1)}. No defense adjustment: need at least two games of offense and defense yardage, with a positive offense average.`
-    : `Season/form baseline: ${weighted.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
+    ? `Usage/form baseline: ${model.form.baseline.toFixed(1)}. No defense adjustment: need complete league yardage rankings and at least two opponent games.`
+    : `Usage/form baseline: ${model.form.baseline.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
   card.appendChild(explanation);
 }
       addLineComparison(card, record, def, adjusted, values);
       shown++;
     }
-    if (!shown) results.textContent = 'Not enough recent games with this player’s recorded stats to estimate a projection.';
+    if (!shown) {
+      const empty=document.createElement('p');empty.textContent='No supported projection available from this player’s recorded stats.';results.append(empty);
+    }
     const note = document.createElement('p');
     note.style.opacity = '.8';
-    note.textContent = 'Baseline blends 50% recorded season average with 50% recent form (weights halve every three recorded team games). Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; team-score injury valuation is unchanged. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
+    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses season/form yardage. Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; team-score injury valuation is unchanged. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
     results.appendChild(note);
   }
   function reset() {
@@ -519,7 +488,6 @@ results.appendChild(workload);
     loadedFor = null;
     choices = [];
     opponentDefense.clear();
-    teamOffense.clear();
     matchupTeams = [];
     enteredLines.clear();
     workloadScenarios.clear();
@@ -565,6 +533,8 @@ results.appendChild(workload);
         const previous = list.filter(g => {
 const stage = String(g.game?.stage || '').toLowerCase();
 if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
+if (String(g.league?.id) !== league || String(g.league?.season) !== season) return false;
+if (league === '1' && stage !== 'regular season') return false;
           const id = g.game?.id || g.id;
           const time = gameTime(g);
           const code = String(g.game?.status?.short || '').toUpperCase();
@@ -591,26 +561,24 @@ if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
       opponentDefense = new Map(teamIds.map(id => [
   id, { rushAllowed: [], passAllowed: [] }
 ]));
-    teamOffense = new Map(teamIds.map(id => [
-  id, { rushYards: [], passYards: [] }
-]));  
      // Sequential requests are intentionally gentler on rate limits.
          for (const id of ids) {
+        status.textContent = `Reading player stats: ${ids.indexOf(id)+1} of ${ids.length} season games…`;
         const rows = await json(`/api/player-stats?game=${id}`);
         if (task !== sequence) return;
         const pastGame = past.get(id);
         for (const [teamId, opponent] of pastGame.teams) {
           const teamEntry = rows.find(row => String(row.team?.id) === teamId);
           const opponentBox = rows.find(row => String(row.team?.id) === opponent.id);
+          if (!teamEntry || !opponentBox) throw new Error('A completed game is missing a team box score; projections withheld.');
           if (teamEntry) accumulate(map, teamEntry, id, pastGame.date, opponent.name);
           for (const category of ['rushing', 'passing']) {
-            const ownYards = teamYards(teamEntry, category);
             const allowedYards = teamYards(opponentBox, category);
-            if (ownYards !== null) teamOffense.get(teamId)[category === 'rushing' ? 'rushYards' : 'passYards'].push(ownYards);
             if (allowedYards !== null) opponentDefense.get(teamId)[category === 'rushing' ? 'rushAllowed' : 'passAllowed'].push(allowedYards);
           }
         }
       }
+      completeCalendar(map,past);
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
@@ -633,6 +601,7 @@ if (/pre[\s-]*season|exhibition/i.test(stage)) return false;
       if (task === sequence) button.disabled = false;
     }
   });
+  document.addEventListener('unit501:team-context-updated', () => { if (loadedFor) showPlayer(); });
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
   picker.addEventListener('change', () => {   showPlayer();   results.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
   reset();

@@ -38,7 +38,7 @@ async function loadFanDuel() {
   try {
     const params = new URLSearchParams({ away: game.a, home: game.h,
       league: $('league').value, kickoff: game.kickoff });
-    const response = await fetch('/api/fanduel?' + params);
+    const response = await fetch('/api/fanduel?' + params, {signal:AbortSignal.timeout(20000)});
     const data = await response.json();
     if (task !== oddsSequence || selected !== game || edits !== lineEdits) return;
     if (!response.ok || data.error) throw new Error(data.error || 'FanDuel feed unavailable.');
@@ -230,6 +230,8 @@ function showTeamContext(data, game) {
     scoringContext = {game,data,signature:nextSignature};
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
   }
+  scoringContext = {game,data,signature:nextSignature};
+  document.dispatchEvent(new Event('unit501:team-context-updated'));
   contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
@@ -277,8 +279,34 @@ function showTeamContext(data, game) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions use scoring offense and opposing scoring defense, softened toward the league average for small samples. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
+  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
+  const validation=data.validation;
+  if(validation) {
+    const details=document.createElement('details');
+    const summary=document.createElement('summary');summary.textContent='Historical model check';
+    const description=document.createElement('p');
+    description.textContent=validation.games
+      ? `${validation.games} replayed games; average score error ${validation.scoreMAE.toFixed(1)} points per team, margin error ${validation.marginMAE.toFixed(1)}, total error ${validation.totalMAE.toFixed(1)}. Total bias ${validation.totalBias>=0?'+':''}${validation.totalBias.toFixed(1)} (positive means projected too high).`
+      : 'Not enough earlier complete scoring history for a model check yet.';
+    const explanation=document.createElement('p');explanation.textContent=validation.explanation;
+    details.append(summary,description,explanation);
+    if(validation.legacy){
+      const comparison=document.createElement('p');
+      comparison.textContent=`Previous formula on the same games: score error ${validation.legacy.scoreMAE.toFixed(1)}, margin error ${validation.legacy.marginMAE.toFixed(1)}, total error ${validation.legacy.totalMAE.toFixed(1)}. Lower is better; the new formula is not assumed to win this comparison.`;
+      details.append(comparison);
+    }
+    if(validation.probabilityGames) {
+      const label=document.createElement('p');label.textContent=`Away-win reliability: ${validation.probabilityGames} later games, Brier score ${validation.brier.toFixed(3)} (lower is better). Small bins remain uncertain.`;details.append(label);
+      const table=document.createElement('table');table.style.width='100%';
+      const header=document.createElement('tr');for(const title of ['Model band','Games','Mean model','Actual away wins']){const cell=document.createElement('th');cell.textContent=title;header.append(cell);}table.append(header);
+      for(const bin of validation.bins.filter(b=>b.games)) {
+        const tr=document.createElement('tr');
+        for(const text of [`${Math.round(bin.lower*100)}–${Math.round(bin.upper*100)}%`,bin.games,`${(bin.predicted*100).toFixed(1)}%`,`${(bin.observed*100).toFixed(1)}%`]){const cell=document.createElement('td');cell.textContent=text;tr.append(cell);}table.append(tr);
+      }details.append(table);
+    }
+    teamContext.append(details);
+  }
 }
 function loadTeamContext(game) {
   clearTimeout(contextTimer);
@@ -286,10 +314,11 @@ function loadTeamContext(game) {
   const params = new URLSearchParams({league:$('league').value, season:$('date').value.slice(0,4),
     before:game.kickoff,away:game.awayId,home:game.homeId});
   let polls = 0;
+  let lastProgress = '', lastChanged = Date.now();
   contextMessage('Loading season stats… The first load gathers completed game box scores and may take a few minutes.');
   async function poll() {
     try {
-      const response = await fetch('/api/rankings?' + params);
+      const response = await fetch('/api/rankings?' + params, {signal:AbortSignal.timeout(20000)});
       const result = await response.json();
       if (task !== contextSequence || selected !== game) return;
       if (result.state === 'error' && result.data) {
@@ -304,16 +333,23 @@ function loadTeamContext(game) {
       if (result.state === 'ready') { showTeamContext(result.data, game); return; }
       if (++polls >= 1200) throw new Error('Still gathering season stats. Select the game again shortly to check progress.');
       const progress = result.total ? `Building rankings: ${result.completed} of ${result.total} completed games checked. Saved results make later loads faster.` : result.message || 'Finding completed season games…';
+      if(progress!==lastProgress){lastProgress=progress;lastChanged=Date.now();}
+      const stalled=Date.now()-lastChanged>120000;
       if (result.data) {
         showTeamContext(result.data, game);
         const status = document.createElement('p');
         status.setAttribute('role', 'status');
-        status.textContent = progress;
+        status.textContent = progress + (result.data.coverage.pointsFor.ranked && result.data.coverage.pointsAgainst.ranked ? ' Scoring is ready: you can run the simulation while yardage rankings finish.' : '') + (stalled ? ' No progress for two minutes. Check provider quota or reselect this game to retry.' : '');
         teamContext.append(status);
-      } else contextMessage(progress);
+      } else contextMessage(progress + (stalled ? ' No progress for two minutes. Check provider quota or reselect this game to retry.' : ''));
       contextTimer = setTimeout(poll,3000);
     } catch (error) {
-      if (task === contextSequence && selected === game) contextMessage('Team comparison unavailable: ' + error.message);
+      if (task === contextSequence && selected === game) {
+        if(scoringContext?.game===game) {
+          showTeamContext(scoringContext.data,game);
+          const warning=document.createElement('p');warning.textContent='Rankings refresh stopped: '+error.message+' Reselect the game to retry.';teamContext.append(warning);
+        } else contextMessage('Team comparison unavailable: ' + error.message);
+      }
     }
   }
   poll();
@@ -547,7 +583,7 @@ function sim() {
     : 'No injury scenario entered; this does not confirm either team is healthy. No automatic team-score injury valuation.';
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Experimental model frequencies, not calibrated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. Model frequencies; variance: ${result.varianceSource}. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
 }
 
 $('load').onclick = load;

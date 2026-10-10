@@ -1,0 +1,65 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+// Minimal DOM harness for actual client scripts; it does not test rendering.
+function harness(storage=new Map()) {
+ const nodes=new Map(),timers=[];
+ class Node {
+  constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};this.dataset={};this.style={};this.validity={badInput:false};this._value='';this._text='';this.isConnected=true;this.classList={add(){},remove(){},toggle(){}};}
+  set id(v){this._id=v;nodes.set(v,this);}get id(){return this._id;}
+  set value(v){this._value=String(v);}get value(){return this._value;}
+  set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(c=>typeof c==='string'?c:c.textContent).join('');}
+  set innerHTML(v){this.replaceChildren();}get innerHTML(){return '';}
+  append(...children){this.children.push(...children);if(this.tag==='select'&&!this.value&&children[0])this.value=children[0].value;}
+  appendChild(child){this.append(child);return child;}
+  replaceChildren(...children){this.children=[];this._text='';if(this.tag==='select')this.value='';this.append(...children);}
+  before(){}after(){}setAttribute(){}scrollIntoView(){}focus(){}
+  addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
+  async dispatchEvent(event){for(const fn of this.listeners[event.type]||[])await fn(event);}
+ }
+ const document=new Node('document');document.createElement=tag=>new Node(tag);document.getElementById=id=>nodes.get(id)||null;
+ const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
+ for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)){const node=new Node(match[1]);node.id=match[2];}
+ nodes.get('date').value='2026-10-10';nodes.get('league').value='1';nodes.get('weatherEnabled').checked=true;
+ const context={document,console,URLSearchParams,AbortSignal,Date,Event:class{constructor(type){this.type=type;}},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
+ context.window=context;vm.createContext(context);
+ const stamp=Math.floor((Date.now()+86400000)/1000);
+ const game={league:{id:1,season:2026},game:{id:999,stage:'Regular Season',date:{timestamp:stamp},status:{short:'NS',long:'Scheduled'},venue:{name:'Test Stadium'}},teams:{away:{id:1,name:'Team A'},home:{id:2,name:'Team B'}},scores:{away:{total:null},home:{total:null}}};
+ const teams=Array.from({length:32},(_,i)=>({id:String(i+1),games:4,opponents:[],metrics:Object.fromEntries(['pointsFor','pointsAgainst','rushAgainst','passAgainst'].map(key=>[key,{average:key.startsWith('points')?24:key.startsWith('rush')?100:220,games:4,rank:i+1,pool:32}]))}));
+ const data={season:'2026',before:stamp*1000,scope:'NFL regular season',teams,coverage:{pointsFor:{ranked:true,expected:32},pointsAgainst:{ranked:true,expected:32}},metrics:[['pointsFor','Scoring offense',false],['pointsAgainst','Scoring defense',true]],explanation:'Fixture'};
+ let polls=0;
+ context.fetch=async url=>{
+  const u=new URL(url,'http://localhost');let response;
+  if(u.pathname==='/api/health')response={ok:true,liveData:true};
+  else if(u.pathname==='/api/games')response={response:[game]};
+  else if(u.pathname==='/api/rankings')response={state:++polls===1?'loading':'ready',completed:2,total:32,data};
+  else if(u.pathname==='/api/fanduel')response={available:true,awaySpread:7.5,total:48.5,spreadUpdated:Date.now(),totalUpdated:Date.now()};
+  else if(u.pathname==='/api/team-games')response={response:[1,2].map(id=>({...game,game:{...game.game,id,date:{timestamp:stamp-id*86400-1000},status:{short:'FT',long:'Finished'}}}))};
+  else if(u.pathname==='/api/player-stats')response={response:['1','2'].map((id,i)=>({team:{id:Number(id),name:'Team '+(i?'B':'A')},groups:[{name:'Rushing',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Total Rushes',value:20},{name:'Yards',value:100}]}]},{name:'Receiving',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Receptions',value:4},{name:'Yards',value:24},{name:'Targets',value:5}]}]}]}))};
+  else if(u.pathname==='/api/fanduel-props')response={props:[{name:'RB 1',stat:'carries',line:19.5,updatedAt:Date.now()},{name:'RB 1',stat:'recYds',line:22.5,updatedAt:Date.now()},{name:'RB 1',stat:'rec',line:3.5,updatedAt:Date.now()}],message:'Fixture props'};
+  else throw Error('Unexpected client request '+url);
+  return {ok:true,json:async()=>response};
+ };
+ const run=source=>vm.runInContext(source,context);
+ for(const file of ['team-model.js','app.js','injury-model.js','player-form.js','player-stats.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ const settle=()=>new Promise(resolve=>setImmediate(resolve));
+ return {nodes,storage,run,game,data,timers,settle};
+}
+test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
+ const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.equal(h.nodes.get('line-1:7-recYds').value,'22.5');assert.equal(h.nodes.get('line-1:7-rec').value,'3.5');
+ const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
+ assert.ok([...h.storage].some(([k,v])=>k.endsWith(':1:7:carries')&&JSON.parse(v).value==='21.5'));
+ const next=harness(h.storage);await next.settle();next.run('$("league").value="1"');next.run(`choose(parseGame(${JSON.stringify(next.game)}))`);await next.settle();
+ await next.nodes.get('predict').dispatchEvent({type:'click'});await next.settle();
+ assert.equal(next.nodes.get('line-1:7-carries').value,'21.5');
+ // A new ranking response must not discard a saved manual line.
+ next.run(`showTeamContext(${JSON.stringify(next.data)},selected)`);await next.settle();assert.equal(next.nodes.get('line-1:7-carries').value,'21.5');
+});

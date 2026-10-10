@@ -25,6 +25,12 @@ test('rejects one-sided, conflicting and duplicate quotes',()=>{
  assert.equal(parseProps(event([outcomes[0],{...outcomes[1],point:251.5}]),now).length,0);
  assert.equal(parseProps(event([...outcomes,outcomes[0]]),now).length,0);
 });
+test('rushing attempts, RB receiving yards and receptions parse paired main lines',()=>{
+ for(const [key,stat]of [['player_rush_attempts','carries'],['player_reception_yds','recYds'],['player_receptions','rec']]) {
+   const rows=outcomes.map(o=>({...o,description:'Running Back',point:15.5}));
+   assert.equal(parseProps(event(rows,now,key),now)[0].stat,stat);
+ }
+});
 test('event lookup and per-game odds use server key and share cached calls',async()=>{
  const originalFetch=global.fetch, originalKey=process.env.ODDS_API_KEY;
  process.env.ODDS_API_KEY='test-key';

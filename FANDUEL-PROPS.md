@@ -9,3 +9,5 @@ Manual entries are preserved, including saved browser entries; clear a manual en
 Verified locally with mocked provider responses, parsing checks, JavaScript syntax checks and existing model/rankings tests. Live subscription access still needs verification after deployment.
 
 Provider documentation: https://the-odds-api.com/sports-odds-data/betting-markets.html
+
+Rushing attempts now request the documented `player_rush_attempts` market. Running-back receiving yards and receptions use the existing receiving markets, without a position restriction. Availability depends on the bookmaker/feed; absent quotes are not guessed.

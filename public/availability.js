@@ -14,7 +14,7 @@
   }
   window.Unit501Availability={
     assess(teamId,playerId) {
-      return Unit501InjuryModel.assess(game === selected ? data : null, selected, teamId, playerId);
+      return Unit501InjuryModel.assess(game === selected ? data : null, selected, teamId, playerId, Date.now(), true);
     },
     describe(teamId,playerId) {
       if(!data || !game || game!==selected) return 'Roster and injury status not checked yet.';

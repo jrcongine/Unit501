@@ -3,7 +3,7 @@
 Private NFL + college-football simulation app foundation.
 
 ## Run
-Requires Node 18+.
+Requires Node 20+ (uses `fetch` and `AbortSignal.timeout`).
 
 ```bash
 cd unit501
@@ -23,8 +23,8 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - 50,000-run Monte Carlo game simulator
 - Mobile/iPhone-friendly UI
 
-## Next build
-Normalize FanDuel bookmaker markets automatically, calculate ratings from historical team stats, add injuries/weather, prop projections, bankroll/unit ledger, and backtesting/calibration.
+## Current football extensions
+FanDuel game/prop matching, historical team ranks, roster/injury review, optional NFL production ratings, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
 
 ## College team rankings
@@ -38,10 +38,10 @@ The first college load needs one schedule request plus one box-score request per
 Validation: `node test/rankings.test.js` covers FBS/FCS separation, aliases, missing data, ties, cutoff/season rules, NFL regression, full-league fetching, and cache reuse. Live API-Sports national coverage must be checked after deployment; no production API key is needed for these fixture tests.
 
 
-## Experimental scoring simulation
+## Football model and historical check
 
-`public/team-model.js` computes a game-weighted league scoring average using the complete NFL/FBS scoring pool. Each selected team's scoring offense and defense is shrunk toward that average using four league-average pseudo-games. Expected away points average the shrunk away offense and home defense; expected home points average home offense and away defense. Optional point adjustments add directly to the respective score (-14 to +14). Both teams need two completed games and complete scoring data. Existing player projections are unchanged.
+The current scoring/projection changes, validation method and remaining live-data work are documented in [FOOTBALL-AUDIT.md](FOOTBALL-AUDIT.md).
 
-The 50,000 simulations retain the illustrative standard deviations of 7.5 independent points per team and 4 shared points. Scores are rounded and floored at zero; pushes and tied scores are reported separately. Overtime is not modeled. These assumptions have not been fitted or backtested, so displayed frequencies are not calibrated betting probabilities. No adjustment is made for schedule strength, venue, injury or weather.
+Scoring uses offense plus opposing defense deviations around the game-weighted league scoring environment, with four league-average pseudo-games for sample smoothing. Schedule, venue, user injury scenarios and fresh outdoor wind adjustments then apply. Complete schedule scores are available before national yardage rankings finish. Simulation variance can use earlier chronological replay errors when at least 30 predictions are available; frequencies remain experimental. The Historical model check compares new and previous score errors and shows later-game away-win reliability.
 
-Changing matchup, inputs, lines or scoring data clears old results. Run `node test/team-model.test.js` for matchup, missing-data, line-sign and push tests.
+Run `npm test` for regression and client-flow checks. Actual provider coverage, current prop quotes and production accuracy require deployment validation with the configured API keys.

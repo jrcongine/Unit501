@@ -6,6 +6,8 @@ const fs = require('fs');
 
 const path = require('path');
 const fanduel = require('./fanduel');
+const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
+function api(endpoint){return cachedAPI(endpoint);}
 const getRankings = require('./rankings').createRankings(api);
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
@@ -22,7 +24,7 @@ function send(res, code, obj, type = 'application/json') {
 
 }
 
-async function api(endpoint) {
+async function providerAPI(endpoint) {
 
   if (!process.env.API_SPORTS_KEY) {
 

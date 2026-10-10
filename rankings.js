@@ -4,7 +4,9 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const membership = require('./fbs-2026.json');
-const normalize = name => String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const {validate}=require('./backtest');
+const {decodePunctuation}=require('./team-names');
+const normalize = name => decodePunctuation(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const fbsAliases = new Map(membership.teams.flatMap(team => team.aliases.map(alias => [normalize(alias), team.name])));
 function fbsName(team, season) {
   if (String(season) !== membership.season) return null;
@@ -201,6 +203,17 @@ function createRankings(api, options = {}) {
         return data;
       }
       const boxes = new Map();
+      // Scoring comes from completed-game schedules. Do not gate scores or
+      // scoring ranks on hundreds of unrelated yardage box-score requests.
+      job.data=summary(boxes);
+      job.data.validation=validate(past,query,before=>{
+        const data=summarize(scoringGames,new Map(),{...query,before},[...roster.values()]);
+        for(const t of data.teams) if(reports.has(t.id)) {
+          t.opponentScheduleVerified=reports.get(t.id);t.scoringOnly=true;
+        }
+        return data;
+      });
+      const validation=job.data.validation;
       job.total = past.length;
       for (const g of past) {
         const id = String(g.game?.id);
@@ -210,9 +223,11 @@ function createRankings(api, options = {}) {
         if (job.completed === selectedCount) {
           // Publish the selected teams' complete averages while national coverage loads.
           job.data = summary(boxes);
+          job.data.validation=validation;
         }
       }
       job.data = summary(boxes);
+      job.data.validation=validation;
       job.state = 'ready';
     } catch (error) {
       job.state = 'error';

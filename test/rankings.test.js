@@ -29,6 +29,8 @@ test('verified list is unique and aliases do not confuse FBS/FCS or Miami school
   assert.equal(fbsName({name:'North Dakota State'},'2026'),'North Dakota State');
   assert.equal(fbsName({name:'Sacramento State'},'2026'),'Sacramento State');
   assert.equal(fbsName({name:'Arkansas'},'2027'),null);
+  assert.equal(fbsName({name:'Hawai&#x27;i'},'2026'),"Hawai'i");
+  assert.equal(fbsName({name:'Hawai&#39;i'},'2026'),"Hawai'i");
 });
 test('complete FBS pool ranks offense descending, defense ascending; FCS excluded', () => {
   const {games,boxes}=fixture();
@@ -139,4 +141,31 @@ test('supplemental failures preserve rankings and never mark an opponent schedul
   assert.equal(extra.opponentScheduleVerified,false);
   assert.equal(extra.metrics.pointsFor.rank,null);
  }finally{await fs.rm(cacheDir,{recursive:true,force:true});}
+});
+test('complete scoring is published before the first yardage box finishes',async()=>{
+ const roster=teams.slice(0,32);
+ const games=[];
+ for(let week=0;week<2;week++)for(let i=0;i<32;i+=2)games.push({league:{id:1,season:2026},
+  game:{id:games.length+1,stage:'Regular Season',date:{timestamp:1000+week*100},status:{short:'FT'}},
+  teams:{away:roster[i],home:roster[i+1]},scores:{away:{total:24},home:{total:24}}});
+ let release,started;
+ const gate=new Promise(r=>{release=r;});const waiting=new Promise(r=>{started=r;});
+ let count=0;
+ const api=async endpoint=>{
+  if(endpoint.startsWith('/games?'))return {response:games};
+  if(++count===1){started();await gate;}
+  return {response:[]};
+ };
+ const cacheDir=await fs.mkdtemp(path.join(os.tmpdir(),'unit501-scoring-'));
+ try {
+  const q={...query,league:'1'};
+  const job=createRankings(api,{delayMs:0,cacheDir})(q);
+  await waiting;
+  assert.equal(job.state,'loading');assert.equal(job.completed,0);
+  assert.equal(job.data.coverage.pointsFor.ranked,true);
+  assert.equal(require('../public/team-model').project(job.data,{league:'1',season:q.season,kickoff:q.before,awayId:q.away,homeId:q.home}).available,true);
+  release();const deadline=Date.now()+10000;
+  while(job.state==='loading'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
+  assert.equal(job.state,'ready');
+ }finally{release();await fs.rm(cacheDir,{recursive:true,force:true});}
 });
