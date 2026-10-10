@@ -24,6 +24,7 @@
    const replacement=Unit501InjuryModel.assess(availability,game,s.teamId,s.replacementId,Date.now(),true);
    if(replacement.blocked){reasons.push('Replacement is unavailable or team membership is unconfirmed.');continue;}
    const original=Unit501InjuryModel.assess(availability,game,s.teamId,s.playerId);
+   if(original.state==='conflict'){reasons.push('Conflicting reports for the original player: replacement workload scenario withheld until availability is resolved.');continue;}
    if(!original.blocked&&s.workload===100)continue;
    rows.push({...s,workload:original.blocked?0:s.workload});
   }
