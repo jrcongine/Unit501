@@ -1,7 +1,7 @@
 'use strict';
 const { sports } = require('./fanduel');
 const { matches, missingMatchMessage } = require('./odds-matching');
-const markets = {player_pass_yds:'passYds',player_pass_tds:'passTD',player_rush_yds:'rushYds',player_rush_tds:'rushTD',player_reception_yds:'recYds',player_receptions:'rec',player_reception_tds:'recTD'};
+const markets = {player_pass_yds:'passYds',player_pass_tds:'passTD',player_rush_attempts:'carries',player_rush_yds:'rushYds',player_rush_tds:'rushTD',player_reception_yds:'recYds',player_receptions:'rec',player_reception_tds:'recTD'};
 const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const cache = new Map();
 async function request(path, params = {}) {

@@ -71,18 +71,29 @@ test('equal teams project league average; stronger scoring offense raises its ow
  data.teams[0].metrics.pointsFor.average=40;
  const p=project(data,game);
  assert.ok(p.away>p.home);
- assert.ok(p.away<32); // early-season shrinkage, rather than raw average
+ assert.ok(p.away<40); // early-season shrinkage, rather than raw average
 });
 test('opposing defense is applied to correct side and point overrides are explicit',()=>{
  const {game,data}=setup();
  data.teams[1].metrics.pointsAgainst.average=40;
  const p=project(data,game);
- assert.equal(p.away,28);
+ assert.equal(p.away,32);
  assert.equal(p.home,24);
  const adjusted=project(data,game,{away:2,home:-3});
- assert.equal(adjusted.away,30);
+ assert.equal(adjusted.away,34);
  assert.equal(adjusted.home,21);
  assert.equal(project(data,game,{away:15}).available,false);
+});
+test('offense separation is not halved again and a strong opposing defense suppresses a weak offense',()=>{
+ const {game,data}=setup();
+ data.teams[0].metrics.pointsFor.average=8;
+ data.teams[1].metrics.pointsFor.average=40;
+ data.teams[0].metrics.pointsAgainst.average=40;
+ data.teams[1].metrics.pointsAgainst.average=8;
+ const p=project(data,game);
+ assert.equal(p.away,8);assert.equal(p.home,40);
+ assert.equal(p.home-p.away,32);
+ // Old formula would have projected 16–32, halving this margin to 16.
 });
 test('stale matchup, incomplete pool, small samples and outside-pool teams block predictions',()=>{
  const {game,data}=setup();
@@ -113,6 +124,19 @@ test('integer score pushes counted separately; fractional lines cannot push',()=
  const b=simulate(p,.5,48.5,10000,rng());
  assert.equal(b.spreadPush,0);
  assert.equal(b.totalPush,0);
+});
+test('flooring low scores does not inflate simulated scoring and zero means zero',()=>{
+ const p={available:true,away:2,home:24};
+ const result=simulate(p,0,26,50000,rng());
+ assert.ok(Math.abs(result.meanAway-2)<.15);
+ assert.ok(Math.abs(result.meanHome-24)<.2);
+ assert.equal(simulate({...p,away:0},0,24,10000,rng()).meanAway,0);
+});
+test('simulation fits only validated earlier-error variance for the current model',()=>{
+ const p={available:true,away:24,home:24};
+ assert.match(simulate(p,0,48,10,rng()).varianceSource,/Default/);
+ assert.match(simulate({...p,calibration:{modelVersion:'scoring-v2',games:30,awaySD:12,homeSD:12,correlation:.2}},0,48,10,rng()).varianceSource,/Earlier/);
+ assert.match(simulate({...p,calibration:{modelVersion:'scoring-v1',games:30,awaySD:12,homeSD:12,correlation:.2}},0,48,10,rng()).varianceSource,/Default/);
 });
 test('college pool supported with 138 complete teams; insufficient pool is blocked',()=>{
  const {game,data}=setup();
@@ -158,7 +182,7 @@ test('opponent correction excludes the observed head-to-head result',()=>{
  data.teams[0].opponents.forEach(p=>p.scored=48);
  // Opponent allowed 120 total, minus 48 head-to-head = 72 in three other games.
  const p=project(data,game);
- assert.equal(p.schedule.away.offense,0);
+ assert.ok(Math.abs(p.schedule.away.offense-(p.baseline-24)*3/14)<1e-9);
 });
 test('missing, outside-pool, one-game and invalid opponent samples keep both baseline scores',()=>{
  for(const modify of [

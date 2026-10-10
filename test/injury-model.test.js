@@ -85,3 +85,12 @@ test('empty injury review never asserts health and expired reports are unresolve
   data.teams[0].injuries.checkedAt=now-900001;
   assert.equal(teamSummary(data,game,'1',now).unknown.length,1);
 });
+test('prop membership review withholds absent players without claiming an injury or inferring trades',()=>{
+ const data=fixture('Active');
+ const result=assess(data,game,'1','99',now,true);
+ assert.equal(result.blocked,true);assert.equal(result.state,'team-unconfirmed');
+ data.teams[0].roster.checkedAt=now-3600001;
+ assert.equal(assess(data,game,'1','99',now,true).blocked,false);
+ data.teams[0].roster.checkedAt=now;data.teams[0].roster.rows=[];
+ assert.equal(assess(data,game,'1','99',now,true).blocked,false);
+});

@@ -31,7 +31,7 @@
     return {valid:true,margin,reason:(mode === 'home' ? 'Home stadium selected.' : 'Home venue inferred from at least two earlier home games; verify neutral-site exceptions.') +
       ` Experimental home-field assumption: +${margin} points to the home margin; projected total unchanged.`};
   }
-  function project(data, game, adjustments = {}) {
+  function project(data, game, adjustments = {}, legacy = false) {
     if (!data || data.before !== game.kickoff || String(data.season) !== String(game.season))
       return {available:false,reason:'Waiting for scoring stats for this matchup.'};
     const poolSize = game.league === '1' ? 32 : 138;
@@ -52,9 +52,13 @@
     let sum = 0, count = 0;
     for (const team of pool) {
       const m = team.metrics.pointsFor;
-      if (!Number.isFinite(m.average) || m.average < 0 || !(m.games > 0))
+      const allowed=team.metrics.pointsAgainst;
+      if (!Number.isFinite(m.average) || m.average < 0 || !(m.games > 0) ||
+          !allowed || !Number.isFinite(allowed.average) || allowed.average<0 || allowed.games!==m.games)
         return {available:false,reason:'League scoring data is incomplete.'};
-      sum += m.average * m.games;
+      // FBS games include opponents outside the ranking pool. Use both sides
+      // of the pool's scoring environment, rather than only its points scored.
+      sum += (legacy?m.average:(m.average+allowed.average)/2) * m.games;
       count += m.games;
     }
     const baseline = sum / count;
@@ -98,9 +102,13 @@
     const shrink = (team,key) => (team.metrics[key].average * team.games + baseline * 4) / (team.games + 4);
     const corrected = (team,key) => shrink(team,key) + (scheduleApplied
       ? corrections.get(team.id)[key === 'pointsFor' ? 'offense' : 'defense'] * team.games / (team.games + 4) : 0);
-    const score = (offense,defense,adjustment,adjusted) => Math.max(0,
-      ((adjusted ? corrected : shrink)(offense,'pointsFor') +
-       (adjusted ? corrected : shrink)(defense,'pointsAgainst')) / 2 + adjustment);
+    // Offense and defense are deviations from one league baseline. Averaging
+    // them halves both signals *after* sample shrinkage and compresses margins.
+    const score = (offense,defense,adjustment,adjusted) => {
+      const sum=(adjusted ? corrected : shrink)(offense,'pointsFor') +
+        (adjusted ? corrected : shrink)(defense,'pointsAgainst');
+      return Math.max(0,(legacy?sum/2:sum-baseline)+adjustment);
+    };
     const venue = venueEffect(game,home,away,adjustments.venueMode);
     if (!venue.valid) return {available:false,reason:'Choose a valid venue setting.'};
     const injury = Object.fromEntries(['awayOffense','awayDefense','homeOffense','homeDefense']
@@ -125,17 +133,44 @@
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
-      baseline,awayGames:away.games,homeGames:home.games};
+      baseline,awayGames:away.games,homeGames:home.games,
+      modelVersion:legacy?'scoring-v1':'scoring-v2',calibration:data.validation?.calibration || null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
     if (!prediction.available || ![prediction.away,prediction.home,spread,total].every(Number.isFinite) || total <= 0 || !Number.isInteger(runs) || runs < 1)
       throw new Error('Valid projected scores, lines and run count required.');
     const normal = () => Math.sqrt(-2 * Math.log(Math.max(Number.EPSILON,random()))) * Math.cos(2*Math.PI*random());
-    let covers=0,overs=0,wins=0,spreadPushes=0,totalPushes=0,ties=0;
+    const fit=prediction.calibration;
+    const fitted=fit?.modelVersion==='scoring-v2' && fit.games>=30 &&
+      [fit.awaySD,fit.homeSD,fit.correlation].every(Number.isFinite) &&
+      fit.awaySD>=3 && fit.awaySD<=30 && fit.homeSD>=3 && fit.homeSD<=30 && Math.abs(fit.correlation)<=.8;
+    const awaySD=fitted?fit.awaySD:Math.sqrt(7.5**2+4**2);
+    const homeSD=fitted?fit.homeSD:awaySD;
+    const correlation=fitted?fit.correlation:4**2/(7.5**2+4**2);
+    // Flooring a normal centered on a low projection inflates its average.
+    // Find a location whose nonnegative continuous mean matches the projection.
+    const cdf=x=>{
+      const t=1/(1+.2316419*Math.abs(x));
+      const tail=Math.exp(-x*x/2)/Math.sqrt(2*Math.PI)*t*(.319381530+t*(-.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+      return x>=0?1-tail:tail;
+    };
+    const location=(mean,sd)=>{
+      if(mean<=0)return -Infinity;
+      let low=-12*sd,high=mean;
+      for(let i=0;i<40;i++) {
+        const mid=(low+high)/2,z=mid/sd;
+        const censoredMean=sd*Math.exp(-z*z/2)/Math.sqrt(2*Math.PI)+mid*cdf(z);
+        if(censoredMean>mean)high=mid;else low=mid;
+      }
+      return (low+high)/2;
+    };
+    const awayLocation=location(prediction.away,awaySD),homeLocation=location(prediction.home,homeSD);
+    let covers=0,overs=0,wins=0,spreadPushes=0,totalPushes=0,ties=0,awaySum=0,homeSum=0;
     for (let i=0;i<runs;i++) {
-      const shared=normal()*4;
-      const away=Math.max(0,Math.round(prediction.away+normal()*7.5+shared));
-      const home=Math.max(0,Math.round(prediction.home+normal()*7.5+shared));
+      const z=normal(),other=normal();
+      const away=Math.max(0,Math.round(awayLocation+z*awaySD));
+      const home=Math.max(0,Math.round(homeLocation+(correlation*z+Math.sqrt(1-correlation**2)*other)*homeSD));
+      awaySum+=away;homeSum+=home;
       if (away+spread>home) covers++;
       if (away+spread===home) spreadPushes++;
       if (away+home>total) overs++;
@@ -143,7 +178,8 @@
       if (away>home) wins++;
       if (away===home) ties++;
     }
-    return {cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs};
+    return {cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
+      varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
   const model={project,simulate,venueEffect,weatherEffect};
   if (typeof module !== 'undefined' && module.exports) module.exports=model;
