@@ -43,5 +43,20 @@
     "evidence": "The team reports that Mike LaFleur is keeping Brissett as QB1 for the upcoming Lions matchup.",
     "reviewedModifiedAt": "2026-10-08T16:18:54.159Z",
     "reviewedBodyHash": "61eb094aa1dfcbc787c6a68ef77663a244469f332ec6954758a95c27e262d777"
+  },
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21590",
+    "teamId": "5",
+    "kickoff": 1791764400000,
+    "position": "QB",
+    "name": "Tyler Huntley",
+    "publishedAt": "2026-10-09T16:46:21.624Z",
+    "url": "https://www.baltimoreravens.com/news/lamar-jackson-trey-hendrickson-injury-report-marlon-humphrey-zay-flowers-ronnie-stanley-ravens-falcons",
+    "publisher": "Baltimore Ravens",
+    "evidence": "The official team injury report names Huntley as the starting quarterback for Sunday against Atlanta with Jackson ruled out.",
+    "reviewedModifiedAt": "2026-10-09T20:24:06.803Z",
+    "reviewedBodyHash": "57dc4c5aa9f670965dd2d86a9049e4b122dbe0c95c8d212913dad9159566b3f7"
   }
 ]
