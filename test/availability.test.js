@@ -8,7 +8,7 @@ test('reports stay team-scoped; timestamps reflect retrieval; concurrent calls s
  const calls=[];
  const get=createAvailability(async path=>{calls.push(path);if(path.startsWith('/leagues'))return coverage();if(path.startsWith('/players'))return {response:[{id:7,name:'Player',position:'QB'}]};return {response:[{player:{id:7,name:'Player'},team:{id:1},status:'Out',date:'2026-10-01',description:'Ankle'}]};},()=>1000);
  const [a,b]=await Promise.all([get(q),get(q)]);
- assert.deepEqual(a,b);assert.equal(calls.length,5);
+ assert.deepEqual(a,b);assert.equal(calls.length,6);
  assert.equal(a.teams[0].injuries.rows[0].status,'Out');
  assert.equal(a.teams[1].injuries.rows.length,0);
  assert.equal(a.teams[0].roster.checkedAt,1000);
