@@ -24,8 +24,8 @@ function parseDepth(html){
  if(!rows.some(r=>r.position==='QB'))throw Error('Depth chart layout unavailable.');
  return rows;
 }
-function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetch(url,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();return r.text();},reviews=require('./starter-confirmations.json')){
- const cache=new Map(),verifyStarter=require('./starter-sources').createStarterVerifier(now,fetchPage),discover=require('./starter-discovery').createStarterDiscovery(now,fetchPage);
+function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetch(url,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();return r.text();},reviews=require('./starter-confirmations.json'),imageDepth=null){
+ const reviewedDepth=imageDepth||require('./reviewed-depth').createReviewedDepth(now),cache=new Map(),verifyStarter=require('./starter-sources').createStarterVerifier(now,fetchPage),discover=require('./starter-discovery').createStarterDiscovery(now,fetchPage);
  return async(q,teams,g)=>Promise.all(teams.map(async team=>{
   const kickoff=Number(g.game.date.timestamp)*1000;
   const away=String(team.id)===q.away,name=away?g.teams.away.name:g.teams.home.name,domain=domains[name];
@@ -43,11 +43,13 @@ function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetc
   const url=domain?`https://www.${domain}/team/depth-chart`:null;
   team.depth={available:false,url,message:'Depth chart unavailable; starting roles remain unconfirmed.'};if(!url){team.starterCandidates=await newsTask;return;}
   try{
-   let item=cache.get(url);if(!item||now()-item.at>=3600000){item={at:now(),pending:fetchPage(url).then(html=>({rows:parseDepth(html),checkedAt:now()}))};cache.set(url,item);item.pending.catch(()=>cache.delete(url));}
-   const report=await item.pending,rows=[],unresolved=[];let unmatched=0;
+   let item=cache.get(url);if(!item||now()-item.at>=3600000){item={at:now(),pending:fetchPage(url).then(html=>{try{return {rows:parseDepth(html),checkedAt:now()};}catch{return {html,checkedAt:now()};}})};cache.set(url,item);item.pending.catch(()=>cache.delete(url));}
+   const page=await item.pending;let report;
+   if(page.rows)report=page;else{report=await reviewedDepth(q,team.id,kickoff,url,page.html);report.checkedAt=Math.min(page.checkedAt,report.checkedAt);}
+   const rows=[],unresolved=[];let unmatched=0;
    for(const row of report.rows){const player=!row.unresolved&&matchPlayer(row,team.roster?.rows||[],team.id);if(!player||(['QB','RB','FB','WR','TE'].includes(row.position)&&player.position!==row.position)){unmatched++;unresolved.push(row);continue;}rows.push({...row,id:player.id});}
-   team.depth={available:true,url,gameId:String(q.game),kickoff:Number(g.game.date.timestamp)*1000,checkedAt:report.checkedAt,rows,unmatched,unresolved,coverage:['QB','RB','FB','WR','TE'].map(position=>({position,matched:rows.filter(r=>r.position===position).length,unresolved:unresolved.filter(r=>r.position===position).length})),message:'Team-published depth order, often unofficial. It does not confirm the game starter or expected touches; fetch time is not publication time.'};
-  }catch{}
+   team.depth={available:true,url,...(report.reviewedImage?{reviewedImage:true,imageUrl:report.imageUrl,publishedDate:report.publishedDate,scope:'Supported offensive positions only; manually reviewed image.'}:{}),gameId:String(q.game),kickoff:Number(g.game.date.timestamp)*1000,checkedAt:report.checkedAt,rows,unmatched,unresolved,coverage:['QB','RB','FB','WR','TE'].map(position=>({position,matched:rows.filter(r=>r.position===position).length,unresolved:unresolved.filter(r=>r.position===position).length})),message:report.reviewedImage?`Team-published image updated ${report.publishedDate}; supported offensive positions only. Reviewed depth order is unofficial and does not confirm game starters or expected touches.`:'Team-published depth order, often unofficial. It does not confirm the game starter or expected touches; fetch time is not publication time.'};
+  }catch{cache.delete(url);}
   team.starterCandidates=await newsTask;
  }));
 }

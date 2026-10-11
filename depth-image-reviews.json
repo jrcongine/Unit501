@@ -1,0 +1,107 @@
+[
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21579",
+    "teamId": "26",
+    "kickoff": 1791738000000,
+    "url": "https://www.houstontexans.com/team/depth-chart",
+    "imageUrl": "https://static.clubs.nfl.com/image/upload/texans/niwduxjnirejrghsak7o",
+    "imageHash": "c14ce701736a52aaa9f24def5907313f8d126131c54ff110b934205f8eaacc9d",
+    "publishedDate": "2026-10-06",
+    "reviewedAt": "2026-10-11T14:10:08.894Z",
+    "scope": "Supported offensive positions only; visually reviewed team image. Unofficial order, not confirmed starters.",
+    "rows": [
+      {
+        "name": "C.J. Stroud",
+        "position": "QB",
+        "rank": 1,
+        "slot": "QB:0"
+      },
+      {
+        "name": "Davis Mills",
+        "position": "QB",
+        "rank": 2,
+        "slot": "QB:0"
+      },
+      {
+        "name": "David Montgomery",
+        "position": "RB",
+        "rank": 1,
+        "slot": "RB:1"
+      },
+      {
+        "name": "Woody Marks",
+        "position": "RB",
+        "rank": 2,
+        "slot": "RB:1"
+      },
+      {
+        "name": "Dare Ogunbowale",
+        "position": "RB",
+        "rank": 3,
+        "slot": "RB:1"
+      },
+      {
+        "name": "Nico Collins",
+        "position": "WR",
+        "rank": 1,
+        "slot": "WR:2"
+      },
+      {
+        "name": "Jared Wayne",
+        "position": "WR",
+        "rank": 2,
+        "slot": "WR:2"
+      },
+      {
+        "name": "Kayshon Boutte",
+        "position": "WR",
+        "rank": 1,
+        "slot": "WR:3"
+      },
+      {
+        "name": "Jaylin Noel",
+        "position": "WR",
+        "rank": 2,
+        "slot": "WR:3"
+      },
+      {
+        "name": "Xavier Hutchinson",
+        "position": "WR",
+        "rank": 1,
+        "slot": "WR:4"
+      },
+      {
+        "name": "Dalton Schultz",
+        "position": "TE",
+        "rank": 1,
+        "slot": "TE:5"
+      },
+      {
+        "name": "Foster Moreau",
+        "position": "TE",
+        "rank": 2,
+        "slot": "TE:5"
+      },
+      {
+        "name": "Marlin Klein",
+        "position": "TE",
+        "rank": 3,
+        "slot": "TE:5"
+      },
+      {
+        "name": "Cade Stover",
+        "position": "TE",
+        "rank": 4,
+        "slot": "TE:5"
+      },
+      {
+        "name": "Brevin Jordan",
+        "position": "TE",
+        "rank": 5,
+        "slot": "TE:5"
+      }
+    ]
+  }
+]
