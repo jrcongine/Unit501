@@ -31,7 +31,6 @@
   try{
    if(!snapshot)return {saved:false,message:'Archive waits for an upcoming game with an applied injury or lineup score scenario.'};
    const archive=read(storage);
-   const identity=s=>JSON.stringify([s.game.league,s.game.season,s.game.id,s.kind||'score',...(s.kind==='prop'?[s.records[0].teamId,s.records[0].playerId,s.records[0].market]:[])].map(String));
    // A fixed first-forecast policy prevents choosing a revision after the result.
    if(archive.snapshots.some(s=>identity(s)===identity(snapshot)))return {saved:false,message:'First adjusted forecast for this target is already saved on this browser. Later revisions do not replace it.'};
    archive.snapshots.push(snapshot);
@@ -53,6 +52,44 @@
    baseline,adjusted,actual:null,resultKnownAt:null
   }]}));
  }
- const api={capture,captureProp,read,save,key};
+
+ const identity=s=>JSON.stringify([s.game.league,s.game.season,s.game.id,s.kind||'score',...(s.kind==='prop'?[s.records[0].teamId,s.records[0].playerId,s.records[0].market]:[])].map(String));
+ function importArchive(storage,text,now=Date.now()){
+  if(!Number.isFinite(now)||now<=0)throw Error('Current time unavailable.');
+  if(typeof text!=='string'||text.length>20*1024*1024)throw Error('Choose an archive smaller than 20 MB.');
+  const incoming=JSON.parse(text);
+  if(incoming?.schema!==1||!Array.isArray(incoming.snapshots))throw Error('Unsupported forecast archive.');
+  const seen=new Set();
+  for(const s of incoming.snapshots){
+   const g=s?.game,kind=s?.kind||'score';
+   if(s?.schema!==1||!['score','prop'].includes(kind)||!g||!['1','2'].includes(String(g.league))||!/^\d{4}$/.test(String(g.season))||
+      ![g.id,g.awayId,g.homeId].every(id=>/^\d+$/.test(String(id)))||String(g.awayId)===String(g.homeId)||
+      !Number.isFinite(g.kickoff)||g.kickoff<=0||!Number.isFinite(s.forecastAt)||s.forecastAt<=0||s.forecastAt>now||s.forecastAt>=g.kickoff||
+      !s.inputs||typeof s.inputs!=='object'||Array.isArray(s.inputs)||!Array.isArray(s.records)||s.records.length!==(kind==='score'?2:1))throw Error('Archive contains an invalid forecast. Existing data retained.');
+   const targets=new Set();
+   for(const r of s.records){
+    const pending=r?.actual===null&&r?.resultKnownAt===null;
+    if(!r||r.kind!==kind||String(r.gameId)!==String(g.id)||String(r.league)!==String(g.league)||String(r.season)!==String(g.season)||r.kickoff!==g.kickoff||
+       r.forecastAt!==s.forecastAt||!Number.isFinite(r.inputAsOf)||r.inputAsOf<=0||r.inputAsOf>r.forecastAt||
+       ![g.awayId,g.homeId].map(String).includes(String(r.teamId))||![r.baseline,r.adjusted].every(Number.isFinite)||
+       typeof r.modelVersion!=='string'||!r.modelVersion.trim()||typeof r.evidenceUrl!=='string'||!/^https:\/\/[^\s]+$/.test(r.evidenceUrl)||
+       (kind==='score'&&r.market!=='points')||(kind==='prop'&&(!/^\d+$/.test(String(r.playerId))||!['passYds','passTD','carries','rushYds','rushTD','recYds','rec','recTD'].includes(r.market)))||
+       (!pending&&(!Number.isFinite(r.actual)||!Number.isFinite(r.resultKnownAt)||r.resultKnownAt<=g.kickoff||r.resultKnownAt>now))||
+       (!String(r.market).endsWith('Yds')&&[r.baseline,r.adjusted,...(pending?[]:[r.actual])].some(v=>v<0)))throw Error('Archive contains an invalid target. Existing data retained.');
+    if(kind==='score'){const side=String(r.teamId)===String(g.awayId)?'away':'home';if(s.baseline?.[side]!==r.baseline||s.adjusted?.[side]!==r.adjusted)throw Error('Archive score values conflict with its saved forecast.');}
+    const target=JSON.stringify([String(r.teamId),r.playerId==null?null:String(r.playerId),r.market]);
+    if(targets.has(target))throw Error('Archive contains duplicate targets. Existing data retained.');targets.add(target);
+   }
+   if(kind==='score'&&new Set(s.records.map(r=>String(r.teamId))).size!==2)throw Error('Archive score teams do not match.');
+   const id=identity(s);if(seen.has(id))throw Error('Archive repeats a forecast target. Existing data retained.');seen.add(id);
+  }
+  const existing=read(storage),known=new Set(existing.snapshots.map(identity));let imported=0,skipped=0;
+  for(const s of incoming.snapshots){if(known.has(identity(s))){skipped++;continue;}existing.snapshots.push(s);known.add(identity(s));imported++;}
+  // One write after full validation: no partial imports or replacement of old forecasts.
+  if(imported){storage.setItem(key,JSON.stringify(existing));if(root.document&&typeof root.Event==='function')root.document.dispatchEvent(new root.Event('unit501:archive-updated'));}
+  return {imported,skipped};
+ }
+
+ const api={capture,captureProp,read,save,importArchive,key};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501ForecastArchive=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

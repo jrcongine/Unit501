@@ -183,3 +183,14 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  assert.match(text,/2 matched targets/);assert.match(text,/NFL · Team points/);assert.match(text,/1\/30 games — insufficient/);
  assert.match(text,/5.00/);assert.match(text,/3.00/);assert.match(text,/2.00 lower/);
 });
+test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
+ const h=harness();await h.settle();let calls=0;
+ const kickoff=Date.now()-100000;
+ const archive={schema:1,snapshots:[{schema:1,game:{id:'9',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},forecastAt:kickoff-1000,records:[]}]};
+ h.storage.set('unit501-score-archive-v1',JSON.stringify(archive));
+ h.context.fetch=async()=>{calls++;return {ok:true,json:async()=>({response:[]})};};
+ h.nodes.get('forecast-review').open=true;
+ await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();await h.settle();
+ assert.equal(calls,1);assert.equal(h.nodes.get('refresh-forecast-results').disabled,false);
+ await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();assert.equal(calls,1);
+});

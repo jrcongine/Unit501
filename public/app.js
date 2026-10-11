@@ -667,8 +667,9 @@ $('download-forecast-archive').onclick=()=>{
   }catch{$('forecast-archive-status').textContent='Saved archive could not be downloaded. Existing data retained.';}
 };
 
-$('refresh-forecast-results').onclick=async()=>{
- const button=$('refresh-forecast-results');button.disabled=true;
+let forecastRefreshAt=0;
+async function refreshForecastResults(){
+ const button=$('refresh-forecast-results');if(button.disabled)return;button.disabled=true;forecastRefreshAt=Date.now();
  $('forecast-archive-status').textContent='Checking saved forecasts against confirmed final games…';
  try{
   const result=await Unit501ForecastResults.refresh(localStorage,async url=>{
@@ -679,3 +680,20 @@ $('refresh-forecast-results').onclick=async()=>{
  }catch{$('forecast-archive-status').textContent='Final results could not be saved. Existing archive retained.';}
  finally{button.disabled=false;}
 };
+
+$('refresh-forecast-results').onclick=refreshForecastResults;
+$('forecast-review').addEventListener('toggle',()=>{
+ if($('forecast-review').open&&Date.now()-forecastRefreshAt>=300000){
+  try{if(Unit501ForecastArchive.read(localStorage).snapshots.some(s=>s.game.kickoff<Date.now()))refreshForecastResults();}catch{}
+ }
+});
+$('import-forecast-archive').addEventListener('change',async()=>{
+ const input=$('import-forecast-archive'),file=input.files?.[0];if(!file)return;
+ try{
+  if(file.size>20*1024*1024)throw Error('Choose an archive smaller than 20 MB.');
+  const result=Unit501ForecastArchive.importArchive(localStorage,await file.text());
+  $('forecast-archive-status').textContent=`${result.imported} forecasts restored. ${result.skipped} existing targets kept without replacement. Imported timestamps and reports still need review.`;
+  forecastRefreshAt=0;
+ }catch(e){$('forecast-archive-status').textContent='Archive import failed; existing forecasts retained. '+(e instanceof SyntaxError?'Choose a valid JSON archive.':e.message);}
+ finally{input.value='';}
+});

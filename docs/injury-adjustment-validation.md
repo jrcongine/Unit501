@@ -42,3 +42,9 @@ The matching response's final game and the exact player stat field are saved wit
 ## In-app comparison
 
 Open **Saved forecast accuracy** in Game Lab. The panel uses the same comparison module as the offline command and refreshes after forecast saves, final matching or browser storage changes. It shows matched targets, pending outcomes, exclusions and per-league/market game counts, baseline average absolute miss, adjusted miss and error change. Pending outcomes remain separate from malformed records. Empty archives show no eligible outcomes rather than zero error; fewer than 30 games remain explicitly insufficient. Larger samples report only observed error. This panel does not activate any model change.
+
+## Restore and automatic checks
+
+Use **Restore forecast archive** to choose a downloaded schema-1 JSON bundle (up to 20 MB). The full file is validated before a single storage write: league/game/team scope, pregame timestamps, score/prop markets, forecast values and outcome timestamps must be consistent. Repeated targets inside the file reject the import. Existing local targets are retained without replacement, including their results; new targets are added. Imported timestamps and source data remain assertions. Storage or validation failures preserve the existing archive.
+
+Opening **Saved forecast accuracy** checks past-game archives against provider finals automatically, at most once every five minutes per page session. The existing manual match button remains available. Concurrent checks are suppressed. This is an on-open check, not background polling; a failed automatic attempt is throttled too, while manual retries remain available.
