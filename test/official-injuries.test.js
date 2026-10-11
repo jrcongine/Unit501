@@ -43,6 +43,17 @@ test('name matching resolves suffix omissions and reviewed aliases but rejects i
  assert.equal(matchPlayer({name:'Lorenzo Styles Jr.',position:'CB'},[{id:'14372',name:'Lorenzo Styles',position:'S'}],'27'),null);
  assert.equal(matchPlayer({name:'Jaylon Jones',position:'CB'},[{id:'7609',name:'Jarrian Jones',position:'CB'}],'2'),null);
 });
+test('reviewed Sunday depth aliases require exact team, player identity and position',()=>{
+ const {matchPlayer}=require('../player-name-match');
+ for(const [team,name,id,rosterName,position] of [['9','KC Concepcion Jr.','39201','Kevin Concepcion','WR'],['18','Jacory Croskey-Merritt','27317','Jacory Merritt','RB'],['11','Reggie Virgil','16854','Reginald Virgil','WR']]){
+  const row={name,position},player={id,name:rosterName,position};
+  assert.equal(matchPlayer(row,[player],team),player);
+  assert.equal(matchPlayer(row,[player],'99'),null);
+  assert.equal(matchPlayer(row,[{...player,id:'99'}],team),null);
+  assert.equal(matchPlayer(row,[{...player,position:'TE'}],team),null);
+  assert.equal(matchPlayer(row,[player,{id:'99',name,position}],team),null);
+ }
+});
 test('resolved suffix omission carries official Out into the availability gate',async()=>{
  const t=teams();t[0].roster={available:true,checkedAt:now,rows:[{id:'10',name:'Player One Jr.',position:'RB'}]};
  await createOfficialInjuries(async()=>({response:[g]}),()=>now,async()=>page)(q,t);

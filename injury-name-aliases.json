@@ -133,5 +133,35 @@
     "position": "RB",
     "source": "https://www.houstontexans.com/team/players-roster/woody-marks/",
     "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "9",
+    "reportName": "KC Concepcion Jr.",
+    "rosterName": "Kevin Concepcion",
+    "playerId": "39201",
+    "position": "WR",
+    "source": "https://www.clevelandbrowns.com/team/players-roster/kc-concepcion/",
+    "reviewedAt": "2026-10-11",
+    "evidence": "Unique current provider roster identity agrees with official team player biography on team, position and jersey #1."
+  },
+  {
+    "teamId": "18",
+    "reportName": "Jacory Croskey-Merritt",
+    "rosterName": "Jacory Merritt",
+    "playerId": "27317",
+    "position": "RB",
+    "source": "https://www.commanders.com/team/players-roster/jacory-croskey-merritt/",
+    "reviewedAt": "2026-10-11",
+    "evidence": "Unique current provider roster identity agrees with official team player biography on team, position and jersey #22."
+  },
+  {
+    "teamId": "11",
+    "reportName": "Reggie Virgil",
+    "rosterName": "Reginald Virgil",
+    "playerId": "16854",
+    "position": "WR",
+    "source": "https://www.azcardinals.com/team/players-roster/reggie-virgil/",
+    "reviewedAt": "2026-10-11",
+    "evidence": "Unique current provider roster identity agrees with official team player biography on team, position and jersey #82."
   }
 ]
