@@ -1,8 +1,41 @@
 [
   {
-    "league":"1","season":"2026","gameId":"21587","teamId":"16","kickoff":1791738000000,
-    "position":"QB","name":"Tyson Bagent","publishedAt":"2026-10-09T20:43:00Z",
-    "url":"https://www.chicagobears.com/news/injury-update-bears-rb-kyle-monangai-ruled-out-qb-caleb-williams-questionable-for-packers-game",
-    "publisher":"Chicago Bears","evidence":"Team report says Ben Johnson announced Tyson Bagent will start in Green Bay."
+    "league": "1",
+    "season": "2026",
+    "gameId": "21587",
+    "teamId": "16",
+    "kickoff": 1791738000000,
+    "position": "QB",
+    "name": "Tyson Bagent",
+    "publishedAt": "2026-10-09T20:43:00Z",
+    "url": "https://www.chicagobears.com/news/injury-update-bears-rb-kyle-monangai-ruled-out-qb-caleb-williams-questionable-for-packers-game",
+    "publisher": "Chicago Bears",
+    "evidence": "Team report says Ben Johnson announced Tyson Bagent will start in Green Bay."
+  },
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21585",
+    "teamId": "18",
+    "kickoff": 1791738000000,
+    "position": "QB",
+    "name": "Jayden Daniels",
+    "publishedAt": "2026-10-09T16:41:14.411Z",
+    "url": "https://www.commanders.com/news/game-status-commanders-giants-week-5",
+    "publisher": "Washington Commanders",
+    "evidence": "The team reports that Dan Quinn confirmed Daniels is cleared to play and will start against the Giants in Week 5."
+  },
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21588",
+    "teamId": "11",
+    "kickoff": 1791750300000,
+    "position": "QB",
+    "name": "Jacoby Brissett",
+    "publishedAt": "2026-10-07T22:18:38.229Z",
+    "url": "https://www.azcardinals.com/news/focus-for-mike-lafleur-is-1-0-not-qb1",
+    "publisher": "Arizona Cardinals",
+    "evidence": "The team reports that Mike LaFleur is keeping Brissett as QB1 for the upcoming Lions matchup."
   }
 ]
