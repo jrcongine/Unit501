@@ -2,6 +2,27 @@
 // Public NFL weekly reports. A fetch time is not a publication time or a starter confirmation.
 const clean = value => String(value || '').replace(/<[^>]*>/g,' ').replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&apos;|&quot;/g,"'").replace(/\s+/g,' ').trim();
 const key = value => clean(value).toLowerCase().replace(/[^a-z0-9]/g,'');
+// Only terminal generational suffixes are formatting differences. Conflicting explicit
+// suffixes and multiple candidates stay unresolved, even if one name is exact.
+const nameParts = value => {
+  const name=clean(value), suffix=/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i.exec(name);
+  return {base:key(suffix?name.slice(0,suffix.index):name),suffix:suffix?key(suffix[1]):''};
+};
+const aliases = require('./injury-name-aliases.json');
+function matchPlayer(row, roster, teamId) {
+  const source=nameParts(row.name);
+  const alias=aliases.find(a=>String(a.teamId)===String(teamId)&&key(a.reportName)===key(row.name)&&key(a.position)===key(row.position));
+  const candidates=roster.filter(p=>{
+    const target=nameParts(p.name);
+    return target.base===source.base || (alias&&String(p.id)===alias.playerId&&key(p.name)===key(alias.rosterName));
+  });
+  if(candidates.length!==1)return null;
+  const p=candidates[0],target=nameParts(p.name);
+  const exact=key(p.name)===key(row.name);
+  if(!exact&&key(p.position)!==key(row.position))return null;
+  if(source.suffix&&target.suffix&&source.suffix!==target.suffix)return null;
+  return p;
+}
 function parseReport(html, season, week) {
   const title=clean(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]);
   if(!title.includes(`Week ${week} of the ${season} Season`)) throw new Error('Official report week could not be verified.');
@@ -48,9 +69,9 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
         if(matches.length!==1){team.official={...unavailable};continue;}
         const rows=[];let unmatched=0;
         for(const r of matches[0].rows){
-          const players=(team.roster?.rows||[]).filter(p=>key(p.name)===key(r.name));
-          if(players.length!==1){unmatched++;continue;}
-          rows.push({...r,id:players[0].id,teamId:String(team.id)});
+          const player=matchPlayer(r,team.roster?.rows||[],team.id);
+          if(!player){unmatched++;continue;}
+          rows.push({...r,id:player.id,teamId:String(team.id)});
         }
         team.official={available:true,checkedAt:report.checkedAt,gameId:String(q.game),kickoff,season:q.season,week,url,rows,unmatched,message:'Official weekly game status; blank statuses do not confirm participation. Starters are unverified.'};
       }
@@ -58,4 +79,4 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
     if(depthTask)await depthTask;
   };
 }
-module.exports={parseReport,createOfficialInjuries};
+module.exports={parseReport,createOfficialInjuries,matchPlayer};

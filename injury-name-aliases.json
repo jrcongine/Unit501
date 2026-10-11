@@ -1,0 +1,65 @@
+[
+  {
+    "teamId": "25",
+    "reportName": "Rob Beal Jr.",
+    "rosterName": "Robert Beal Jr.",
+    "playerId": "14543",
+    "position": "DE",
+    "source": "https://www.miamidolphins.com/team/players-roster/robert-beal-jr/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "1",
+    "reportName": "Foley Fatukasi",
+    "rosterName": "Folorunso Fatukasi",
+    "playerId": "110",
+    "position": "DT",
+    "source": "https://www.raiders.com/team/players-roster/folorunso-fatukasi/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "32",
+    "reportName": "Ben Yurosek",
+    "rosterName": "Benjamin Yurosek",
+    "playerId": "23972",
+    "position": "TE",
+    "source": "https://gostanford.com/sports/football/roster/season/2022/player/benjamin-yurosek",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "9",
+    "reportName": "Mike Hall Jr.",
+    "rosterName": "Michael Hall Jr.",
+    "playerId": "14298",
+    "position": "DT",
+    "source": "https://www.clevelandbrowns.com/team/players-roster/michael-hall-jr/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "4",
+    "reportName": "Cam Skattebo",
+    "rosterName": "Cameron Skattebo",
+    "playerId": "31107",
+    "position": "RB",
+    "source": "https://hornetsports.com/sports/football/roster/cameron-skattebo/7450",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "18",
+    "reportName": "Chig Okonkwo",
+    "rosterName": "Chigoziem Okonkwo",
+    "playerId": "388",
+    "position": "TE",
+    "source": "https://www.commanders.com/video/free-agency-friday-x-next-man-up-post-signing-1-on-1-te-chigoziem-okonkwo",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "15",
+    "reportName": "Chris Brooks",
+    "rosterName": "Christopher Brooks",
+    "playerId": "17539",
+    "position": "RB",
+    "source": "https://www.packers.com/team/players-roster/chris-brooks/",
+    "reviewedAt": "2026-10-11"
+  }
+]
