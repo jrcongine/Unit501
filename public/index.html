@@ -104,9 +104,16 @@
 <label><input id="variableHomeField" type="checkbox"> Use experimental NFL team home-field estimate</label>
 <p id="home-field-status">Historical home-field estimates load with the matchup. These are performance estimates, not crowd-noise ratings.</p>
 <details><summary>NFL historical home-field rankings</summary><div id="home-field-rankings"></div></details>
-<label for="homeContext">Extra home matchup edge (points, your judgment)</label>
-<input id="homeContext" type="number" min="0" max="3" step=".5" value="0">
-<p>Optional rivalry, prime-time atmosphere or motivation assumption. Adds to the home margin while preserving the total. Defaults to zero; ignored at neutral or unverified venues. Not backtested.</p>
+<p id="matchup-context-status"></p>
+<label for="homeFieldMode">Home advantage</label>
+<select id="homeFieldMode"><option value="auto">Automatic — standard venue adjustment</option><option value="manual">Manual scenario — set total points</option></select>
+<details><summary>Advanced home advantage override</summary>
+<label for="homeContext">Total home advantage (points)</label>
+<input id="homeContext" type="number" min="0" max="5" step=".5" value="2" disabled>
+<label for="homeFieldReason">Reason for override</label>
+<input id="homeFieldReason" type="text" maxlength="240" placeholder="Example: playoff elimination stakes and documented trash talk" disabled>
+<p>4–5 total points are reserved for rare manual scenarios and require a reason. Rivalry, evening kickoff, trash talk and playoff stakes do not automatically add points. Overrides are unvalidated, preserve the projected total and are ignored at neutral or unverified venues.</p>
+</details>
 <label><input id="weatherEnabled" type="checkbox" checked> Apply experimental wind adjustment</label>
 <p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
 <button id="sim">Run 50,000 Sims</button>

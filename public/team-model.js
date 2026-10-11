@@ -24,7 +24,10 @@
   }
   function venueEffect(game, home, away, mode = 'auto', settings = {}) {
     if (!['auto','home','neutral'].includes(mode)) return {valid:false};
-    const context=settings.homeContext??0;
+    let context=settings.homeContext??0;
+    const override=settings.homeFieldTotal;
+    if(override!=null&&(!Number.isFinite(override)||override<0||override>5))return {valid:false};
+    if(override>=4&&!String(settings.homeFieldReason||'').trim())return {valid:false};
     if(!Number.isFinite(context)||context<0||context>3)return {valid:false};
     if (mode === 'neutral') return {valid:true,margin:0,reason:'Neutral site selected: no home-field adjustment.'};
     const key = String(game.venueName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -36,10 +39,12 @@
     const matches=profile?.teams?.filter(t=>String(t.id)===String(game.homeId))||[];
     const validProfile=settings.variableHomeField===true&&game.league==='1'&&profile?.league==='1'&&String(profile.season)===String(game.season)&&profile.modelVersion==='home-field-ridge-v1'&&Number.isFinite(profile.before)&&profile.before<=game.kickoff&&Number.isFinite(profile.historyThrough)&&profile.historyThrough<profile.before&&profile.teams.length===32&&new Set(profile.teams.map(t=>String(t.id))).size===32&&matches.length===1&&matches[0].available===true&&matches[0].homeGames>=6&&matches[0].awayGames>=6&&Number.isFinite(matches[0].margin)&&matches[0].margin>=0&&matches[0].margin<=5;
     if(validProfile)margin=matches[0].margin;
-    const baseMargin=margin;margin+=context;
+    const baseMargin=margin;
+    if(override!=null)context=override-baseMargin;
+    margin=override!=null?override:margin+context;
     return {valid:true,margin,reason:(mode === 'home' ? 'Home stadium selected.' : 'Home venue inferred from at least two earlier home games; verify neutral-site exceptions.') +
       (validProfile?` Experimental team home-field estimate: +${baseMargin.toFixed(2)} points (${matches[0].homeGames} home, ${matches[0].awayGames} away games); historical rank ${matches[0].rank}/32.`:` Experimental home-field assumption: +${baseMargin} points to the home margin.`)+
-      (context?` User matchup-context assumption: +${context.toFixed(1)} additional home-margin points; rivalry/prime time is not automatically valued.`:'')+' Projected total unchanged.',variable:validProfile,context,baseMargin};
+      (override!=null?` Manual total home advantage: ${margin.toFixed(1)} points. Reason: ${String(settings.homeFieldReason||'Manual scenario').trim()}. Unvalidated scenario.`:context?` User matchup-context assumption: +${context.toFixed(1)} additional home-margin points; rivalry/prime time is not automatically valued.`:'')+' Projected total unchanged.',variable:validProfile,context,baseMargin};
   }
   function project(data, game, adjustments = {}, legacy = false) {
     if (!data || data.before !== game.kickoff || String(data.season) !== String(game.season))
@@ -120,7 +125,7 @@
       return Math.max(0,(legacy?sum/2:sum-baseline)+adjustment);
     };
     const venue = venueEffect(game,home,away,adjustments.venueMode,adjustments);
-    if (!venue.valid) return {available:false,reason:'Choose a valid venue setting.'};
+    if (!venue.valid) return {available:false,reason:'Choose a valid venue setting and total home advantage from 0 to 5. Overrides of 4–5 points require a reason.'};
     const injury = Object.fromEntries(['awayOffense','awayDefense','homeOffense','homeDefense']
       .map(key => [key,adjustments.injury?.[key] ?? 0]));
     if (!Object.values(injury).every(value => Number.isFinite(value) && value >= 0 && value <= 14))

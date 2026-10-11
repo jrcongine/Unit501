@@ -55,10 +55,10 @@ function harness(storage=new Map(),extras=false) {
 test('actual client home-context control changes margin and resets on game selection',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="home"; sim()');const first=h.nodes.get('score').textContent;
- h.nodes.get('homeContext').value='2';await h.nodes.get('homeContext').dispatchEvent({type:'input'});assert.equal(h.nodes.get('score').textContent,'—');
- h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,first);assert.match(h.nodes.get('note').textContent,/User matchup-context assumption/);
+ h.nodes.get('homeFieldMode').value='manual';await h.nodes.get('homeFieldMode').dispatchEvent({type:'change'});h.nodes.get('homeFieldReason').value='Playoff elimination stakes';h.nodes.get('homeContext').value='4';await h.nodes.get('homeContext').dispatchEvent({type:'input'});assert.equal(h.nodes.get('score').textContent,'—');
+ h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,first);assert.match(h.nodes.get('note').textContent,/Manual total home advantage/);
  h.nodes.get('variableHomeField').checked=true;h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- assert.equal(h.nodes.get('homeContext').value,'0');assert.equal(h.nodes.get('variableHomeField').checked,false);
+ assert.equal(h.nodes.get('homeContext').value,'2');assert.equal(h.nodes.get('homeFieldMode').value,'auto');assert.equal(h.nodes.get('variableHomeField').checked,false);
 });
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
