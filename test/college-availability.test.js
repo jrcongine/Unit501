@@ -33,3 +33,12 @@ test('ambiguous reports, duplicated roster names, wrong games and provider/sourc
  const wrong=teams();await get({...q,home:'99'},wrong);assert.equal(wrong[0].official.available,false);
  const broken=createCollegeAvailability(async()=>({response:[g]}),()=>now,async()=>{throw Error('source unavailable');});const b=teams();await broken(q,b);assert.equal(b[0].official.available,false);
 });
+
+test('conference State abbreviations resolve only to verified FBS schools',()=>{
+ for(const name of ['Florida','Michigan','Ohio','Penn']){
+  const r=report();r.games[0].teamName=name+' St.';
+  const match={...g,teams:{...g.teams,away:{id:1,name:name+' State'}}};
+  assert.equal(matchReports({x:r},match,'2026',now).length,1);
+ }
+ const r=report();r.games[0].teamName='Unknown St.';assert.equal(matchReports({x:r},g,'2026',now).length,0);
+});
