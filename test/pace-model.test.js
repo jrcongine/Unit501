@@ -61,3 +61,10 @@ test('pace replay accounts for rejected drive coverage and keeps simultaneous wa
  const incomplete=validatePace(rows,q,before=>{const d=context(before);d.teams[31].pace.games=0;return d;});
  assert.equal(incomplete.games,0);assert.equal(incomplete.skipped,65);assert.equal(incomplete.accepted,false);
 });
+
+test('pace replay requests a lagged snapshot while keeping the prediction scoped to kickoff',()=>{
+ const before=Date.parse('2026-10-10T18:00:00Z'),seen=[];
+ const row={league:{id:1,season:2026},game:{id:1,stage:'Regular Season',date:{timestamp:before/1000},status:{short:'FT'}},teams:{away:{id:0},home:{id:1}},scores:{away:{total:20},home:{total:20}}};
+ const result=validatePace([row],{league:'1',season:'2026',before:before+1},cutoff=>{seen.push(cutoff);return context(cutoff);});
+ assert.equal(result.games,1);assert.deepEqual(seen,[before-86400000]);
+});
