@@ -4,6 +4,7 @@ const {parseDepth,createDepthCharts,domains}=require('../depth-charts');const {a
 const now=Date.parse('2026-10-10T22:00:00Z'),kickoff=1791738000000;
 const page='<table class="d3-o-depthchart"><tr><th>Position</th><th>1st String</th></tr><tr><td>QB</td><td><a href="/team/players-roster/a">Caleb Williams</a></td><td><a href="/team/players-roster/b">Tyson Bagent</a></td></tr></table>';
 test('depth parser preserves listed order and rejects unknown layout; all NFL teams have sources',()=>{
+ assert.equal(parseDepth('<table><tr><th>Position</th><th>Player</th></tr><tr><td>QB</td><td>10 Jordan Love</td><td>6 Tyrod Taylor</td></tr></table>')[0].name,'Jordan Love');
  assert.equal(Object.keys(domains).length,32);assert.deepEqual(parseDepth(page).map(r=>r.rank),[1,2]);assert.throws(()=>parseDepth('<html>Error</html>'));
  assert.equal(parseDepth(page.replace('Caleb Williams</a>','Caleb Williams</a><a href="/team/players-roster/c">Other</a>')).length,1);
 });

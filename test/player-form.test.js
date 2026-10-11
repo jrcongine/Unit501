@@ -45,3 +45,9 @@ test('workload review uses targets for receiving and ignores invalid usage',()=>
  assert.match(workloadWarning([{gameDate:1,targets:1},{gameDate:2,targets:2}],'rec'),/Limited recorded workload/);
  assert.match(workloadWarning([{gameDate:1,attempts:-1},{gameDate:2,attempts:NaN}],'passTD'),/Workload unverified/);
 });
+test('undated records cannot contaminate paired yardage efficiency',()=>{
+ const {project}=require('../public/player-form');
+ const valid=[{gameDate:1,rec:4,recYds:40},{gameDate:2,rec:4,recYds:40}];
+ const a=project(valid,'recYds'),b=project([...valid,{gameDate:NaN,rec:1,recYds:10000}],'recYds');
+ assert.equal(b.baseline,a.baseline);assert.equal(b.usage.games,2);assert.equal(b.usage.efficiency,10);
+});

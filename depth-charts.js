@@ -13,8 +13,9 @@ function parseDepth(html){
    for(let i=1;i<cells.length;i++){
     const links=[...cells[i].matchAll(/<a\b[^>]*href=["'][^"']*players-roster[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
     // Shared slots and unrecognized cells are not guessed into a single player.
-    if(links.length!==1)continue;
-    const name=text(links[0][1]).replace(/^\d+\s+/,'');if(name)rows.push({name,position,rank:i});
+    if(links.length>1)continue;
+    const name=text(links.length?links[0][1]:cells[i]).replace(/^\d+\s+/,'');
+    if(name && name.length<=80 && /^[A-Za-z][A-Za-z .’'\-]+$/.test(name))rows.push({name,position,rank:i});
    }
   }
  }
