@@ -118,3 +118,16 @@ test('QB replacement inherits the passing role instead of adding earlier backup 
  assert.equal(adjustProp(1,'passTD',result.props['10:2']),1);
  assert.equal(result.teams['10'].passing,-30);
 });
+
+test('unmatched lower-depth candidates withhold a split only in their own slot',()=>{
+ const f=replacementFixture();f.team.depth.unresolved=[{position:'RB',rank:4,slot:'RB:0',name:'Unmatched Backup'}];
+ const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.allocations.length,0);assert.match(r.reason,/could not be uniquely matched/);
+ f.team.depth.unresolved[0].slot='RB:1';
+ assert.equal(recommend(f.rows,f.rows[0],f.data,game,assess,f.now).state,'estimated');
+});
+
+test('a lower-depth eligible player missing from production records is not silently removed from the split',()=>{
+ const f=replacementFixture();const r=recommend(f.rows.slice(0,2),f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.allocations.length,0);assert.match(r.reason,/matching production profile/);
+});
