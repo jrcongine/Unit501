@@ -76,8 +76,10 @@
     const slots=depth.filter(r=>String(r.id)===String(original.id)&&r.position===original.position);
     if(announced.length>1||(!announced.length&&slots.length!==1))return unknown('A unique replacement order or reviewed starter announcement is unavailable.');
     if(!announced.length&&!slots[0].slot&&depth.filter(r=>r.position===slots[0].position&&r.rank===slots[0].rank).length>1)return unknown('Multiple depth-chart positions share this label; the replacement slot is unresolved.');
+    if(!announced.length&&(team.depth.unresolved||[]).some(r=>r.position===slots[0].position&&(!slots[0].slot||r.slot===slots[0].slot)&&r.rank>slots[0].rank))return unknown('A lower-depth player in this replacement slot could not be uniquely matched to the roster; workload split withheld.');
     let ordered=announced.length===1?announced:depth.filter(r=>r.position===slots[0].position&&(!slots[0].slot||r.slot===slots[0].slot)&&r.rank>slots[0].rank).sort((a,b)=>a.rank-b.rank);
     if(original.role==='QB'&&!announced.length){const eligible=ordered.filter(r=>!assess(data,game,original.teamId,r.id,now,true).blocked);ordered=eligible.slice(0,1);}
+    if(ordered.some(r=>!assess(data,game,original.teamId,r.id,now,true).blocked&&!players.some(p=>String(p.teamId)===String(original.teamId)&&String(p.id)===String(r.id)&&p.role===original.role)))return unknown('An eligible replacement lacks a matching production profile; workload split withheld.');
     const ids=[...new Set(ordered.map(r=>String(r.id)))];
     const candidates=ids.map(id=>players.find(p=>String(p.teamId)===String(original.teamId)&&String(p.id)===id&&p.role===original.role))
       .filter(p=>p&&team.roster.rows.some(r=>String(r.id)===String(p.id))&&!assess(data,game,p.teamId,p.id,now,true).blocked)

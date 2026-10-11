@@ -14,7 +14,7 @@ function parseDepth(html){
    for(let i=1;i<cells.length;i++){
     const links=[...cells[i].matchAll(/<a\b[^>]*href=["'][^"']*players-roster[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
     // Shared slots and unrecognized cells are not guessed into a single player.
-    if(links.length>1)continue;
+    if(links.length>1){rows.push({name:text(cells[i]),position,rank:i,slot:slotId,unresolved:true});continue;}
     const name=text(links.length?links[0][1]:cells[i]).replace(/^\d+\s+/,'');
     if(name && name.length<=80 && /^[A-Za-z][A-Za-z .’'\-]+$/.test(name))rows.push({name,position,rank:i,slot:slotId});
    }
@@ -36,9 +36,9 @@ function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetc
   team.depth={available:false,url,message:'Depth chart unavailable; starting roles remain unconfirmed.'};if(!url)return;
   try{
    let item=cache.get(url);if(!item||now()-item.at>=3600000){item={at:now(),pending:fetchPage(url).then(html=>({rows:parseDepth(html),checkedAt:now()}))};cache.set(url,item);item.pending.catch(()=>cache.delete(url));}
-   const report=await item.pending,rows=[];let unmatched=0;
-   for(const row of report.rows){const matches=(team.roster?.rows||[]).filter(p=>key(p.name)===key(row.name));if(matches.length!==1){unmatched++;continue;}rows.push({...row,id:matches[0].id});}
-   team.depth={available:true,url,gameId:String(q.game),kickoff:Number(g.game.date.timestamp)*1000,checkedAt:report.checkedAt,rows,unmatched,message:'Team-published depth order, often unofficial. It does not confirm the game starter or expected touches; fetch time is not publication time.'};
+   const report=await item.pending,rows=[],unresolved=[];let unmatched=0;
+   for(const row of report.rows){const matches=(team.roster?.rows||[]).filter(p=>key(p.name)===key(row.name)&&(!['QB','RB','FB','WR','TE'].includes(row.position)||p.position===row.position));if(row.unresolved||matches.length!==1){unmatched++;unresolved.push(row);continue;}rows.push({...row,id:matches[0].id});}
+   team.depth={available:true,url,gameId:String(q.game),kickoff:Number(g.game.date.timestamp)*1000,checkedAt:report.checkedAt,rows,unmatched,unresolved,coverage:['QB','RB','FB','WR','TE'].map(position=>({position,matched:rows.filter(r=>r.position===position).length,unresolved:unresolved.filter(r=>r.position===position).length})),message:'Team-published depth order, often unofficial. It does not confirm the game starter or expected touches; fetch time is not publication time.'};
   }catch{}
  }));
 }

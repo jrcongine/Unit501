@@ -74,6 +74,7 @@
         if(t.depth.url){const link=node('a','Review team depth chart');link.href=t.depth.url;link.target='_blank';link.rel='noopener';panel.append(link);}
         if(t.depth.available){
           panel.append(node('p',`Depth chart checked ${timestamp(t.depth.checkedAt)}; ${t.depth.unmatched} entries could not be matched to a unique roster player.`));
+          if(t.depth.coverage)panel.append(node('p','Offensive depth coverage: '+t.depth.coverage.map(r=>`${r.position}: ${r.matched} matched, ${r.unresolved} unresolved`).join(' • ')+'. Unresolved players in a replacement slot withhold its estimated workload split.'));
           const details=node('details','');details.append(node('summary','Listed depth order — starters unconfirmed'));
           const list=node('ul','');for(const r of t.depth.rows)list.append(node('li',`${r.position}: ${r.name} — depth ${r.rank}`));details.append(list);panel.append(details);
         }

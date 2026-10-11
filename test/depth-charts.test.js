@@ -6,7 +6,7 @@ const page='<table class="d3-o-depthchart"><tr><th>Position</th><th>1st String</
 test('depth parser preserves listed order and rejects unknown layout; all NFL teams have sources',()=>{
  assert.equal(parseDepth('<table><tr><th>Position</th><th>Player</th></tr><tr><td>QB</td><td>10 Jordan Love</td><td>6 Tyrod Taylor</td></tr></table>')[0].name,'Jordan Love');
  assert.equal(Object.keys(domains).length,32);assert.deepEqual(parseDepth(page).map(r=>r.rank),[1,2]);assert.throws(()=>parseDepth('<html>Error</html>'));
- assert.equal(parseDepth(page.replace('Caleb Williams</a>','Caleb Williams</a><a href="/team/players-roster/c">Other</a>')).length,1);
+ assert.equal(parseDepth(page.replace('Caleb Williams</a>','Caleb Williams</a><a href="/team/players-roster/c">Other</a>'))[0].unresolved,true);
 });
 test('reviewed announcement is exact-game scoped and roster identity must be unique; chart failure preserves announcement',async()=>{
  const load=createDepthCharts(()=>now,async()=>{throw Error('unavailable');});
@@ -30,4 +30,13 @@ test('receiver rows preserve distinct depth slots rather than mixing backups fro
  const html=page.replace('</table>','<tr><td>WR</td><td>First Receiver</td><td>First Backup</td></tr><tr><td>WR</td><td>Second Receiver</td><td>Second Backup</td></tr></table>');
  const rows=parseDepth(html).filter(r=>r.position==='WR');
  assert.equal(rows[0].slot,rows[1].slot);assert.equal(rows[2].slot,rows[3].slot);assert.notEqual(rows[0].slot,rows[2].slot);
+});
+
+test('offensive names require matching position and unresolved slots remain visible',async()=>{
+ const load=createDepthCharts(()=>now,async()=>page);
+ const team={id:'16',roster:{rows:[{id:'1',name:'Caleb Williams',position:'WR'},{id:'2',name:'Tyson Bagent',position:'QB'}]}};
+ const g={game:{date:{timestamp:kickoff/1000}},teams:{away:{name:'Chicago Bears'},home:{name:'Green Bay Packers'}}};
+ await load({league:'1',season:'2026',game:'21587',away:'16'},[team],g);
+ assert.equal(team.depth.rows.length,1);assert.equal(team.depth.unresolved[0].rank,1);
+ assert.deepEqual(team.depth.coverage[0],{position:'QB',matched:1,unresolved:1});
 });
