@@ -131,3 +131,14 @@ test('fresh conflicting roster ownership blocks props without treating the playe
  data.teams[1].roster.checkedAt=now;data.teams[1].roster.available=false;
  assert.equal(check(data).blocked,false);
 });
+
+test('score coverage includes announced QB role losses and does not call missing feeds verified',()=>{
+ const {impactReview}=require('../public/injury-model');const data=fixture('Active'),match={...game,id:'5',awayId:'1',homeId:'2'};
+ data.teams[0].roster.rows=[{id:'10',name:'Original QB',position:'QB'},{id:'20',name:'Starter QB',position:'QB'}];
+ data.teams[0].starters={gameId:'5',kickoff:game.kickoff,checkedAt:now,rows:[{id:'20',name:'Starter QB',position:'QB',publisher:'Team',publishedAt:new Date(now).toISOString()}]};
+ let r=impactReview(data,match,null,now);assert.equal(r.teams[0].unvalued[0].id,'10');assert.equal(r.teams[0].reportsVerified,true);assert.equal(r.teams[1].reportsVerified,false);
+ const lineup={gameId:'5',kickoff:game.kickoff,props:{'1:10':{passing:{scale:0}}},teams:{'1':{scoreReady:true}}};
+ r=impactReview(data,match,lineup,now);assert.equal(r.teams[0].applied.length,1);
+ data.teams[0].injuries.checkedAt=now-900001;assert.equal(impactReview(data,match,lineup,now).teams[0].reportsVerified,false);
+ assert.equal(impactReview(null,match,null,now).teams[0].reportsVerified,false);
+});

@@ -92,12 +92,16 @@
       if(!id)continue;
       const summary=teamSummary(data,game,id,now);
       const applied=[],unvalued=[];
-      for(const player of summary.unavailable) {
+      for(const player of [...summary.unavailable,...(summary.nonstarters||[])]) {
         const props=scoped?lineup.props?.[String(id)+':'+player.id]:null;
         const reduced=props && Object.values(props).some(p=>p.scale<1);
         (reduced && lineup.teams?.[String(id)]?.scoreReady===true ? applied : unvalued).push(player);
       }
-      teams.push({id:String(id),applied,unvalued,conflicts:summary.conflicts||[],unknown:summary.unknown,reason:summary.reason});
+      const team=data?.teams?.find(t=>String(t.id)===String(id));
+      const fresh=(r,age)=>r?.available&&Number.isFinite(r.checkedAt)&&r.checkedAt<=now&&now-r.checkedAt<=age;
+      const inWindow=data?.current&&Number.isFinite(game?.kickoff)&&game.kickoff>now&&game.kickoff<=now+7*day;
+      const reportsVerified=!!(inWindow&&fresh(team?.roster,3600000)&&fresh(team?.injuries,900000));
+      teams.push({id:String(id),applied,unvalued,conflicts:summary.conflicts||[],unknown:summary.unknown,conditional:summary.conditional,nonstarters:summary.nonstarters||[],reportsVerified,reason:summary.reason});
     }
     return {teams,reason:'Only reported entries are reviewed. Missing reports do not establish health. Applied score scenarios use confirmed role and workload assumptions; previous games may already reflect an absence.'};
   }

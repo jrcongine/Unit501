@@ -5,6 +5,7 @@ let selected = null;
 let scoringContext = null;
 let forecastContext = null;
 function invalidateSimulation(message) {
+  $('availability-score-status').textContent='';
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
 }
@@ -618,8 +619,9 @@ function sim() {
   const availabilityReview = window.Unit501InjuryModel?.impactReview(window.Unit501Availability?.snapshot(),selected,window.Unit501Lineups?.evaluate());
   const availabilityNote = availabilityReview ? availabilityReview.teams.map(t=>{
     const name=t.id===selected.awayId?selected.a:selected.h;
-    return `${name}: ${t.applied.length} reported absences covered by a lineup score scenario; ${t.unvalued.length} without a score valuation${t.unvalued.length?' ('+t.unvalued.map(p=>p.name).join(', ')+')':''}; ${t.conflicts.length} conflicting and ${t.unknown.length} unresolved reports.`;
+    return `${name}: ${t.applied.length} absences or announced QB role changes covered by a lineup score scenario; ${t.unvalued.length} without a score valuation${t.unvalued.length?' ('+t.unvalued.map(p=>p.name).join(', ')+')':''}; ${t.conflicts.length} conflicting, ${t.conditional.length} conditional and ${t.unknown.length} unresolved reports. ${t.reportsVerified?'Fresh provider roster and injury feeds checked; this does not confirm full health or starters.':'Roster/injury feed coverage incomplete or expired; zero listed absences does not mean healthy.'}`;
   }).join(' ')+' '+availabilityReview.reason : 'Availability score coverage has not been reviewed.';
+  $('availability-score-status').textContent='Availability score coverage: '+availabilityNote;
   const injuryNote = prediction.injury.applied
     ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates in addition to any replacement scenario.`
     : 'No injury scenario entered; this does not confirm either team is healthy. Confirmed replacement scenarios can change scores after the player-ratings build; missing role or replacement data is withheld.';
@@ -642,3 +644,5 @@ for (const id of ['date', 'league']) {
 
 health();
 load();
+
+document.addEventListener('unit501:availability-updated',()=>{if($('availability-score-status').textContent)$('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';});
