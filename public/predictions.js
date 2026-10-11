@@ -357,7 +357,7 @@ cell.append(details);
     if(adjustment!==null)adjusted*=1+adjustment;
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
-    return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    return {baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function showPlayer() {
     for (const option of Array.from(picker.children)) {
@@ -436,6 +436,15 @@ results.appendChild(workload);
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
+      if(window.Unit501ForecastArchive&&(model.lineupChange||model.workload!==100)){
+        try{
+          const archived=Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
+            inputs:{history,form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
+              availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
+          const saved=Unit501ForecastArchive.save(localStorage,archived);
+          const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
+        }catch{const info=document.createElement('p');info.textContent=def.title+': forecast could not be archived on this browser.';results.append(info);}
+      }
       const trend = model.form.trend + ' • ' + model.form.sample;
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';

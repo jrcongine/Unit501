@@ -29,3 +29,16 @@ test('first game forecast persists, later versions never overwrite, storage fail
  assert.equal(save(storage,{...s,game:{...s.game,id:'100'}}).saved,false);assert.equal(map.get(key),raw);
  map.set(key,'corrupted');assert.equal(save(storage,s).saved,false);assert.equal(map.get(key),'corrupted');
 });
+test('player targets retain their first forecast independently of score and other player markets',()=>{
+ const {inputs,now}=fixture();const args={game:inputs.game,teamId:'0',playerId:'7',market:'recYds',baseline:20,adjusted:30,inputs:{history:[{recYds:20}],workload:75}};
+ const s=require('../public/forecast-archive').captureProp(args,now);
+ assert.equal(s.records[0].baseline,20);assert.equal(s.records[0].adjusted,30);assert.equal(s.records[0].actual,null);
+ args.inputs.history[0].recYds=999;assert.equal(s.inputs.history[0].recYds,20);
+ const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ assert.equal(save(storage,capture(inputs,now)).saved,true);assert.equal(save(storage,s).saved,true);
+ assert.equal(save(storage,s).saved,false);
+ assert.equal(save(storage,require('../public/forecast-archive').captureProp({...args,market:'rec'},now)).saved,true);
+ assert.equal(read(storage).snapshots.length,3);
+ assert.equal(require('../public/forecast-archive').captureProp({...args,teamId:'99'},now),null);
+ assert.equal(require('../public/forecast-archive').captureProp(args,inputs.game.kickoff),null);
+});

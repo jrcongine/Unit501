@@ -661,8 +661,21 @@ $('download-forecast-archive').onclick=()=>{
     const archive=Unit501ForecastArchive.read(localStorage);
     if(!archive.snapshots.length){$('forecast-archive-status').textContent='No adjusted pregame score forecasts have been saved on this browser yet.';return;}
     const url=URL.createObjectURL(new Blob([JSON.stringify(archive,null,2)],{type:'application/json'}));
-    const link=document.createElement('a');link.href=url;link.download='unit501-score-forecasts.json';link.click();
+    const link=document.createElement('a');link.href=url;link.download='unit501-forecasts.json';link.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     $('forecast-archive-status').textContent='Archive download requested. These saved forecasts still need confirmed final results before comparison.';
   }catch{$('forecast-archive-status').textContent='Saved archive could not be downloaded. Existing data retained.';}
+};
+
+$('refresh-forecast-results').onclick=async()=>{
+ const button=$('refresh-forecast-results');button.disabled=true;
+ $('forecast-archive-status').textContent='Checking saved forecasts against confirmed final games…';
+ try{
+  const result=await Unit501ForecastResults.refresh(localStorage,async url=>{
+   const response=await fetch(url,{signal:AbortSignal.timeout(15000)});const data=await response.json();
+   if(!response.ok||data.error)throw Error('Result request failed');return data;
+  });
+  $('forecast-archive-status').textContent=`${result.matched} score/prop outcomes matched to confirmed finals. ${result.failed} archive requests failed. Missing player stats remain unknown; download the updated archive for comparison.`;
+ }catch{$('forecast-archive-status').textContent='Final results could not be saved. Existing archive retained.';}
+ finally{button.disabled=false;}
 };

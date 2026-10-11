@@ -14,7 +14,9 @@
  };
  window.Unit501Lineups={snapshot(){
   if(game!==selected||!ratings)return null;
-  return JSON.parse(JSON.stringify({ratings,scenarios:[...scenarios.values()]}));
+  const reviewed=[...scenarios.values()].filter(s=>s.confirmed);
+  const ids=new Set(reviewed.flatMap(s=>[s.playerId,...(s.allocations?s.allocations.map(a=>a.replacementId):[s.replacementId])].map(id=>String(s.teamId)+':'+String(id))));
+  return JSON.parse(JSON.stringify({ratings:{...ratings,players:ratings.players.filter(p=>ids.has(String(p.teamId)+':'+String(p.id)))},scenarios:reviewed}));
  },evaluate(){
   if(!ratings||game!==selected||ratings.before!==game.kickoff||String(ratings.league)!==game.league||String(ratings.season)!==String(game.season))return null;
   const rows=[],reasons=[];
