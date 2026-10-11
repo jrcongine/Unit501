@@ -15,6 +15,24 @@ for (const id of ['spread','total','awayRating','homeRating',
   $(id).addEventListener('input', () => invalidateSimulation('Inputs changed. Run the simulation again.'));
 }
 $('venueMode').addEventListener('change', () => invalidateSimulation('Game location changed. Run the simulation again.'));
+$('variableHomeField').addEventListener('change',()=>invalidateSimulation('Home-field estimate setting changed. Run the simulation again.'));
+$('homeContext').addEventListener('input',()=>invalidateSimulation('Matchup-context assumption changed. Run the simulation again.'));
+let homeFieldProfiles=null,homeFieldTask=null;
+async function loadHomeField(game){
+  $('home-field-status').textContent='Loading historical home-field estimates…';
+  $('home-field-rankings').replaceChildren();
+  if(game.league!=='1'){$('home-field-status').textContent='Team-specific home-field estimates are currently NFL only.';return;}
+  try{
+    if(!homeFieldTask)homeFieldTask=fetch('/home-field-profiles.json').then(async r=>{if(!r.ok)throw Error();return r.json();}).catch(e=>{homeFieldTask=null;throw e;});
+    const profile=await homeFieldTask;if(selected!==game)return;
+    if(profile.league!=='1'||String(profile.season)!==String(game.season)||!(profile.before<=game.kickoff)||profile.teams?.length!==32)throw Error();
+    homeFieldProfiles=profile;const home=profile.teams.find(t=>String(t.id)===String(game.homeId));
+    $('home-field-status').textContent=home?`${home.name}: historical rank ${home.rank}/32, +${home.margin.toFixed(2)} home-margin points (${home.homeGames} home / ${home.awayGames} away games). Experimental; switched off by default. ${profile.validation?.reason||''}`:'Selected home team estimate unavailable.';
+    const table=document.createElement('table');const header=document.createElement('tr');for(const label of ['Rank','Team','Home margin','Home / away games']){const th=document.createElement('th');th.textContent=label;header.append(th);}table.append(header);
+    for(const t of profile.teams){const row=document.createElement('tr');for(const value of [t.rank,t.name,'+'+t.margin.toFixed(2),t.homeGames+' / '+t.awayGames]){const td=document.createElement('td');td.textContent=value;row.append(td);}table.append(row);}
+    $('home-field-rankings').append(table);
+  }catch{if(selected===game)$('home-field-status').textContent='Historical home-field estimate unavailable for this matchup. Standard venue assumption remains available.';}
+}
 $('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
 let slateSequence = 0;
 let oddsSequence = 0;
@@ -565,6 +583,10 @@ async function choose(game) {
   $('homeRating').value = 0;
   for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
   $('venueMode').value = 'auto';
+  $('variableHomeField').checked=false;
+  $('homeContext').value=0;
+  homeFieldProfiles=null;
+  loadHomeField(game);
 
   $('score').textContent = '—';
   $('cover').textContent = '—';
@@ -596,6 +618,7 @@ function sim() {
   const forecastAt=Date.now();
   const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
+    variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeContext:Number($('homeContext').value),
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
     injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},

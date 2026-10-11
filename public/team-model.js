@@ -22,16 +22,24 @@
       ? `Experimental wind adjustment: sustained wind ${forecast.windMph.toFixed(1)} mph reduces both projected scores by ${(reduction*100).toFixed(1)}%. Assumption, not calibrated; player props unchanged.`
       : 'Sustained wind at or below 15 mph: no scoring reduction.'};
   }
-  function venueEffect(game, home, away, mode = 'auto') {
+  function venueEffect(game, home, away, mode = 'auto', settings = {}) {
     if (!['auto','home','neutral'].includes(mode)) return {valid:false};
+    const context=settings.homeContext??0;
+    if(!Number.isFinite(context)||context<0||context>3)return {valid:false};
     if (mode === 'neutral') return {valid:true,margin:0,reason:'Neutral site selected: no home-field adjustment.'};
     const key = String(game.venueName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
     const inferred = key && home.homeVenues?.[key] >= 2 && !(away.homeVenues?.[key] > 0);
     if (mode === 'auto' && !inferred) return {valid:true,margin:0,
       reason:'Home venue unverified: no home-field adjustment. Select Home stadium or Neutral site if you know the location.'};
-    const margin = game.league === '1' ? 2 : 3;
+    let margin = game.league === '1' ? 2 : 3;
+    const profile=settings.homeFieldProfile;
+    const matches=profile?.teams?.filter(t=>String(t.id)===String(game.homeId))||[];
+    const validProfile=settings.variableHomeField===true&&game.league==='1'&&profile?.league==='1'&&String(profile.season)===String(game.season)&&profile.modelVersion==='home-field-ridge-v1'&&Number.isFinite(profile.before)&&profile.before<=game.kickoff&&Number.isFinite(profile.historyThrough)&&profile.historyThrough<profile.before&&profile.teams.length===32&&new Set(profile.teams.map(t=>String(t.id))).size===32&&matches.length===1&&matches[0].available===true&&matches[0].homeGames>=6&&matches[0].awayGames>=6&&Number.isFinite(matches[0].margin)&&matches[0].margin>=0&&matches[0].margin<=5;
+    if(validProfile)margin=matches[0].margin;
+    const baseMargin=margin;margin+=context;
     return {valid:true,margin,reason:(mode === 'home' ? 'Home stadium selected.' : 'Home venue inferred from at least two earlier home games; verify neutral-site exceptions.') +
-      ` Experimental home-field assumption: +${margin} points to the home margin; projected total unchanged.`};
+      (validProfile?` Experimental team home-field estimate: +${baseMargin.toFixed(2)} points (${matches[0].homeGames} home, ${matches[0].awayGames} away games); historical rank ${matches[0].rank}/32.`:` Experimental home-field assumption: +${baseMargin} points to the home margin.`)+
+      (context?` User matchup-context assumption: +${context.toFixed(1)} additional home-margin points; rivalry/prime time is not automatically valued.`:'')+' Projected total unchanged.',variable:validProfile,context,baseMargin};
   }
   function project(data, game, adjustments = {}, legacy = false) {
     if (!data || data.before !== game.kickoff || String(data.season) !== String(game.season))
@@ -111,7 +119,7 @@
         (adjusted ? corrected : shrink)(defense,'pointsAgainst');
       return Math.max(0,(legacy?sum/2:sum-baseline)+adjustment);
     };
-    const venue = venueEffect(game,home,away,adjustments.venueMode);
+    const venue = venueEffect(game,home,away,adjustments.venueMode,adjustments);
     if (!venue.valid) return {available:false,reason:'Choose a valid venue setting.'};
     const injury = Object.fromEntries(['awayOffense','awayDefense','homeOffense','homeDefense']
       .map(key => [key,adjustments.injury?.[key] ?? 0]));
@@ -147,8 +155,8 @@
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      pace,modelVersion:legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2',calibration:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
-      probabilityCalibration:!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),calibration:venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
