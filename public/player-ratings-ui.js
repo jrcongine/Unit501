@@ -61,6 +61,10 @@
     const proposal=['unavailable','nonstarter'].includes(reported.state)?Unit501LineupModel.recommend(ratings.players,p,availability,game,Unit501InjuryModel.assess):null;
     if(proposal){
      cell.append(node('p','Replacement workload: '+proposal.state+'. '+proposal.reason));
+     for(const gap of proposal.workloadGaps||[]){
+      const category={passing:'Passing attempts',rushing:'Carries',receiving:'Receptions'}[gap.category]||gap.category;
+      cell.append(node('p',`${category} withheld — ${gap.player}: ${gap.reason}`));
+     }
      for(const candidate of proposal.candidates){
       const usage=Object.entries(candidate.usage).map(([category,u])=>`${category}: ${u.total.toFixed(1)} estimated ${{passing:'pass attempts',rushing:'carries',receiving:'receptions'}[category]} (${u.baseline.toFixed(1)} recent baseline, ${u.extra>=0?'+':''}${u.extra.toFixed(1)} change; ${u.share.toFixed(0)}% share)`).join(' · ');
       cell.append(node('p',`${candidate.name}: role ${candidate.roleState}; workload ${candidate.workloadState}. ${usage || 'Recent workload coverage is insufficient.'}`));

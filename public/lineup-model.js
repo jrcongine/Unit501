@@ -86,6 +86,19 @@
       .map(p=>({id:String(p.id),name:p.name,roleState:announced.length===1?'confirmed':'estimated',workloadState:'unknown',usage:{},source:announced.length===1?announced[0].url:team.depth.url,profiles:p.profiles||{}}));
     if(!candidates.length)return unknown('No eligible replacement matched the current roster and availability checks.');
     const valid=p=>p&&p.games>=2&&!p.latestMissing&&p.coverage?.recorded*2>=p.coverage?.total&&Number.isFinite(p.usage)&&p.usage>0&&Number.isFinite(p.efficiency);
+    const workloadGaps=[];
+    for(const category of categories){
+      for(const player of [original,...candidates]){
+        const profile=player.profiles?.[category];
+        if(valid(profile))continue;
+        const reason=!profile?'No paired workload and yardage profile (need at least two recorded games).':
+          profile.latestMissing?'Latest team game has no recorded workload; the baseline may already reflect the absence.':
+          !(profile.games>=2)?'Fewer than two recorded workload and yardage games.':
+          !(profile.coverage?.recorded*2>=profile.coverage?.total)?'Workload is recorded in fewer than half of the team games.':
+          !(Number.isFinite(profile.usage)&&profile.usage>0)?'No usable positive recent workload.':'Recorded efficiency is unavailable.';
+        workloadGaps.push({category,playerId:String(player.id),player:player.name,reason});
+      }
+    }
     const allocations=candidates.map(p=>({replacementId:p.id,shares:{}}));
     for(const category of categories){
       if(!valid(original.profiles?.[category])||candidates.some(p=>!valid(p.profiles[category])))continue;
@@ -93,7 +106,7 @@
       candidates.forEach((p,i)=>{const share=p.profiles[category].usage/total*100;allocations[i].shares[category]=share;p.usage[category]={baseline:p.profiles[category].usage,extra:original.profiles[category].usage*share/100,total:original.role==='QB'?original.profiles[category].usage*share/100:p.profiles[category].usage+original.profiles[category].usage*share/100,share};});
     }
     for(const p of candidates){if(original.role==='QB'&&p.usage.passing)p.usage.passing.extra=p.usage.passing.total-p.usage.passing.baseline;p.workloadState=Object.keys(p.usage).length?'estimated':'unknown';}
-    return {state:candidates.some(p=>p.workloadState==='estimated')?'estimated':'unknown',candidates,allocations:allocations.filter(a=>Object.keys(a.shares).length),
+    return {state:candidates.some(p=>p.workloadState==='estimated')?'estimated':'unknown',candidates,workloadGaps,allocations:allocations.filter(a=>Object.keys(a.shares).length),
       reason:'Estimated split uses recent recorded usage among eligible lower-depth players, or the announced starter. It assumes the absent player’s entire baseline workload is reassigned. Depth order does not establish future touches; missing candidate usage leaves that category unknown. Review before applying; previous games may already reflect the absence.'};
   }
   function adjustProp(baseline,key,change){
