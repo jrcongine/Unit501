@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context};
@@ -107,6 +107,8 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  assert.match(h.nodes.get('predict-results').textContent,/0.0 projected/);
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/75.0 projected/);
+ const propArchive=h.run('Unit501ForecastArchive.read(localStorage).snapshots.find(s=>s.kind==="prop"&&s.records[0].playerId==="9"&&s.records[0].market==="rushYds")');
+ assert.equal(propArchive.records[0].baseline,15);assert.equal(propArchive.records[0].adjusted,75);assert.ok(propArchive.inputs.lineupInputs);
  // An unavailable replacement invalidates transferred output after a report refresh.
  h.context.injuryOut=true;
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'9',teamId:'1',status:'Out',date:new Date().toISOString()}];document.dispatchEvent(new Event('unit501:availability-updated'))");await h.settle();

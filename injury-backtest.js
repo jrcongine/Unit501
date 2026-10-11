@@ -32,8 +32,11 @@ function compare(records) {
     pairs.push({...r, baselineError: Math.abs(r.baseline-r.actual), adjustedError: Math.abs(r.adjusted-r.actual)});
   }
   const versions = [...new Set(pairs.map(r => r.modelVersion))];
-  if (versions.length > 1) { skips.version = pairs.length; pairs.length = 0; }
-  else version = versions[0] || null;
+  version = versions.length===1 ? versions[0] : null;
+  const scope=r=>JSON.stringify([String(r.league),r.kind,r.market]);
+  const scopedVersions=new Map();
+  for(const r of pairs){const k=scope(r);if(!scopedVersions.has(k))scopedVersions.set(k,new Set());scopedVersions.get(k).add(r.modelVersion);}
+  for(let i=pairs.length-1;i>=0;i--)if(scopedVersions.get(scope(pairs[i])).size>1){pairs.splice(i,1);skips.version++;}
   const metrics = rows => {
     const games = new Map();
     for (const r of rows) {
