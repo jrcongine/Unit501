@@ -43,3 +43,21 @@ test('pace comparison uses strictly earlier snapshots, requires later games and 
  assert.equal(validatePace(games,{...q,before:40000},snapshot).accepted,false);
  const prior=validatePace(games,{...q,before:60000},snapshot);games[79].scores.away.total=1000;assert.deepEqual(validatePace(games,{...q,before:60000},snapshot),prior);
 });
+
+test('duplicate team reports withhold drive coverage instead of choosing arbitrary pace',()=>{
+ const g={league:{id:1,season:2026},game:{id:1,stage:'Regular Season',date:{timestamp:1},status:{short:'FT'}},teams:{away:{id:0},home:{id:1}},scores:{away:{total:20},home:{total:14}}};
+ const rows=[{team:{id:0},statistics:{yards:{total_drives:10},plays:60}},{team:{id:1},statistics:{yards:{total_drives:11},plays:62}}];
+ const q={league:'1',season:'2026',before:2000},roster=[{id:0},{id:1}];
+ const clean=summarize([g],new Map([['1',rows]]),q,roster);assert.ok(clean.teams.every(t=>t.pace.games===1));
+ const ambiguous=summarize([g],new Map([['1',[...rows,{team:{id:0},statistics:{yards:{total_drives:20},plays:120}}]]]),q,roster);
+ assert.ok(ambiguous.teams.every(t=>t.pace.games===0));assert.equal(ambiguous.teams[0].pace.playGames,0);
+ assert.equal(ambiguous.teams[1].pace.playGames,1);assert.ok(ambiguous.teams.every(t=>t.metrics.pointsFor.games===1));
+});
+test('pace replay accounts for rejected drive coverage and keeps simultaneous warm-up together',()=>{
+ const rows=Array.from({length:65},(_,i)=>({league:{id:1,season:2026},game:{id:i+1,stage:'Regular Season',date:{timestamp:Math.floor(i/16)+1},status:{short:'FT'}},teams:{away:{id:0},home:{id:1}},scores:{away:{total:20},home:{total:20}}}));
+ const q={league:'1',season:'2026',before:10000};
+ const result=validatePace(rows,q,before=>context(before));
+ assert.equal(result.games,65);assert.equal(result.warmupGames,32);assert.equal(result.evaluatedGames,33);assert.equal(result.skipped,0);
+ const incomplete=validatePace(rows,q,before=>{const d=context(before);d.teams[31].pace.games=0;return d;});
+ assert.equal(incomplete.games,0);assert.equal(incomplete.skipped,65);assert.equal(incomplete.accepted,false);
+});

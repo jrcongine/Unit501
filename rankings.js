@@ -45,6 +45,7 @@ function summarize(games, boxes, query, roster) {
     const away = game.teams?.away || game.teams?.visitors;
     const home = game.teams?.home;
     const rows = boxes.get(id) || [];
+    const uniqueRow = teamId => {const matches=rows.filter(row=>String(row.team?.id)===String(teamId));return matches.length===1?matches[0]:undefined;};
     for (const [own, opponent, side, other] of [[away,home,'away','home'],[home,away,'home','away']]) {
       const team = teams.get(String(own?.id));
       if (!team) continue;
@@ -53,10 +54,10 @@ function summarize(games, boxes, query, roster) {
       if (side === 'home' && venue) team.homeVenues[venue] = (team.homeVenues[venue] || 0) + 1;
       team.opponents.push({id:String(opponent?.id || ''),
         scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
-      const ownStats = readYards(rows.find(row => String(row.team?.id) === String(own.id)));
-      const against = readYards(rows.find(row => String(row.team?.id) === String(opponent?.id)));
-      const ownPace=readPace(rows.find(row=>String(row.team?.id)===String(own.id)));
-      const opposingPace=readPace(rows.find(row=>String(row.team?.id)===String(opponent?.id)));
+      const ownStats = readYards(uniqueRow(own.id));
+      const against = readYards(uniqueRow(opponent?.id));
+      const ownPace=readPace(uniqueRow(own.id));
+      const opposingPace=readPace(uniqueRow(opponent?.id));
       if(ownPace.drives!==null&&opposingPace.drives!==null){team.pace.games++;team.pace.drives+=ownPace.drives;team.pace.opponentDrives+=opposingPace.drives;}
       if(ownPace.plays!==null){team.pace.playGames++;team.pace.plays+=ownPace.plays;}
       const values = {
