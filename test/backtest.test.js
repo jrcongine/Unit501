@@ -85,3 +85,16 @@ test('later formula comparison freezes simultaneous warm-up games and matches pa
  const early=run(500000).laterComparison;assert.equal(early.games,0);assert.equal(early.current,null);assert.equal(early.sufficient,false);
  const small=run(600000).laterComparison;assert.equal(small.games,16);assert.equal(small.sufficient,false);
 });
+
+test('offense diagnostics group only by pre-kickoff scoring and report paired bias',()=>{
+ const {roster,games}=season(),query={league:'1',season:'2026',before:1000000};
+ const run=rows=>validate(rows,query,before=>summarize(rows,new Map(),{...query,before},roster));
+ const result=run(games),groups=result.offenseDiagnostics.overall;
+ assert.equal(groups.belowAverage.teamGames,result.games);assert.equal(groups.atOrAboveAverage.teamGames,result.games);
+ const away=result.records.map(r=>r.away);
+ assert.equal(groups.belowAverage.bias,-away.reduce((s,v)=>s+v,0)/away.length);
+ assert.equal(groups.belowAverage.scoreMAE,away.reduce((s,v)=>s+Math.abs(v),0)/away.length);
+ const modified=games.map(g=>g.game.date.timestamp===800?{...g,scores:{away:{total:99},home:{total:0}}}:g);
+ const next=run(modified);assert.deepEqual(next.records.filter(r=>r.kickoff<800000),result.records.filter(r=>r.kickoff<800000));
+ assert.equal(next.offenseDiagnostics.overall.belowAverage.teamGames,groups.belowAverage.teamGames);
+});
