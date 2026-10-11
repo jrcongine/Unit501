@@ -7,7 +7,7 @@ function validatePace(games,query,snapshot){
  const ordered=[...new Map(games.filter(g=>String(g.league?.id)===String(query.league)&&String(g.league?.season)===String(query.season)&&['FT','AOT','FINAL'].includes(g.game?.status?.short)&&Number(g.game?.date?.timestamp)>0&&Number(g.game.date.timestamp)*1000<query.before&&(query.league!=='1'||g.game?.stage==='Regular Season')).map(g=>[String(g.game.id),g])).values()].sort((a,b)=>a.game.date.timestamp-b.game.date.timestamp);
  let lastBefore,data;
  for(const g of ordered){
-  const before=Number(g.game.date.timestamp)*1000;if(before!==lastBefore){data=snapshot(before);lastBefore=before;}
+  const before=Number(g.game.date.timestamp)*1000;if(before!==lastBefore){const historyBefore=before-86400000;data={...snapshot(historyBefore),before,historyBefore};lastBefore=before;}
   const game={league:query.league,season:query.season,kickoff:before,awayId:String(g.teams.away.id),homeId:String(g.teams.home.id),venueName:g.game.venue?.name};
   const candidate=project(data,game,{pace:true}),baseline=project(data,game,{pace:false});
   const numeric=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
@@ -23,7 +23,7 @@ function validatePace(games,query,snapshot){
  const later=records.filter(r=>r.kickoff>warmupCutoff);
  const result={modelVersion:'pace-v1',league:query.league,season:query.season,before:query.before,games:records.length,skipped,warmupGames:records.length-later.length,evaluatedGames:later.length,accepted:false,
   calibration:records.length>=30?{...fit(records),modelVersion:'pace-v1'}:null,
-  explanation:'Pre-kickoff drive/scoring snapshots only. First 30 games are warm-up; later games compare fixed drive-based and current formulas. This in-season comparison is not independent external validation.'};
+  explanation:'Drive/scoring snapshots exclude results from the previous 24 hours; exact completion timestamps are unavailable. First 30 games are warm-up; later games compare fixed drive-based and current formulas. This in-season comparison is not independent external validation.'};
  if(later.length){for(const key of ['scoreError','totalError','baselineScoreError','baselineTotalError'])result[key]=mean(later.map(r=>r[key]));result.accepted=later.length>=30&&result.scoreError<result.baselineScoreError&&result.totalError<result.baselineTotalError;}
  return result;
 }

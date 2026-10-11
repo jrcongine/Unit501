@@ -23,8 +23,9 @@ function validate(games,query,snapshot) {
     let end=start+1;
     const before=ordered[start].game.date.timestamp*1000;
     while(end<ordered.length && ordered[end].game.date.timestamp*1000===before)end++;
-    const data=snapshot(before),calibration=fit(errors),batch=[];
-    const probabilityFit=Object.fromEntries(Object.entries(training).map(([key,rows])=>[key,probability.fit(rows)]));
+    const historyBefore=before-86400000;
+    const data={...snapshot(historyBefore),before,historyBefore},calibration=fit(errors.filter(e=>e.kickoff<historyBefore)),batch=[];
+    const probabilityFit=Object.fromEntries(Object.entries(training).map(([key,rows])=>[key,probability.fit(rows.filter(r=>r.kickoff<historyBefore))]));
     const probabilityBatch={win:[],cover:[],over:[]};
     for(const g of ordered.slice(start,end)) {
       const away=g.teams?.away||g.teams?.visitors,home=g.teams?.home;
@@ -33,10 +34,10 @@ function validate(games,query,snapshot) {
       const numeric=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
       if(!prediction.available||!numeric(g.scores?.away?.total)||!numeric(g.scores?.home?.total)){skipped++;continue;}
       const actualAway=Number(g.scores.away.total),actualHome=Number(g.scores.home.total);
-      const error={away:actualAway-prediction.away,home:actualHome-prediction.home};
+      const error={away:actualAway-prediction.away,home:actualHome-prediction.home,kickoff:before};
       const legacy=model.project(data,game,{},true);
       batch.push(error);
-      const record={id:String(g.game.id),kickoff:before,awayId:game.awayId,homeId:game.homeId,
+      const record={id:String(g.game.id),kickoff:before,historyBefore,awayId:game.awayId,homeId:game.homeId,
         projectedAway:prediction.away,projectedHome:prediction.home,actualAway,actualHome,...error,
         leagueBaseline:prediction.baseline,awayPriorScoring:data.teams.find(t=>String(t.id)===game.awayId)?.metrics.pointsFor.average,homePriorScoring:data.teams.find(t=>String(t.id)===game.homeId)?.metrics.pointsFor.average,
         legacyAwayError:actualAway-legacy.away,legacyHomeError:actualHome-legacy.home};
@@ -50,7 +51,7 @@ function validate(games,query,snapshot) {
         const check=(market,p,y)=>{
           if(y===null||!Number.isFinite(p))return;
           const calibrated=probability.apply(p,probabilityFit[market]);
-          probabilityBatch[market].push({id:record.id,p,y});
+          probabilityBatch[market].push({id:record.id,kickoff:before,p,y});
           if(calibrated!==null)probabilityChecks[market].push({id:record.id,kickoff:before,p,calibrated,y,brier:(calibrated-y)**2,rawBrier:(p-y)**2});
         };
         const result=simulate(0,prediction.away+prediction.home);
@@ -124,6 +125,6 @@ function validate(games,query,snapshot) {
       brier:rows.length?mean(rows.map(r=>r.brier)):null,rawBrier:rows.length?mean(rows.map(r=>r.rawBrier)):null,
       bins:Array.from({length:10},(_,i)=>{const bin=rows.filter(r=>Math.min(9,Math.floor(r.calibrated*10))===i);return {lower:i/10,upper:(i+1)/10,games:new Set(bin.map(r=>r.id)).size,thresholds:bin.length,predicted:bin.length?mean(bin.map(r=>r.calibrated)):null,observed:bin.length?mean(bin.map(r=>r.y)):null};})
     }])),
-    explanation:'Chronological replay uses only results before each kickoff. Variance fits earlier score errors after 30 predictions. Symmetric probability calibration trains after 100 distinct earlier evaluated games with both outcomes, and is checked on later games. Calibration is activated only after at least 30 later distinct games have lower aggregate Brier error than raw frequencies; this is a rolling in-season gate, not an independent future guarantee. Spread/total checks use three model-centered reference thresholds per game, not sportsbook history. Pushes and tied finals are excluded from probability fitting; displayed probabilities are conditional on no push/tie. Weather and historical injuries are unavailable. No historical bookmaker lines: spread/total profitability and prop calibration are not measured.'};
+    explanation:'Chronological replay excludes results from the previous 24 hours before each kickoff, including score-error and probability training. Completion timestamps are unavailable; this conservative lag limits overlap leakage but is not an exact archive of when results were published. Variance fits earlier score errors after 30 predictions. Symmetric probability calibration trains after 100 distinct earlier evaluated games with both outcomes, and is checked on later games. Calibration is activated only after at least 30 later distinct games have lower aggregate Brier error than raw frequencies; this is a rolling in-season gate, not an independent future guarantee. Spread/total checks use three model-centered reference thresholds per game, not sportsbook history. Pushes and tied finals are excluded from probability fitting; displayed probabilities are conditional on no push/tie. Weather and historical injuries are unavailable. No historical bookmaker lines: spread/total profitability and prop calibration are not measured.'};
 }
 module.exports={fit,validate};
