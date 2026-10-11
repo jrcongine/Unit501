@@ -33,6 +33,11 @@
       const matching=(moves.rows||[]).filter(r=>String(r.id)===String(playerId)&&String(r.teamId)===String(teamId)&&fresh(r.sourceCheckedAt,900000)&&fresh(Date.parse(r.reviewedAt),86400000));
       if(matching.length===1)return {blocked:true,state:'team-unconfirmed',reason:`Reviewed official move to ${matching[0].destination}; current destination roster rechecked. Former-team projection withheld while the provider listing is stale. Stats and workload are not transferred.`,source:matching[0].url};
     }
+    const inactive=team.inactives;
+    if(inactive?.available&&String(inactive.gameId)===String(game.id)&&inactive.kickoff===game.kickoff&&String(inactive.league)===String(game.league)&&String(inactive.season)===String(game.season)&&fresh(inactive.checkedAt,900000)){
+      const rows=(inactive.rows||[]).filter(p=>String(p.id)===String(playerId)&&String(p.teamId)===String(teamId)&&p.status==='Inactive');
+      if(rows.length===1)return {blocked:true,state:'unavailable',reason:rows[0].emergency?'Official NFL emergency third quarterback: restricted game-day eligibility. Normal full-game projection and line comparison withheld.':'Official NFL final game-day inactive list: projection and line comparison withheld; not treated as a zero-yard under.',source:inactive.url};
+    }
     const starters=team.starters;
     if(roster?.position==='QB' && team.roster?.available && fresh(team.roster.checkedAt,3600000) &&
        String(starters?.gameId)===String(game.id) && starters?.kickoff===game.kickoff && fresh(starters.checkedAt,900000)) {
@@ -86,6 +91,7 @@
     if(ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&Number.isFinite(ownership.checkedAt)&&ownership.checkedAt<=now&&now-ownership.checkedAt<=3600000)
       for(const p of team.roster?.rows||[])if((ownership.conflicts||[]).some(c=>String(c.id)===String(p.id)&&c.teamIds?.map(String).includes(String(teamId))))players.set(String(p.id),p);
     if(team.starters?.rows?.length)for(const p of team.roster?.rows || [])if(p.id && p.position==='QB')players.set(String(p.id),p);
+    for(const p of team.inactives?.rows||[])if(p.id)players.set(String(p.id),p);
     for(const p of team.transactions?.rows||[])if(p.id)players.set(String(p.id),p);
     for (const p of team.official?.rows || []) if (p.id && p.status) players.set(String(p.id),p);
     for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);

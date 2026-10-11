@@ -91,6 +91,10 @@
           const list=node('ul','');for(const r of t.depth.rows)list.append(node('li',`${r.position}: ${r.name} — depth ${r.rank}`));details.append(list);panel.append(details);
         }
       }
+      if(t.inactives) {
+        panel.append(node('p',t.inactives.available ? `Final game-day inactives: checked ${timestamp(t.inactives.checkedAt)}. ${t.inactives.rows.length} matched; ${t.inactives.unmatched.length} names unresolved. ${t.inactives.message}` : t.inactives.message));
+        if(t.inactives.available){const link=node('a','Review official final inactive lists');link.href=t.inactives.url;link.target='_blank';link.rel='noopener';panel.append(link);}
+      }
       if(t.official) {
         panel.append(node('p',t.official.available ? `${t.official.publisher || `Official NFL Week ${t.official.week}`}  cross-check: checked ${timestamp(t.official.checkedAt)}${t.official.publishedAt?'; published '+timestamp(t.official.publishedAt):''}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
         if(t.official.available) {
