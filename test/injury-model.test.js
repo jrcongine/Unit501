@@ -109,3 +109,12 @@ test('prop membership review withholds absent players without claiming an injury
  data.teams[0].roster.checkedAt=now;data.teams[0].roster.rows=[];
  assert.equal(assess(data,game,'1','99',now,true).blocked,false);
 });
+test('score impact review distinguishes covered absences from incomplete scenarios and wrong matchup',()=>{
+ const {impactReview}=require('../public/injury-model');
+ const data=fixture(),match={...game,id:'5',awayId:'1',homeId:'2'};
+ const lineup={gameId:'5',kickoff:game.kickoff,props:{'1:10':{rushing:{scale:0}}},teams:{'1':{scoreReady:true,points:0}}};
+ let review=impactReview(data,match,lineup,now);assert.equal(review.teams[0].applied.length,1);assert.equal(review.teams[0].unvalued.length,0);
+ lineup.teams['1'].scoreReady=false;review=impactReview(data,match,lineup,now);assert.equal(review.teams[0].unvalued.length,1);
+ lineup.teams['1'].scoreReady=true;lineup.gameId='other';assert.equal(impactReview(data,match,lineup,now).teams[0].unvalued.length,1);
+ assert.equal(impactReview(null,match,lineup,now).teams[0].applied.length,0);
+});

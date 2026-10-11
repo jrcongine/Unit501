@@ -16,7 +16,7 @@
       const categories=original.role==='QB'?['passing']:['RB','FB'].includes(original.role)?['rushing','receiving']:['WR','TE'].includes(original.role)?['receiving']:[];
       const available=categories.filter(k=>valid(original.profiles?.[k])&&valid(replacement.profiles?.[k]));
       if(!available.length){result.withheld.push(original.name+': replacement impact unavailable; need recent recorded workload and efficiency for both players. Blocking, coverage and special-team score effects require a separate point scenario.');continue;}
-      const team=result.teams[String(s.teamId)]??={passing:0,receiving:0,rushing:0,points:0};
+      const team=result.teams[String(s.teamId)]??={passing:0,receiving:0,rushing:0,points:0,scoreReady:false};
       if(available.length<categories.length){team.incompleteProfiles=true;result.withheld.push(original.name+': some workload categories lack usable replacement data. Supported props still apply; team score impact is withheld.');}
       for(const category of available){
         const from=original.profiles[category],to=replacement.profiles[category];
@@ -43,6 +43,7 @@
         // change rather than adding both perspectives of those yards.
         const passing=Math.abs(change.passing)>=Math.abs(change.receiving)?change.passing:change.receiving;
         const yards=passing+change.rushing;
+        change.scoreReady=true;
         change.points=Math.max(-8,Math.min(8,yards*points.average/(rush.average+pass.average)*.5));
       }else result.withheld.push('Team '+id+': score impact waits for complete offensive yardage; player workload scenarios still apply.');
     }
