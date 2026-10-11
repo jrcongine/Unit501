@@ -1,0 +1,312 @@
+{
+  "modelVersion": "home-field-ridge-v1",
+  "before": 1769904000000,
+  "historyThrough": 1767576000000,
+  "games": 517,
+  "excludedVenueGames": 11,
+  "teams": [
+    {
+      "id": "32",
+      "name": "Minnesota Vikings",
+      "homeGames": 16,
+      "awayGames": 14,
+      "available": true,
+      "margin": 4.65,
+      "rank": 1
+    },
+    {
+      "id": "20",
+      "name": "Buffalo Bills",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 4.06,
+      "rank": 2
+    },
+    {
+      "id": "7",
+      "name": "Detroit Lions",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 3.95,
+      "rank": 3
+    },
+    {
+      "id": "2",
+      "name": "Jacksonville Jaguars",
+      "homeGames": 15,
+      "awayGames": 15,
+      "available": true,
+      "margin": 3.93,
+      "rank": 4
+    },
+    {
+      "id": "28",
+      "name": "Denver Broncos",
+      "homeGames": 17,
+      "awayGames": 15,
+      "available": true,
+      "margin": 3.9,
+      "rank": 5
+    },
+    {
+      "id": "17",
+      "name": "Kansas City Chiefs",
+      "homeGames": 16,
+      "awayGames": 16,
+      "available": true,
+      "margin": 3.63,
+      "rank": 6
+    },
+    {
+      "id": "16",
+      "name": "Chicago Bears",
+      "homeGames": 15,
+      "awayGames": 17,
+      "available": true,
+      "margin": 3.12,
+      "rank": 7
+    },
+    {
+      "id": "15",
+      "name": "Green Bay Packers",
+      "homeGames": 17,
+      "awayGames": 16,
+      "available": true,
+      "margin": 3.03,
+      "rank": 8
+    },
+    {
+      "id": "31",
+      "name": "Los Angeles Rams",
+      "homeGames": 17,
+      "awayGames": 14,
+      "available": true,
+      "margin": 2.89,
+      "rank": 9
+    },
+    {
+      "id": "21",
+      "name": "Indianapolis Colts",
+      "homeGames": 15,
+      "awayGames": 17,
+      "available": true,
+      "margin": 2.47,
+      "rank": 10
+    },
+    {
+      "id": "11",
+      "name": "Arizona Cardinals",
+      "homeGames": 17,
+      "awayGames": 16,
+      "available": true,
+      "margin": 2.29,
+      "rank": 11
+    },
+    {
+      "id": "12",
+      "name": "Philadelphia Eagles",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 2.16,
+      "rank": 12
+    },
+    {
+      "id": "22",
+      "name": "Pittsburgh Steelers",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 2.07,
+      "rank": 13
+    },
+    {
+      "id": "18",
+      "name": "Washington Commanders",
+      "homeGames": 16,
+      "awayGames": 16,
+      "available": true,
+      "margin": 1.97,
+      "rank": 14
+    },
+    {
+      "id": "14",
+      "name": "San Francisco 49ers",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.96,
+      "rank": 15
+    },
+    {
+      "id": "9",
+      "name": "Cleveland Browns",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.83,
+      "rank": 16
+    },
+    {
+      "id": "30",
+      "name": "Los Angeles Chargers",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.72,
+      "rank": 17
+    },
+    {
+      "id": "26",
+      "name": "Houston Texans",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.55,
+      "rank": 18
+    },
+    {
+      "id": "5",
+      "name": "Baltimore Ravens",
+      "homeGames": 17,
+      "awayGames": 16,
+      "available": true,
+      "margin": 1.46,
+      "rank": 19
+    },
+    {
+      "id": "13",
+      "name": "New York Jets",
+      "homeGames": 16,
+      "awayGames": 15,
+      "available": true,
+      "margin": 1.46,
+      "rank": 20
+    },
+    {
+      "id": "27",
+      "name": "New Orleans Saints",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.32,
+      "rank": 21
+    },
+    {
+      "id": "25",
+      "name": "Miami Dolphins",
+      "homeGames": 15,
+      "awayGames": 17,
+      "available": true,
+      "margin": 1.27,
+      "rank": 22
+    },
+    {
+      "id": "23",
+      "name": "Seattle Seahawks",
+      "homeGames": 16,
+      "awayGames": 16,
+      "available": true,
+      "margin": 1.18,
+      "rank": 23
+    },
+    {
+      "id": "24",
+      "name": "Tampa Bay Buccaneers",
+      "homeGames": 17,
+      "awayGames": 14,
+      "available": true,
+      "margin": 1.15,
+      "rank": 24
+    },
+    {
+      "id": "3",
+      "name": "New England Patriots",
+      "homeGames": 16,
+      "awayGames": 15,
+      "available": true,
+      "margin": 1,
+      "rank": 25
+    },
+    {
+      "id": "19",
+      "name": "Carolina Panthers",
+      "homeGames": 14,
+      "awayGames": 16,
+      "available": true,
+      "margin": 0.98,
+      "rank": 26
+    },
+    {
+      "id": "10",
+      "name": "Cincinnati Bengals",
+      "homeGames": 15,
+      "awayGames": 17,
+      "available": true,
+      "margin": 0.76,
+      "rank": 27
+    },
+    {
+      "id": "8",
+      "name": "Atlanta Falcons",
+      "homeGames": 15,
+      "awayGames": 15,
+      "available": true,
+      "margin": 0.63,
+      "rank": 28
+    },
+    {
+      "id": "6",
+      "name": "Tennessee Titans",
+      "homeGames": 16,
+      "awayGames": 17,
+      "available": true,
+      "margin": 0.5,
+      "rank": 29
+    },
+    {
+      "id": "4",
+      "name": "New York Giants",
+      "homeGames": 17,
+      "awayGames": 16,
+      "available": true,
+      "margin": 0.26,
+      "rank": 30
+    },
+    {
+      "id": "1",
+      "name": "Las Vegas Raiders",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 0,
+      "rank": 31
+    },
+    {
+      "id": "29",
+      "name": "Dallas Cowboys",
+      "homeGames": 17,
+      "awayGames": 17,
+      "available": true,
+      "margin": 0,
+      "rank": 32
+    }
+  ],
+  "method": "Opponent/team strength regression, separate strength by season; 20-game home-effect shrinkage toward 2 points; 8-game strength shrinkage. Home venues inferred from dominant season venue; shared/unknown/alternate venues excluded. Effects bounded 0–5 points. Descriptive estimate, not a crowd-noise or motivation rating.",
+  "league": "1",
+  "season": "2026",
+  "source": "API-Sports completed regular-season schedules",
+  "automatic": false,
+  "validation": {
+    "trainingSeason": "2024",
+    "evaluationSeason": "2025",
+    "games": 195,
+    "baselineMarginMAE": 10.706668790360553,
+    "candidateMarginMAE": 10.894416064147588,
+    "automatic": false,
+    "reason": "Did not improve held-out margin error: 10.89 vs 10.71 points over 195 games. Optional experiment; flat bonus remains default."
+  },
+  "coverageNote": "2024 has 256 verified finals; 16 regular-season games lack final status and are excluded. 2025 has 272 verified finals. Unknown, alternate and shared home venues are excluded."
+}

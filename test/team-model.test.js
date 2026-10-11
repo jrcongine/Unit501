@@ -2,6 +2,14 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {project,simulate}=require('../public/team-model');
 const {weatherEffect}=require('../public/team-model');
+test('manual matchup edge preserves total, respects neutral venues and does not reuse calibration',()=>{
+ const {game,data}=scheduled();
+ const a=project(data,game,{venueMode:'home'}),b=project(data,game,{venueMode:'home',homeContext:2});
+ assert.ok(Math.abs(a.away+a.home-b.away-b.home)<1e-9);
+ assert.ok(Math.abs((b.home-b.away)-(a.home-a.away)-2)<1e-9);
+ assert.equal(b.calibration,null);assert.equal(b.probabilityCalibration,null);assert.match(b.modelVersion,/home-context-v1/);
+ assert.deepEqual(project(data,game,{venueMode:'neutral',homeContext:2}),project(data,game,{venueMode:'neutral'}));
+});
 function forecast(windMph = 25) {
  const now=2000000, game={kickoff:3000000};
  return {now,game,data:{roof:'outdoor',available:true,kickoff:game.kickoff,
