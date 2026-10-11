@@ -150,3 +150,11 @@ test('replacement estimate UI names the candidate and applies only after review'
  assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
  assert.match(h.nodes.get('lineup-status').textContent,/evidence changed or expired/);
 });
+
+test('forecast shows incomplete injury coverage and clears its coverage claim when reports refresh',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');
+ assert.match(h.nodes.get('availability-score-status').textContent,/coverage incomplete or expired/);
+ await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.match(h.nodes.get('availability-score-status').textContent,/Run the simulation again/);
+ h.run("invalidateSimulation('Inputs changed')");assert.equal(h.nodes.get('availability-score-status').textContent,'');
+});
