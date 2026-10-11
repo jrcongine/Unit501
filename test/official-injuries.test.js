@@ -29,3 +29,23 @@ test('official Out blocks with no provider injury entry; conflicts withhold; wro
  team.injuries.rows=[];team.official.rows[0].status='Out';team.official.gameId='101';assert.equal(check().blocked,false);
  team.official.gameId='100';team.official.checkedAt=now-900001;assert.equal(check().blocked,false);
 });
+test('name matching resolves suffix omissions and reviewed aliases but rejects identity ambiguity',()=>{
+ const {matchPlayer}=require('../official-injuries');
+ const row={name:'Michael Pittman',position:'WR'},p={id:'1501',name:'Michael Pittman Jr.',position:'WR'};
+ assert.equal(matchPlayer(row,[p],'22'),p);
+ assert.equal(matchPlayer({...row,name:'Michael Pittman III'},[p],'22'),null);
+ assert.equal(matchPlayer(row,[p,{id:'999',name:'Michael Pittman',position:'WR'}],'22'),null);
+ assert.equal(matchPlayer(row,[{...p,position:'RB'}],'22'),null);
+ const alias={id:'17539',name:'Christopher Brooks',position:'RB'},r={name:'Chris Brooks',position:'RB'};
+ assert.equal(matchPlayer(r,[alias],'15'),alias);
+ for(const [player,team] of [[alias,'16'],[{...alias,id:'99'},'15'],[{...alias,position:'WR'},'15'],[{...alias,name:'Christopher Brook'},'15']])assert.equal(matchPlayer(r,[player],team),null);
+ assert.equal(matchPlayer(r,[alias,{id:'99',name:'Chris Brooks',position:'RB'}],'15'),null);
+ assert.equal(matchPlayer({name:'Lorenzo Styles Jr.',position:'CB'},[{id:'14372',name:'Lorenzo Styles',position:'S'}],'27'),null);
+ assert.equal(matchPlayer({name:'Jaylon Jones',position:'CB'},[{id:'7609',name:'Jarrian Jones',position:'CB'}],'2'),null);
+});
+test('resolved suffix omission carries official Out into the availability gate',async()=>{
+ const t=teams();t[0].roster={available:true,checkedAt:now,rows:[{id:'10',name:'Player One Jr.',position:'RB'}]};
+ await createOfficialInjuries(async()=>({response:[g]}),()=>now,async()=>page)(q,t);
+ assert.equal(t[0].official.rows[0].id,'10');
+ assert.equal(assess({current:true,teams:t},{id:'100',kickoff},'16','10',now).blocked,true);
+});
