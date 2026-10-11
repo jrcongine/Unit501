@@ -78,7 +78,23 @@
     }
     return result;
   }
-  const api = {assess, workloadProjection,teamSummary,refreshDue};
+  function impactReview(data, game, lineup, now=Date.now()) {
+    const scoped=lineup && String(lineup.gameId)===String(game?.id) && lineup.kickoff===game?.kickoff;
+    const teams=[];
+    for(const id of [game?.awayId,game?.homeId]) {
+      if(!id)continue;
+      const summary=teamSummary(data,game,id,now);
+      const applied=[],unvalued=[];
+      for(const player of summary.unavailable) {
+        const props=scoped?lineup.props?.[String(id)+':'+player.id]:null;
+        const reduced=props && Object.values(props).some(p=>p.scale<1);
+        (reduced && lineup.teams?.[String(id)]?.scoreReady===true ? applied : unvalued).push(player);
+      }
+      teams.push({id:String(id),applied,unvalued,conflicts:summary.conflicts||[],unknown:summary.unknown,reason:summary.reason});
+    }
+    return {teams,reason:'Only reported entries are reviewed. Missing reports do not establish health. Applied score scenarios use confirmed role and workload assumptions; previous games may already reflect an absence.'};
+  }
+  const api = {assess, workloadProjection,teamSummary,refreshDue,impactReview};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Unit501InjuryModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

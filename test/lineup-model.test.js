@@ -53,3 +53,8 @@ test('missing receiving replacement data preserves rushing props but withholds p
  assert.equal(r.props['10:2'].receiving,undefined);assert.equal(r.teams['10'].points,0);
  assert.match(r.withheld.join(' '),/coverage is incomplete/);
 });
+test('a zero-valued complete scenario is distinguished from a withheld score',()=>{
+ const equal=structuredClone(players);equal[1].profiles=structuredClone(equal[0].profiles);
+ const r=evaluate(equal,[scenario],context,game);assert.equal(r.teams['10'].points,0);assert.equal(r.teams['10'].scoreReady,true);
+ const incomplete=evaluate(players,[scenario],null,game);assert.equal(incomplete.teams['10'].scoreReady,false);
+});
