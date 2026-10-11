@@ -312,6 +312,17 @@ function showTeamContext(data, game) {
       details.append(comparison);
       const caveat=document.createElement('p');caveat.textContent=check.explanation;details.append(caveat);
     }
+    if(validation.offenseDiagnostics){
+      const diagnostics=validation.offenseDiagnostics;
+      for(const [key,label]of [['belowAverage','Below-average scoring offenses'],['atOrAboveAverage','At-or-above-average scoring offenses']]){
+        const row=diagnostics.overall[key],later=diagnostics.later[key];
+        if(!row?.teamGames)continue;
+        const line=document.createElement('p');
+        line.textContent=`${label}: ${row.teamGames} team-games. Current vs previous score error ${row.scoreMAE.toFixed(1)} vs ${row.legacyScoreMAE.toFixed(1)} points; scoring bias ${row.bias>=0?'+':''}${row.bias.toFixed(1)} vs ${row.legacyBias>=0?'+':''}${row.legacyBias.toFixed(1)}. Later comparison: ${later.teamGames} team-games across ${later.games} matchups.${later.games<30?' Limited later evidence.':''}`;
+        details.append(line);
+      }
+      const note=document.createElement('p');note.textContent=diagnostics.explanation;details.append(note);
+    }
     if(validation.probabilityGames) {
       const label=document.createElement('p');label.textContent=`Away-win reliability: ${validation.probabilityGames} later games, Brier score ${validation.brier.toFixed(3)} (lower is better). Small bins remain uncertain.`;details.append(label);
       const table=document.createElement('table');table.style.width='100%';

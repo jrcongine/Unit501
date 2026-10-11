@@ -38,6 +38,7 @@ function validate(games,query,snapshot) {
       batch.push(error);
       const record={id:String(g.game.id),kickoff:before,awayId:game.awayId,homeId:game.homeId,
         projectedAway:prediction.away,projectedHome:prediction.home,actualAway,actualHome,...error,
+        leagueBaseline:prediction.baseline,awayPriorScoring:data.teams.find(t=>String(t.id)===game.awayId)?.metrics.pointsFor.average,homePriorScoring:data.teams.find(t=>String(t.id)===game.homeId)?.metrics.pointsFor.average,
         legacyAwayError:actualAway-legacy.away,legacyHomeError:actualHome-legacy.home};
       if(calibration) {
         let seed=123;
@@ -90,8 +91,20 @@ function validate(games,query,snapshot) {
     current:comparison(later),previous:comparison(later.map(r=>({away:r.legacyAwayError,home:r.legacyHomeError}))),
     sufficient:later.length>=30,
     explanation:'Fixed formulas compared on games after the first 30 eligible predictions; all games at the warm-up boundary kickoff stay in warm-up. This is an in-season comparison, not independent future validation or evidence of betting profit.'};
+  const diagnose=rows=>{
+    const groups={belowAverage:[],atOrAboveAverage:[]};
+    for(const r of rows)for(const side of ['away','home']){
+      const prior=r[side+'PriorScoring'];if(!Number.isFinite(prior)||!Number.isFinite(r.leagueBaseline))continue;
+      groups[prior<r.leagueBaseline?'belowAverage':'atOrAboveAverage'].push({id:r.id,error:r[side],legacyError:r[side==='away'?'legacyAwayError':'legacyHomeError']});
+    }
+    return Object.fromEntries(Object.entries(groups).map(([key,rows])=>[key,{teamGames:rows.length,games:new Set(rows.map(r=>r.id)).size,
+      scoreMAE:rows.length?mean(rows.map(r=>Math.abs(r.error))):null,bias:rows.length?mean(rows.map(r=>-r.error)):null,
+      legacyScoreMAE:rows.length?mean(rows.map(r=>Math.abs(r.legacyError))):null,legacyBias:rows.length?mean(rows.map(r=>-r.legacyError)):null}]));
+  };
+  const offenseDiagnostics={overall:diagnose(records),later:diagnose(later),
+    explanation:'Groups use each team’s recorded scoring average before kickoff relative to that replay’s league scoring baseline. Positive bias means projected points exceeded actual points. Counts are team-games; two teams from the same matchup are not independent observations. These diagnostics do not tune the scoring formula.'};
   const evaluated=records.filter(r=>Number.isFinite(r.brier));
-  return {modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,probabilityGames:evaluated.length,
+  return {modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
     scoreMAE:errors.length?mean(errors.map(e=>(Math.abs(e.away)+Math.abs(e.home))/2)):null,
     marginMAE:errors.length?mean(errors.map(e=>Math.abs(e.home-e.away))):null,
     totalMAE:errors.length?mean(errors.map(e=>Math.abs(e.home+e.away))):null,
