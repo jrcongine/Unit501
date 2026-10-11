@@ -25,3 +25,9 @@ test('announced starting QB gates other QB full-game props; depth order alone ne
  team.starters.gameId='21587';team.starters.checkedAt=now-900001;assert.equal(check('1').blocked,false);
  delete team.starters;team.depth={rows:[{id:'1',rank:2}]};assert.equal(check('1').blocked,false);
 });
+
+test('receiver rows preserve distinct depth slots rather than mixing backups from different positions',()=>{
+ const html=page.replace('</table>','<tr><td>WR</td><td>First Receiver</td><td>First Backup</td></tr><tr><td>WR</td><td>Second Receiver</td><td>Second Backup</td></tr></table>');
+ const rows=parseDepth(html).filter(r=>r.position==='WR');
+ assert.equal(rows[0].slot,rows[1].slot);assert.equal(rows[2].slot,rows[3].slot);assert.notEqual(rows[0].slot,rows[2].slot);
+});

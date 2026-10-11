@@ -134,3 +134,19 @@ test('opponent yardage factor also applies to transferred replacement touches',a
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/69.4 projected/);
 });
+
+test('replacement estimate UI names the candidate and applies only after review',async()=>{
+ const h=harness(new Map(),true);h.context.injuryOut=true;
+ const original=h.context.fetch;h.context.fetch=async url=>{const res=await original(url);if(String(url).startsWith('/api/availability')){const data=await res.json();data.teams[0].depth={available:true,checkedAt:Date.now(),gameId:String(h.game.game.id),kickoff:h.game.game.date.timestamp*1000,url:'https://example.com/depth',rows:[{id:'7',position:'RB',rank:1,slot:'RB:0'},{id:'9',position:'RB',rank:2,slot:'RB:0'}]};return {ok:true,json:async()=>data};}return res;};
+ await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ await h.nodes.get('build-player-ratings').onclick();await h.settle();
+ assert.match(h.nodes.get('ratings-results').textContent,/ZZBackup: role estimated; workload estimated/);
+ assert.match(h.nodes.get('ratings-results').textContent,/25.0 estimated carries/);
+ const button=h.nodes.get('estimate-1:7');assert.ok(button);button.onclick();
+ assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
+ const confirm=h.nodes.get('baseline-1:7');confirm.checked=true;confirm.onchange();
+ assert.equal(h.run('window.Unit501Lineups.evaluate().props["1:9"].rushing.extraUsage'),20);
+ await h.run("Unit501Availability.snapshot().teams[0].depth.checkedAt=Date.now()-3600001;document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
+ assert.match(h.nodes.get('lineup-status').textContent,/evidence changed or expired/);
+});

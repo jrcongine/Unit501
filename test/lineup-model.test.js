@@ -58,3 +58,63 @@ test('a zero-valued complete scenario is distinguished from a withheld score',()
  const r=evaluate(equal,[scenario],context,game);assert.equal(r.teams['10'].points,0);assert.equal(r.teams['10'].scoreReady,true);
  const incomplete=evaluate(players,[scenario],null,game);assert.equal(incomplete.teams['10'].scoreReady,false);
 });
+
+const {recommend}=require('../public/lineup-model'),{assess}=require('../public/injury-model');
+function replacementFixture(){
+ const now=1000,rows=[...structuredClone(players),{id:'3',teamId:'10',name:'Third RB',role:'RB',profiles:{rushing:profile(15,4),receiving:profile(2,7)}}].map(p=>({...p,position:'RB'}));
+ const team={id:'10',roster:{available:true,checkedAt:now,rows:rows.map(p=>({id:p.id,name:p.name,position:p.position}))},injuries:{available:true,checkedAt:now,rows:[{id:'1',status:'Out',date:new Date(now).toISOString()}]},depth:{available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,url:'https://example.com/depth',rows:rows.map((p,i)=>({id:p.id,position:'RB',rank:i+1,slot:'RB:0'}))}};
+ return {now,rows,data:{current:true,teams:[team]},team};
+}
+test('estimated committee workload is conserved per category and requires review before applying',()=>{
+ const f=replacementFixture(),r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.state,'estimated');assert.equal(r.candidates.length,2);
+ assert.equal(r.candidates[0].roleState,'estimated');assert.equal(r.candidates[0].usage.rushing.share,25);assert.equal(r.candidates[1].usage.rushing.share,75);
+ assert.equal(r.candidates[0].usage.receiving.share,50);
+ const s={...scenario,allocations:r.allocations};
+ assert.equal(evaluate(f.rows,[{...s,confirmed:false}],context,game).applied,false);
+ const result=evaluate(f.rows,[s],context,game);
+ assert.equal(result.props['10:2'].rushing.extraUsage,5);assert.equal(result.props['10:3'].rushing.extraUsage,15);
+ assert.equal(result.props['10:2'].receiving.extraUsage,1.5);assert.equal(result.props['10:3'].receiving.extraUsage,1.5);
+ assert.equal(result.teams['10'].scoreReady,true);assert.ok(result.details.every(d=>d.unassignedUsage===0));
+ const oversized=structuredClone(s);oversized.allocations[0].shares.rushing=90;
+ assert.equal(evaluate(f.rows,[oversized],context,game).applied,false);
+ const repeated=structuredClone(s);repeated.allocations.push(repeated.allocations[0]);assert.equal(evaluate(f.rows,[repeated],context,game).applied,false);
+});
+test('missing usage stays unknown; stale depth and conflicting absence reports do not produce estimates',()=>{
+ const f=replacementFixture();delete f.rows[2].profiles.receiving;
+ const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.ok(r.candidates.every(p=>p.usage.receiving===undefined));
+ const result=evaluate(f.rows,[{...scenario,allocations:r.allocations}],context,game);
+ assert.equal(result.applied,true);assert.equal(result.teams['10'].scoreReady,false);assert.equal(result.props['10:2'].receiving,undefined);
+ f.team.depth.checkedAt=f.now-3600001;assert.equal(recommend(f.rows,f.rows[0],f.data,game,assess,f.now).allocations.length,0);
+ f.team.depth.checkedAt=f.now;f.team.injuries.rows.push({...f.team.injuries.rows[0],status:'Active'});
+ assert.equal(recommend(f.rows,f.rows[0],f.data,game,assess,f.now).allocations.length,0);
+});
+test('replacement suggestions exclude unavailable players and confirm only announced roles, not usage',()=>{
+ const f=replacementFixture();f.team.injuries.rows.push({id:'2',status:'Out',date:new Date(f.now).toISOString()});
+ const rb=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);assert.deepEqual(rb.candidates.map(p=>p.id),['3']);
+ for(const p of f.rows){p.role='QB';p.position='QB';p.profiles={passing:profile(30,7)};}
+ for(const p of f.team.roster.rows)p.position='QB';
+ f.team.starters={gameId:game.id,kickoff:game.kickoff,checkedAt:f.now,rows:[{id:'3',position:'QB',publishedAt:new Date(f.now).toISOString(),url:'https://example.com/announcement'}]};
+ const qb=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);assert.equal(qb.candidates[0].roleState,'confirmed');assert.equal(qb.candidates[0].workloadState,'estimated');assert.equal(qb.candidates[0].source,'https://example.com/announcement');
+});
+
+test('receiver recommendations follow their own chart slot and ignore returner listings',()=>{
+ const f=replacementFixture();for(const p of f.rows){p.role='WR';p.position='WR';}
+ for(const p of f.team.roster.rows)p.position='WR';
+ f.team.depth.rows=[{id:'1',position:'WR',rank:1,slot:'WR:0'},{id:'2',position:'WR',rank:2,slot:'WR:0'},{id:'3',position:'WR',rank:2,slot:'WR:1'},{id:'1',position:'KR',rank:1,slot:'KR:0'}];
+ assert.deepEqual(recommend(f.rows,f.rows[0],f.data,game,assess,f.now).candidates.map(p=>p.id),['2']);
+});
+
+test('QB replacement inherits the passing role instead of adding earlier backup appearances',()=>{
+ const f=replacementFixture();for(const p of f.rows){p.role='QB';p.position='QB';p.profiles={passing:profile(p.id==='1'?30:12,p.id==='1'?7:6)};}
+ for(const p of f.team.roster.rows)p.position='QB';
+ f.team.starters={gameId:game.id,kickoff:game.kickoff,checkedAt:f.now,rows:[{id:'2',position:'QB',publishedAt:new Date(f.now).toISOString()}]};
+ const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.candidates[0].usage.passing.total,30);assert.equal(r.candidates[0].usage.passing.extra,18);
+ const result=evaluate(f.rows,[{...scenario,allocations:r.allocations}],context,game);
+ assert.equal(adjustProp(12,'attempts',result.props['10:2']),30);
+ assert.equal(adjustProp(72,'passYds',result.props['10:2']),180);
+ assert.equal(adjustProp(1,'passTD',result.props['10:2']),1);
+ assert.equal(result.teams['10'].passing,-30);
+});

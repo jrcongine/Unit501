@@ -4,18 +4,19 @@ const domains={
 const text=s=>String(s||'').replace(/<[^>]*>/g,' ').replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/&apos;/g,"'").replace(/\s+/g,' ').trim();
 const key=s=>text(s).toLowerCase().replace(/[^a-z0-9]/g,'');
 function parseDepth(html){
- const rows=[];
+ const rows=[];let slot=0;
  for(const table of html.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)){
   if(!/depthchart|1st String|Position/i.test(table[0]))continue;
   for(const tr of table[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)){
    const cells=[...tr[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>m[1]);
    const position=text(cells[0]);if(!/^[A-Z]{1,5}$/.test(position)||cells.length<2)continue;
+   const slotId=position+':'+slot++;
    for(let i=1;i<cells.length;i++){
     const links=[...cells[i].matchAll(/<a\b[^>]*href=["'][^"']*players-roster[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
     // Shared slots and unrecognized cells are not guessed into a single player.
     if(links.length>1)continue;
     const name=text(links.length?links[0][1]:cells[i]).replace(/^\d+\s+/,'');
-    if(name && name.length<=80 && /^[A-Za-z][A-Za-z .’'\-]+$/.test(name))rows.push({name,position,rank:i});
+    if(name && name.length<=80 && /^[A-Za-z][A-Za-z .’'\-]+$/.test(name))rows.push({name,position,rank:i,slot:slotId});
    }
   }
  }
