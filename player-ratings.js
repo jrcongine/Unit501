@@ -26,6 +26,24 @@ const specs={
  K:[['kicking','pct',1],['kicking','points',1]],
  P:[['punting','average',1],['punting','in20',1],['punting','touchbacks',-1]]
 };
+const limitations={
+ DL:'Recorded tackles and pass-rush events only; snap counts, pressure rate and run-gap assignments are not measured.',
+ LB:'Recorded defensive events only; snap counts, coverage assignments and missed tackles are not measured.',
+ DB:'Recorded defensive events only; targets faced, yards allowed and coverage assignments are not measured. Tackles do not establish coverage quality.',
+ K:'Field-goal accuracy is weighted by attempts; kick distance, weather and opportunity quality are not adjusted.',
+ P:'Punt metrics are weighted by recorded punts; net yardage, hang time, field position and coverage-unit effects are not measured.',
+ OL:'Blocking quality is unavailable from this box-score feed.',LS:'Snap accuracy and protection quality are unavailable from this box-score feed.'
+};
+function rateForm(history,numerator,denominator,scale=1,bounded=false){
+ const rows=history.map(g=>{const n=numerator(g),d=denominator(g),valid=Number.isFinite(n)&&Number.isFinite(d)&&d>0&&n>=0&&(!bounded||n<=d);return {...g,rate:valid?n/d*scale:undefined,opportunity:valid?d:undefined,numerator:valid?n:undefined};});
+ const form=summarize(rows,'rate');if(!form)return null;
+ const recorded=rows.filter(g=>Number.isFinite(g.rate));
+ form.average=recorded.reduce((s,g)=>s+g.numerator,0)/recorded.reduce((s,g)=>s+g.opportunity,0)*scale;
+ let top=0,bottom=0;
+ rows.sort((a,b)=>b.gameDate-a.gameDate).forEach((g,i)=>{if(Number.isFinite(g.rate)){const w=2**(-i/3);top+=w*g.numerator;bottom+=w*g.opportunity;}});
+ form.recentWeighted=top/bottom*scale;form.weighted=(form.average+form.recentWeighted)/2;
+ return form;
+}
 function buildRatings(games,boxes,rosters,before,league='1') {
  const calendar=new Map();
  for(const g of games){const time=Number(g.game?.date?.timestamp)*1000;
@@ -49,6 +67,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
     const groupKey=normalize(group.name),name=normalize(s.name),value=numeric(s.value);
     const aliases={receptions:'totalreceptions',passingtouchdowns:'passingtouchdowns',rushingtouchdowns:'rushingtouchdowns',receivingtouchdowns:'receivingtouchdowns',qbhits:'qbhts'};
     if(value!==null)line[groupKey+':'+(aliases[name]||name)]=value;
+    if(groupKey==='kicking'&&name==='fieldgoals'){const m=String(s.value).match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);if(m&&Number(m[1])<=Number(m[2])){line['kicking:made']=Number(m[1]);line['kicking:attempts']=Number(m[2]);}}
     if(groupKey==='passing'&&name==='compatt'){const m=String(s.value).match(/^\s*\d+\s*\/\s*(\d+)\s*$/);if(m)line['passing:attempts']=Number(m[1]);}
    }
   }
@@ -64,7 +83,16 @@ function buildRatings(games,boxes,rosters,before,league='1') {
    if(usage&&paired.length>=2){const total=paired.reduce((v,g)=>v+g.usage,0),rates=paired.map(g=>g.yards/g.usage).sort((a,b)=>a-b),mid=Math.floor(rates.length/2),median=rates.length%2?rates[mid]:(rates[mid-1]+rates[mid])/2;profiles[key]={usage:usage.weighted,efficiency:(paired.reduce((v,g)=>v+g.yards,0)/total+median)/2,games:paired.length,totalGames:rows.length,latestMissing:!Number.isFinite(rows.sort((a,b)=>b.gameDate-a.gameDate)[0]?.usage),coverage:usage.coverage};}
   }
   const components=(specs[p.role]||[]).map(([group,name,direction])=>({name,direction,key:normalize(group)+':'+normalize(name)}))
-   .map(c=>({...c,form:summarize(history,c.key)})).filter(c=>c.form);
+   .map(c=>{
+    let form=summarize(history,c.key),name=c.name;
+    if(p.role==='K'&&c.key==='kicking:pct')form=rateForm(history,g=>g['kicking:made'],g=>g['kicking:attempts'],100,true);
+    if(p.role==='P'){
+     const total=g=>g['punting:total'];
+     form=c.key==='punting:average'?rateForm(history,g=>g[c.key]*total(g),total):rateForm(history,g=>g[c.key],total,100,true);
+     if(c.key!=='punting:average')name=c.name+' percent of punts';
+    }
+    return {...c,name,form};
+   }).filter(c=>c.form);
   return {...p,components,profiles};
  });
  const peerMetrics=new Map();
@@ -72,7 +100,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
  for(const values of peerMetrics.values())values.sort((a,b)=>a-b);
  const bound=(values,target,inclusive)=>{let low=0,high=values.length;while(low<high){const mid=(low+high)>>>1;if(values[mid]<target||(inclusive&&values[mid]===target))low=mid+1;else high=mid;}return low;};
  return candidates.map(p=>{
-  const out={id:p.id,teamId:p.teamId,name:p.name,position:p.position,role:p.role,rating:null,trend:null,games:p.history.size,profiles:p.profiles,coverage:[],reason:''};
+  const out={id:p.id,teamId:p.teamId,name:p.name,position:p.position,role:p.role,limitation:limitations[p.role]||null,rating:null,trend:null,games:p.history.size,profiles:p.profiles,coverage:[],reason:''};
   if(p.rosterConflict)return {...out,reason:'Player appears on multiple current team rosters. Grade and replacement profiles withheld until team membership is resolved; no trade is inferred.'};
   if(!specs[p.role])return {...out,reason:'Position lacks supported production metrics; blocking and coverage grades are not available.'};
   const components=[];
