@@ -40,7 +40,7 @@
     if(form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total)
       return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
     const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
-    const pairs=usageKey?history.filter(g=>Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
+    const pairs=usageKey?history.filter(g=>Number.isFinite(g.gameDate)&&Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
     let baseline=form.weighted,usage=null;
     if(pairs.length>=2) {
       const touches=summarize(history,usageKey);
