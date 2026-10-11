@@ -30,3 +30,23 @@ test('duplicate dated rows are withheld from targets and history',()=>{
  const history=rows([20,40,80]);history.push({...history[1],recYds:900});
  const result=validate(history,'recYds');assert.equal(result.ambiguous,2);assert.equal(result.count,0);
 });
+
+test('range requires enough chronological errors and excludes target and future results',()=>{
+ const {range}=require('../public/player-backtest');
+ assert.equal(range(rows([20,40,60]),'recYds',4*604800).available,false);
+ const history=rows(Array.from({length:12},(_,i)=>20+i*10));const before=13*604800;
+ const r=range(history,'recYds',before);assert.equal(r.available,true);assert.equal(r.count,10);assert.ok(r.low<=r.high);
+ const withFuture=[...history,{gameDate:before,recYds:9999,rec:1},{gameDate:before+604800,recYds:8888,rec:1}];
+ assert.deepEqual(range(withFuture,'recYds',before),r);
+ assert.deepEqual(range([...history,{gameDate:before-86400,recYds:7777,rec:1}], 'recYds',before),r);
+ assert.equal(range(history,'recYds',NaN).available,false);
+});
+test('range retains negative yardage, floors count stats at zero and avoids duplicate-date baselines',()=>{
+ const {range}=require('../public/player-backtest');
+ const history=rows(Array.from({length:14},(_,i)=>i%2?-20:0));const before=15*604800;
+ assert.ok(range(history,'recYds',before).low<0);
+ const counts=history.map(g=>({...g,rec:0}));assert.equal(range(counts,'rec',before).low,0);
+ const duplicated=[...history,{...history[0],recYds:9999}];
+ const removed=history.slice(1);
+ assert.deepEqual(range(duplicated,'recYds',before),range(removed,'recYds',before));
+});
