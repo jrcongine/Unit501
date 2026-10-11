@@ -2,7 +2,7 @@
 // Team-season player lists are provider rosters, not verified transaction histories.
 function createAvailability(api, now = Date.now) {
   const cache = new Map();
-  const official = require('./official-injuries').createOfficialInjuries(api,now);
+  const official = require('./official-injuries').createOfficialInjuries(api,now,undefined,require('./depth-charts').createDepthCharts(now));
   async function read(path, ttl) {
     const old = cache.get(path);
     if (old && now() - old.at < ttl) return old.pending;

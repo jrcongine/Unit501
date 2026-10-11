@@ -36,6 +36,13 @@
         const reports=t.official.rows.filter(p=>p.id===String(playerId));
         for(const r of reports)lines.push(`Official NFL Week ${t.official.week}: ${r.status || 'no game status'}; ${r.description}; ${r.practice}.`);
       }
+      if(t.starters?.rows?.length){
+        for(const r of t.starters.rows)if(r.id===String(playerId))lines.push(`${r.publisher} announced starting ${r.position}: ${r.name}. Announcement can change; workload is not confirmed.`);
+      }
+      if(t.depth?.available) {
+        const roles=t.depth.rows.filter(p=>p.id===String(playerId));
+        for(const r of roles)lines.push(`Team depth chart: ${r.position}, listed depth ${r.rank}. Game starter and workload remain unconfirmed.`);
+      }
       const reports=t.injuries.rows.filter(p=>p.id===String(playerId));
       if(!t.injuries.available) lines.push('Injury status unknown: report unavailable.');
       else if(!reports.length) lines.push('No injury entry returned; playing status is not confirmed.');
@@ -54,9 +61,23 @@
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
-      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries, ${summary.conflicts?.length || 0} conflicting entries. ${summary.reason}`));
+      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries, ${summary.conflicts?.length || 0} conflicting entries, ${summary.nonstarters?.length || 0} QBs withheld for a different announced starter. ${summary.reason}`));
+      if(summary.nonstarters?.length)panel.append(node('p','Another QB was announced as starter — normal full-game props withheld: '+summary.nonstarters.map(p=>p.name).join(', ')+'. This does not establish injury or inactive status.'));
       if(summary.conflicts?.length)panel.append(node('p','Conflicting reports — projections withheld: '+summary.conflicts.map(p=>p.name).join(', ')+'.'));
       if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));
+      if(t.starters){
+        panel.append(node('p',t.starters.message));
+        for(const r of t.starters.rows){const link=node('a',`${r.publisher} announced starting ${r.position}: ${r.name} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';panel.append(node('p',r.evidence),link);}
+      }
+      if(t.depth) {
+        panel.append(node('p',t.depth.message));
+        if(t.depth.url){const link=node('a','Review team depth chart');link.href=t.depth.url;link.target='_blank';link.rel='noopener';panel.append(link);}
+        if(t.depth.available){
+          panel.append(node('p',`Depth chart checked ${timestamp(t.depth.checkedAt)}; ${t.depth.unmatched} entries could not be matched to a unique roster player.`));
+          const details=node('details','');details.append(node('summary','Listed depth order — starters unconfirmed'));
+          const list=node('ul','');for(const r of t.depth.rows)list.append(node('li',`${r.position}: ${r.name} — depth ${r.rank}`));details.append(list);panel.append(details);
+        }
+      }
       if(t.official) {
         panel.append(node('p',t.official.available ? `Official NFL Week ${t.official.week} cross-check: checked ${timestamp(t.official.checkedAt)}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
         if(t.official.available) {
