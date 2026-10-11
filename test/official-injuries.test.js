@@ -12,7 +12,7 @@ test('official parser rejects wrong week, empty and changed layouts; blank game 
  for(const [html,season,week] of [[page,'2026',4],[page,'2025',5],['<title>unavailable</title>','2026',5],[page.replaceAll('Game Status','Changed'),'2026',5]])assert.throws(()=>parseReport(html,season,week));
 });
 test('cross-check verifies matchup and uses unique roster identity; shared weekly fetch is cached',async()=>{
- let calls=0;const check=createOfficialInjuries(async()=>({response:[g]}),()=>now,async()=>{calls++;return page;});
+ let calls=0;const check=createOfficialInjuries(async()=>({response:[g]}),()=>now,async url=>{if(url.includes('/news/'))throw Error('No fixture inactive list');calls++;return page;});
  const t=teams();await check(q,t);await check(q,teams());assert.equal(calls,1);
  assert.equal(t[0].official.rows[0].id,'10');assert.equal(t[1].official.unmatched,1);
  const dup=teams();dup[0].roster.rows.push({id:'11',name:'Player One'});await check(q,dup);assert.equal(dup[0].official.rows.length,0);assert.equal(dup[0].official.unmatched,1);

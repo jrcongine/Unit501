@@ -24,11 +24,12 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
   if(!response.ok)throw new Error('Official report unavailable.');
   return response.text();
 }, attachDepth=null) {
+  const inactives=require('./game-day-inactives').createGameDayInactives(now,fetchPage);
   const cache=new Map(),transactions=require('./roster-transactions').createRosterTransactions(now,fetchPage);
   return async function(q, teams) {
     const unavailable={available:false,rows:[],message:'Official NFL cross-check unavailable; starting roles remain unverified.'};
     if(q.league!=='1'||!/^\d{1,6}$/.test(q.game||''))return;
-    let depthTask,transactionTask;
+    let depthTask,transactionTask,inactiveTask;
     try {
       const result=await api(`/games?id=${q.game}`);
       if(result.errors&&Object.keys(result.errors).length)throw new Error();
@@ -36,6 +37,7 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
       const kickoff=Number(g?.game?.date?.timestamp)*1000;
       const week=Number(/^Week (\d+)$/.exec(g?.game?.week||'')?.[1]);
       if(String(g?.league?.id)!==q.league||String(g?.league?.season)!==q.season||String(g?.teams?.away?.id)!==q.away||String(g?.teams?.home?.id)!==q.home||g?.game?.stage!=='Regular Season'||week<1||week>18||!Number.isFinite(week)||!Number.isFinite(kickoff)||kickoff<=now()||kickoff>now()+7*86400000)throw new Error();
+      inactiveTask=inactives(q,teams,g);
       if(attachDepth)depthTask=attachDepth(q,teams,g);
       transactionTask=transactions(q,teams,g);
       const url=`https://www.nfl.com/injuries/league/${q.season}/reg${week}`;
@@ -55,6 +57,7 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
         team.official={available:true,checkedAt:report.checkedAt,gameId:String(q.game),kickoff,season:q.season,week,url,rows,unmatched,message:'Official weekly game status; blank statuses do not confirm participation. Starters are unverified.'};
       }
     }catch{for(const team of teams)team.official={...unavailable};}
+    if(inactiveTask)await inactiveTask;
     if(depthTask)await depthTask;
     if(transactionTask)await transactionTask;
   };
