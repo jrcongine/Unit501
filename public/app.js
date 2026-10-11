@@ -17,6 +17,23 @@ for (const id of ['spread','total','awayRating','homeRating',
 $('venueMode').addEventListener('change', () => invalidateSimulation('Game location changed. Run the simulation again.'));
 $('variableHomeField').addEventListener('change',()=>invalidateSimulation('Home-field estimate setting changed. Run the simulation again.'));
 $('homeContext').addEventListener('input',()=>invalidateSimulation('Matchup-context assumption changed. Run the simulation again.'));
+$('homeFieldMode').addEventListener('change',()=>{
+  const manual=$('homeFieldMode').value==='manual';
+  $('homeContext').disabled=!manual;
+  $('homeFieldReason').disabled=!manual;
+  invalidateSimulation('Home advantage mode changed. Run the simulation again.');
+});
+$('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override reason changed. Run the simulation again.'));
+function describeMatchup(game){
+  const divisions=[
+    ['Bills','Dolphins','Patriots','Jets'],['Ravens','Bengals','Browns','Steelers'],
+    ['Texans','Colts','Jaguars','Titans'],['Broncos','Chiefs','Raiders','Chargers'],
+    ['Cowboys','Giants','Eagles','Commanders'],['Bears','Lions','Packers','Vikings'],
+    ['Falcons','Panthers','Saints','Buccaneers'],['Cardinals','Rams','49ers','Seahawks']];
+  const division=game.league==='1'&&divisions.some(d=>d.some(n=>game.a?.endsWith(n))&&d.some(n=>game.h?.endsWith(n)));
+  const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',hourCycle:'h23'}).format(new Date(game.kickoff)));
+  $('matchup-context-status').textContent=[division?'Division rivalry detected.':'',hour>=19?'Evening kickoff detected (broadcast slot unverified).':'','Context only: no automatic extra points. NFL standard: 2 points; college: 3, at a verified home venue.'].filter(Boolean).join(' ');
+}
 let homeFieldProfiles=null,homeFieldTask=null;
 async function loadHomeField(game){
   $('home-field-status').textContent='Loading historical home-field estimates…';
@@ -612,7 +629,12 @@ async function choose(game) {
   for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
   $('venueMode').value = 'auto';
   $('variableHomeField').checked=false;
-  $('homeContext').value=0;
+  $('homeContext').value=game.league==='1'?2:3;
+  $('homeFieldMode').value='auto';
+  $('homeContext').disabled=true;
+  $('homeFieldReason').disabled=true;
+  $('homeFieldReason').value='';
+  describeMatchup(game);
   homeFieldProfiles=null;
   loadHomeField(game);
 
@@ -646,7 +668,7 @@ function sim() {
   const forecastAt=Date.now();
   const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
-    variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeContext:Number($('homeContext').value),
+    variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
     injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},

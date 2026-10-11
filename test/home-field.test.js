@@ -20,3 +20,14 @@ test('optional team estimate is exact-season scoped and neutral or unverified ve
  for(const homeContext of [-1,3.1,NaN,Infinity])assert.equal(venueEffect(game,home,away,'home',{homeContext}).valid,false);
  assert.ok(profile.validation.games>=30);assert.equal(profile.validation.automatic,false);assert.ok(profile.validation.candidateMarginMAE>profile.validation.baselineMarginMAE);
 });
+
+test('rare total override replaces base, requires reason and respects venue gates',()=>{
+ const game={league:'1',venueName:'Test'},home={homeVenues:{test:2}},away={homeVenues:{}};
+ const settings={homeFieldTotal:5,homeFieldReason:'Playoff elimination stakes'};
+ assert.equal(venueEffect(game,home,away,'auto',settings).margin,5);
+ assert.equal(venueEffect(game,home,away,'neutral',settings).margin,0);
+ assert.equal(venueEffect({...game,venueName:'Unknown'},home,away,'auto',settings).margin,0);
+ assert.equal(venueEffect(game,home,away,'auto',{homeFieldTotal:4}).valid,false);
+ assert.equal(venueEffect(game,home,away,'auto',{...settings,homeFieldTotal:6}).valid,false);
+ assert.equal(venueEffect(game,home,away,'auto').margin,2);
+});
