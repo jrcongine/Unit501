@@ -470,7 +470,13 @@ results.appendChild(workload);
         ? `Historical baseline check: ${audit.count} replayed games${audit.count<30?' — limited evidence':''}. Average absolute miss ${audit.mae.toFixed(1)}; bias ${audit.bias>=0?'+':''}${audit.bias.toFixed(1)} (positive means too high). Earlier-game mean miss ${audit.meanMAE.toFixed(1)}.`
         : 'Historical baseline check: not enough eligible earlier games to measure error.';
       historical.textContent+=` Skipped: ${audit.insufficient} insufficient history, ${audit.withheld} withheld, ${audit.missingActual} missing actual stats, ${audit.ambiguous} ambiguous dates. Uses only games starting more than 24 hours earlier. Recorded appearances only; missing stats are not zeros. Excludes matchup, injury and lineup adjustments; no historical betting lines or profit measurement.`;
-      card.append(historical);results.appendChild(card);
+      card.append(historical);
+      const band=Unit501PlayerBacktest.range(history,def.key,selected?.kickoff/1000);
+      const uncertainty=document.createElement('p');
+      uncertainty.textContent=band.available
+        ? `Historical-error range for the unadjusted baseline: ${band.low.toFixed(1)}–${band.high.toFixed(1)} (baseline ${band.baseline.toFixed(1)}, ${band.count} earlier replay errors). Uses the 10th–90th percentiles of earlier errors; future coverage is unvalidated. Actual results can fall outside this range. Excludes matchup, injury and workload adjustments; it is not the range for the adjusted projection above.`
+        : `Historical-error range unavailable: ${band.reason}${Number.isFinite(band.count)?' Available replay errors: '+band.count+'.':''}`;
+      card.append(uncertainty);results.appendChild(card);
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'

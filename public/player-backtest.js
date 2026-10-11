@@ -24,7 +24,21 @@
       mae:avg(r=>Math.abs(r.prediction-r.actual)),bias:avg(r=>r.prediction-r.actual),
       meanMAE:avg(r=>Math.abs(r.meanPrediction-r.actual))};
   }
-  const api={validate};
+  function range(history,key,before){
+    if(!Number.isFinite(before))return {available:false,reason:'Target kickoff is unknown.'};
+    const prior=history.filter(g=>Number.isFinite(g.gameDate)&&g.gameDate<before-86400);
+    const dates=new Map();prior.forEach(g=>dates.set(g.gameDate,(dates.get(g.gameDate)||0)+1));
+    const unique=prior.filter(g=>dates.get(g.gameDate)===1);
+    const forecast=form.project(unique,key),audit=validate(prior,key);
+    if(!forecast||forecast.withheld||!Number.isFinite(forecast.baseline))return {available:false,count:audit.count,reason:'Recent recorded coverage cannot support a baseline range.'};
+    if(audit.count<10)return {available:false,count:audit.count,reason:'Need at least 10 earlier replay errors for a historical-error range.'};
+    const errors=audit.records.map(r=>r.actual-r.prediction).sort((a,b)=>a-b);
+    const quantile=p=>{const index=(errors.length-1)*p,low=Math.floor(index),high=Math.ceil(index);return errors[low]+(errors[high]-errors[low])*(index-low);};
+    const bound=v=>key.endsWith('Yds')?v:Math.max(0,v);
+    return {available:true,count:audit.count,baseline:forecast.baseline,
+      low:bound(forecast.baseline+quantile(.1)),high:bound(forecast.baseline+quantile(.9))};
+  }
+  const api={validate,range};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerBacktest=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
