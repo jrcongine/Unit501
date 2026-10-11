@@ -20,6 +20,10 @@
     const fresh = (time, age) => Number.isFinite(time) && time <= now && now - time <= age;
     if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
       return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};
+    const rosterOwners = new Set((data.teams || []).filter(t => t.roster?.available && fresh(t.roster.checkedAt,3600000) &&
+      t.roster.rows?.some(p => String(p.id) === String(playerId))).map(t => String(t.id)));
+    if(rosterOwners.size > 1)
+      return {blocked:true,state:'conflict',reason:'Player appears on multiple current team rosters. Projection and replacement scenario withheld until team membership is resolved; no trade or injury is inferred.'};
     const starters=team.starters;
     if(roster?.position==='QB' && team.roster?.available && fresh(team.roster.checkedAt,3600000) &&
        String(starters?.gameId)===String(game.id) && starters?.kickoff===game.kickoff && fresh(starters.checkedAt,900000)) {

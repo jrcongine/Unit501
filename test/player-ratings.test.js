@@ -123,3 +123,16 @@ test('college league build uses all verified FBS rosters and rejects missing mem
  assert.ok(calls.includes('/games?league=2&season=2026'));assert.equal(calls.filter(p=>p.startsWith('/players?')).length,138);
  assert.ok(job.data.players.every(p=>p.rating===null&&p.role==='OL'));
 });
+
+test('conflicting current roster ownership withholds grades and replacement profiles and excludes peers',()=>{
+ const f=fixture();
+ f.rosters.set('2',[{id:'8',name:'QB 7',position:'QB'}]);
+ const result=buildRatings(f.games,f.boxes,f.rosters,20000);
+ const conflicted=result.filter(p=>p.id==='8');
+ assert.equal(conflicted.length,2);
+ for(const p of conflicted){assert.equal(p.rating,null);assert.deepEqual(p.profiles,{});assert.match(p.reason,/multiple current team rosters/);}
+ assert.ok(result.every(p=>p.rating===null)); // Seven unambiguous peers remain.
+ f.rosters.get('1').splice(7,1);
+ const moved=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8');
+ assert.equal(moved.teamId,'2');assert.equal(moved.games,0);assert.deepEqual(moved.profiles,{});
+});

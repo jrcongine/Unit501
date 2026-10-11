@@ -118,3 +118,16 @@ test('score impact review distinguishes covered absences from incomplete scenari
  lineup.teams['1'].scoreReady=true;lineup.gameId='other';assert.equal(impactReview(data,match,lineup,now).teams[0].unvalued.length,1);
  assert.equal(impactReview(null,match,lineup,now).teams[0].applied.length,0);
 });
+
+test('fresh conflicting roster ownership blocks props without treating the player as injured',()=>{
+ const {teamSummary}=require('../public/injury-model');
+ const data=fixture('Active');
+ data.teams.push({id:'2',roster:{available:true,checkedAt:now,rows:[{id:'10'}]}});
+ assert.equal(check(data).blocked,true);assert.equal(check(data).state,'conflict');
+ assert.equal(teamSummary(data,game,'1',now).unavailable.length,0);
+ assert.equal(teamSummary(data,game,'1',now).conflicts.length,1);
+ data.teams[1].roster.checkedAt=now-3600001;
+ assert.equal(check(data).blocked,false);
+ data.teams[1].roster.checkedAt=now;data.teams[1].roster.available=false;
+ assert.equal(check(data).blocked,false);
+});

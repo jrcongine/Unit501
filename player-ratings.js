@@ -32,6 +32,8 @@ function buildRatings(games,boxes,rosters,before,league='1') {
   if(time>0&&time<before&&['FT','AOT','FINAL'].includes(g.game?.status?.short)&&(league!=='1'||g.game?.stage==='Regular Season'))
    for(const t of [g.teams?.away,g.teams?.home]){const id=String(t?.id);if(!calendar.has(id))calendar.set(id,new Map());calendar.get(id).set(String(g.game.id),time/1000);}}
 
+ const owners=new Map();
+ for(const [teamId,rows] of rosters)for(const p of rows)if(p.id){const id=String(p.id);if(!owners.has(id))owners.set(id,new Set());owners.get(id).add(String(teamId));}
  const players=new Map();
  for(const [teamId,rows] of rosters)for(const p of rows)if(p.id){
   const id=String(p.id);players.set(`${teamId}:${id}`,{id,teamId,name:p.name||'Unknown',position:p.position||'Unknown',role:role(p.position),history:new Map()});
@@ -52,6 +54,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
   }
  }
  const candidates=[...players.values()].map(p=>{
+  if(owners.get(p.id)?.size>1)return {...p,components:[],profiles:{},rosterConflict:true};
   const history=[...(calendar.get(String(p.teamId))||new Map()).entries()].map(([id,date])=>p.history.get(id)||{gameDate:date});
   const profiles={};
   for(const [key,group,aliases]of [['passing','passing',['attempts','passing attempts']],['rushing','rushing',['total rushes','rushing attempts','rush attempts','carries','attempts']],['receiving','receiving',['total receptions','receptions']]]){
@@ -70,6 +73,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
  const bound=(values,target,inclusive)=>{let low=0,high=values.length;while(low<high){const mid=(low+high)>>>1;if(values[mid]<target||(inclusive&&values[mid]===target))low=mid+1;else high=mid;}return low;};
  return candidates.map(p=>{
   const out={id:p.id,teamId:p.teamId,name:p.name,position:p.position,role:p.role,rating:null,trend:null,games:p.history.size,profiles:p.profiles,coverage:[],reason:''};
+  if(p.rosterConflict)return {...out,reason:'Player appears on multiple current team rosters. Grade and replacement profiles withheld until team membership is resolved; no trade is inferred.'};
   if(!specs[p.role])return {...out,reason:'Position lacks supported production metrics; blocking and coverage grades are not available.'};
   const components=[];
   for(const c of p.components){
