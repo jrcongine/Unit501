@@ -25,6 +25,8 @@ const getRankings = require('./rankings').createRankings(api);
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
 
+const rosterMaintenance=require('./roster-maintenance').createRosterMaintenance(api,getAvailability);
+
 const PORT = process.env.PORT || 5010;
 
 const API = 'https://v1.american-football.api-sports.io';
@@ -67,6 +69,7 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
     if (u.pathname === '/api/player-ratings') {
       const q={league:u.searchParams.get('league')||'1',season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
       if (!['1','2'].includes(q.league) || !/^\d{4}$/.test(q.season || '') || !Number.isFinite(q.before) || q.before <= 0 || q.before > Date.now()+366*86400000)
@@ -374,5 +377,6 @@ if (u.pathname === '/api/team-games') {
 server.listen(PORT, () => {
 
   console.log('UNIT 501 running on port ' + PORT);
+  if(process.env.API_SPORTS_KEY)rosterMaintenance.start();
 
 });

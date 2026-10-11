@@ -770,3 +770,15 @@ $('import-forecast-archive').addEventListener('change',async()=>{
  }catch(e){$('forecast-archive-status').textContent='Archive import failed; existing forecasts retained. '+(e instanceof SyntaxError?'Choose a valid JSON archive.':e.message);}
  finally{input.value='';}
 });
+
+$('maintenance-panel').addEventListener('toggle',async()=>{
+  if(!$('maintenance-panel').open)return;
+  try{
+    const response=await fetch('/api/roster-maintenance');
+    if(!response.ok)throw Error();
+    const report=await response.json();
+    $('maintenance-status').textContent=report.message+' '+(report.lastCompleted?'Last completed: '+new Date(report.lastCompleted).toLocaleString()+'. ':'')+report.gamesChecked+' games checked. Runs every six hours while the server is running; status resets on restart.';
+    $('maintenance-issues').replaceChildren();
+    for(const item of report.issues||[]){const row=document.createElement('li');row.textContent=item.label+': '+item.reason;$('maintenance-issues').append(row);}
+  }catch{$('maintenance-status').textContent='Background check status unavailable. Open a matchup to refresh its reports.';}
+});
