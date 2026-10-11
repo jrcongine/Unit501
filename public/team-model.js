@@ -12,7 +12,7 @@
     if (forecast.kickoff !== game.kickoff || !Number.isFinite(game.kickoff) || game.kickoff <= now ||
         !Number.isFinite(forecast.fetchedAt) || forecast.fetchedAt > now || now - forecast.fetchedAt > 15 * 60000 ||
         !Number.isFinite(forecast.forecastTime) || Math.abs(forecast.forecastTime - game.kickoff) > 30 * 60000)
-      return skip('Forecast expired or does not match this kickoff: reselect the matchup to refresh.');
+      return skip('Forecast expired or does not match this kickoff: weather refreshes automatically while the game tab is visible.');
     if (!Number.isFinite(forecast.windMph) || forecast.windMph < 0 || forecast.windMph > 200)
       return skip('Sustained wind unavailable: no weather adjustment.');
     // Explicit uncalibrated assumption: reduce both scores by 1% per mph over

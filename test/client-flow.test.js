@@ -265,3 +265,25 @@ test('saved manual lines stay scoped to a game and return only when that exact g
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('line-1:7-carries').value,'21.5');
 });
+
+test('open weather refresh skips hidden tabs, withdraws stale inputs and avoids overlapping requests',async()=>{
+ const h=harness();await h.settle();h.game.game.venue.name='Soldier Field';
+ let clock=Date.now(),calls=0,release,hold=false;
+ h.context.Date=class extends Date{static now(){return clock;}};
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(!String(url).startsWith('/api/weather'))return original(url);
+  calls++;if(hold)await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({available:true,fetchedAt:clock,forecastTime:h.game.game.date.timestamp*1000,windMph:20,temperatureF:60,gustMph:25,precipitationChance:10})};
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();assert.equal(calls,1);
+ h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,'—');
+ clock+=900001;h.context.document.hidden=true;
+ h.timers.findLast(t=>t.active&&t.delay===60000).fn();assert.equal(calls,1);
+ h.context.document.hidden=false;hold=true;
+ await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,2);
+ assert.equal(h.nodes.get('score').textContent,'—');assert.equal(h.run('forecastContext.data.available'),false);
+ await h.context.document.dispatchEvent({type:'visibilitychange'});assert.equal(calls,2);
+ release();await h.settle();assert.equal(h.run('forecastContext.data.available'),true);
+ h.run('clearSelection()');assert.equal(h.run('weatherWatch'),null);
+});

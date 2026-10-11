@@ -93,6 +93,22 @@ weatherPanel.id = 'game-weather';
 weatherPanel.style.cssText =
   'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
 teamContext.before(weatherPanel);
+let weatherWatch = null;
+let weatherTimer;
+function weatherFresh(game) {
+  const data = forecastContext?.game === game && forecastContext.data;
+  return data?.available && Number.isFinite(data.fetchedAt) && data.fetchedAt <= Date.now() && Date.now() - data.fetchedAt < 900000;
+}
+function watchWeather() {
+  clearTimeout(weatherTimer);
+  const watch = weatherWatch;
+  if (!watch || selected !== watch.game || Date.now() >= watch.game.kickoff) return;
+  if (!document.hidden && !watch.pending && !weatherFresh(watch.game) && Date.now() - watch.lastAttempt >= 300000) {
+    loadVenueForecast(watch.game, watch.conditions, watch.roof);
+  }
+  weatherTimer = setTimeout(watchWeather, 60000);
+}
+document.addEventListener('visibilitychange', watchWeather);
 async function loadVenueForecast(game, conditions, roof) {
   const key = String(game.venueName || '')
     .toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -120,9 +136,23 @@ const locations = {
     return;
   }
 
+  if (Date.now() >= game.kickoff || game.kickoff - Date.now() > 15 * 86400000) {
+    conditions.textContent = 'Forecast available for upcoming games within 15 days of kickoff.';
+    return;
+  }
+  if (!weatherWatch || weatherWatch.game !== game) weatherWatch = {game, conditions, roof, lastAttempt:0, pending:false};
+  const watch = weatherWatch;
+  if (watch.pending) return;
+  watch.pending = true;
+  watch.lastAttempt = Date.now();
+  const previous = weatherFresh(game) ? forecastContext.data : null;
   roof.textContent = 'Open-air stadium.';
-  forecastContext = {game, data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
-  conditions.textContent = 'Loading forecast near kickoff…';
+  if (!previous) {
+    if (forecastContext?.data.available) invalidateSimulation('Weather forecast expired. Refreshing weather; run the simulation again.');
+    forecastContext = {game, data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
+    conditions.textContent = 'Loading forecast near kickoff…';
+    watch.source?.replaceChildren();
+  }
 
   try {
     const params = new URLSearchParams({
@@ -143,12 +173,17 @@ const locations = {
     }
 
     if (!data.available) {
+      if (previous) invalidateSimulation('Weather forecast unavailable. Run the simulation again.');
+      forecastContext = {game,data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
+      watch.source?.replaceChildren();
       conditions.textContent = data.message || 'Forecast unavailable.';
       return;
     }
 
     forecastContext = {game,data:{...data,roof:'outdoor',kickoff:game.kickoff}};
-    invalidateSimulation('Weather forecast loaded. Run the simulation to use it.');
+    if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance'].some(key => previous[key] !== data[key])) {
+      invalidateSimulation('Weather forecast updated. Run the simulation to use it.');
+    }
 
     const format = (value, unit) =>
       Number.isFinite(value) ? `${Math.round(value)}${unit}` : 'Unavailable';
@@ -173,7 +208,8 @@ const locations = {
       `Gusts: ${format(data.gustMph, ' mph')} • ` +
       `Precipitation chance: ${format(data.precipitationChance, '%')}`;
 
-    const source = document.createElement('p');
+    const source = watch.source || document.createElement('p');
+    source.replaceChildren();
     source.style.cssText = 'font-size:.85em;opacity:.8';
 
     const link = document.createElement('a');
@@ -187,15 +223,21 @@ const locations = {
       'Outdoor forecast near the stadium; actual field conditions may differ. ' +
       'The experimental wind setting affects team scores only; rain chance, gusts and temperature are context.'
     );
-    conditions.after(source);
+    if (!watch.source) conditions.after(source);
+    watch.source = source;
   } catch {
     if (selected === game && conditions.isConnected) {
       conditions.textContent =
-        'Weather could not be loaded. Select the matchup again to retry.';
+        'Weather could not be loaded. Automatic retry while this tab is visible.';
     }
+  } finally {
+    watch.pending = false;
+    if (weatherWatch === watch) watchWeather();
   }
 }
 document.addEventListener('unit501:selection-changed', () => {
+  clearTimeout(weatherTimer);
+  weatherWatch = null;
   forecastContext = null;
   weatherPanel.replaceChildren();
   weatherPanel.hidden = !selected;
