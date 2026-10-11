@@ -303,6 +303,15 @@ function showTeamContext(data, game) {
       comparison.textContent=`Previous formula on the same games: score error ${validation.legacy.scoreMAE.toFixed(1)}, margin error ${validation.legacy.marginMAE.toFixed(1)}, total error ${validation.legacy.totalMAE.toFixed(1)}. Lower is better; the new formula is not assumed to win this comparison.`;
       details.append(comparison);
     }
+    if(validation.laterComparison) {
+      const check=validation.laterComparison;
+      const comparison=document.createElement('p');
+      comparison.textContent=check.games && check.current && check.previous
+        ? `Later-game formula comparison: ${check.games} games after ${check.warmupGames} warm-up predictions. Current vs previous: score error ${check.current.scoreMAE.toFixed(1)} vs ${check.previous.scoreMAE.toFixed(1)}, margin error ${check.current.marginMAE.toFixed(1)} vs ${check.previous.marginMAE.toFixed(1)}, total error ${check.current.totalMAE.toFixed(1)} vs ${check.previous.totalMAE.toFixed(1)}. Lower is better.${check.sufficient ? '' : ' Fewer than 30 later games; evidence remains limited.'}`
+        : 'Later-game formula comparison awaits enough eligible predictions beyond warm-up.';
+      details.append(comparison);
+      const caveat=document.createElement('p');caveat.textContent=check.explanation;details.append(caveat);
+    }
     if(validation.probabilityGames) {
       const label=document.createElement('p');label.textContent=`Away-win reliability: ${validation.probabilityGames} later games, Brier score ${validation.brier.toFixed(3)} (lower is better). Small bins remain uncertain.`;details.append(label);
       const table=document.createElement('table');table.style.width='100%';

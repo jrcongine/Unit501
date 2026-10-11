@@ -77,8 +77,21 @@ function validate(games,query,snapshot) {
     for(const key of Object.keys(training))training[key].push(...probabilityBatch[key]);
     start=end;
   }
+  // Keep a later-game comparison separate from the full replay; freeze the split by kickoff.
+  const warmupCutoff=records.length>=30?records[29].kickoff:Infinity;
+  const later=records.filter(r=>r.kickoff>warmupCutoff);
+  const comparison=rows=>rows.length?{
+    scoreMAE:mean(rows.map(r=>(Math.abs(r.away)+Math.abs(r.home))/2)),
+    marginMAE:mean(rows.map(r=>Math.abs(r.home-r.away))),
+    totalMAE:mean(rows.map(r=>Math.abs(r.home+r.away))),
+    totalBias:mean(rows.map(r=>-(r.home+r.away)))
+  }:null;
+  const laterComparison={warmupGames:records.length-later.length,games:later.length,
+    current:comparison(later),previous:comparison(later.map(r=>({away:r.legacyAwayError,home:r.legacyHomeError}))),
+    sufficient:later.length>=30,
+    explanation:'Fixed formulas compared on games after the first 30 eligible predictions; all games at the warm-up boundary kickoff stay in warm-up. This is an in-season comparison, not independent future validation or evidence of betting profit.'};
   const evaluated=records.filter(r=>Number.isFinite(r.brier));
-  return {modelVersion:'scoring-v2',games:records.length,skipped,probabilityGames:evaluated.length,
+  return {modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,probabilityGames:evaluated.length,
     scoreMAE:errors.length?mean(errors.map(e=>(Math.abs(e.away)+Math.abs(e.home))/2)):null,
     marginMAE:errors.length?mean(errors.map(e=>Math.abs(e.home-e.away))):null,
     totalMAE:errors.length?mean(errors.map(e=>Math.abs(e.home+e.away))):null,

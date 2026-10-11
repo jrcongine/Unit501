@@ -72,3 +72,16 @@ test('tied finals are not losses in reliability checks; other leagues, seasons a
  const result=validate([...rows,...invalid],query,before=>summarize(rows,new Map(),{...query,before},roster));
  assert.equal(result.games,96);assert.equal(result.probabilityGames,0);assert.equal(result.probabilityCalibration.win,null);
 });
+
+test('later formula comparison freezes simultaneous warm-up games and matches paired errors',()=>{
+ const {roster,games}=season(),query={league:'1',season:'2026',before:1000000};
+ const run=before=>validate(games,{...query,before},cutoff=>summarize(games,new Map(),{...query,before:cutoff},roster));
+ const result=run(query.before),check=result.laterComparison;
+ assert.equal(check.warmupGames,32);assert.equal(check.games,64);assert.equal(check.sufficient,true);
+ const later=result.records.filter(r=>r.kickoff>result.records[29].kickoff);
+ const score=rows=>rows.reduce((s,r)=>s+(Math.abs(r.away)+Math.abs(r.home))/2,0)/rows.length;
+ assert.equal(check.current.scoreMAE,score(later));
+ assert.equal(check.previous.scoreMAE,score(later.map(r=>({away:r.legacyAwayError,home:r.legacyHomeError}))));
+ const early=run(500000).laterComparison;assert.equal(early.games,0);assert.equal(early.current,null);assert.equal(early.sufficient,false);
+ const small=run(600000).laterComparison;assert.equal(small.games,16);assert.equal(small.sufficient,false);
+});
