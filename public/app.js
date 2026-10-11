@@ -6,6 +6,7 @@ let scoringContext = null;
 let forecastContext = null;
 function invalidateSimulation(message) {
   $('availability-score-status').textContent='';
+  $('forecast-archive-status').textContent='';
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
 }
@@ -592,14 +593,16 @@ function sim() {
     return;
   }
   const data = scoringContext?.game === selected ? scoringContext.data : null;
-  const prediction = Unit501TeamModel.project(data, selected, {
+  const forecastAt=Date.now();
+  const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
     injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
     lineup:window.Unit501Lineups?.evaluate(),
     weatherEnabled:$('weatherEnabled').checked
-  });
+  };
+  const prediction = Unit501TeamModel.project(data, selected, options);
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
     return;
@@ -630,6 +633,12 @@ function sim() {
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Manual injury points are additional: avoid entering the same loss twice. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
   $('note').textContent+=' '+paceNote;
+  if(window.Unit501ForecastArchive){
+    try{
+      const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
+      $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
+    }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
+  }
 }
 
 $('load').onclick = load;
@@ -646,3 +655,14 @@ health();
 load();
 
 document.addEventListener('unit501:availability-updated',()=>{if($('availability-score-status').textContent)$('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';});
+
+$('download-forecast-archive').onclick=()=>{
+  try{
+    const archive=Unit501ForecastArchive.read(localStorage);
+    if(!archive.snapshots.length){$('forecast-archive-status').textContent='No adjusted pregame score forecasts have been saved on this browser yet.';return;}
+    const url=URL.createObjectURL(new Blob([JSON.stringify(archive,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='unit501-score-forecasts.json';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    $('forecast-archive-status').textContent='Archive download requested. These saved forecasts still need confirmed final results before comparison.';
+  }catch{$('forecast-archive-status').textContent='Saved archive could not be downloaded. Existing data retained.';}
+};

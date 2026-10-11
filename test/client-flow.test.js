@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context};
@@ -157,4 +157,16 @@ test('forecast shows incomplete injury coverage and clears its coverage claim wh
  await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
  assert.match(h.nodes.get('availability-score-status').textContent,/Run the simulation again/);
  h.run("invalidateSimulation('Inputs changed')");assert.equal(h.nodes.get('availability-score-status').textContent,'');
+});
+
+test('simulation archives the first adjusted score forecast and retains it across reload',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run('sim()');assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),0);
+ h.run('$("awayOffenseLoss").value="4"; sim()');
+ const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots[0]');
+ assert.equal(saved.baseline.away,24);assert.equal(saved.adjusted.away,20);assert.equal(saved.records[0].actual,null);
+ assert.ok(saved.forecastAt<saved.game.kickoff);assert.match(h.nodes.get('forecast-archive-status').textContent,/saved on this browser/);
+ h.run('$("awayOffenseLoss").value="7"; sim()');
+ assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots[0].adjusted.away'),20);
+ const next=harness(h.storage);await next.settle();assert.equal(next.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
 });
