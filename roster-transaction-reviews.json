@@ -1,0 +1,42 @@
+[
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21585",
+    "teamId": "18",
+    "kickoff": 1791738000000,
+    "name": "Kaytron Allen",
+    "rosterName": "Kaytron Allen",
+    "playerId": "10893",
+    "position": "RB",
+    "destinationTeamId": "25",
+    "destination": "Miami Dolphins",
+    "url": "https://www.miamidolphins.com/news/dolphins-claim-allen-off-waivers",
+    "rosterUrl": "https://www.miamidolphins.com/team/players-roster/",
+    "reviewedAt": "2026-10-11T14:25:33.109Z",
+    "publishedAt": "2026-10-09T20:29:37.465Z",
+    "reviewedModifiedAt": "2026-10-09T20:29:37.465Z",
+    "reviewedBodyHash": "e1fe5e6918d0e87fc90dced2aeec26ece44f9cf0e6a29d8db4cef65ab274866c",
+    "evidence": "Reviewed official move article and current destination roster; block stale former-team listing only."
+  },
+  {
+    "league": "1",
+    "season": "2026",
+    "gameId": "21585",
+    "teamId": "4",
+    "kickoff": 1791738000000,
+    "name": "Darius Slayton",
+    "rosterName": "Darius Slayton",
+    "playerId": "234",
+    "position": "WR",
+    "destinationTeamId": "21",
+    "destination": "Indianapolis Colts",
+    "url": "https://www.colts.com/news/colts-sign-wide-receiver-darius-slayton",
+    "rosterUrl": "https://www.colts.com/team/players-roster/",
+    "reviewedAt": "2026-10-11T14:25:33.109Z",
+    "publishedAt": "2026-09-22T19:24:00.501Z",
+    "reviewedModifiedAt": "2026-09-22T19:25:27.849Z",
+    "reviewedBodyHash": "1380fd6466232fd8e7cf36e408c60b0e47f056a3ff22e176cc67e0567a18df8c",
+    "evidence": "Reviewed official move article and current destination roster; block stale former-team listing only."
+  }
+]
