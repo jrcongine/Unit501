@@ -4,6 +4,7 @@
  document.getElementById('player-lab').before(panel);
  let version=0,timer,ratings=null,game=null,lastEffect='';
  const scenarios=new Map();
+ const estimateKey=p=>JSON.stringify({allocations:p.allocations,roles:p.candidates.map(c=>[c.id,c.roleState,c.source])});
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  const changed=()=>{
   const result=window.Unit501Lineups?.evaluate();
@@ -20,9 +21,14 @@
    if(game.kickoff<=Date.now()||game.kickoff>Date.now()+7*86400000){reasons.push('Current lineup scenarios apply only to upcoming games within seven days.');continue;}
    const team=availability?.teams?.find(t=>String(t.id)===s.teamId);
    const roster=team?.roster;
-   if(!availability?.current||!roster?.available||!Number.isFinite(roster.checkedAt)||Date.now()-roster.checkedAt>3600000||roster.checkedAt>Date.now()||![s.playerId,s.replacementId].every(id=>roster.rows.some(p=>String(p.id)===id))){reasons.push('Current team membership needs a fresh roster check for both players.');continue;}
-   const replacement=Unit501InjuryModel.assess(availability,game,s.teamId,s.replacementId,Date.now(),true);
-   if(replacement.blocked){reasons.push('Replacement is unavailable or team membership is unconfirmed.');continue;}
+   if(!availability?.current||!roster?.available||!Number.isFinite(roster.checkedAt)||Date.now()-roster.checkedAt>3600000||roster.checkedAt>Date.now()||![s.playerId,...(s.allocations?s.allocations.map(a=>String(a.replacementId)):[s.replacementId])].every(id=>roster.rows.some(p=>String(p.id)===id))){reasons.push('Current team membership needs a fresh roster check for both players.');continue;}
+   if(s.allocations&&s.estimateKey){
+    const original=ratings.players.find(p=>String(p.teamId)===s.teamId&&String(p.id)===s.playerId);
+    const fresh=Unit501LineupModel.recommend(ratings.players,original,availability,game,Unit501InjuryModel.assess);
+    if(estimateKey(fresh)!==s.estimateKey){reasons.push('Estimated replacement evidence changed or expired. Review the updated proposal before applying it again.');continue;}
+   }
+   const replacementIds=s.allocations?s.allocations.map(a=>a.replacementId):[s.replacementId];
+   if(replacementIds.some(id=>Unit501InjuryModel.assess(availability,game,s.teamId,id,Date.now(),true).blocked)){reasons.push('Replacement is unavailable or team membership is unconfirmed.');continue;}
    const original=Unit501InjuryModel.assess(availability,game,s.teamId,s.playerId);
    if(original.state==='conflict'){reasons.push('Conflicting reports for the original player: replacement workload scenario withheld until availability is resolved.');continue;}
    if(!original.blocked&&s.workload===100)continue;
@@ -45,11 +51,22 @@
     if(p.limitation)sample.append(node('p',p.limitation));
     tr.append(sample);
     const cell=node('td','');
+    const availability=window.Unit501Availability?.snapshot();
+    const reported=Unit501InjuryModel.assess(availability,game,id,p.id,Date.now(),true);
+    const proposal=['unavailable','nonstarter'].includes(reported.state)?Unit501LineupModel.recommend(ratings.players,p,availability,game,Unit501InjuryModel.assess):null;
+    if(proposal){
+     cell.append(node('p','Replacement workload: '+proposal.state+'. '+proposal.reason));
+     for(const candidate of proposal.candidates){
+      const usage=Object.entries(candidate.usage).map(([category,u])=>`${category}: ${u.total.toFixed(1)} estimated ${{passing:'pass attempts',rushing:'carries',receiving:'receptions'}[category]} (${u.baseline.toFixed(1)} recent baseline, ${u.extra>=0?'+':''}${u.extra.toFixed(1)} change; ${u.share.toFixed(0)}% share)`).join(' · ');
+      cell.append(node('p',`${candidate.name}: role ${candidate.roleState}; workload ${candidate.workloadState}. ${usage || 'Recent workload coverage is insufficient.'}`));
+      if(candidate.source){const source=node('a','Replacement source');source.href=candidate.source;source.target='_blank';source.rel='noopener noreferrer';cell.append(source);}
+     }
+    }
     if(Object.keys(p.profiles||{}).length&&['QB','RB','FB','WR','TE'].includes(p.role)){
      const key=id+':'+p.id;
      const s=scenarios.get(key)||{teamId:id,playerId:String(p.id),replacementId:'',workload:100,replacementShare:100,confirmed:false};scenarios.set(key,s);
      const confirm=node('input','');confirm.type='checkbox';confirm.checked=s.confirmed;confirm.id='baseline-'+key;
-     const label=node('label','');label.append(confirm,' I verified this player’s baseline role and the replacement’s expected usage');label.title='Changing the replacement or workload clears this confirmation. Review the revised scenario before checking it again.';
+     const label=node('label','');label.append(confirm,' I reviewed the baseline role and replacement workload assumptions');label.title='Changing the replacement or workload clears this confirmation. Review the revised scenario before checking it again.';
      const workload=node('select','');workload.setAttribute('aria-label',p.name+' expected workload');workload.id='workload-'+key;
      for(const value of [100,75,50,25,0]){const option=node('option',`${value}% of normal workload`);option.value=String(value);workload.append(option);}workload.value=String(s.workload);
      const replacement=node('select','');replacement.id='replacement-'+key;replacement.setAttribute('aria-label',p.name+' replacement');
@@ -59,10 +76,25 @@
      for(const value of [100,75,50,25,0]){const option=node('option',`${value}% of removed workload to this replacement`);option.value=String(value);share.append(option);}share.value=String(s.replacementShare??100);
      const update=()=>{s.confirmed=confirm.checked;s.workload=Number(workload.value);s.replacementId=replacement.value;s.replacementShare=Number(share.value);changed();showScenario();};
      confirm.onchange=update;
-     const revise=()=>{confirm.checked=false;s.confirmed=false;update();};
+     const revise=()=>{confirm.checked=false;s.confirmed=false;delete s.allocations;update();};
      workload.onchange=revise;replacement.onchange=revise;share.onchange=revise;
      cell.append(label,workload,replacement,share);
-    }else cell.textContent='Automatic replacement valuation unavailable for this position. Use the separate point scenario only with supporting information.';
+     if(s.allocations){
+      workload.disabled=true;replacement.disabled=true;share.disabled=true;
+      cell.append(node('p','Estimated split selected. Review and check the confirmation box to apply. Workload remains an estimate.'));
+      const manual=node('button','Switch to manual replacement');manual.type='button';manual.onclick=()=>{delete s.allocations;s.confirmed=false;changed();render();};cell.append(manual);
+     }
+     if(proposal?.allocations.length){
+      const use=node('button','Use estimated replacement split');use.type='button';use.id='estimate-'+key;
+      use.onclick=()=>{
+       const fresh=Unit501LineupModel.recommend(ratings.players,p,window.Unit501Availability?.snapshot(),game,Unit501InjuryModel.assess);
+       if(!fresh.allocations.length){showScenario();render();return;}
+       s.allocations=fresh.allocations;s.estimateKey=estimateKey(fresh);s.replacementId=String(fresh.allocations[0].replacementId);s.workload=0;s.replacementShare=100;s.confirmed=false;changed();render();
+      };
+      cell.append(use);
+     }
+
+    }else cell.append(node('p','Automatic replacement valuation unavailable for this position or workload sample. Use the separate point scenario only with supporting information.'));
     tr.append(cell);table.append(tr);
    }
    const scroll=node('div','');scroll.style.overflowX='auto';scroll.append(table);results.append(scroll);
@@ -81,7 +113,7 @@
   const button=node('button','Build league player ratings');button.type='button';button.id='build-player-ratings';
   const status=node('p','First build checks every league roster and completed player report before kickoff. NFL has 32 teams; college uses the verified 138-team FBS pool. This can take several minutes; cached reports are reused.');status.setAttribute('role','status');
   const results=node('div','');results.id='ratings-results';const scenarioStatus=node('p','');scenarioStatus.id='lineup-status';scenarioStatus.setAttribute('role','status');
-  panel.append(button,status,node('p','For an absence or role change, confirm the baseline role, choose a same-position replacement and set expected workload and the share of removed touches assigned to that replacement. Partial transfers withhold the team score adjustment until the rest of the workload is assigned; player scenarios still apply. A fresh unavailable report overrides that workload to zero. Replacement availability is still conditional. Replacement TD increases are not inferred from transferred touches; baseline TDs are scaled down for reduced workload only. Score conversion uses half the team’s recorded points per offensive yard, capped at ±8 points; this assumption has not been historically validated. Manual injury points and individual prop workload percentages are additional—avoid applying the same loss twice.'),scenarioStatus,results);
+  panel.append(button,status,node('p','For an absence or role change, confirm the baseline role, choose a same-position replacement and set expected workload and the share of removed touches assigned to that replacement. Estimated splits may allocate work across multiple replacements; review their source and assumptions before confirming. Partial transfers withhold the team score adjustment until the rest of the workload is assigned; player scenarios still apply. A fresh unavailable report overrides that workload to zero. Replacement availability is still conditional. Replacement TD increases are not inferred from transferred touches; baseline TDs are scaled down for reduced workload only. Score conversion uses half the team’s recorded points per offensive yard, capped at ±8 points; this assumption has not been historically validated. Manual injury points and individual prop workload percentages are additional—avoid applying the same loss twice.'),scenarioStatus,results);
   button.onclick=async()=>{
    const task=++version,selection=game;button.disabled=true;ratings=null;changed();results.replaceChildren();
    const q=new URLSearchParams({league:game.league,season:game.season,before:game.kickoff});let polls=0;
@@ -96,5 +128,5 @@
   };
  }
  document.addEventListener('unit501:selection-changed',reset);
- for(const event of ['unit501:availability-updated','unit501:team-context-updated'])document.addEventListener(event,()=>{showScenario();changed();});
+ for(const event of ['unit501:availability-updated','unit501:team-context-updated'])document.addEventListener(event,()=>{render();changed();});
 })();
