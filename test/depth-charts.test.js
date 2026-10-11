@@ -40,3 +40,24 @@ test('offensive names require matching position and unresolved slots remain visi
  assert.equal(team.depth.rows.length,1);assert.equal(team.depth.unresolved[0].rank,1);
  assert.deepEqual(team.depth.coverage[0],{position:'QB',matched:1,unresolved:1});
 });
+
+test('reviewed Daniels and Brissett confirmations apply only to their exact upcoming games and expire',async()=>{
+ const manifest=require('../starter-confirmations.json');
+ for(const name of ['Jayden Daniels','Jacoby Brissett']){
+  const row=manifest.find(r=>r.name===name);assert.ok(row);
+  const teamName=row.teamId==='18'?'Washington Commanders':'Arizona Cardinals';
+  const team={id:row.teamId,roster:{available:true,checkedAt:now,rows:[{id:'starter',name,position:'QB'},{id:'backup',name:'Backup QB',position:'QB'}]},injuries:{available:true,checkedAt:now,rows:[]}};
+  const g={game:{date:{timestamp:row.kickoff/1000}},teams:{away:{name:teamName},home:{name:'Opponent'}}};
+  const q={league:row.league,season:row.season,game:row.gameId,away:row.teamId,home:'other'};
+  let clock=now;const load=createDepthCharts(()=>clock,async()=>{throw Error('No chart');});
+  await load(q,[team],g);assert.equal(team.starters.rows[0].id,'starter');
+  const data={current:true,teams:[team]},game={id:row.gameId,kickoff:row.kickoff};
+  assert.equal(assess(data,game,row.teamId,'backup',now,true).state,'nonstarter');
+  assert.equal(assess(data,game,row.teamId,'starter',now,true).blocked,false);
+  team.injuries.rows=[{id:'starter',status:'Out',date:new Date(now).toISOString()}];
+  assert.equal(assess(data,game,row.teamId,'starter',now,true).blocked,true);
+  await load(q,[team],{...g,game:{date:{timestamp:row.kickoff/1000+1}}});assert.equal(team.starters.rows.length,0);
+  await load({...q,game:'another'},[team],g);assert.equal(team.starters.rows.length,0);
+  clock=Date.parse(row.publishedAt)+7*86400000+1;await load(q,[team],g);assert.equal(team.starters.rows.length,0);
+ }
+});
