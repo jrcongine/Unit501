@@ -20,6 +20,13 @@
     const fresh = (time, age) => Number.isFinite(time) && time <= now && now - time <= age;
     if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
       return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};
+    const starters=team.starters;
+    if(roster?.position==='QB' && team.roster?.available && fresh(team.roster.checkedAt,3600000) &&
+       String(starters?.gameId)===String(game.id) && starters?.kickoff===game.kickoff && fresh(starters.checkedAt,900000)) {
+      const named=starters.rows.filter(r=>r.position==='QB' && fresh(Date.parse(r.publishedAt),7*day));
+      if(named.length===1 && String(named[0].id)!==String(playerId))
+        return {blocked:true,state:'nonstarter',reason:`${named[0].publisher} announced ${named[0].name} as starting QB for this matchup. Normal full-game props for another QB are withheld; this does not mean the player is injured or inactive.`};
+    }
     if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
         /\binjured reserve\b/.test(normalize(roster.group)))
       return {blocked:true,state:'unavailable',reason:'Provider roster lists injured reserve. Projection withheld until the roster changes; this is not a confirmed game-day inactive list.'};
@@ -59,13 +66,14 @@
     if (!data?.current || !team || !Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
       return {unavailable:[],conditional:[],unknown:[],reason:'Current reports cannot establish availability for this matchup.'};
     const players = new Map();
+    if(team.starters?.rows?.length)for(const p of team.roster?.rows || [])if(p.id && p.position==='QB')players.set(String(p.id),p);
     for (const p of team.official?.rows || []) if (p.id && p.status) players.set(String(p.id),p);
     for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);
     for (const p of team.roster?.rows || []) if (p.id && /\binjured reserve\b/.test(normalize(p.group))) players.set(String(p.id),p);
-    const result = {unavailable:[],conditional:[],unknown:[],conflicts:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
+    const result = {unavailable:[],conditional:[],unknown:[],conflicts:[],nonstarters:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
     for (const [id,p] of players) {
       const status = assess(data,game,teamId,id,now);
-      result[status.state === 'conflict' ? 'conflicts' : status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
+      result[status.state === 'nonstarter' ? 'nonstarters' : status.state === 'conflict' ? 'conflicts' : status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
         .push({id,name:p.name || 'Unknown player',reason:status.reason});
     }
     return result;
