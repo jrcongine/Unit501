@@ -67,6 +67,7 @@
       if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));
       if(t.starters){
         panel.append(node('p',t.starters.message));
+        if(t.starters.unverified)panel.append(node('p',`${t.starters.unverified} reviewed announcement(s) could not be reverified or uniquely matched to the roster; starter confirmation withheld.`));
         for(const r of t.starters.rows){const link=node('a',`${r.publisher} announced starting ${r.position}: ${r.name} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';panel.append(node('p',r.evidence),link);}
       }
       if(t.depth) {

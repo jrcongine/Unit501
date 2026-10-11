@@ -7,10 +7,12 @@
     "kickoff": 1791738000000,
     "position": "QB",
     "name": "Tyson Bagent",
-    "publishedAt": "2026-10-09T20:43:00Z",
+    "publishedAt": "2026-10-09T20:43:41.707Z",
     "url": "https://www.chicagobears.com/news/injury-update-bears-rb-kyle-monangai-ruled-out-qb-caleb-williams-questionable-for-packers-game",
     "publisher": "Chicago Bears",
-    "evidence": "Team report says Ben Johnson announced Tyson Bagent will start in Green Bay."
+    "evidence": "Team report says Ben Johnson announced Tyson Bagent will start in Green Bay.",
+    "reviewedModifiedAt": "2026-10-09T21:30:22.593Z",
+    "reviewedBodyHash": "f9ec208881ce351b1ef8dff54fcf950bc216855bef7f4e1c7847b147ad8391b2"
   },
   {
     "league": "1",
@@ -23,7 +25,9 @@
     "publishedAt": "2026-10-09T16:41:14.411Z",
     "url": "https://www.commanders.com/news/game-status-commanders-giants-week-5",
     "publisher": "Washington Commanders",
-    "evidence": "The team reports that Dan Quinn confirmed Daniels is cleared to play and will start against the Giants in Week 5."
+    "evidence": "The team reports that Dan Quinn confirmed Daniels is cleared to play and will start against the Giants in Week 5.",
+    "reviewedModifiedAt": "2026-10-09T19:57:16.571Z",
+    "reviewedBodyHash": "26b8a2d25b5bf816c1a2c3c875464d9e9bdcb3650df0ee717236d539e22c3e23"
   },
   {
     "league": "1",
@@ -36,6 +40,8 @@
     "publishedAt": "2026-10-07T22:18:38.229Z",
     "url": "https://www.azcardinals.com/news/focus-for-mike-lafleur-is-1-0-not-qb1",
     "publisher": "Arizona Cardinals",
-    "evidence": "The team reports that Mike LaFleur is keeping Brissett as QB1 for the upcoming Lions matchup."
+    "evidence": "The team reports that Mike LaFleur is keeping Brissett as QB1 for the upcoming Lions matchup.",
+    "reviewedModifiedAt": "2026-10-08T16:18:54.159Z",
+    "reviewedBodyHash": "61eb094aa1dfcbc787c6a68ef77663a244469f332ec6954758a95c27e262d777"
   }
 ]
