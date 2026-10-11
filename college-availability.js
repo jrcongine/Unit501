@@ -1,6 +1,7 @@
 'use strict';
 const {fbsName}=require('./team-identity');
 const sources={SEC:'https://www.secsports.com/fbreports',ACC:'https://theacc.com/sports/2025/8/28/availability-reporting-football.aspx',B10:'https://bigten.org/sports/2026/9/10/FB_Availability_Reports.aspx'};
+const reportSchool=(name,season)=>fbsName({name},season)||fbsName({name:String(name||'').replace(/\bSt\.$/,'State')},season);
 const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function localEpoch(date,time,zone){
  const tz={CT:'America/Chicago',ET:'America/New_York'}[zone];
@@ -21,7 +22,7 @@ function matchReports(payload,g,season,now){
  return Object.values(payload).filter(r=>{
   const gameTime=localEpoch(r?.footer?.date,r?.footer?.time,r?.conferenceTimeZone);
   const publishedAt=localEpoch(r?.publishDate,r?.postedTime,r?.conferenceTimeZone);
-  const names=(r?.games||[]).map(t=>fbsName({name:t.teamName},season));
+  const names=(r?.games||[]).map(t=>reportSchool(t.teamName,season));
   return gameTime===kickoff && Number.isFinite(publishedAt) && publishedAt<=now && publishedAt<=kickoff && kickoff-publishedAt<=7*86400000 &&
    names.length===2 && wanted.every(n=>names.includes(n)) && r.games.every(t=>Array.isArray(t.rows));
  }).map(r=>({...r,publishedAt:localEpoch(r.publishDate,r.postedTime,r.conferenceTimeZone)}));
@@ -50,7 +51,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
    const {report,conf,checkedAt}=current[0];
    for(const team of teams){
     const identity=fbsName(String(team.id)===q.away?g.teams.away:g.teams.home,q.season);
-    const sections=report.games.filter(t=>fbsName({name:t.teamName},q.season)===identity);if(sections.length!==1)continue;
+    const sections=report.games.filter(t=>reportSchool(t.teamName,q.season)===identity);if(sections.length!==1)continue;
     const rows=[];let unmatched=0;
     for(const r of sections[0].rows){
      const match=/^([A-Z]{1,5})\s+#\d+\s+(.+)$/.exec(r.name||'');if(!match||typeof r.status!=='string'){unmatched++;continue;}
