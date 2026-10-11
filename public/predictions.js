@@ -16,6 +16,7 @@
   let sequence = 0;
   let propSequence = 0;
   const propStatus = document.createElement('p');
+  propStatus.id = 'prop-feed-status';
   const refreshProps = document.createElement('button');
   refreshProps.type = 'button';
   refreshProps.textContent = 'Refresh FanDuel props';
@@ -34,7 +35,7 @@
     showPlayer();
     try {
       const params = new URLSearchParams({away:game.a,home:game.h,league:game.league || el('league').value,kickoff:game.kickoff});
-      const res = await fetch('/api/fanduel-props?' + params, {signal:AbortSignal.timeout(20000)});
+      const res = await fetch('/api/fanduel-props?' + params, {signal:AbortSignal.timeout(30000)});
       const data = await res.json();
       if (task !== propSequence || selection !== sequence) return;
       if (!res.ok || data.error) throw new Error(data.error || 'FanDuel props unavailable.');
@@ -46,7 +47,7 @@
           const quotes = (data.props || []).filter(p => p.stat === def.key && playerName(p.name) === playerName(record.name));
           if (quotes.length !== 1) continue;
           const quote = quotes[0];
-          if (!Number.isFinite(quote.line) || Date.now() - quote.updatedAt > 1800000) continue;
+          if (!Number.isFinite(quote.line) || !Number.isFinite(quote.updatedAt) || quote.updatedAt > Date.now()+60000 || Date.now() - quote.updatedAt > 1800000) continue;
           const key = lineKey(record, def);
           const entry = readLine(key);
           if (entry.value !== '') continue;
@@ -54,7 +55,11 @@
           count++;
         }
       }
-      propStatus.textContent = `${data.message || ''} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
+      const coverage = Array.isArray(data.coverage) ? data.coverage : [];
+      const covered = coverage.filter(m=>m.lines>0).length;
+      const missing = coverage.filter(m=>m.lines===0).map(m=>definitions.find(d=>d.key===m.stat)?.title).filter(Boolean);
+      const detail = coverage.length ? ` ${covered}/${coverage.length} modeled markets returned usable lines.${missing.length ? ' No usable lines returned for: '+missing.join(', ')+'.' : ''}` : '';
+      propStatus.textContent = `${data.message || ''}${detail} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
       showPlayer();
     } catch (e) {
       if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' You can enter lines manually.';

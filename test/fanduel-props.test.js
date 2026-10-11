@@ -45,3 +45,15 @@ test('event lookup and per-game odds use server key and share cached calls',asyn
   assert.ok(urls[1].includes('player_receptions'));
  } finally {global.fetch=originalFetch;if(originalKey===undefined)delete process.env.ODDS_API_KEY;else process.env.ODDS_API_KEY=originalKey;}
 });
+
+test('all modeled markets have explicit coverage and duplicate market snapshots are withheld',()=>{
+ const {marketCoverage}=require('../fanduel-props');
+ const first=event();
+ first.bookmakers[0].markets.push({...first.bookmakers[0].markets[0],outcomes:outcomes.map(o=>({...o,description:'Mason Heintschel.',point:251.5}))});
+ assert.deepEqual(parseProps(first,now),[]);
+ const stats=require('../public/player-stats').definitions.map(d=>d.key).sort();
+ const coverage=marketCoverage(parseProps(event(),now));
+ assert.deepEqual(coverage.map(m=>m.stat).sort(),stats);
+ assert.equal(coverage.find(m=>m.stat==='passYds').lines,1);
+ assert.ok(coverage.filter(m=>m.stat!=='passYds').every(m=>m.lines===0));
+});
