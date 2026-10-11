@@ -41,7 +41,13 @@ function parseProps(event,now=Date.now()) {
       props.push({name,stat,line:point,updatedAt:updated,over:over[0].price,under:under[0].price});
     }
   }
-  return props;
+  // Repeated market snapshots or differently punctuated names must not pick an arbitrary quote.
+  const counts=new Map();
+  for(const p of props){const key=normalize(p.name)+':'+p.stat;counts.set(key,(counts.get(key)||0)+1);}
+  return props.filter(p=>counts.get(normalize(p.name)+':'+p.stat)===1);
+}
+function marketCoverage(props) {
+  return Object.entries(markets).map(([market,stat])=>({market,stat,lines:props.filter(p=>p.stat===stat).length}));
 }
 async function getProps(q) {
   if(!process.env.ODDS_API_KEY) return {props:[],message:'FanDuel props need the existing ODDS_API_KEY. Enter lines manually for now.'};
@@ -54,6 +60,6 @@ async function getProps(q) {
   const data=await request(`${sport}/events/${encodeURIComponent(found[0].id)}/odds`,{bookmakers:'fanduel',markets:Object.keys(markets).join(','),oddsFormat:'american'});
   if(data.id!==found[0].id || !matches(data,q)) throw new Error('FanDuel prop matchup could not be verified.');
   const props=parseProps(data);
-  return {props,message:props.length?'FanDuel props loaded. Missing props can be entered manually.':'No fresh FanDuel props available for this matchup. Enter lines manually.'};
+  return {props,coverage:marketCoverage(props),message:props.length?'FanDuel props loaded. Missing props can be entered manually.':'No fresh FanDuel props available for this matchup. Enter lines manually.'};
 }
-module.exports={getProps,parseProps,matches,normalize};
+module.exports={getProps,parseProps,matches,normalize,marketCoverage};
