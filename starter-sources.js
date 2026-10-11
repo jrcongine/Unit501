@@ -1,17 +1,21 @@
 'use strict';
 const {createHash}=require('node:crypto');
 const digest=body=>createHash('sha256').update(body).digest('hex');
-function verifySource(html,review,now){
+function readArticles(html,url){
  const articles=[];
  const visit=value=>{
   if(Array.isArray(value)){value.forEach(visit);return;}
   if(!value||typeof value!=='object')return;
-  if(['NewsArticle','Article'].includes(value['@type'])&&value.url===review.url)articles.push(value);
+  if(['NewsArticle','Article'].includes(value['@type'])&&value.url===url)articles.push(value);
   if(value['@graph'])visit(value['@graph']);
  };
  for(const script of String(html).matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
   try{visit(JSON.parse(script[1]));}catch{}
  }
+ return articles;
+}
+function verifySource(html,review,now){
+ const articles=readArticles(html,review.url);
  if(articles.length!==1)throw Error('Reviewed article identity unavailable or ambiguous.');
  const article=articles[0],published=Date.parse(article.datePublished),modified=Date.parse(article.dateModified);
  if(!Number.isFinite(published)||published>now||published!==Date.parse(review.publishedAt)||!Number.isFinite(modified)||modified>now||modified<published||modified!==Date.parse(review.reviewedModifiedAt)||typeof article.articleBody!=='string'||!article.articleBody||digest(article.articleBody)!==review.reviewedBodyHash)
@@ -30,4 +34,4 @@ function createStarterVerifier(now,fetchPage){
   return item.pending;
  };
 }
-module.exports={verifySource,createStarterVerifier,digest};
+module.exports={verifySource,createStarterVerifier,digest,readArticles};

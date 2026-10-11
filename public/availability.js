@@ -70,6 +70,11 @@
         if(t.starters.unverified)panel.append(node('p',`${t.starters.unverified} reviewed announcement(s) could not be reverified or uniquely matched to the roster; starter confirmation withheld.`));
         for(const r of t.starters.rows){const link=node('a',`${r.publisher} announced starting ${r.position}: ${r.name} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';panel.append(node('p',r.evidence),link);}
       }
+      if(t.starterCandidates){
+        panel.append(node('p',t.starterCandidates.message));
+        if(t.starterCandidates.failed)panel.append(node('p',`${t.starterCandidates.failed} candidate article(s) could not be checked; discovery is partial.`));
+        if(t.starterCandidates.rows.length){const details=node('details','');details.append(node('summary','Possible starter announcements — unreviewed'));for(const r of t.starterCandidates.rows){const link=node('a',`${r.title} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';details.append(node('p','Roster QBs mentioned: '+r.players.map(p=>p.name).join(', ')),link);}panel.append(details);}
+      }
       if(t.depth) {
         panel.append(node('p',t.depth.message));
         if(t.depth.url){const link=node('a','Review team depth chart');link.href=t.depth.url;link.target='_blank';link.rel='noopener';panel.append(link);}
