@@ -34,7 +34,7 @@
 }
       if(t.official?.available) {
         const reports=t.official.rows.filter(p=>p.id===String(playerId));
-        for(const r of reports)lines.push(`Official NFL Week ${t.official.week}: ${r.status || 'no game status'}; ${r.description}; ${r.practice}.`);
+        for(const r of reports)lines.push(`${t.official.publisher || `Official NFL Week ${t.official.week}`} : ${r.status || 'no game status'}; ${r.description}${r.practice?'; '+r.practice:''}.`);
       }
       if(t.starters?.rows?.length){
         for(const r of t.starters.rows)if(r.id===String(playerId))lines.push(`${r.publisher} announced starting ${r.position}: ${r.name}. Announcement can change; workload is not confirmed.`);
@@ -79,9 +79,9 @@
         }
       }
       if(t.official) {
-        panel.append(node('p',t.official.available ? `Official NFL Week ${t.official.week} cross-check: checked ${timestamp(t.official.checkedAt)}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
+        panel.append(node('p',t.official.available ? `${t.official.publisher || `Official NFL Week ${t.official.week}`}  cross-check: checked ${timestamp(t.official.checkedAt)}${t.official.publishedAt?'; published '+timestamp(t.official.publishedAt):''}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
         if(t.official.available) {
-          const link=node('a','Review official NFL report');link.href=t.official.url;link.target='_blank';link.rel='noopener';panel.append(link);
+          const link=node('a','Review official availability report');link.href=t.official.url;link.target='_blank';link.rel='noopener';panel.append(link);
         }
       }
       panel.append(node('p','Injuries checked: '+timestamp(t.injuries.checkedAt)));
@@ -113,7 +113,7 @@
     render('Loading current provider reports…',true);
     const q=new URLSearchParams({league:game.league,season:game.season,away:game.awayId,home:game.homeId,game:game.id});
     try {
-      const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(20000)});const result=await r.json();
+      const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(35000)});const result=await r.json();
       if(task!==version)return;
       if(!r.ok || result.error)throw new Error('Roster and injury reports could not be loaded. Availability remains unknown.');
       data=result;render(data.message);

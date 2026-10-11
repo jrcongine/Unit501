@@ -38,19 +38,22 @@
       return {blocked:true,state:'conflict',reason:'Conflicting official game statuses. Projection and line comparison withheld until resolved.'};
     const officialStatus=officialStatuses[0];
     if(officialStatus === 'out' || officialStatus === 'inactive')
-      return {blocked:true,state:'unavailable',reason:`Official NFL Week ${official.week}: ${officialStatus}. Projection and line comparison withheld; not treated as a zero-yard under.`};
+      return {blocked:true,state:'unavailable',reason:`${official.publisher || `Official NFL Week ${official.week}`}: ${officialStatus}. Projection and line comparison withheld; not treated as a zero-yard under.`};
+    if (officialStatus && (!team.injuries?.available || !fresh(team.injuries.checkedAt,900000)))
+      return {blocked:false,state:'conditional',reason:`${official.publisher || 'Official NFL'} report: ${officialStatus}. Starting role and workload remain unconfirmed; no participation probability is inferred.`};
     if (!team.injuries?.available || !fresh(team.injuries.checkedAt, 900000))
       return unknown('Injury feed unavailable or fetch expired. Refresh the reports.');
     const reports = team.injuries.rows.filter(p => String(p.id) === String(playerId) &&
       (!p.teamId || String(p.teamId) === String(teamId)));
     const dated = reports.filter(p => fresh(Date.parse(p.date), 7 * day));
+    if (!dated.length && officialStatus) return {blocked:false,state:'conditional',reason:`${official.publisher || 'Official NFL'} report: ${officialStatus}. Starting role and workload remain unconfirmed; no participation probability is inferred.`};
     if (!dated.length) return unknown(reports.length ? 'Injury report is stale or undated; playing status is unconfirmed.' : 'No injury entry returned; playing status is unconfirmed.');
     const latest = Math.max(...dated.map(p => Date.parse(p.date)));
     const current = dated.filter(p => Date.parse(p.date) === latest);
     const statuses = [...new Set(current.map(p => normalize(p.status)))];
     if (statuses.length !== 1) return {blocked:true,state:'conflict',reason:'Conflicting current injury statuses. Projection and line comparison withheld until resolved.'};
     if (officialStatus && statuses[0] && officialStatus !== statuses[0])
-      return {blocked:true,state:'conflict',reason:`Official NFL report (${officialStatus}) conflicts with provider (${statuses[0]}). Projection and line comparison withheld; starter and workload need verification.`};
+      return {blocked:true,state:'conflict',reason:`${official.publisher || 'Official NFL'} report (${officialStatus}) conflicts with provider (${statuses[0]}). Projection and line comparison withheld; starter and workload need verification.`};
     const status = statuses[0];
     if (['out','injured reserve','ir','inactive','sidelined','i l','pup','physically unable to perform','suspended'].includes(status))
       return {blocked:true,state:'unavailable',reason:`Latest provider report: ${status}. Projection and line comparison withheld; not treated as a zero-yard under.`};
