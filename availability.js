@@ -20,6 +20,7 @@ function createAvailability(api, now = Date.now) {
     item.pending.catch(()=>{if(cache.get(path)===item)cache.delete(path);});
     return item.pending;
   }
+  const ownership=require('./roster-ownership').createRosterOwnership(read,now);
   async function part(path, ttl, transform) {
     try {const data=await read(path,ttl);return {available:true,checkedAt:data.checkedAt,rows:data.rows.map(transform)};}
     catch {return {available:false,checkedAt:null,rows:[],message:'Report unavailable. Player availability is unknown.'};}
@@ -30,6 +31,7 @@ function createAvailability(api, now = Date.now) {
     // Current injury reports must never be presented as historical game-day data.
     if(!season) return {current:false,teams:[],message:'Season coverage could not be verified. Roster and injury status are unknown.'};
     if(!season.current) return {current:false,teams:[],message:'Current roster and injury reports are unavailable for this historical season.'};
+    const ownershipTask=season.coverage?.players===true?ownership(q):Promise.resolve({available:false,complete:false,conflicts:[]});
     const teams = await Promise.all([q.away,q.home].map(async id=>{
       const unavailable={available:false,checkedAt:null,rows:[],message:'Provider does not confirm coverage. Availability is unknown.'};
       const [roster,injuries]=await Promise.all([
@@ -40,9 +42,9 @@ function createAvailability(api, now = Date.now) {
       injuries.rows=injuries.rows.filter(p=>!p.teamId || p.teamId===id);
       return {id,roster,injuries};
     }));
-    await official(q,teams);
-    await college(q,teams);
-    return {current:true,teams,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
+    await Promise.all([official(q,teams),college(q,teams)]);
+    const rosterOwnership=await ownershipTask;
+    return {current:true,teams,rosterOwnership,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
   };
 }
 module.exports={createAvailability};

@@ -20,6 +20,10 @@
     const fresh = (time, age) => Number.isFinite(time) && time <= now && now - time <= age;
     if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
       return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};
+    const ownership=data.rosterOwnership;
+    if(ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&fresh(ownership.checkedAt,3600000)&&
+       (ownership.conflicts||[]).some(p=>String(p.id)===String(playerId)&&new Set(p.teamIds?.map(String)).size>1&&p.teamIds.map(String).includes(String(teamId))))
+      return {blocked:true,state:'conflict',reason:'Player appears on multiple current NFL team rosters, including a team outside this matchup. Projection and replacement scenario withheld until ownership is resolved; no trade is inferred.'};
     const rosterOwners = new Set((data.teams || []).filter(t => t.roster?.available && fresh(t.roster.checkedAt,3600000) &&
       t.roster.rows?.some(p => String(p.id) === String(playerId))).map(t => String(t.id)));
     if(rosterOwners.size > 1)
@@ -73,6 +77,9 @@
     if (!data?.current || !team || !Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
       return {unavailable:[],conditional:[],unknown:[],reason:'Current reports cannot establish availability for this matchup.'};
     const players = new Map();
+    const ownership=data.rosterOwnership;
+    if(ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&Number.isFinite(ownership.checkedAt)&&ownership.checkedAt<=now&&now-ownership.checkedAt<=3600000)
+      for(const p of team.roster?.rows||[])if((ownership.conflicts||[]).some(c=>String(c.id)===String(p.id)&&c.teamIds?.map(String).includes(String(teamId))))players.set(String(p.id),p);
     if(team.starters?.rows?.length)for(const p of team.roster?.rows || [])if(p.id && p.position==='QB')players.set(String(p.id),p);
     for (const p of team.official?.rows || []) if (p.id && p.status) players.set(String(p.id),p);
     for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);

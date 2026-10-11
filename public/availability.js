@@ -23,6 +23,12 @@
       const t=data.teams.find(t=>t.id===String(teamId));
       if(!t) return 'Roster and injury status unknown.';
       const lines=[];
+      const ownership=data.rosterOwnership;
+      if(ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&Number.isFinite(ownership.checkedAt)&&ownership.checkedAt<=Date.now()&&Date.now()-ownership.checkedAt<=3600000){
+        lines.push(`NFL roster ownership: ${ownership.checkedTeams}/${ownership.expectedTeams} teams checked. ${ownership.message}`);
+        const conflict=ownership.conflicts?.find(p=>String(p.id)===String(playerId)&&p.teamIds?.map(String).includes(String(teamId)));
+        if(conflict)lines.push('Conflicting current team listings: projection withheld until ownership is resolved.');
+      }else if(game.league==='1')lines.push('League-wide roster ownership could not be checked; current team assignment remains conditional.');
       const roster=t.roster.rows.find(p=>p.id===String(playerId));
       lines.push(!t.roster.available?'Roster unavailable.':roster?`Provider roster: ${roster.position}; ${roster.group}.`:'Not found on the provider team roster—verify current team before using this projection.');
       if (roster && /injured reserve/i.test(roster.group || '')) {
