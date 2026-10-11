@@ -342,13 +342,14 @@ cell.append(details);
           // A cautious heuristic, capped at +/-7.5%; not a calibrated forecast.
           const factor = Math.max(0.85, Math.min(1.15, defense.average / mean(league)));
           adjustment = (factor - 1) * 0.5;
-          adjusted = form.baseline * (1 + adjustment);
+          // Apply this factor after replacement touches are included.
           matchupDefense={average:defense.average,games:defense.games,rank:defense.rank,pool:defense.pool};
         }
       }
     const lineup=window.Unit501Lineups?.evaluate();
     const lineupChange=lineup?.props?.[record.teamId+':'+record.playerId];
     if(window.Unit501LineupModel)adjusted=Unit501LineupModel.adjustProp(adjusted,def.key,lineupChange);
+    if(adjustment!==null)adjusted*=1+adjustment;
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
     return {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
