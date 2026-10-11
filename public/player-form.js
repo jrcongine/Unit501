@@ -16,15 +16,18 @@
     const recent=values.slice(0,3),earlier=values.slice(3);
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
     const trend=earlier.length<2?'Insufficient history for a trend':mean(recent)>mean(earlier)?'Trending up':mean(recent)<mean(earlier)?'Trending down':'Holding steady';
+    const latestConsecutiveMissing=games.findIndex(valid);
     return {values,gameDetails,average,recentWeighted,weighted,trend,
-      coverage:{recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0])},
+      coverage:{recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
       sample:values.length<5?'Limited sample':values.length<9?'Developing sample':'Larger sample'};
   }
   function workloadWarning(history,key) {
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
-    const values=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate)
-      .map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);
+    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    if(games.length && (!Number.isFinite(games[0][metric]) || games[0][metric]<0))
+      return `Workload unverified: latest completed team game has no recorded ${label}. Older appearances do not confirm the current role; missing statistics are not zeros.`;
+    const values=games.map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);
     if(values.length<2)return `Workload unverified: fewer than two games with recorded ${label}. Confirm the expected role; this projection does not establish starting status.`;
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
     const recent=mean(values.slice(0,2)),older=values.slice(2);
@@ -37,13 +40,17 @@
   function project(history,key) {
     const form=summarize(history,key);
     if(!form)return null;
-    if(form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total)
+    if(form.coverage.latestConsecutiveMissing>=2 || (form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total))
       return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
     const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
     const pairs=usageKey?history.filter(g=>Number.isFinite(g.gameDate)&&Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
-    let baseline=form.weighted,usage=null;
+    let baseline=form.weighted,usage=null,usageUnavailable=null;
     if(pairs.length>=2) {
       const touches=summarize(history,usageKey);
+      if(touches.coverage.latestMissing){
+        usageUnavailable='Latest workload statistic is missing. Yardage uses recorded yardage form instead of an older workload estimate; verify current usage.';
+        return {...form,baseline,usage,usageUnavailable};
+      }
       const sum=a=>a.reduce((s,v)=>s+v,0);
       const pooled=sum(pairs.map(g=>g[key]))/sum(pairs.map(g=>g[usageKey]));
       const rates=pairs.map(g=>g[key]/g[usageKey]).sort((a,b)=>a-b);
@@ -55,7 +62,7 @@
       baseline=touches.weighted*efficiency;
       usage={key:usageKey,workload:touches.weighted,efficiency,games:pairs.length};
     }
-    return {...form,baseline,usage};
+    return {...form,baseline,usage,usageUnavailable};
   }
   const api={summarize,workloadWarning,project};
   if(typeof module!=='undefined' && module.exports)module.exports=api;

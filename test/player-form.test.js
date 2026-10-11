@@ -51,3 +51,19 @@ test('undated records cannot contaminate paired yardage efficiency',()=>{
  const a=project(valid,'recYds'),b=project([...valid,{gameDate:NaN,rec:1,recYds:10000}],'recYds');
  assert.equal(b.baseline,a.baseline);assert.equal(b.usage.games,2);assert.equal(b.usage.efficiency,10);
 });
+test('two latest missing games withhold an old appearance baseline even at half coverage',()=>{
+ const {project}=require('../public/player-form');
+ const form=project([{gameDate:4},{gameDate:3},{gameDate:2,recYds:100,rec:5},{gameDate:1,recYds:50,rec:3}],'recYds');
+ assert.equal(form.withheld,true);assert.equal(form.coverage.latestConsecutiveMissing,2);
+ const zero=project([{gameDate:4,recYds:0,rec:0},{gameDate:3,recYds:0,rec:0},{gameDate:2,recYds:100,rec:5},{gameDate:1,recYds:50,rec:3}],'recYds');
+ assert.equal(zero.withheld,undefined);assert.equal(zero.coverage.latestConsecutiveMissing,0);
+});
+test('missing latest usage does not import older workload into fresh yardage',()=>{
+ const {project}=require('../public/player-form');
+ const form=project([{gameDate:3,rushYds:15},{gameDate:2,rushYds:100,carries:20},{gameDate:1,rushYds:100,carries:20}],'rushYds');
+ assert.equal(form.usage,null);assert.equal(form.baseline,form.weighted);assert.match(form.usageUnavailable,/Latest workload/);
+});
+test('missing latest workload is flagged instead of calling older appearances recent',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ assert.match(workloadWarning([{gameDate:3},{gameDate:2,carries:20},{gameDate:1,carries:20}],'rushYds'),/latest completed team game/);
+});
