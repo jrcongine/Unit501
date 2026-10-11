@@ -42,3 +42,23 @@ test('player targets retain their first forecast independently of score and othe
  assert.equal(require('../public/forecast-archive').captureProp({...args,teamId:'99'},now),null);
  assert.equal(require('../public/forecast-archive').captureProp(args,inputs.game.kickoff),null);
 });
+test('archive import restores complete targets and never overwrites existing forecasts',()=>{
+ const {inputs,now}=fixture(),s=capture(inputs,now),data=new Map();
+ const storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ const text=JSON.stringify({schema:1,snapshots:[s]});
+ assert.deepEqual(require('../public/forecast-archive').importArchive(storage,text,now+1),{imported:1,skipped:0});
+ const modified=structuredClone(s);modified.adjusted.away=1;modified.records[0].adjusted=1;
+ assert.deepEqual(require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[modified]}),now+1),{imported:0,skipped:1});
+ assert.equal(read(storage).snapshots[0].adjusted.away,s.adjusted.away);
+});
+test('import rejects malformed, late, duplicate and inconsistent targets atomically',()=>{
+ const {inputs,now}=fixture(),s=capture(inputs,now),data=new Map([[key,JSON.stringify({schema:1,snapshots:[]})]]);
+ const storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)},before=data.get(key);
+ for(const edit of [s=>s.records[0].forecastAt=s.game.kickoff,s=>s.records[0].actual=0,s=>s.records[0].teamId='99',s=>s.records[0].baseline=999,s=>s.records[1]=s.records[0],s=>s.game.league='3']){
+  const bad=structuredClone(s);edit(bad);
+  assert.throws(()=>require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[bad]}),now+1));assert.equal(data.get(key),before);
+ }
+ assert.throws(()=>require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[s,s]}),now+1));
+ assert.equal(data.get(key),before);
+ storage.setItem=()=>{throw Error('quota');};assert.throws(()=>require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[s]}),now+1));assert.equal(data.get(key),before);
+});
