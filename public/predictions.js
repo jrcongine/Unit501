@@ -462,7 +462,15 @@ results.appendChild(workload);
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recorded season games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
-      card.append(heading, context); results.appendChild(card);
+      card.append(heading, context);
+      const audit=Unit501PlayerBacktest.validate(history,def.key);
+      const historical=document.createElement('p');
+      historical.style.cssText='margin:8px 0;opacity:.82';
+      historical.textContent=audit.count
+        ? `Historical baseline check: ${audit.count} replayed games${audit.count<30?' — limited evidence':''}. Average absolute miss ${audit.mae.toFixed(1)}; bias ${audit.bias>=0?'+':''}${audit.bias.toFixed(1)} (positive means too high). Earlier-game mean miss ${audit.meanMAE.toFixed(1)}.`
+        : 'Historical baseline check: not enough eligible earlier games to measure error.';
+      historical.textContent+=` Skipped: ${audit.insufficient} insufficient history, ${audit.withheld} withheld, ${audit.missingActual} missing actual stats, ${audit.ambiguous} ambiguous dates. Uses only games starting more than 24 hours earlier. Recorded appearances only; missing stats are not zeros. Excludes matchup, injury and lineup adjustments; no historical betting lines or profit measurement.`;
+      card.append(historical);results.appendChild(card);
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
