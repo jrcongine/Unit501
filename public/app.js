@@ -110,29 +110,11 @@ function watchWeather() {
 }
 document.addEventListener('visibilitychange', watchWeather);
 async function loadVenueForecast(game, conditions, roof) {
-  const key = String(game.venueName || '')
-    .toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const locations = {
-  soldierfield: [41.8625, -87.6167],
-  lambeaufield: [44.5014, -88.0622],
-
-  arrowheadstadium: [39.0488, -94.4846],
-  gehafieldatarrowheadstadium: [39.0488, -94.4846],
-
-  gillettestadium: [42.0909, -71.2647],
-  metlifestadium: [40.8135, -74.0750],
-  lincolnfinancialfield: [39.9009, -75.1681],
-
-  hardrockstadium: [25.9578, -80.2393],
-  levisstadium: [37.4033, -121.9698],
-  lumenfield: [47.5951, -122.3319]
-};
-  const location = locations[key];
-
+  const venue = window.Unit501Venues?.resolve(game);
+  const location = venue && [venue.latitude, venue.longitude];
   if (!location) {
     conditions.textContent =
-      'Forecast unavailable: this stadium location has not been added yet.';
+      'Forecast unavailable: stadium location has not been reviewed for this season.';
     return;
   }
 
@@ -146,10 +128,15 @@ const locations = {
   watch.pending = true;
   watch.lastAttempt = Date.now();
   const previous = weatherFresh(game) ? forecastContext.data : null;
-  roof.textContent = 'Open-air stadium.';
+  const exposure = venue.roof === 'outdoor' ? 'outdoor' : 'unknown';
+  roof.textContent = venue.roof === 'retractable'
+    ? 'Retractable roof — game-day status unverified. Forecast is context only; no weather scoring adjustment.'
+    : venue.roof === 'covered'
+      ? 'Covered field with open sides — field-level weather exposure unverified. Forecast is context only; no weather scoring adjustment.'
+      : 'Open-air playing field. Stadium-area forecast may differ from field conditions.';
   if (!previous) {
     if (forecastContext?.data.available) invalidateSimulation('Weather forecast expired. Refreshing weather; run the simulation again.');
-    forecastContext = {game, data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
+    forecastContext = {game, data:{roof:exposure,available:false,kickoff:game.kickoff}};
     conditions.textContent = 'Loading forecast near kickoff…';
     watch.source?.replaceChildren();
   }
@@ -174,13 +161,13 @@ const locations = {
 
     if (!data.available) {
       if (previous) invalidateSimulation('Weather forecast unavailable. Run the simulation again.');
-      forecastContext = {game,data:{roof:'outdoor',available:false,kickoff:game.kickoff}};
+      forecastContext = {game,data:{roof:exposure,available:false,kickoff:game.kickoff}};
       watch.source?.replaceChildren();
       conditions.textContent = data.message || 'Forecast unavailable.';
       return;
     }
 
-    forecastContext = {game,data:{...data,roof:'outdoor',kickoff:game.kickoff}};
+    forecastContext = {game,data:{...data,roof:exposure,kickoff:game.kickoff}};
     if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance'].some(key => previous[key] !== data[key])) {
       invalidateSimulation('Weather forecast updated. Run the simulation to use it.');
     }
@@ -221,7 +208,7 @@ const locations = {
       link,
       ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
       'Outdoor forecast near the stadium; actual field conditions may differ. ' +
-      'The experimental wind setting affects team scores only; rain chance, gusts and temperature are context.'
+      (exposure === 'outdoor' ? 'The experimental wind setting affects team scores only; rain chance, gusts and temperature are context.' : 'Roof or field exposure is unverified; all forecast values are context only.')
     );
     if (!watch.source) conditions.after(source);
     watch.source = source;
@@ -259,9 +246,8 @@ document.addEventListener('unit501:selection-changed', () => {
 
   const roof = document.createElement('p');
   roof.id = 'game-roof-status';
-  const venueKey = String(selected.venueName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const isIndoor = ['caesarssuperdome','mercedesbenzsuperdome','louisianasuperdome',
-    'fordfield','usbankstadium','allegiantstadium'].includes(venueKey);
+  const stadium = window.Unit501Venues?.resolve(selected);
+  const isIndoor = stadium?.roof === 'indoor';
   roof.textContent = isIndoor ? 'Fixed dome — indoor playing conditions.' : 'Roof type and game-day roof status not verified.';
   if (isIndoor) {
     forecastContext = {game:selected,data:{roof:'indoor'}};

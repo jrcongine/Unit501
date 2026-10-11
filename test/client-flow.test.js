@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','injury-backtest.js','forecast-review.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','injury-backtest.js','forecast-review.js','venue-weather.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -286,4 +286,22 @@ test('open weather refresh skips hidden tabs, withdraws stale inputs and avoids 
  await h.context.document.dispatchEvent({type:'visibilitychange'});assert.equal(calls,2);
  release();await h.settle();assert.equal(h.run('forecastContext.data.available'),true);
  h.run('clearSelection()');assert.equal(h.run('weatherWatch'),null);
+});
+
+test('weather displays retractable and covered venues as context and skips fixed domes',async()=>{
+ const h=harness();await h.settle();let calls=0;
+ const original=h.context.fetch;
+ h.context.fetch=async url=>String(url).startsWith('/api/weather')?(calls++,{ok:true,json:async()=>({available:true,fetchedAt:Date.now(),forecastTime:h.game.game.date.timestamp*1000,windMph:35})}):original(url);
+ for(const name of ['AT&T Stadium','SoFi Stadium']) {
+  h.game.game.venue.name=name;h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+  assert.equal(h.run('forecastContext.data.roof'),'unknown');
+  assert.match(h.nodes.get('game-roof-status').textContent,/context only/);
+  assert.equal(h.run('Unit501TeamModel.weatherEffect(selected,forecastContext.data).applied'),false);
+ }
+ assert.equal(calls,2);
+ h.game.game.venue.name='Ford Field';h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(calls,2);assert.equal(h.run('forecastContext.data.roof'),'indoor');assert.equal(h.run('weatherWatch'),null);
+ h.game.game.venue.name='Tottenham Hotspur Stadium';h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(calls,3);assert.equal(h.run('forecastContext.data.roof'),'outdoor');
+ assert.equal(h.run('Unit501TeamModel.weatherEffect(selected,forecastContext.data).applied'),true);
 });
