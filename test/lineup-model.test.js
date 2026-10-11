@@ -131,3 +131,20 @@ test('a lower-depth eligible player missing from production records is not silen
  const f=replacementFixture();const r=recommend(f.rows.slice(0,2),f.rows[0],f.data,game,assess,f.now);
  assert.equal(r.allocations.length,0);assert.match(r.reason,/matching production profile/);
 });
+
+test('workload diagnostics distinguish absent baseline data from missing candidate data without filling either',()=>{
+ const f=replacementFixture();f.rows[0].profiles.rushing.latestMissing=true;delete f.rows[2].profiles.receiving;
+ const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.state,'unknown');assert.deepEqual(r.allocations,[]);
+ assert.deepEqual(r.workloadGaps.map(g=>[g.category,g.playerId]),[['rushing','1'],['receiving','3']]);
+ assert.match(r.workloadGaps[0].reason,/already reflect the absence/);assert.match(r.workloadGaps[1].reason,/paired workload/);
+ assert.ok(r.candidates.every(p=>Object.keys(p.usage).length===0));
+});
+test('partial workload diagnostics preserve supported allocations and identify low coverage',()=>{
+ const f=replacementFixture();f.rows[2].profiles.receiving.coverage={recorded:1,total:4};
+ const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
+ assert.equal(r.state,'estimated');assert.equal(r.allocations.reduce((n,a)=>n+a.shares.rushing,0),100);
+ assert.ok(r.allocations.every(a=>a.shares.receiving===undefined));
+ assert.equal(r.workloadGaps.length,1);assert.match(r.workloadGaps[0].reason,/fewer than half/);
+ const clean=replacementFixture();assert.deepEqual(recommend(clean.rows,clean.rows[0],clean.data,game,assess,clean.now).workloadGaps,[]);
+});
