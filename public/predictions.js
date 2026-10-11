@@ -439,6 +439,7 @@ results.appendChild(workload);
         warning.textContent = model.workloadWarning;
         card.appendChild(warning);
       }
+      if(model.form.usageUnavailable){const warning=document.createElement('p');warning.textContent=model.form.usageUnavailable;card.append(warning);}
       if(model.form.usage) {
         const usage=document.createElement('p');
         usage.textContent=`Usage estimate: ${model.form.usage.workload.toFixed(1)} ${model.form.usage.key==='rec'?'receptions':model.form.usage.key} × ${model.form.usage.efficiency.toFixed(1)} yards each (${model.form.usage.games} paired games).`;
