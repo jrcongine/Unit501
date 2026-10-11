@@ -61,5 +61,68 @@
     "position": "RB",
     "source": "https://www.packers.com/team/players-roster/chris-brooks/",
     "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "12",
+    "reportName": "Hollywood Brown",
+    "rosterName": "Marquise Brown",
+    "playerId": "763",
+    "position": "WR",
+    "source": "https://www.philadelphiaeagles.com/team/players-roster/hollywood-brown/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "6",
+    "reportName": "Cam Ward",
+    "rosterName": "Cameron Ward",
+    "playerId": "25074",
+    "position": "QB",
+    "source": "https://www.tennesseetitans.com/news/cameron-ward-introductory-press-conference",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "6",
+    "reportName": "Mitchell Trubisky",
+    "rosterName": "Mitch Trubisky",
+    "playerId": "1564",
+    "position": "QB",
+    "source": "https://www.tennesseetitans.com/news/titans-oc-brian-daboll-shares-his-thoughts-on-qbs-cam-ward-mitchell-trubisky-will-levis-and-hendon-hooker",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "10",
+    "reportName": "Mitch Tinsley",
+    "rosterName": "Mitchell Tinsley",
+    "playerId": "10913",
+    "position": "WR",
+    "source": "https://www.bengals.com/team/players-roster/mitchell-tinsley/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "21",
+    "reportName": "Drew Ogletree",
+    "rosterName": "Andrew Ogletree",
+    "playerId": "1507",
+    "position": "TE",
+    "source": "https://www.colts.com/team/players-roster/andrew-ogletree/career",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "11",
+    "reportName": "Bam Knight",
+    "rosterName": "Zonovan Knight",
+    "playerId": "909",
+    "position": "RB",
+    "source": "https://www.azcardinals.com/team/players-roster/bam-knight/",
+    "reviewedAt": "2026-10-11"
+  },
+  {
+    "teamId": "5",
+    "reportName": "Matt Hibner",
+    "rosterName": "Matthew Hibner",
+    "playerId": "15129",
+    "position": "TE",
+    "source": "https://www.baltimoreravens.com/video/matt-hibner-touchdown-ravens-cowboys-week-3-highlights",
+    "reviewedAt": "2026-10-11"
   }
 ]
