@@ -136,3 +136,35 @@ test('conflicting current roster ownership withholds grades and replacement prof
  const moved=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8');
  assert.equal(moved.teamId,'2');assert.equal(moved.games,0);assert.deepEqual(moved.profiles,{});
 });
+
+function specialTeams(position,group,stats){
+ const f=fixture();f.games=f.games.slice(0,2);f.boxes=new Map();
+ for(const p of f.rosters.get('1').slice(0,8))p.position=position;
+ for(const g of f.games)f.boxes.set(String(g.game.id),[{team:{id:1},groups:[{name:group,players:f.rosters.get('1').slice(0,8).map(p=>({player:{id:p.id},statistics:stats(g.game.id)}))}]}]);
+ return f;
+}
+test('kicker accuracy weights attempts and withholds unverifiable percentages',()=>{
+ const f=specialTeams('K','Kicking',id=>[{name:'field goals',value:id===1?'1/1':'0/5'},{name:'pct',value:id===1?100:0},{name:'points',value:id===1?3:0}]);
+ let p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='1');
+ assert.ok(p.rating!==null);assert.ok(Math.abs(p.coverage.find(c=>c.name==='pct').average-100/6)<1e-10);
+ assert.match(p.limitation,/weighted by attempts/);
+ for(const rows of f.boxes.values())for(const p of rows[0].groups[0].players)p.statistics=p.statistics.filter(s=>s.name!=='field goals');
+ assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000).every(p=>p.rating===null));
+});
+test('punter comparisons weight punt volume and use inside-20 and touchback rates',()=>{
+ const f=specialTeams('P','Punting',id=>[{name:'total',value:id===1?1:5},{name:'average',value:id===1?10:50},{name:'in20',value:1},{name:'touchbacks',value:id===1?0:1}]);
+ const p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='1');
+ assert.ok(p.rating!==null);assert.equal(p.coverage.find(c=>c.name==='average').average,260/6);
+ assert.ok(Math.abs(p.coverage.find(c=>c.name==='in20 percent of punts').average-100/3)<1e-10);
+ assert.ok(Math.abs(p.coverage.find(c=>c.name==='touchbacks percent of punts').average-100/6)<1e-10);
+ assert.match(p.limitation,/net yardage/);
+ for(const rows of f.boxes.values())for(const p of rows[0].groups[0].players)p.statistics.find(s=>s.name==='total').value=0;
+ assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000).every(p=>p.rating===null));
+});
+test('defensive grades state missing coverage and snap context; blockers and long snappers remain unrated',()=>{
+ const f=fixture();f.rosters.get('1')[0].position='CB';f.rosters.get('1')[1].position='LS';
+ const p=buildRatings(f.games,f.boxes,f.rosters,20000);
+ assert.match(p.find(p=>p.id==='1').limitation,/targets faced/);
+ assert.equal(p.find(p=>p.id==='2').rating,null);assert.match(p.find(p=>p.id==='2').limitation,/Snap accuracy/);
+ assert.equal(p.find(p=>p.id==='99').rating,null);assert.match(p.find(p=>p.id==='99').limitation,/Blocking quality/);
+});

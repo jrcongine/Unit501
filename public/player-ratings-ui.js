@@ -41,7 +41,9 @@
     const tr=node('tr','');tr.title=p.reason;
     tr.append(node('td',`${p.name} · ${p.position}`),node('td',p.rating===null?'Unrated':`${p.rating}/99 · ${p.trend}`));
     const count=p.coverage.length?Math.min(...p.coverage.map(c=>c.count)):p.games;
-    tr.append(node('td',p.rating===null?p.reason:`${count<5?'Limited':count<9?'Developing':'Larger'} · ${count} recorded games`));
+    const sample=node('td',p.rating===null?p.reason:`${count<5?'Limited':count<9?'Developing':'Larger'} · ${count} recorded games`);
+    if(p.limitation)sample.append(node('p',p.limitation));
+    tr.append(sample);
     const cell=node('td','');
     if(Object.keys(p.profiles||{}).length&&['QB','RB','FB','WR','TE'].includes(p.role)){
      const key=id+':'+p.id;
