@@ -45,11 +45,11 @@ test('offensive names require matching position and unresolved slots remain visi
  assert.deepEqual(team.depth.coverage[0],{position:'QB',matched:1,unresolved:1});
 });
 
-test('reviewed Daniels and Brissett confirmations apply only to their exact upcoming games and expire',async()=>{
+test('reviewed Daniels, Brissett and Huntley confirmations apply only to their exact upcoming games and expire',async()=>{
  const manifest=require('../starter-confirmations.json');
- for(const name of ['Jayden Daniels','Jacoby Brissett']){
+ for(const name of ['Jayden Daniels','Jacoby Brissett','Tyler Huntley']){
   const row=manifest.find(r=>r.name===name);assert.ok(row);
-  const teamName=row.teamId==='18'?'Washington Commanders':'Arizona Cardinals';
+  const teamName={'18':'Washington Commanders','11':'Arizona Cardinals','5':'Baltimore Ravens'}[row.teamId];
   const team={id:row.teamId,roster:{available:true,checkedAt:now,rows:[{id:'starter',name,position:'QB'},{id:'backup',name:'Backup QB',position:'QB'}]},injuries:{available:true,checkedAt:now,rows:[]}};
   const g={game:{date:{timestamp:row.kickoff/1000}},teams:{away:{name:teamName},home:{name:'Opponent'}}};
   const q={league:row.league,season:row.season,game:row.gameId,away:row.teamId,home:'other'};
