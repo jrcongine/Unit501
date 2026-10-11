@@ -65,3 +65,16 @@ test('reviewed Daniels and Brissett confirmations apply only to their exact upco
   clock=Date.parse(row.publishedAt)+7*86400000+1;await load(q,[team],g);assert.equal(team.starters.rows.length,0);
  }
 });
+
+test('depth identity resolves reviewed aliases and suffixes without resolving shared cells or competing names',async()=>{
+ const html='<table><tr><th>Position</th><th>1st String</th></tr><tr><td>QB</td><td>Starter QB</td></tr><tr><td>WR</td><td>Hollywood Brown</td><td>Backup Receiver Jr.</td><td><a href="/team/players-roster/a">Hollywood Brown</a><a href="/team/players-roster/b">Backup Receiver Jr.</a></td></tr></table>';
+ const team={id:'12',roster:{rows:[{id:'1',name:'Starter QB',position:'QB'},{id:'763',name:'Marquise Brown',position:'WR'},{id:'2',name:'Backup Receiver',position:'WR'}]}};
+ const g={game:{date:{timestamp:kickoff/1000}},teams:{away:{name:'Philadelphia Eagles'},home:{name:'Jacksonville Jaguars'}}};
+ const q={league:'1',season:'2026',game:'21578',away:'12',home:'2'};
+ const load=createDepthCharts(()=>now,async()=>html,[]);await load(q,[team],g);
+ assert.deepEqual(team.depth.rows.map(r=>r.id),['1','763','2']);assert.equal(team.depth.unresolved.length,1);
+ assert.equal(team.depth.unresolved[0].unresolved,true);assert.equal(team.depth.unresolved[0].rank,3);
+ team.roster.rows.push({id:'99',name:'Hollywood Brown',position:'WR'});await load(q,[team],g);
+ assert.ok(!team.depth.rows.some(r=>r.id==='763'||r.id==='99'));assert.equal(team.depth.unresolved.length,2);
+ team.roster.rows.pop();team.roster.rows[1].position='TE';await load(q,[team],g);assert.ok(!team.depth.rows.some(r=>r.id==='763'));
+});
