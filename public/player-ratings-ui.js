@@ -12,7 +12,10 @@
   if(effect===lastEffect)return;
   lastEffect=effect;invalidateSimulation();document.dispatchEvent(new Event('unit501:lineup-updated'));
  };
- window.Unit501Lineups={evaluate(){
+ window.Unit501Lineups={snapshot(){
+  if(game!==selected||!ratings)return null;
+  return JSON.parse(JSON.stringify({ratings,scenarios:[...scenarios.values()]}));
+ },evaluate(){
   if(!ratings||game!==selected||ratings.before!==game.kickoff||String(ratings.league)!==game.league||String(ratings.season)!==String(game.season))return null;
   const rows=[],reasons=[];
   const availability=window.Unit501Availability?.snapshot();
