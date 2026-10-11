@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 // Minimal DOM harness for actual client scripts; it does not test rendering.
 function harness(storage=new Map(),extras=false) {
- const nodes=new Map(),timers=[];
+ const nodes=new Map(),timers=[],created=[];
  class Node {
   constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};this.dataset={};this.style={};this.validity={badInput:false};this._value='';this._text='';this.isConnected=true;this.classList={add(){},remove(){},toggle(){}};}
   set id(v){this._id=v;nodes.set(v,this);}get id(){return this._id;}
@@ -20,7 +20,7 @@ function harness(storage=new Map(),extras=false) {
   addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
   async dispatchEvent(event){for(const fn of this.listeners[event.type]||[])await fn(event);}
  }
- const document=new Node('document');document.createElement=tag=>new Node(tag);document.getElementById=id=>nodes.get(id)||null;
+ const document=new Node('document');document.createElement=tag=>{const n=new Node(tag);created.push(n);return n;};document.getElementById=id=>nodes.get(id)||null;
  const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
  for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)){const node=new Node(match[1]);node.id=match[2];}
  nodes.get('date').value='2026-10-10';nodes.get('league').value='1';nodes.get('weatherEnabled').checked=true;
@@ -50,7 +50,7 @@ function harness(storage=new Map(),extras=false) {
  for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','injury-backtest.js','forecast-review.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
- return {nodes,storage,run,game,data,timers,settle,context};
+ return {nodes,storage,run,game,data,timers,settle,context,created};
 }
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
@@ -193,4 +193,67 @@ test('opening accuracy panel auto-checks past results once and throttles repeate
  await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();await h.settle();
  assert.equal(calls,1);assert.equal(h.nodes.get('refresh-forecast-results').disabled,false);
  await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();assert.equal(calls,1);
+});
+
+test('switching matchups clears scenarios and ignores late injury, rating, ranking, odds and prop responses',async()=>{
+ const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ await h.nodes.get('build-player-ratings').onclick();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7'),confirm=h.nodes.get('baseline-1:7');
+ replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
+ assert.equal(h.run('Unit501Lineups.evaluate().applied'),true);
+ const line=h.nodes.get('line-1:7-carries');line.value='21.5';await line.dispatchEvent({type:'input'});
+ h.nodes.get('awayOffenseLoss').value='6';h.nodes.get('awayRating').value='9';
+ const next=structuredClone(h.game);next.game.id=1000;next.game.date.timestamp+=3600;
+ const original=h.context.fetch,releases=[];let hold=true;
+ h.context.injuryOut=true;
+ h.context.fetch=async url=>{
+  const response=await original(url),body=await response.json(),u=new URL(url,'http://localhost');
+  if(hold){await new Promise(resolve=>releases.push(resolve));}
+  else if(u.pathname==='/api/rankings'){body.data={...body.data,before:next.game.date.timestamp*1000};}
+  return {ok:true,json:async()=>body};
+ };
+ const injury=h.nodes.get('refresh-availability').onclick();
+ const rating=h.nodes.get('build-player-ratings').onclick();
+ const props=h.nodes.get('prop-feed-status');
+ const odds=h.run('loadFanDuel()');h.run('loadTeamContext(selected)');
+ const propButton=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');
+ const propRequest=propButton.dispatchEvent({type:'click'});
+ await h.settle();assert.equal(releases.length,5);
+ hold=false;h.context.injuryOut=false;h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();await h.settle();
+ assert.equal(h.run('Unit501Lineups.snapshot()'),null);assert.equal(h.run('Unit501Lineups.evaluate()'),null);
+ assert.equal(h.nodes.get('predict-results').textContent,'');assert.equal(h.nodes.get('saved-line-comparisons').textContent,'');assert.equal(props.textContent,'');
+ assert.equal(h.nodes.get('spread').value,'7.5');assert.equal(h.nodes.get('score').textContent,'—');
+ assert.equal(h.nodes.get('awayOffenseLoss').value,'0');assert.equal(h.nodes.get('awayRating').value,'0');
+ const current=h.run('Unit501Availability.snapshot()');assert.equal(current.teams[0].injuries.rows.length,0);
+ for(const release of releases)release();await Promise.all([injury,rating,odds,propRequest]);await h.settle();await h.settle();
+ assert.equal(h.run('Unit501Availability.snapshot()'),current);assert.equal(h.run('scoringContext.game.id'),1000);
+ assert.equal(h.nodes.get('ratings-results').textContent,'');assert.equal(h.nodes.get('build-player-ratings').disabled,undefined);
+ assert.equal(h.nodes.get('predict-results').textContent,'');assert.equal(h.nodes.get('prop-feed-status').textContent,'');assert.equal(propButton.disabled,true);
+});
+
+test('an old player-stat load cannot repopulate projections after a matchup switch',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ const original=h.context.fetch;let release;
+ h.context.fetch=async url=>{const response=await original(url);if(String(url).startsWith('/api/player-stats'))await new Promise(resolve=>{release=resolve;});return response;};
+ const pending=h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();assert.ok(release);
+ const next=structuredClone(h.game);next.game.id=1000;h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();
+ release();await pending;await h.settle();
+ assert.equal(h.nodes.get('predict-player').children.length,0);assert.equal(h.nodes.get('predict-results').textContent,'');
+ assert.match(h.nodes.get('predict-status').textContent,/Tap Load Player Projections/);assert.equal(h.nodes.get('predict').disabled,false);
+});
+
+test('saved manual lines stay scoped to a game and return only when that exact game is reloaded',async()=>{
+ const h=harness();await h.settle();
+ const next=structuredClone(h.game);next.game.id=1000;next.game.date.timestamp+=3600;
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{const u=new URL(url,'http://localhost');if(u.pathname==='/api/games')return {ok:true,json:async()=>({response:[h.game,next]})};return original(url);};
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const workload=h.nodes.get('predict-results').children.find(n=>n.tag==='label').children.find(n=>n.tag==='select');workload.value='50';workload.onchange();
+ const line=h.nodes.get('line-1:7-carries');line.value='21.5';await line.dispatchEvent({type:'input'});
+ h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.equal(h.nodes.get('predict-results').children.find(n=>n.tag==='label').children.find(n=>n.tag==='select').value,'100');
+ assert.ok(![...h.storage].some(([k,v])=>k.includes(':1000:')&&JSON.parse(v).value==='21.5'));
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('line-1:7-carries').value,'21.5');
 });
