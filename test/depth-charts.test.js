@@ -2,6 +2,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {parseDepth,createDepthCharts,domains}=require('../depth-charts');const {assess}=require('../public/injury-model');
 const now=Date.parse('2026-10-10T22:00:00Z'),kickoff=1791738000000;
+const {digest}=require('../starter-sources');
+const reviews=require('../starter-confirmations.json').map(r=>({...r,reviewedBodyHash:digest('Fixture confirmation for '+r.name)}));
+const sourcePage=url=>{const r=reviews.find(r=>r.url===url);return '<script type="application/ld+json">'+JSON.stringify({'@type':'NewsArticle',url,datePublished:r.publishedAt,dateModified:r.reviewedModifiedAt,articleBody:'Fixture confirmation for '+r.name})+'</script>';};
+
 const page='<table class="d3-o-depthchart"><tr><th>Position</th><th>1st String</th></tr><tr><td>QB</td><td><a href="/team/players-roster/a">Caleb Williams</a></td><td><a href="/team/players-roster/b">Tyson Bagent</a></td></tr></table>';
 test('depth parser preserves listed order and rejects unknown layout; all NFL teams have sources',()=>{
  assert.equal(parseDepth('<table><tr><th>Position</th><th>Player</th></tr><tr><td>QB</td><td>10 Jordan Love</td><td>6 Tyrod Taylor</td></tr></table>')[0].name,'Jordan Love');
@@ -9,7 +13,7 @@ test('depth parser preserves listed order and rejects unknown layout; all NFL te
  assert.equal(parseDepth(page.replace('Caleb Williams</a>','Caleb Williams</a><a href="/team/players-roster/c">Other</a>'))[0].unresolved,true);
 });
 test('reviewed announcement is exact-game scoped and roster identity must be unique; chart failure preserves announcement',async()=>{
- const load=createDepthCharts(()=>now,async()=>{throw Error('unavailable');});
+ const load=createDepthCharts(()=>now,async url=>{if(url.includes('/news/'))return sourcePage(url);throw Error('unavailable');},reviews);
  const team={id:'16',roster:{rows:[{id:'1',name:'Caleb Williams',position:'QB'},{id:'2',name:'Tyson Bagent',position:'QB'}]}};
  const g={game:{date:{timestamp:kickoff/1000}},teams:{away:{name:'Chicago Bears'},home:{name:'Green Bay Packers'}}};
  const q={league:'1',season:'2026',game:'21587',away:'16',home:'15'};
@@ -49,7 +53,7 @@ test('reviewed Daniels and Brissett confirmations apply only to their exact upco
   const team={id:row.teamId,roster:{available:true,checkedAt:now,rows:[{id:'starter',name,position:'QB'},{id:'backup',name:'Backup QB',position:'QB'}]},injuries:{available:true,checkedAt:now,rows:[]}};
   const g={game:{date:{timestamp:row.kickoff/1000}},teams:{away:{name:teamName},home:{name:'Opponent'}}};
   const q={league:row.league,season:row.season,game:row.gameId,away:row.teamId,home:'other'};
-  let clock=now;const load=createDepthCharts(()=>clock,async()=>{throw Error('No chart');});
+  let clock=now;const load=createDepthCharts(()=>clock,async url=>{if(url.includes('/news/'))return sourcePage(url);throw Error('No chart');},reviews);
   await load(q,[team],g);assert.equal(team.starters.rows[0].id,'starter');
   const data={current:true,teams:[team]},game={id:row.gameId,kickoff:row.kickoff};
   assert.equal(assess(data,game,row.teamId,'backup',now,true).state,'nonstarter');

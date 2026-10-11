@@ -23,14 +23,18 @@ function parseDepth(html){
  if(!rows.some(r=>r.position==='QB'))throw Error('Depth chart layout unavailable.');
  return rows;
 }
-function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetch(url,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();return r.text();}){
- const cache=new Map();
+function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetch(url,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();return r.text();},reviews=require('./starter-confirmations.json')){
+ const cache=new Map(),verifyStarter=require('./starter-sources').createStarterVerifier(now,fetchPage);
  return async(q,teams,g)=>Promise.all(teams.map(async team=>{
   const kickoff=Number(g.game.date.timestamp)*1000;
-  const evidence=require('./starter-confirmations.json').filter(r=>r.league===q.league&&r.season===q.season&&r.gameId===String(q.game)&&r.teamId===String(team.id)&&r.kickoff===kickoff&&Number.isFinite(Date.parse(r.publishedAt))&&Date.parse(r.publishedAt)<=now()&&now()-Date.parse(r.publishedAt)<=7*86400000);
-  const confirmations=[];
-  for(const r of evidence){const matches=(team.roster?.rows||[]).filter(p=>key(p.name)===key(r.name)&&p.position===r.position);if(matches.length===1)confirmations.push({...r,id:matches[0].id});}
-  team.starters={gameId:String(q.game),kickoff,checkedAt:now(),rows:confirmations,message:'Reviewed team announcements only. Missing entries mean game starters are unconfirmed. Announcements may change; verify the linked source.'};
+  const evidence=reviews.filter(r=>r.league===q.league&&r.season===q.season&&r.gameId===String(q.game)&&r.teamId===String(team.id)&&r.kickoff===kickoff&&Number.isFinite(Date.parse(r.publishedAt))&&Date.parse(r.publishedAt)<=now()&&now()-Date.parse(r.publishedAt)<=7*86400000);
+  const confirmations=[];let unverified=0;
+  await Promise.all(evidence.map(async r=>{
+   const matches=(team.roster?.rows||[]).filter(p=>key(p.name)===key(r.name)&&p.position===r.position);
+   if(matches.length!==1){unverified++;return;}
+   try{const source=await verifyStarter(r);confirmations.push({...r,id:matches[0].id,sourceCheckedAt:source.checkedAt});}catch{unverified++;}
+  }));
+  team.starters={gameId:String(q.game),kickoff,checkedAt:confirmations.length?Math.min(...confirmations.map(r=>r.sourceCheckedAt)):now(),rows:confirmations,unverified,message:'Reviewed team announcements are rechecked against their official article every 15 minutes while reports are requested. Changed or unavailable sources withdraw confirmation until reviewed again. Missing entries mean game starters are unconfirmed; this does not discover new weekly announcements.'};
   const name=String(team.id)===q.away?g.teams.away.name:g.teams.home.name,domain=domains[name];
   const url=domain?`https://www.${domain}/team/depth-chart`:null;
   team.depth={available:false,url,message:'Depth chart unavailable; starting roles remain unconfirmed.'};if(!url)return;
