@@ -46,3 +46,10 @@ test('partial replacement shares add only assigned touches and withhold incomple
  assert.equal(r.teams['10'].points,0);assert.match(r.withheld.join(' '),/no assigned replacement/);
  for(const replacementShare of [-1,101,NaN,'50'])assert.equal(evaluate(players,[{...scenario,replacementShare}],context,game).applied,false);
 });
+test('missing receiving replacement data preserves rushing props but withholds partial team valuation',()=>{
+ const sparse=structuredClone(players);delete sparse[1].profiles.receiving;
+ const r=evaluate(sparse,[scenario],context,game);
+ assert.equal(r.applied,true);assert.equal(adjustProp(5,'carries',r.props['10:2']),25);
+ assert.equal(r.props['10:2'].receiving,undefined);assert.equal(r.teams['10'].points,0);
+ assert.match(r.withheld.join(' '),/coverage is incomplete/);
+});

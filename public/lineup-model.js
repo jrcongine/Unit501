@@ -17,6 +17,7 @@
       const available=categories.filter(k=>valid(original.profiles?.[k])&&valid(replacement.profiles?.[k]));
       if(!available.length){result.withheld.push(original.name+': replacement impact unavailable; need recent recorded workload and efficiency for both players. Blocking, coverage and special-team score effects require a separate point scenario.');continue;}
       const team=result.teams[String(s.teamId)]??={passing:0,receiving:0,rushing:0,points:0};
+      if(available.length<categories.length){team.incompleteProfiles=true;result.withheld.push(original.name+': some workload categories lack usable replacement data. Supported props still apply; team score impact is withheld.');}
       for(const category of available){
         const from=original.profiles[category],to=replacement.profiles[category];
         const removed=from.usage*(1-s.workload/100);
@@ -33,6 +34,7 @@
       }
     }
     for(const [id,change]of Object.entries(result.teams)){
+      if(change.incompleteProfiles){result.withheld.push('Team '+id+': score impact withheld because replacement workload coverage is incomplete.');continue;}
       if(change.unassignedWorkload){result.withheld.push('Team '+id+': score impact withheld because some removed workload has no assigned replacement. Player workload scenarios still apply.');continue;}
       const t=teamContext?.teams?.find(t=>String(t.id)===id);
       const rush=t?.metrics?.rushFor,pass=t?.metrics?.passFor,points=t?.metrics?.pointsFor;

@@ -41,7 +41,7 @@ function harness(storage=new Map(),extras=false) {
   else if(u.pathname==='/api/player-stats')response={response:['1','2'].map((id,i)=>({team:{id:Number(id),name:'Team '+(i?'B':'A')},groups:[{name:'Rushing',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Total Rushes',value:20},{name:'Yards',value:100}]}]},{name:'Receiving',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Receptions',value:4},{name:'Yards',value:24},{name:'Targets',value:5}]}]}]}))};
   else if(u.pathname==='/api/fanduel-props')response={props:[{name:'RB 1',stat:'carries',line:19.5,updatedAt:Date.now()},{name:'RB 1',stat:'recYds',line:22.5,updatedAt:Date.now()},{name:'RB 1',stat:'rec',line:3.5,updatedAt:Date.now()}],message:'Fixture props'};
   else if(u.pathname==='/api/availability')response={current:true,teams:['1','2'].map(id=>({id,roster:{available:true,checkedAt:Date.now(),rows:[{id:id==='1'?'7':'8',name:'RB '+id,position:'RB'},...(id==='1'?[{id:'9',name:'ZZBackup',position:'RB'}]:[])]},injuries:{available:true,checkedAt:Date.now(),rows:context.injuryOut?[{id:'7',teamId:'1',status:'Out',date:new Date().toISOString()}]:[]}})),message:'Fixture'};
-  else if(u.pathname==='/api/player-ratings')response={state:'ready',data:{league:'1',season:'2026',before:stamp*1000,players:[{id:'7',teamId:'1',name:'RB 1',position:'RB',role:'RB',rating:80,trend:'Steady',games:4,coverage:[{count:4}],profiles:{rushing:{usage:20,efficiency:5,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}},{id:'9',teamId:'1',name:'ZZBackup',position:'RB',role:'RB',rating:45,trend:'Steady',games:4,coverage:[{count:4}],profiles:{rushing:{usage:5,efficiency:3,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}}]}};
+  else if(u.pathname==='/api/player-ratings')response={state:'ready',data:{league:'1',season:'2026',before:stamp*1000,players:[{id:'7',teamId:'1',name:'RB 1',position:'RB',role:'RB',rating:80,trend:'Steady',games:4,coverage:[{count:4}],profiles:{receiving:{usage:2,efficiency:6,games:4,latestMissing:false,coverage:{recorded:4,total:4}},rushing:{usage:20,efficiency:5,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}},{id:'9',teamId:'1',name:'ZZBackup',position:'RB',role:'RB',rating:45,trend:'Steady',games:4,coverage:[{count:4}],profiles:{receiving:{usage:2,efficiency:6,games:4,latestMissing:false,coverage:{recorded:4,total:4}},rushing:{usage:5,efficiency:3,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}}]}};
   else throw Error('Unexpected client request '+url);
   if(extras&&u.pathname==='/api/player-stats')response.response[0].groups[0].players.push({player:{id:9,name:'ZZBackup'},statistics:[{name:'Total Rushes',value:5},{name:'Yards',value:15}]});
   return {ok:true,json:async()=>response};
@@ -120,4 +120,15 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Projection and line comparison withheld/);
  assert.ok(h.nodes.get('predict-player').children.some(option=>option.value==='1:7'&&/Projection withheld/.test(option.textContent)));
+});
+
+test('opponent yardage factor also applies to transferred replacement touches',async()=>{
+ const h=harness(new Map(),true);h.data.teams[1].metrics.rushAgainst.average=50;
+ await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ await h.nodes.get('build-player-ratings').onclick();await h.settle();
+ const replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7'),confirm=h.nodes.get('baseline-1:7');
+ replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/69.4 projected/);
 });
