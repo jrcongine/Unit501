@@ -8,7 +8,7 @@ test('empty archives are insufficient, not zero error', () => {
 });
 test('reject late inputs, duplicate forecasts, invalid outcomes and mixed versions', () => {
  const out=compare([row(),row({gameId:'101',forecastAt:100000}),row({gameId:'102',inputAsOf:95000}),row({gameId:'103',actual:null}),row({gameId:'104'}),row({gameId:'104',adjusted:21})]);
- assert.equal(out.accepted,1);assert.deepEqual(out.skips,{ambiguous:2,invalid:1,late:2,version:0});assert.equal(out.scores['1'].improvement,5);
+ assert.equal(out.accepted,1);assert.deepEqual(out.skips,{pending:0,ambiguous:2,invalid:1,late:2,version:0});assert.equal(out.scores['1'].improvement,5);
  const mixed=[row(),row({gameId:'105',modelVersion:'v2'})];
  assert.equal(compare(mixed).accepted,0);assert.equal(compare(mixed.reverse()).skips.version,2);
  assert.equal(compare([row(),row({league:1})]).skips.ambiguous,2);
@@ -22,4 +22,9 @@ test('30 distinct games only yield descriptive observed improvement; negative ya
  const rows=Array.from({length:30},(_,i)=>row({gameId:String(100+i),kind:'prop',market:'rushYds',playerId:'1',baseline:1,adjusted:-2,actual:-3}));
  const out=compare(rows);assert.equal(out.props['1'].rushYds.status,'lower-observed-error');assert.equal(out.props['1'].rushYds.improvement,3);
  assert.equal(compare(rows.slice(0,29)).props['1'].rushYds.status,'insufficient');
+});
+
+test('valid unfinished targets are pending while malformed pending forecasts remain invalid',()=>{
+ const out=compare([row({actual:null,resultKnownAt:null}),row({gameId:'101',actual:null,resultKnownAt:null,baseline:null})]);
+ assert.equal(out.skips.pending,1);assert.equal(out.skips.invalid,1);assert.equal(out.accepted,0);assert.equal(out.scores['1'].baselineMAE,null);
 });

@@ -36,6 +36,7 @@
    if(archive.snapshots.some(s=>identity(s)===identity(snapshot)))return {saved:false,message:'First adjusted forecast for this target is already saved on this browser. Later revisions do not replace it.'};
    archive.snapshots.push(snapshot);
    storage.setItem(key,JSON.stringify(archive));
+  if(root.document&&typeof root.Event==='function')root.document.dispatchEvent(new root.Event('unit501:archive-updated'));
    return {saved:true,message:'First adjusted forecast saved on this browser before kickoff. Download the archive to keep a backup.'};
   }catch{return {saved:false,message:'Forecast archive could not be saved on this browser. Existing data retained; this prediction is not archived.'};}
  }

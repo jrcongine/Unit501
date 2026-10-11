@@ -25,7 +25,7 @@ function harness(storage=new Map(),extras=false) {
  for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)){const node=new Node(match[1]);node.id=match[2];}
  nodes.get('date').value='2026-10-10';nodes.get('league').value='1';nodes.get('weatherEnabled').checked=true;
  const context={document,console,URLSearchParams,AbortSignal,Date,Event:class{constructor(type){this.type=type;}},setTimeout:(fn,delay)=>{timers.push({fn,delay,active:true});return timers.length;},clearTimeout:id=>{if(timers[id-1])timers[id-1].active=false;},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
- context.window=context;vm.createContext(context);
+ context.window=context;context.addEventListener=(...args)=>document.addEventListener(...args);vm.createContext(context);
  const stamp=Math.floor((Date.now()+86400000)/1000);
  const game={league:{id:1,season:2026},game:{id:999,stage:'Regular Season',date:{timestamp:stamp},status:{short:'NS',long:'Scheduled'},venue:{name:'Test Stadium'}},teams:{away:{id:1,name:'Team A'},home:{id:2,name:'Team B'}},scores:{away:{total:null},home:{total:null}}};
  const teams=Array.from({length:32},(_,i)=>({id:String(i+1),games:4,opponents:[],metrics:Object.fromEntries(['pointsFor','pointsAgainst','rushAgainst','passAgainst','rushFor','passFor'].map(key=>[key,{average:key.startsWith('points')?24:key.startsWith('rush')?100:220,games:4,rank:i+1,pool:32}]))}));
@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','injury-backtest.js','forecast-review.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context};
@@ -171,4 +171,15 @@ test('simulation archives the first adjusted score forecast and retains it acros
  h.run('$("awayOffenseLoss").value="7"; sim()');
  assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots[0].adjusted.away'),20);
  const next=harness(h.storage);await next.settle();assert.equal(next.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
+});
+
+test('saved forecast accuracy shows pending outcomes and real paired errors without inventing samples',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run('$("awayOffenseLoss").value="4"; sim()');
+ assert.match(h.nodes.get('forecast-review-results').textContent,/2 pending final outcomes/);
+ assert.match(h.nodes.get('forecast-review-results').textContent,/No eligible final outcomes/);
+ h.run(`const archiveForReview=Unit501ForecastArchive.read(localStorage);for(const r of archiveForReview.snapshots[0].records){r.actual=19;r.resultKnownAt=r.kickoff+100000;}localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify(archiveForReview));document.dispatchEvent(new Event('unit501:archive-updated'));`);
+ const text=h.nodes.get('forecast-review-results').textContent;
+ assert.match(text,/2 matched targets/);assert.match(text,/NFL · Team points/);assert.match(text,/1\/30 games — insufficient/);
+ assert.match(text,/5.00/);assert.match(text,/3.00/);assert.match(text,/2.00 lower/);
 });

@@ -70,6 +70,7 @@
   const updates=new Map(archive.snapshots.map(s=>[identity(s),s]));
   latest.snapshots=latest.snapshots.map(s=>updates.get(identity(s))||s);
   storage.setItem(archiver.key,JSON.stringify(latest));
+  if(root.document&&typeof root.Event==='function')root.document.dispatchEvent(new root.Event('unit501:archive-updated'));
   return {matched,failed};
  }
  const api={match,refresh};
