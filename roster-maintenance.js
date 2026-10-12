@@ -34,7 +34,7 @@ function createRosterMaintenance(api, availability, now=Date.now) {
               for(const [field,title] of [['roster','Roster'],['official','Official injuries'],['depth','Depth chart']]){
                 const source=team[field];
                 if(!source?.available)issues.push({game,label:teamName,reason:title+' unavailable; status remains unknown.',players:[],url:source?.url});
-                else if(Number(source.unmatched)>0)issues.push({game,label:teamName,reason:title+': '+source.unmatched+' unmatched entries.',url:source.url,players:(source.unresolved||[]).map(p=>({name:p.name,position:p.position,status:p.status||null,rank:p.rank||null}))});
+                else if(Number(source.unmatched)>0)issues.push({game,label:teamName,reason:title+': '+source.unmatched+' unmatched entries.',url:source.url,players:(source.unresolved||[]).map(p=>({name:p.name,position:p.position,status:p.status||null,rank:p.rank||null,reason:p.reason||null}))});
               }
               const conflicts=(ownership?.conflicts||[]).filter(x=>x.teamIds.includes(team.id));
               if(conflicts.length)issues.push({game,label:teamName,reason:conflicts.length+' conflicting player ownership entries; review required.',players:conflicts.map(p=>{const matches=(team.roster?.rows||[]).filter(r=>String(r.id)===String(p.id));return {id:p.id,name:matches.length===1?matches[0].name:'Player ID '+p.id,position:matches.length===1?matches[0].position:null,teamIds:p.teamIds};})});

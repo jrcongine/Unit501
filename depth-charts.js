@@ -15,7 +15,7 @@ function parseDepth(html){
    for(let i=1;i<cells.length;i++){
     const links=[...cells[i].matchAll(/<a\b[^>]*href=["'][^"']*players-roster[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)];
     // Shared slots and unrecognized cells are not guessed into a single player.
-    if(links.length>1){rows.push({name:text(cells[i]),position,rank:i,slot:slotId,unresolved:true});continue;}
+    if(links.length>1){rows.push({name:links.map(link=>text(link[1])).join(' / '),names:links.map(link=>text(link[1])),position,rank:i,slot:slotId,unresolved:true,reason:'Shared depth slot; individual workload is unconfirmed.'});continue;}
     const name=text(links.length?links[0][1]:cells[i]).replace(/^\d+\s+/,'');
     if(name && name.length<=80 && /^[A-Za-z][A-Za-z .’'\-]+$/.test(name))rows.push({name,position,rank:i,slot:slotId});
    }
@@ -47,7 +47,12 @@ function createDepthCharts(now=Date.now,fetchPage=async url=>{const r=await fetc
    const page=await item.pending;let report;
    if(page.rows)report=page;else{report=await reviewedDepth(q,team.id,kickoff,url,page.html);report.checkedAt=Math.min(page.checkedAt,report.checkedAt);}
    const rows=[],unresolved=[];let unmatched=0;
-   for(const row of report.rows){const player=!row.unresolved&&matchPlayer(row,team.roster?.rows||[],team.id);if(!player||(['QB','RB','FB','WR','TE'].includes(row.position)&&player.position!==row.position)){unmatched++;unresolved.push(row);continue;}rows.push({...row,id:player.id});}
+   for(const row of report.rows){const player=!row.unresolved&&matchPlayer(row,team.roster?.rows||[],team.id);if(!player||(['QB','RB','FB','WR','TE'].includes(row.position)&&player.position!==row.position)){
+     unmatched++;
+     const candidates=(team.roster?.rows||[]).filter(p=>key(p.name)===key(row.name));
+     const reason=row.reason||(candidates.length===0?'No matching player identity in the provider roster.':candidates.length>1?'Multiple provider identities match this name.':'Position or identity conflict: chart '+row.position+', provider '+candidates[0].position+'.');
+     unresolved.push({...row,reason});continue;
+   }rows.push({...row,id:player.id});}
    team.depth={available:true,url,...(report.reviewedImage?{reviewedImage:true,imageUrl:report.imageUrl,publishedDate:report.publishedDate,scope:'Supported offensive positions only; manually reviewed image.'}:{}),gameId:String(q.game),kickoff:Number(g.game.date.timestamp)*1000,checkedAt:report.checkedAt,rows,unmatched,unresolved,coverage:['QB','RB','FB','WR','TE'].map(position=>({position,matched:rows.filter(r=>r.position===position).length,unresolved:unresolved.filter(r=>r.position===position).length})),message:report.reviewedImage?`Team-published image updated ${report.publishedDate}; supported offensive positions only. Reviewed depth order is unofficial and does not confirm game starters or expected touches.`:'Team-published depth order, often unofficial. It does not confirm the game starter or expected touches; fetch time is not publication time.'};
   }catch{cache.delete(url);}
   team.starterCandidates=await newsTask;

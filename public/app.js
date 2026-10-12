@@ -791,7 +791,7 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
       if(item.url){try{const url=new URL(item.url);if(url.protocol==='https:'){const link=document.createElement('a');link.href=url.href;link.textContent=' View source';link.target='_blank';link.rel='noopener noreferrer';row.append(link);}}catch{}}
       if(item.players?.length){
         const players=document.createElement('ul');
-        for(const player of item.players){const entry=document.createElement('li');entry.textContent=[player.name,player.position,player.status,player.rank?'Listed depth '+player.rank:null,player.teamIds?'Conflicting provider team IDs: '+player.teamIds.join(', '):null].filter(Boolean).join(' · ');players.append(entry);}
+        for(const player of item.players){const entry=document.createElement('li');entry.textContent=[player.name,player.position,player.status,player.reason,player.rank?'Listed depth '+player.rank:null,player.teamIds?'Conflicting provider team IDs: '+player.teamIds.join(', '):null].filter(Boolean).join(' · ');players.append(entry);}
         row.append(players);
       }
       groups.get(key).append(row);
