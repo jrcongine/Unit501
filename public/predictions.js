@@ -485,7 +485,13 @@ results.appendChild(workload);
       uncertainty.textContent=band.available
         ? `Historical-error range for the unadjusted baseline: ${band.low.toFixed(1)}–${band.high.toFixed(1)} (baseline ${band.baseline.toFixed(1)}, ${band.count} earlier replay errors). Uses the 10th–90th percentiles of earlier errors; future coverage is unvalidated. Actual results can fall outside this range. Excludes matchup, injury and workload adjustments; it is not the range for the adjusted projection above.`
         : `Historical-error range unavailable: ${band.reason}${Number.isFinite(band.count)?' Available replay errors: '+band.count+'.':''}`;
-      card.append(uncertainty);results.appendChild(card);
+      card.append(uncertainty);
+      const rangeAudit=Unit501PlayerBacktest.validateRanges(history,def.key,selected?.kickoff/1000);
+      const rangeCheck=document.createElement('p');
+      rangeCheck.textContent=rangeAudit.available
+        ? `Historical range check: ${rangeAudit.covered}/${rangeAudit.count} later recorded outcomes inside the range (${(rangeAudit.coverage*100).toFixed(0)}%); ${rangeAudit.below} below, ${rangeAudit.above} above. Average range width ${rangeAudit.meanWidth.toFixed(1)}. Each range uses only earlier errors, with the same 24-hour buffer. ${rangeAudit.count<30?'Limited evidence: fewer than 30 evaluated outcomes. ':''}Observed coverage is not a probability for this prop or proof of future accuracy.`
+        : `Historical range check unavailable: ${rangeAudit.reason}`;
+      card.append(rangeCheck);results.appendChild(card);
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
