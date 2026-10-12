@@ -4,7 +4,7 @@ const {createRosterOwnership}=require('../roster-ownership');
 const {assess}=require('../public/injury-model');
 const q={league:'1',season:'2026'};
 function reader(calls,fail=false){return async path=>{
- calls.push(path);if(path.startsWith('/games'))return {checkedAt:1000,rows:Array.from({length:16},(_,i)=>({league:{id:1,season:2026},game:{stage:'Regular Season'},teams:{away:{id:i*2+1},home:{id:i*2+2}}}))};
+ calls.push(path);if(path.startsWith('/games'))return {checkedAt:1000,rows:Array.from({length:16},(_,i)=>({league:{id:1,season:2026},game:{stage:'Regular Season'},teams:{away:{id:i*2+1,name:'Club '+(i*2+1)},home:{id:i*2+2,name:'Club '+(i*2+2)}}}))};
  const id=Number(new URL(path,'https://example.org').searchParams.get('team'));if(fail&&id===32)throw Error('missing');
  return {checkedAt:1000,rows:[{id:id===1||id===7?99:id+100,name:'Player'}]};
 };}
@@ -21,6 +21,6 @@ test('all NFL rosters share concurrent reads and cross-matchup duplicate ownersh
  await get(q);assert.equal(calls.length,33);
 });
 test('partial ownership still catches positive conflicts without claiming complete coverage',async()=>{
- const out=await createRosterOwnership(reader([],true),()=>1000)(q);assert.equal(out.complete,false);assert.equal(out.checkedTeams,31);assert.equal(out.conflicts.length,1);
+ const out=await createRosterOwnership(reader([],true),()=>1000)(q);assert.equal(out.complete,false);assert.equal(out.checkedTeams,31);assert.equal(out.conflicts.length,1);assert.deepEqual(out.failedTeams,[{id:'32',name:'Club 32'}]);assert.equal(out.teamNames['7'],'Club 7');
  const bad=await createRosterOwnership(async()=>({rows:[],checkedAt:1000}),()=>1000)(q);assert.equal(bad.available,false);assert.equal(bad.conflicts.length,0);
 });

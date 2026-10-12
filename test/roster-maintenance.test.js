@@ -30,3 +30,12 @@ test('review details keep source identities unresolved and group repeated teams 
  assert.equal(conflict.players[0].name,'Named Player');assert.equal(conflict.players[1].name,'Player ID 100');
  assert.deepEqual(conflict.players[0].teamIds,['1','5']);
 });
+
+ test('maintenance names unchecked teams and conflicting roster teams',async()=>{
+ const worker=createRosterMaintenance(async()=>({response:[game(2,1000)]}),async()=>({current:true,rosterOwnership:{complete:false,checkedTeams:31,expectedTeams:32,failedTeams:[{id:'5',name:'Missing Club'}],teamNames:{'1':'Away','5':'Missing Club'},conflicts:[{id:'99',teamIds:['1','5']}]},teams:[{id:'1',roster:{available:true,rows:[{id:'99',name:'Player',position:'WR'}]},official:{available:true},depth:{available:true}}]}),()=>now);
+ const report=await worker.run();
+ assert.match(report.issues[0].reason,/31 of 32 teams checked/);
+ assert.match(report.issues[0].reason,/Unchecked teams: Missing Club/);
+ assert.deepEqual(report.issues[1].players[0].teamNames,['Away','Missing Club']);
+ assert.deepEqual(report.issues[1].players[0].teamIds,['1','5']);
+ });

@@ -28,7 +28,7 @@ function createRosterMaintenance(api, availability, now=Date.now) {
             if(!report.current){issues.push({game,label,reason:'Current season coverage unverified.'});continue;}
             gamesChecked++;
             const ownership=report.rosterOwnership;
-            if(!ownership?.complete)issues.push({game,label,reason:'League roster ownership check incomplete.'});
+            if(!ownership?.complete)issues.push({game,label,reason:'League roster ownership check incomplete'+(Number.isFinite(ownership?.checkedTeams)?': '+ownership.checkedTeams+' of '+ownership.expectedTeams+' teams checked':'')+'.'+(ownership?.failedTeams?.length?' Unchecked teams: '+ownership.failedTeams.map(t=>t.name).join(', ')+'.':'')});
             for(const team of report.teams||[]){
               const teamName=team.id===home?g.teams.home.name:g.teams.away.name;
               for(const [field,title] of [['roster','Roster'],['official','Official injuries'],['depth','Depth chart']]){
@@ -37,7 +37,7 @@ function createRosterMaintenance(api, availability, now=Date.now) {
                 else if(Number(source.unmatched)>0)issues.push({game,label:teamName,reason:title+': '+source.unmatched+' unmatched entries.',url:source.url,players:(source.unresolved||[]).map(p=>({name:p.name,position:p.position,status:p.status||null,rank:p.rank||null,reason:p.reason||null}))});
               }
               const conflicts=(ownership?.conflicts||[]).filter(x=>x.teamIds.includes(team.id));
-              if(conflicts.length)issues.push({game,label:teamName,reason:conflicts.length+' conflicting player ownership entries; review required.',players:conflicts.map(p=>{const matches=(team.roster?.rows||[]).filter(r=>String(r.id)===String(p.id));return {id:p.id,name:matches.length===1?matches[0].name:'Player ID '+p.id,position:matches.length===1?matches[0].position:null,teamIds:p.teamIds};})});
+              if(conflicts.length)issues.push({game,label:teamName,reason:conflicts.length+' conflicting player ownership entries; review required.',players:conflicts.map(p=>{const matches=(team.roster?.rows||[]).filter(r=>String(r.id)===String(p.id));return {id:p.id,name:matches.length===1?matches[0].name:'Player ID '+p.id,position:matches.length===1?matches[0].position:null,teamIds:p.teamIds,teamNames:p.teamIds.map(id=>ownership.teamNames?.[id]||'Team '+id)};})});
               if(team.transactions?.unverified)issues.push({game,label:teamName,reason:team.transactions.unverified+' expired or unverified transaction reviews.'});
             }
           }catch{issues.push({game,label,reason:'Availability refresh failed; retry at the next sweep or open the matchup.'});}
