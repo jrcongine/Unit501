@@ -186,6 +186,10 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  h.run('$("awayOffenseLoss").value="4"; sim()');
  assert.match(h.nodes.get('forecast-review-results').textContent,/2 pending final outcomes/);
  assert.match(h.nodes.get('forecast-review-results').textContent,/No eligible final outcomes/);
+ const pendingText=h.nodes.get('forecast-review-results').textContent;
+ assert.match(pendingText,/Pending targets/);assert.match(pendingText,/NFL · Team points/);
+ assert.match(pendingText,/Awaiting matched final outcomes/);
+ assert.doesNotMatch(pendingText,/0.00 higher|Unchanged|NaN/);
  h.run(`const archiveForReview=Unit501ForecastArchive.read(localStorage);for(const r of archiveForReview.snapshots[0].records){r.actual=19;r.resultKnownAt=r.kickoff+100000;}localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify(archiveForReview));document.dispatchEvent(new Event('unit501:archive-updated'));`);
  const text=h.nodes.get('forecast-review-results').textContent;
  assert.match(text,/2 matched targets/);assert.match(text,/NFL · Team points/);assert.match(text,/1\/30 games — insufficient/);
@@ -193,6 +197,17 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  assert.match(text,/Baseline bias/);assert.match(text,/Adjusted bias/);
  assert.match(text,/\+5.00/);assert.match(text,/\+3.00/);
  assert.match(text,/positive means projections ran too high/);
+});
+
+test('pending-only prop markets display separately from score results',async()=>{
+ const h=harness();await h.settle();
+ h.run(`const pendingProp={league:'1',season:'2026',gameId:'999',teamId:'1',playerId:'9',kind:'prop',market:'rec',modelVersion:'test-v1',evidenceUrl:'https://example.org/forecast',kickoff:200000,forecastAt:100000,inputAsOf:90000,baseline:5,adjusted:4,actual:null,resultKnownAt:null};localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify({schema:1,snapshots:[{records:[pendingProp]}]}));Unit501ForecastReview.render();`);
+ const panel=h.nodes.get('forecast-review-results');
+ assert.match(panel.textContent,/NFL · Receptions/);
+ assert.doesNotMatch(panel.textContent,/NFL · Team points/);
+ const table=panel.children.find(n=>n.children?.some(c=>c.tag==='table')).children[0];
+ const cells=table.children.find(n=>n.tag==='tbody').children[0].children.map(n=>n.textContent);
+ assert.deepEqual(cells,['NFL · Receptions','0','0','1','—','—','—','—','—','Awaiting matched final outcomes']);
 });
 test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
  const h=harness();await h.settle();let calls=0;

@@ -48,3 +48,23 @@ test('valid unfinished targets are pending while malformed pending forecasts rem
  const out=compare([row({actual:null,resultKnownAt:null}),row({gameId:'101',actual:null,resultKnownAt:null,baseline:null})]);
  assert.equal(out.skips.pending,1);assert.equal(out.skips.invalid,1);assert.equal(out.accepted,0);assert.equal(out.scores['1'].baselineMAE,null);
 });
+
+test('pending markets remain visible without inventing scored samples or zero errors',()=>{
+ const pending=changes=>row({kind:'prop',market:'rushYds',playerId:'7',actual:null,resultKnownAt:null,...changes});
+ const out=compare([pending(),pending({gameId:'101'}),pending({market:'rec'}),pending({league:'2'}),row(),row({gameId:'102',actual:null,resultKnownAt:null})]);
+ const rush=out.props['1'].rushYds;
+ assert.equal(rush.pending,2);assert.equal(rush.games,0);assert.equal(rush.pairs,0);
+ for(const key of ['baselineMAE','adjustedMAE','baselineBias','adjustedBias','improvement'])assert.equal(rush[key],null);
+ assert.equal(rush.status,'insufficient');assert.equal(out.props['1'].rec.pending,1);
+ assert.equal(out.props['2'].rushYds.pending,1);
+ assert.equal(out.scores['1'].pending,1);assert.equal(out.scores['1'].games,1);
+ assert.equal(out.accepted,1);assert.equal(out.skips.pending,5);
+});
+
+test('invalid, duplicate and late pending targets cannot inflate market progress',()=>{
+ const pending=changes=>row({kind:'prop',market:'carries',playerId:'7',actual:null,resultKnownAt:null,...changes});
+ const out=compare([pending(),pending(),pending({gameId:'101',forecastAt:100000}),pending({gameId:'102',baseline:-1})]);
+ assert.equal(out.skips.pending,0);assert.equal(out.skips.ambiguous,2);
+ assert.equal(out.skips.late,1);assert.equal(out.skips.invalid,1);
+ assert.deepEqual(out.props['1'],{});
+});
