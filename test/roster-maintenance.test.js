@@ -17,6 +17,32 @@ test('January sweep uses the preceding NFL season and refuses paginated schedule
  const state=await worker.run();assert.equal(state.lastCompleted,null);assert.match(state.message,/incomplete/);
 });
 
+test('failed refresh preserves prior warnings until a successful sweep replaces them',async()=>{
+ let clock=now,mode='success';
+ const worker=createRosterMaintenance(async()=>{
+   if(mode==='offline')throw Error('offline');
+   if(mode==='incomplete')return {response:[],paging:{total:2}};
+   return {response:mode==='empty'?[]:[game(2,60000)]};
+ },async()=>({current:false}),()=>clock);
+ const first=await worker.run();
+ assert.equal(first.issues.length,1);
+ for(const failure of ['offline','incomplete']){
+   mode=failure;clock+=1000;
+   const report=await worker.run();
+   assert.deepEqual(report.issues,first.issues);
+   assert.equal(report.gamesChecked,first.gamesChecked);
+   assert.equal(report.lastCompleted,first.lastCompleted);
+   assert.equal(report.lastStarted,clock);
+   assert.equal(report.running,false);
+   assert.match(report.message,/last completed check; refresh failed/);
+ }
+ mode='empty';clock+=1000;
+ const recovered=await worker.run();
+ assert.deepEqual(recovered.issues,[]);
+ assert.equal(recovered.lastCompleted,clock);
+ assert.doesNotMatch(recovered.message,/refresh failed/);
+});
+
 test('review details keep source identities unresolved and group repeated teams by game',async()=>{
  const worker=createRosterMaintenance(async()=>({response:[game(2,1000),game(3,2000)]}),async()=>({
  current:true,rosterOwnership:{complete:true,conflicts:[{id:'99',teamIds:['1','5']},{id:'100',teamIds:['1','6']}]},
