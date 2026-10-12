@@ -21,12 +21,17 @@
     if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
       return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};
     const ownership=data.rosterOwnership;
-    if(ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&fresh(ownership.checkedAt,3600000)&&
+    const verifiedOwnership=ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&fresh(ownership.checkedAt,3600000)
+      ? (ownership.resolutions||[]).filter(r=>String(r.id)===String(playerId)&&r.teamIds?.map(String).includes(String(teamId))&&fresh(r.checkedAt,3600000)&&fresh(r.reviewedAt,7*day)&&r.sources?.length===r.teamIds.length&&new Set(r.sources.map(s=>String(s.teamId))).size===r.teamIds.length&&r.teamIds.every(id=>r.sources.some(s=>String(s.teamId)===String(id)))&&r.teamIds.map(String).includes(String(r.teamId))&&(ownership.conflicts||[]).some(c=>String(c.id)===String(r.id)&&c.teamIds.length===r.teamIds.length&&c.teamIds.every(id=>r.teamIds.map(String).includes(String(id))))) : [];
+    const resolvedOwner=verifiedOwnership.length===1?verifiedOwnership[0]:null;
+    if(resolvedOwner&&String(resolvedOwner.teamId)!==String(teamId))
+      return {blocked:true,state:'team-unconfirmed',reason:'Current official roster verification places this player with '+resolvedOwner.destination+'. Former-team projection withheld; stats and workload are not transferred.'};
+    if(!resolvedOwner&&ownership?.available&&String(ownership.league)===String(game.league)&&String(ownership.season)===String(game.season)&&fresh(ownership.checkedAt,3600000)&&
        (ownership.conflicts||[]).some(p=>String(p.id)===String(playerId)&&new Set(p.teamIds?.map(String)).size>1&&p.teamIds.map(String).includes(String(teamId))))
       return {blocked:true,state:'conflict',reason:'Player appears on multiple current NFL team rosters, including a team outside this matchup. Projection and replacement scenario withheld until ownership is resolved; no trade is inferred.'};
     const rosterOwners = new Set((data.teams || []).filter(t => t.roster?.available && fresh(t.roster.checkedAt,3600000) &&
       t.roster.rows?.some(p => String(p.id) === String(playerId))).map(t => String(t.id)));
-    if(rosterOwners.size > 1)
+    if(!resolvedOwner&&rosterOwners.size > 1)
       return {blocked:true,state:'conflict',reason:'Player appears on multiple current team rosters. Projection and replacement scenario withheld until team membership is resolved; no trade or injury is inferred.'};
     const moves=team.transactions;
     if(moves?.available&&String(moves.league)===String(game.league)&&String(moves.season)===String(game.season)&&String(moves.gameId)===String(game.id)&&moves.kickoff===game.kickoff&&fresh(moves.checkedAt,900000)){
