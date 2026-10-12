@@ -78,3 +78,10 @@ test('depth identity resolves reviewed aliases and suffixes without resolving sh
  assert.ok(!team.depth.rows.some(r=>r.id==='763'||r.id==='99'));assert.equal(team.depth.unresolved.length,2);
  team.roster.rows.pop();team.roster.rows[1].position='TE';await load(q,[team],g);assert.ok(!team.depth.rows.some(r=>r.id==='763'));
 });
+
+test('shared depth names remain separately readable without choosing a starter',()=>{
+ const source='<table><tr><th>Position</th><th>1st String</th></tr><tr><td>QB</td><td>Quarter Back</td></tr><tr><td>WR</td><td><a href="/team/players-roster/one">Cooper Kupp</a><a href="/team/players-roster/two">Rashid Shaheed</a></td></tr></table>';
+ const row=parseDepth(source).find(r=>r.position==='WR');
+ assert.equal(row.name,'Cooper Kupp / Rashid Shaheed');assert.deepEqual(row.names,['Cooper Kupp','Rashid Shaheed']);
+ assert.equal(row.unresolved,true);assert.equal(row.id,undefined);assert.match(row.reason,/Shared depth slot/);
+});
