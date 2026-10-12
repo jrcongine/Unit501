@@ -20,7 +20,7 @@ function createAvailability(api, now = Date.now) {
     item.pending.catch(()=>{if(cache.get(path)===item)cache.delete(path);});
     return item.pending;
   }
-  const ownership=require('./roster-ownership').createRosterOwnership(read,now);
+  const ownership=require('./roster-ownership').createRosterOwnership(read,now,require('./verified-ownership').createVerifiedOwnership(now));
   async function part(path, ttl, transform) {
     try {const data=await read(path,ttl);return {available:true,checkedAt:data.checkedAt,rows:data.rows.map(transform)};}
     catch {return {available:false,checkedAt:null,rows:[],message:'Report unavailable. Player availability is unknown.'};}

@@ -23,3 +23,11 @@ Status is in memory and resets on process restart. Sweeps require a running serv
 Validation: 220 tests pass, including duplicate/past/out-of-window games, concurrent refresh, source failure/retry, January season selection and incomplete schedules. Production freshness and provider quota usage require deployment observation.
 
 The maintenance panel groups review items by matchup and kickoff, expanding the selected game when opened. Unmatched official injuries and depth entries include source names, positions and reported status/depth without assigning an unverified player ID. Ownership conflicts use a unique roster name where available, otherwise an explicit player-ID fallback. Source links are shown when supplied and HTTPS. These display details do not resolve the underlying identities or change availability gates.
+
+## Reviewed ownership reconciliation
+
+Four reviewed 2026 provider identities (Noah Igbinoghene, Cody White, Avery Smith, Jared Ivey) can now resolve duplicate team listings only after checking all conflicting teams' official roster pages. Each provider ID/name/position must match its reviewed identity. Exactly one official roster must contain the player, at the reviewed destination and matching position. Incomplete, failed or contradictory pages leave the conflict unresolved.
+
+Reviewed destinations: Cleveland, Las Vegas, Seattle and Atlanta respectively. Sources reviewed October 11, 2026: https://www.clevelandbrowns.com/news/browns-sign-cb-noah-igbinoghene-and-de-sam-williams ; https://www.raiders.com/team/players-roster/cody-white/ ; https://www.seahawks.com/team/players-roster/ ; https://www.atlantafalcons.com/team/players-roster/ .
+
+Official pages cache for at most one hour. Identity reviews expire after seven days and are season-scoped; this initial set is not automatic discovery of every future trade. The former-team projection is blocked. Destination ownership bypasses only the duplicate-listing block, retaining injury, inactive and starter checks. Raw provider rosters, team stats and workloads are not moved or rewritten. The maintenance panel reports verified destinations with a source link. Live successful resolution depends on complete official HTML roster tables and provider identity agreement.
