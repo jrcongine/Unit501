@@ -163,5 +163,15 @@
     "source": "https://www.azcardinals.com/team/players-roster/reggie-virgil/",
     "reviewedAt": "2026-10-11",
     "evidence": "Unique current provider roster identity agrees with official team player biography on team, position and jersey #82."
+  },
+  {
+    "teamId": "20",
+    "reportName": "Josh Palmer",
+    "rosterName": "Joshua Palmer",
+    "playerId": "2164",
+    "position": "WR",
+    "source": "https://www.buffalobills.com/team/players-roster/joshua-palmer/",
+    "reviewedAt": "2026-10-12",
+    "evidence": "Official Bills biography uses Josh Palmer at the Joshua Palmer URL; current provider roster has one Joshua Palmer, WR #5, player 2164."
   }
 ]
