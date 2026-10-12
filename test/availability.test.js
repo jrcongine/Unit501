@@ -28,8 +28,28 @@ test('historical seasons and absent coverage never fetch current injury reports'
 });
 test('injury cache expires independently of roster cache',async()=>{
  let clock=1000;const paths=[];
- const get=createAvailability(async path=>{paths.push(path);return path.startsWith('/leagues')?coverage():{response:[]};},()=>clock);
+ const get=createAvailability(async path=>{paths.push(path);return path.startsWith('/leagues')?coverage():path.startsWith('/players')?{response:[{id:8,name:'Player'}]}:{response:[]};},()=>clock);
  await get(q);clock+=900001;await get(q);
  assert.equal(paths.filter(p=>p.startsWith('/players')).length,2);
  assert.equal(paths.filter(p=>p.startsWith('/injuries')).length,4);
+});
+
+test('empty rosters stay unavailable and retry without waiting an hour; empty injuries remain cached',async()=>{
+ let rosterCalls=0,injuryCalls=0,recovered=false;
+ const get=createAvailability(async path=>{
+  if(path.startsWith('/leagues'))return coverage();
+  if(path.startsWith('/players')){rosterCalls++;return {response:recovered?[{id:8,name:'Player',position:'WR'}]:[]};}
+  if(path.startsWith('/injuries')){injuryCalls++;return {response:[]};}
+  return {response:[]};
+ },()=>1000);
+ const first=await get(q);
+ assert.equal(first.teams[0].roster.available,false);
+ assert.equal(first.teams[1].roster.available,false);
+ recovered=true;
+ const second=await get(q);
+ assert.equal(second.teams[0].roster.available,true);
+ assert.equal(second.teams[0].roster.rows[0].id,'8');
+ assert.equal(rosterCalls,4);
+ assert.equal(injuryCalls,2);
+ await get(q);assert.equal(rosterCalls,4);
 });

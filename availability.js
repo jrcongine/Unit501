@@ -12,6 +12,7 @@ function createAvailability(api, now = Date.now) {
       const data = await api(path);
       if (data.errors && Object.keys(data.errors).length) throw new Error('Provider could not supply this report.');
       if (!Array.isArray(data.response)) throw new Error('Provider returned an invalid report.');
+      if (path.startsWith('/players?') && !data.response.length) throw new Error('Provider returned an empty roster; retry on the next check.');
       if (data.paging?.total > 1) throw new Error('Provider returned an incomplete paginated report.');
       return {rows:data.response,checkedAt:now()};
     })();
