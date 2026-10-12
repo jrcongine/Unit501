@@ -22,27 +22,31 @@ function createRosterMaintenance(api, availability, now=Date.now) {
         for(const g of games){
           const game=String(g.game.id),label=g.teams?.away?.name+' at '+g.teams?.home?.name;
           const away=String(g.teams?.away?.id),home=String(g.teams?.home?.id);
-          if(!/^\d+$/.test(away)||!/^\d+$/.test(home)){issues.push({game,label,reason:'Team identities unavailable.'});continue;}
+          if(!/^\d+$/.test(away)||!/^\d+$/.test(home)){issues.push({game,label,kind:'coverage',reason:'Team identities unavailable.'});continue;}
           try{
             const report=await availability({league:'1',season,game,away,home});
-            if(!report.current){issues.push({game,label,reason:'Current season coverage unverified.'});continue;}
+            if(!report.current){issues.push({game,label,kind:'coverage',reason:'Current season coverage unverified.'});continue;}
             gamesChecked++;
             const ownership=report.rosterOwnership;
-            if(!ownership?.complete)issues.push({game,label,reason:'League roster ownership check incomplete'+(Number.isFinite(ownership?.checkedTeams)?': '+ownership.checkedTeams+' of '+ownership.expectedTeams+' teams checked':'')+'.'+(ownership?.failedTeams?.length?' Unchecked teams: '+ownership.failedTeams.map(t=>t.name).join(', ')+'.':'')});
+            if(!ownership?.complete)issues.push({game,label,kind:'coverage',reason:'League roster ownership check incomplete'+(Number.isFinite(ownership?.checkedTeams)?': '+ownership.checkedTeams+' of '+ownership.expectedTeams+' teams checked':'')+'.'+(ownership?.failedTeams?.length?' Unchecked teams: '+ownership.failedTeams.map(t=>t.name).join(', ')+'.':'')});
             for(const team of report.teams||[]){
               const teamName=team.id===home?g.teams.home.name:g.teams.away.name;
               for(const [field,title] of [['roster','Roster'],['official','Official injuries'],['depth','Depth chart']]){
                 const source=team[field];
-                if(!source?.available)issues.push({game,label:teamName,reason:title+' unavailable; status remains unknown.',players:[],url:source?.url});
-                else if(Number(source.unmatched)>0)issues.push({game,label:teamName,reason:title+': '+source.unmatched+' unmatched entries.',url:source.url,players:(source.unresolved||[]).map(p=>({name:p.name,position:p.position,status:p.status||null,rank:p.rank||null,reason:p.reason||null}))});
+                if(!source?.available)issues.push({game,label:teamName,kind:'coverage',reason:title+' unavailable; status remains unknown.',players:[],url:source?.url});
+                else if(Number(source.unmatched)>0)issues.push({game,label:teamName,kind:field==='official'?'injury-identity':'depth-identity',reason:title+': '+source.unmatched+' unmatched entries.',url:source.url,players:(source.unresolved||[]).map(p=>({name:p.name,position:p.position,status:p.status||null,rank:p.rank||null,reason:p.reason||null}))});
               }
               const conflicts=(ownership?.conflicts||[]).filter(x=>x.teamIds.includes(team.id));
-              if(conflicts.length)issues.push({game,label:teamName,reason:conflicts.length+' conflicting player ownership entries; review required.',players:conflicts.map(p=>{const matches=(team.roster?.rows||[]).filter(r=>String(r.id)===String(p.id));return {id:p.id,name:matches.length===1?matches[0].name:'Player ID '+p.id,position:matches.length===1?matches[0].position:null,teamIds:p.teamIds,teamNames:p.teamIds.map(id=>ownership.teamNames?.[id]||'Team '+id)};})});
-              if(team.transactions?.unverified)issues.push({game,label:teamName,reason:team.transactions.unverified+' expired or unverified transaction reviews.'});
+              if(conflicts.length)issues.push({game,label:teamName,kind:'ownership',reason:conflicts.length+' conflicting player ownership entries; review required.',players:conflicts.map(p=>{const matches=(team.roster?.rows||[]).filter(r=>String(r.id)===String(p.id));return {id:p.id,name:matches.length===1?matches[0].name:'Player ID '+p.id,position:matches.length===1?matches[0].position:null,teamIds:p.teamIds,teamNames:p.teamIds.map(id=>ownership.teamNames?.[id]||'Team '+id)};})});
+              if(team.transactions?.unverified)issues.push({game,label:teamName,kind:'transaction',reason:team.transactions.unverified+' expired or unverified transaction reviews.'});
             }
-          }catch{issues.push({game,label,reason:'Availability refresh failed; retry at the next sweep or open the matchup.'});}
+          }catch{issues.push({game,label,kind:'coverage',reason:'Availability refresh failed; retry at the next sweep or open the matchup.'});}
         }
-        for(const issue of issues){const match=games.find(g=>String(g.game.id)===issue.game);if(match){issue.matchup=match.teams.away.name+' at '+match.teams.home.name;issue.kickoff=Number(match.game.date.timestamp)*1000;}}
+        for(const issue of issues){
+          const urgentInjury=issue.kind==='injury-identity'&&(issue.players||[]).some(p=>/^(out|inactive)$/i.test(p.status||''));
+          issue.priority=issue.kind==='ownership'||urgentInjury?1:issue.kind==='depth-identity'?3:2;
+          issue.reviewLabel=issue.priority===1?'Review first':issue.priority===2?'Data needs review':'Depth details';
+          const match=games.find(g=>String(g.game.id)===issue.game);if(match){issue.matchup=match.teams.away.name+' at '+match.teams.home.name;issue.kickoff=Number(match.game.date.timestamp)*1000;}}
         state={...state,lastCompleted:now(),gamesChecked,issues,message:games.length?'Upcoming NFL reports checked. Unresolved items require review; no trades or workloads are guessed.':'No NFL games scheduled in the next seven days.'};
       }catch(error){state={...state,gamesChecked,issues,message:error.message};}
       finally{state.running=false;pending=null;}

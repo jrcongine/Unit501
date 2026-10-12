@@ -39,3 +39,13 @@ test('review details keep source identities unresolved and group repeated teams 
  assert.deepEqual(report.issues[1].players[0].teamNames,['Away','Missing Club']);
  assert.deepEqual(report.issues[1].players[0].teamIds,['1','5']);
  });
+
+test('review priorities surface ownership and unmatched Out without hiding depth gaps',async()=>{
+ const worker=createRosterMaintenance(async()=>({response:[game(2,1000)]}),async()=>({current:true,rosterOwnership:{complete:true,conflicts:[{id:'99',teamIds:['1','5']}]},teams:[{id:'1',roster:{available:true,rows:[]},official:{available:true,unmatched:1,unresolved:[{name:'Unknown Receiver',status:'Out',position:'WR'}]},depth:{available:true,unmatched:1,unresolved:[{name:'Unknown Tackle',position:'LT'}]}}]}),()=>now);
+ const report=await worker.run();
+ assert.equal(report.issues.length,3);
+ assert.equal(report.issues.find(i=>i.kind==='injury-identity').priority,1);
+ assert.equal(report.issues.find(i=>i.kind==='ownership').priority,1);
+ assert.equal(report.issues.find(i=>i.kind==='depth-identity').priority,3);
+ assert.equal(report.issues.find(i=>i.kind==='depth-identity').players[0].name,'Unknown Tackle');
+});
