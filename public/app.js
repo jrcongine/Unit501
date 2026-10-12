@@ -780,14 +780,17 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
     $('maintenance-status').textContent=report.message+' '+(report.lastCompleted?'Last completed: '+new Date(report.lastCompleted).toLocaleString()+'. ':'')+report.gamesChecked+' games checked. Runs every six hours while the server is running; status resets on restart.';
     $('maintenance-issues').replaceChildren();
     const groups=new Map();
-    for(const item of report.issues||[]){
+    const reviewIssues=[...(report.issues||[])].sort((a,b)=>(a.priority||2)-(b.priority||2));
+    for(const item of reviewIssues){
       const key=String(item.game);
       if(!groups.has(key)){
         const row=document.createElement('li'),details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('ul');
         summary.textContent=(item.matchup||'Game '+key)+(Number.isFinite(item.kickoff)?' — '+new Date(item.kickoff).toLocaleString():'');
+        const counts=reviewIssues.filter(i=>String(i.game)===key);
+        summary.textContent+=' · '+counts.filter(i=>i.priority===1).length+' review first · '+counts.length+' total notices';
         details.open=String(selected?.id)===key;details.append(summary,list);row.append(details);$('maintenance-issues').append(row);groups.set(key,list);
       }
-      const row=document.createElement('li');row.textContent=item.label+': '+item.reason;
+      const row=document.createElement('li');row.textContent=(item.reviewLabel?item.reviewLabel+' — ':'')+item.label+': '+item.reason;
       if(item.url){try{const url=new URL(item.url);if(url.protocol==='https:'){const link=document.createElement('a');link.href=url.href;link.textContent=' View source';link.target='_blank';link.rel='noopener noreferrer';row.append(link);}}catch{}}
       if(item.players?.length){
         const players=document.createElement('ul');
