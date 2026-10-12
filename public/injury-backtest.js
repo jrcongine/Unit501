@@ -49,11 +49,14 @@ function compare(records) {
     // Equal weight per game: games with more player markets cannot dominate.
     const errors = [...games.values()].map(rs => ({
       baseline: rs.reduce((n,r) => n+r.baselineError,0)/rs.length,
-      adjusted: rs.reduce((n,r) => n+r.adjustedError,0)/rs.length
+      adjusted: rs.reduce((n,r) => n+r.adjustedError,0)/rs.length,
+      baselineBias: rs.reduce((n,r) => n+r.baseline-r.actual,0)/rs.length,
+      adjustedBias: rs.reduce((n,r) => n+r.adjusted-r.actual,0)/rs.length
     }));
     const average = key => errors.length ? errors.reduce((n,r) => n+r[key],0)/errors.length : null;
     const baselineMAE = average('baseline'), adjustedMAE = average('adjusted');
     return {pairs: rows.length, games: errors.length, baselineMAE, adjustedMAE,
+      baselineBias: average('baselineBias'), adjustedBias: average('adjustedBias'),
       improvement: errors.length ? baselineMAE-adjustedMAE : null,
       status: errors.length < 30 ? 'insufficient' : adjustedMAE < baselineMAE ? 'lower-observed-error' : 'no-observed-improvement'};
   };

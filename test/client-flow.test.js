@@ -190,6 +190,9 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  const text=h.nodes.get('forecast-review-results').textContent;
  assert.match(text,/2 matched targets/);assert.match(text,/NFL · Team points/);assert.match(text,/1\/30 games — insufficient/);
  assert.match(text,/5.00/);assert.match(text,/3.00/);assert.match(text,/2.00 lower/);
+ assert.match(text,/Baseline bias/);assert.match(text,/Adjusted bias/);
+ assert.match(text,/\+5.00/);assert.match(text,/\+3.00/);
+ assert.match(text,/positive means projections ran too high/);
 });
 test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
  const h=harness();await h.settle();let calls=0;
