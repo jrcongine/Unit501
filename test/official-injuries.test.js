@@ -14,7 +14,7 @@ test('official parser rejects wrong week, empty and changed layouts; blank game 
 test('cross-check verifies matchup and uses unique roster identity; shared weekly fetch is cached',async()=>{
  let calls=0;const check=createOfficialInjuries(async()=>({response:[g]}),()=>now,async url=>{if(url.includes('/news/'))throw Error('No fixture inactive list');calls++;return page;});
  const t=teams();await check(q,t);await check(q,teams());assert.equal(calls,1);
- assert.equal(t[0].official.rows[0].id,'10');assert.equal(t[1].official.unmatched,1);
+ assert.equal(t[0].official.rows[0].id,'10');assert.equal(t[1].official.unmatched,1);assert.equal(t[1].official.unresolved[0].name,'Other');assert.equal(t[1].official.unresolved[0].id,undefined);
  const dup=teams();dup[0].roster.rows.push({id:'11',name:'Player One'});await check(q,dup);assert.equal(dup[0].official.rows.length,0);assert.equal(dup[0].official.unmatched,1);
  const bad=teams();await check({...q,home:'99'},bad);assert.equal(bad[0].official.available,false);
  const past=createOfficialInjuries(async()=>({response:[{...g,game:{...g.game,date:{timestamp:(now-1)/1000}}}]}),()=>now,async()=>{throw new Error('must not fetch');});
