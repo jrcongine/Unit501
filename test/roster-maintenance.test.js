@@ -16,3 +16,17 @@ test('January sweep uses the preceding NFL season and refuses paginated schedule
  const worker=createRosterMaintenance(async path=>{assert.match(path,/season=2026/);return {response:[],paging:{total:2}};},async()=>{throw Error('should not run');},()=>Date.parse('2027-01-10T12:00:00Z'));
  const state=await worker.run();assert.equal(state.lastCompleted,null);assert.match(state.message,/incomplete/);
 });
+
+test('review details keep source identities unresolved and group repeated teams by game',async()=>{
+ const worker=createRosterMaintenance(async()=>({response:[game(2,1000),game(3,2000)]}),async()=>({
+ current:true,rosterOwnership:{complete:true,conflicts:[{id:'99',teamIds:['1','5']},{id:'100',teamIds:['1','6']}]},
+ teams:[{id:'1',roster:{available:true,rows:[{id:'99',name:'Named Player',position:'WR'}]},official:{available:true,unmatched:1,url:'https://www.nfl.com/injuries',unresolved:[{name:'Unmatched Player',position:'RB',status:'Out'}]},depth:{available:true,unmatched:1,unresolved:[{name:'Shared Cell',position:'WR',rank:2}]}}]
+ }),()=>now);
+ const report=await worker.run();assert.equal(report.gamesChecked,2);
+ const injury=report.issues.find(i=>i.game==='2'&&i.reason.startsWith('Official'));
+ assert.equal(injury.matchup,'Away at Home');assert.equal(injury.kickoff,now+1000);
+ assert.equal(injury.players[0].name,'Unmatched Player');assert.equal(injury.players[0].id,undefined);
+ const conflict=report.issues.find(i=>i.game==='3'&&i.reason.includes('ownership'));
+ assert.equal(conflict.players[0].name,'Named Player');assert.equal(conflict.players[1].name,'Player ID 100');
+ assert.deepEqual(conflict.players[0].teamIds,['1','5']);
+});

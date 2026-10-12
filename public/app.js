@@ -779,6 +779,23 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
     const report=await response.json();
     $('maintenance-status').textContent=report.message+' '+(report.lastCompleted?'Last completed: '+new Date(report.lastCompleted).toLocaleString()+'. ':'')+report.gamesChecked+' games checked. Runs every six hours while the server is running; status resets on restart.';
     $('maintenance-issues').replaceChildren();
-    for(const item of report.issues||[]){const row=document.createElement('li');row.textContent=item.label+': '+item.reason;$('maintenance-issues').append(row);}
+    const groups=new Map();
+    for(const item of report.issues||[]){
+      const key=String(item.game);
+      if(!groups.has(key)){
+        const row=document.createElement('li'),details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('ul');
+        summary.textContent=(item.matchup||'Game '+key)+(Number.isFinite(item.kickoff)?' — '+new Date(item.kickoff).toLocaleString():'');
+        details.open=String(selected?.id)===key;details.append(summary,list);row.append(details);$('maintenance-issues').append(row);groups.set(key,list);
+      }
+      const row=document.createElement('li');row.textContent=item.label+': '+item.reason;
+      if(item.url){try{const url=new URL(item.url);if(url.protocol==='https:'){const link=document.createElement('a');link.href=url.href;link.textContent=' View source';link.target='_blank';link.rel='noopener noreferrer';row.append(link);}}catch{}}
+      if(item.players?.length){
+        const players=document.createElement('ul');
+        for(const player of item.players){const entry=document.createElement('li');entry.textContent=[player.name,player.position,player.status,player.rank?'Listed depth '+player.rank:null,player.teamIds?'Conflicting provider team IDs: '+player.teamIds.join(', '):null].filter(Boolean).join(' · ');players.append(entry);}
+        row.append(players);
+      }
+      groups.get(key).append(row);
+    }
+    if(!report.issues?.length){const row=document.createElement('li');row.textContent=report.running?'Check in progress. Close and reopen this panel to refresh.':'No review items reported by this sweep. This does not confirm every player is healthy.';$('maintenance-issues').append(row);}
   }catch{$('maintenance-status').textContent='Background check status unavailable. Open a matchup to refresh its reports.';}
 });

@@ -48,13 +48,13 @@ function createOfficialInjuries(api, now=Date.now, fetchPage=async url=>{
         const name=String(team.id)===q.away?g.teams.away.name:g.teams.home.name;
         const matches=report.teams.filter(t=>key(name).endsWith(key(t.name)));
         if(matches.length!==1){team.official={...unavailable};continue;}
-        const rows=[];let unmatched=0;
+        const rows=[],unresolved=[];let unmatched=0;
         for(const r of matches[0].rows){
           const player=matchPlayer(r,team.roster?.rows||[],team.id);
-          if(!player){unmatched++;continue;}
+          if(!player){unmatched++;unresolved.push({...r});continue;}
           rows.push({...r,id:player.id,teamId:String(team.id)});
         }
-        team.official={available:true,checkedAt:report.checkedAt,gameId:String(q.game),kickoff,season:q.season,week,url,rows,unmatched,message:'Official weekly game status; blank statuses do not confirm participation. Starters are unverified.'};
+        team.official={available:true,checkedAt:report.checkedAt,gameId:String(q.game),kickoff,season:q.season,week,url,rows,unmatched,unresolved,message:'Official weekly game status; blank statuses do not confirm participation. Starters are unverified.'};
       }
     }catch{for(const team of teams)team.official={...unavailable};}
     if(inactiveTask)await inactiveTask;
