@@ -60,3 +60,22 @@ test('resolved suffix omission carries official Out into the availability gate',
  assert.equal(t[0].official.rows[0].id,'10');
  assert.equal(assess({current:true,teams:t},{id:'100',kickoff},'16','10',now).blocked,true);
 });
+
+test('reviewed Josh Palmer identity carries official Out to Joshua Palmer without broad nickname matching',async()=>{
+ const {matchPlayer}=require('../player-name-match');
+ const player={id:'2164',name:'Joshua Palmer',position:'WR'};
+ const row={name:'Josh Palmer',position:'WR'};
+ assert.equal(matchPlayer(row,[player],'20'),player);
+ for(const [roster,team] of [[[player],'31'],[[{...player,id:'999'}],'20'],[[{...player,position:'TE'}],'20'],[[player,{id:'999',name:'Josh Palmer',position:'WR'}],'20']]){
+  assert.equal(matchPlayer(row,roster,team),null);
+ }
+ const query={...q,away:'20'},game={...g,teams:{...g.teams,away:{id:20,name:'Buffalo Bills'}}};
+ const html=page.replace('Bears','Bills').replace('Player One','Josh Palmer').replace('<td>RB</td>','<td>WR</td>');
+ const t=[{id:'20',roster:{available:true,checkedAt:now,rows:[player]},injuries:{available:true,checkedAt:now,rows:[]}},{id:'15',roster:{rows:[]}}];
+ await createOfficialInjuries(async()=>({response:[game]}),()=>now,async()=>html)(query,t);
+ assert.equal(t[0].official.unmatched,0);
+ assert.equal(t[0].official.rows[0].id,'2164');
+ const result=assess({current:true,teams:t},{id:'100',kickoff},'20','2164',now);
+ assert.equal(result.blocked,true);
+ assert.match(result.reason,/Official NFL/);
+});
