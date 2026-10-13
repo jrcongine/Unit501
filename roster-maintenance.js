@@ -48,7 +48,7 @@ function createRosterMaintenance(api, availability, now=Date.now) {
           issue.reviewLabel=issue.priority===1?'Review first':issue.priority===2?'Data needs review':'Depth details';
           const match=games.find(g=>String(g.game.id)===issue.game);if(match){issue.matchup=match.teams.away.name+' at '+match.teams.home.name;issue.kickoff=Number(match.game.date.timestamp)*1000;}}
         state={...state,lastCompleted:now(),gamesChecked,issues,message:games.length?'Upcoming NFL reports checked. Unresolved items require review; no trades or workloads are guessed.':'No NFL games scheduled in the next seven days.'};
-      }catch(error){state={...state,gamesChecked,issues,message:error.message};}
+      }catch(error){state={...state,message:error.message+(state.lastCompleted!==null?' Showing results from the last completed check; refresh failed.':'')};}
       finally{state.running=false;pending=null;}
       return status();
     })();

@@ -20,6 +20,8 @@ The Automatic NFL roster checks panel reads /api/roster-maintenance and reports 
 
 Status is in memory and resets on process restart. Sweeps require a running server and use the existing API-Sports quota and source caches. Sleeping hosting instances do not run timers; startup performs a fresh sweep. No provider key means no background sweep. This is NFL-only. Final game-day lists remain source- and timing-dependent.
 
+If a schedule refresh fails or returns an incomplete schedule, the panel retains the previous completed sweep's warnings, game count and completion time. Its message explicitly labels those results as coming from the last completed check. A successful sweep replaces them, including clearing old warnings when no upcoming games remain.
+
 Validation: 220 tests pass, including duplicate/past/out-of-window games, concurrent refresh, source failure/retry, January season selection and incomplete schedules. Production freshness and provider quota usage require deployment observation.
 
 The maintenance panel groups review items by matchup and kickoff, expanding the selected game when opened. Unmatched official injuries and depth entries include source names, positions and reported status/depth without assigning an unverified player ID. Ownership conflicts use a unique roster name where available, otherwise an explicit player-ID fallback. Source links are shown when supplied and HTTPS. These display details do not resolve the underlying identities or change availability gates.
