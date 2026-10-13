@@ -64,7 +64,17 @@
     }
     return {...form,baseline,usage,usageUnavailable};
   }
-  const api={summarize,workloadWarning,project};
+  function reviewChecks(model,entry,availability,now=Date.now()) {
+    const reasons=[];
+    reasons.push(availability?.state==='conditional' ? 'Conditional availability: verify participation' : 'Verify participation');
+    if(model.values.length<5) reasons.push('Fewer than 5 recorded games');
+    if(model.form.coverage.missing>0) reasons.push('Missing game statistics');
+    if(model.workloadWarning || model.form.usageUnavailable) reasons.push('Verify current workload');
+    if(model.workload!==100 || model.lineupChange) reasons.push('Scenario-adjusted projection');
+    if(!Number.isFinite(entry.savedAt) || entry.savedAt>now || now-entry.savedAt>1800000) reasons.push('Refresh line');
+    return reasons;
+  }
+  const api={summarize,workloadWarning,project,reviewChecks};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
