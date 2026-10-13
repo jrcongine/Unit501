@@ -137,6 +137,8 @@
   board.dataset.team = '';
   board.dataset.stat = '';
   board.dataset.review = '';
+  board.dataset.direction = '';
+  board.dataset.sort = '';
 }
 
 const filters = document.createElement('div');
@@ -154,6 +156,7 @@ function addFilter(key, title, options) {
     select.append(option);
   }
 
+  select.id = `prop-filter-${key}`;
   select.value = board.dataset[key] || '';
   select.addEventListener('change', () => {
     board.dataset[key] = select.value;
@@ -180,19 +183,42 @@ addFilter('review', 'Review', [
   ['refresh', 'Lines needing refresh']
 ]);
 
+addFilter('direction', 'Projection', [
+  ['', 'Above and below line'],
+  ['above', 'Above line'],
+  ['below', 'Below line']
+]);
+addFilter('sort', 'Order', [
+  ['', 'Player order'],
+  ['gap', 'Largest difference within each stat'],
+  ['sample', 'Most recorded games']
+]);
 board.append(filters);
+const orderingNote = document.createElement('p');
+orderingNote.textContent = 'Difference ordering groups each stat separately so yards and counts are not compared. A larger projection difference is not a higher chance of winning; prices and validated probabilities are needed to assess betting value.';
+orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
+board.append(orderingNote);
 
 for (let i = rows.length - 1; i >= 0; i--) {
   if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
       (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
-      (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line'))) {
+      (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line')) ||
+      (board.dataset.direction === 'above' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) <= 0) ||
+      (board.dataset.direction === 'below' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) >= 0)) {
     rows.splice(i, 1);
   }
 }
+    if (board.dataset.sort === 'gap') {
+      const statOrder = new Map(definitions.map((def, index) => [def.key, index]));
+      rows.sort((a, b) => statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
+        Math.abs(Number(b.adjusted.toFixed(1)) - b.line) - Math.abs(Number(a.adjusted.toFixed(1)) - a.line));
+    } else if (board.dataset.sort === 'sample') {
+      rows.sort((a, b) => b.values.length - a.values.length);
+    }
     if (!rows.length) {
       const empty = document.createElement('p');
-     empty.textContent = 'No lines match these filters. Reset Team, Stat and Review filters, or enter a line on a player card below.';
+     empty.textContent = 'No lines match these filters. Reset the filters, or enter a line on a player card below.';
      board.append(empty); return;
     }
     const wrap = document.createElement('div');

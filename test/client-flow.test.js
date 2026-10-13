@@ -323,3 +323,28 @@ test('weather displays retractable and covered venues as context and skips fixed
  assert.equal(calls,3);assert.equal(h.run('forecastContext.data.roof'),'outdoor');
  assert.equal(h.run('Unit501TeamModel.weatherEffect(selected,forecastContext.data).applied'),true);
 });
+
+
+test('prop board filters direction and groups gap ordering by stat, with reset on game selection',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
+ const board=h.nodes.get('saved-line-comparisons');
+ const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
+ const rows=()=>walk(board,'tbody')[0]?.children||[];
+ const change=async(key,value)=>{const select=h.nodes.get('prop-filter-'+key);select.value=value;await select.dispatchEvent({type:'change'});};
+ await change('direction','below');assert.equal(rows().length,1);assert.match(rows()[0].textContent,/1.5 below/);
+ await change('direction','above');assert.equal(rows().length,2);assert.ok(rows().every(r=>r.textContent.includes('above')));
+ await change('direction','');await change('sort','gap');assert.equal(rows().length,3);
+ // Same market: the larger gap must lead even when that player loaded later.
+ h.nodes.get('predict-player').value='2:8';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ const second=h.nodes.get('line-2:8-carries');second.value='25.5';await second.dispatchEvent({type:'input'});
+ await change('stat','carries');assert.equal(rows().length,2);assert.match(rows()[0].textContent,/RB 2/);
+ await change('review','workload');assert.equal(rows().length,0);assert.match(board.textContent,/Reset the filters/);
+ const next={...h.game,game:{...h.game.game,id:1000}};
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{if(new URL(url,'http://localhost').pathname==='/api/games')return {ok:true,json:async()=>({response:[h.game,next]})};return original(url);};
+ h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('prop-filter-sort').value,'');assert.equal(h.nodes.get('prop-filter-review').value,'');assert.equal(h.nodes.get('prop-filter-stat').value,'');
+});
