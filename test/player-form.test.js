@@ -67,3 +67,12 @@ test('missing latest workload is flagged instead of calling older appearances re
  const {workloadWarning}=require('../public/player-form');
  assert.match(workloadWarning([{gameDate:3},{gameDate:2,carries:20},{gameDate:1,carries:20}],'rushYds'),/latest completed team game/);
 });
+
+test('prop review keeps participation unknown and flags stale lines and scenario assumptions',()=>{
+ const {reviewChecks}=require('../public/player-form');
+ const model={values:[40,45,50,55,60],form:{coverage:{missing:0}},workload:100};
+ assert.deepEqual(reviewChecks(model,{savedAt:1000},{state:'unknown'},1000),['Verify participation']);
+ const flags=reviewChecks({...model,workload:50,workloadWarning:'Role changed',values:[40,45],form:{coverage:{missing:1}}},{savedAt:1000},{state:'conditional'},1801001);
+ for(const flag of ['Conditional availability: verify participation','Fewer than 5 recorded games','Missing game statistics','Verify current workload','Scenario-adjusted projection','Refresh line']) assert.ok(flags.includes(flag));
+ assert.ok(reviewChecks(model,{savedAt:1001},null,1000).includes('Refresh line'));
+});
