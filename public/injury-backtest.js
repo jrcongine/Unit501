@@ -5,7 +5,7 @@ function compare(records) {
   if (!Array.isArray(records)) throw new TypeError('Expected an array of archived forecast records.');
   const groups = new Map();
   const skips = {pending:0, ambiguous: 0, invalid: 0, late: 0, version: 0};
-  const pairs = [];
+  const pairs = [], pendingRecords = [];
   for (const r of records) {
     const key = JSON.stringify([r?.league, r?.season, r?.gameId, r?.kind, r?.teamId, r?.playerId, r?.market].map(v => v == null ? null : String(v)));
     groups.set(key, [...(groups.get(key) || []), r]);
@@ -31,7 +31,7 @@ function compare(records) {
       skips.late++; continue;
     }
 
-    if(pending){skips.pending++;continue;}
+    if(pending){skips.pending++;pendingRecords.push(r);continue;}
     pairs.push({...r, baselineError: Math.abs(r.baseline-r.actual), adjustedError: Math.abs(r.adjusted-r.actual)});
   }
   const versions = [...new Set(pairs.map(r => r.modelVersion))];
@@ -40,7 +40,7 @@ function compare(records) {
   const scopedVersions=new Map();
   for(const r of pairs){const k=scope(r);if(!scopedVersions.has(k))scopedVersions.set(k,new Set());scopedVersions.get(k).add(r.modelVersion);}
   for(let i=pairs.length-1;i>=0;i--)if(scopedVersions.get(scope(pairs[i])).size>1){pairs.splice(i,1);skips.version++;}
-  const metrics = rows => {
+  const metrics = (rows, pendingRows=[]) => {
     const games = new Map();
     for (const r of rows) {
       const key = JSON.stringify([String(r.league), String(r.season), String(r.gameId)]);
@@ -49,21 +49,24 @@ function compare(records) {
     // Equal weight per game: games with more player markets cannot dominate.
     const errors = [...games.values()].map(rs => ({
       baseline: rs.reduce((n,r) => n+r.baselineError,0)/rs.length,
-      adjusted: rs.reduce((n,r) => n+r.adjustedError,0)/rs.length
+      adjusted: rs.reduce((n,r) => n+r.adjustedError,0)/rs.length,
+      baselineBias: rs.reduce((n,r) => n+r.baseline-r.actual,0)/rs.length,
+      adjustedBias: rs.reduce((n,r) => n+r.adjusted-r.actual,0)/rs.length
     }));
     const average = key => errors.length ? errors.reduce((n,r) => n+r[key],0)/errors.length : null;
     const baselineMAE = average('baseline'), adjustedMAE = average('adjusted');
-    return {pairs: rows.length, games: errors.length, baselineMAE, adjustedMAE,
+    return {pairs: rows.length, games: errors.length, pending: pendingRows.length, baselineMAE, adjustedMAE,
+      baselineBias: average('baselineBias'), adjustedBias: average('adjustedBias'),
       improvement: errors.length ? baselineMAE-adjustedMAE : null,
       status: errors.length < 30 ? 'insufficient' : adjustedMAE < baselineMAE ? 'lower-observed-error' : 'no-observed-improvement'};
   };
   const scores = {}, props = {};
   // Keep leagues and prop units separate; do not pool receptions with yards.
   for (const league of ['1','2']) {
-    scores[league] = metrics(pairs.filter(r => String(r.league)===league && r.kind==='score'));
+    scores[league] = metrics(pairs.filter(r => String(r.league)===league && r.kind==='score'),pendingRecords.filter(r => String(r.league)===league && r.kind==='score'));
     props[league] = {};
-    for (const market of [...new Set(pairs.filter(r => String(r.league)===league && r.kind==='prop').map(r => r.market))]) {
-      props[league][market] = metrics(pairs.filter(r => String(r.league)===league && r.kind==='prop' && r.market===market));
+    for (const market of [...new Set([...pairs,...pendingRecords].filter(r => String(r.league)===league && r.kind==='prop').map(r => r.market))]) {
+      props[league][market] = metrics(pairs.filter(r => String(r.league)===league && r.kind==='prop' && r.market===market),pendingRecords.filter(r => String(r.league)===league && r.kind==='prop' && r.market===market));
     }
   }
   return {modelVersion: version, accepted: pairs.length, skips, scores, props,
