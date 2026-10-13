@@ -116,7 +116,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Player line comparisons';
     const note = document.createElement('p');
-    note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks are not a confidence score, ranked picks or win probabilities. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recheck current FanDuel lines.';
+    note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks are not a confidence score, ranked picks or win probabilities. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     const rows = [];
@@ -202,7 +202,7 @@ board.append(orderingNote);
 for (let i = rows.length - 1; i >= 0; i--) {
   if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
-      (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
+      (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].workloadHistory.missing > 0 || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
       (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line')) ||
       (board.dataset.direction === 'above' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) <= 0) ||
       (board.dataset.direction === 'below' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) >= 0)) {
@@ -267,7 +267,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Review checks', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Source / time (CT)']) {
+    for (const name of ['Player / team', 'Stat', 'Review checks', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -294,10 +294,12 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, row.checks.join(' • ') || 'No automated data flags; verify role and price', projection.toFixed(1) + ` (${row.workload}% workload)` + (row.workloadWarning ? ' • Check role' : ''), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
+        row.workloadHistory.text,
         row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
       report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | ${fields[6]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[7]} | ${source}: ${lineTime}`);
+      report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
@@ -438,7 +440,7 @@ cell.append(details);
     if(adjustment!==null)adjusted*=1+adjustment;
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
-    return {baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    return {baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function showPlayer() {
     for (const option of Array.from(picker.children)) {

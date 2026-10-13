@@ -76,3 +76,15 @@ test('prop review keeps participation unknown and flags stale lines and scenario
  for(const flag of ['Conditional availability: verify participation','Fewer than 5 recorded games','Missing game statistics','Verify current workload','Scenario-adjusted projection','Refresh line']) assert.ok(flags.includes(flag));
  assert.ok(reviewChecks(model,{savedAt:1001},null,1000).includes('Refresh line'));
 });
+
+test('workload summary preserves recent calendar gaps and real zeros without promoting older games',()=>{
+ const {workloadSummary,reviewChecks}=require('../public/player-form');
+ const games=[{gameDate:1,carries:24,targets:5,attempts:30},{gameDate:4},{gameDate:3,carries:0},{gameDate:2,carries:12},{carries:999},{gameDate:0,carries:-1}];
+ const result=workloadSummary(games,'rushYds');
+ assert.deepEqual(result.recent,[null,0,12]);assert.equal(result.average,12);assert.equal(result.recorded,3);assert.equal(result.total,5);assert.equal(result.missing,2);
+ assert.match(result.text,/missing, 0, 12/);assert.match(result.text,/3\/5 games recorded/);
+ assert.equal(workloadSummary(games,'recYds').metric,'targets');assert.equal(workloadSummary(games,'rec').metric,'targets');assert.equal(workloadSummary(games,'passYds').metric,'attempts');
+ assert.equal(workloadSummary([],'carries').average,null);
+ const flags=reviewChecks({values:[1,2,3,4,5],form:{coverage:{missing:0}},workload:100,workloadHistory:result},{savedAt:1000},null,1000);
+ assert.ok(flags.includes('Verify current workload'));
+});

@@ -356,7 +356,7 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
  let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Line 19.5/);assert.match(copied,/FanDuel automatic/);assert.match(copied,/Verify participation/);assert.doesNotMatch(copied,/Line 22.5/);
+ assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Line 19.5/);assert.match(copied,/FanDuel automatic/);assert.match(copied,/Verify participation/);assert.match(copied,/Carries: 20, 20/);assert.match(h.nodes.get('saved-line-comparisons').textContent,/Carries: 20, 20/);assert.doesNotMatch(copied,/Line 22.5/);
  assert.match(h.nodes.get('copy-prop-board-status').textContent,/copied/);
  h.context.navigator.clipboard.writeText=async()=>{throw Error('Denied');};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});

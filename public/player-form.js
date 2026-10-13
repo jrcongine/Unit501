@@ -21,6 +21,20 @@
       coverage:{recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
       sample:values.length<5?'Limited sample':values.length<9?'Developing sample':'Larger sample'};
   }
+  function workloadSummary(history,key) {
+    const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
+    const label={attempts:'Pass attempts',carries:'Carries',targets:'Targets'}[metric];
+    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    const values=games.map(g=>Number.isFinite(g[metric])&&g[metric]>=0?g[metric]:null);
+    const recorded=values.filter(v=>v!==null);
+    const recent=values.slice(0,3);
+    const average=recorded.length?recorded.reduce((a,b)=>a+b,0)/recorded.length:null;
+    const missing=values.length-recorded.length;
+    const text=values.length
+      ? `${label}: ${recent.map(v=>v===null?'missing':v).join(', ')} (latest ${recent.length} team games, newest first); ${average===null?'no recorded average':average.toFixed(1)+' average'} (${recorded.length}/${values.length} games recorded)`
+      : `${label}: no dated team games available`;
+    return {metric,label,recent,average,recorded:recorded.length,total:values.length,missing,text};
+  }
   function workloadWarning(history,key) {
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
@@ -69,12 +83,12 @@
     reasons.push(availability?.state==='conditional' ? 'Conditional availability: verify participation' : 'Verify participation');
     if(model.values.length<5) reasons.push('Fewer than 5 recorded games');
     if(model.form.coverage.missing>0) reasons.push('Missing game statistics');
-    if(model.workloadWarning || model.form.usageUnavailable) reasons.push('Verify current workload');
+    if(model.workloadWarning || model.form.usageUnavailable || model.workloadHistory?.missing>0) reasons.push('Verify current workload');
     if(model.workload!==100 || model.lineupChange) reasons.push('Scenario-adjusted projection');
     if(!Number.isFinite(entry.savedAt) || entry.savedAt>now || now-entry.savedAt>1800000) reasons.push('Refresh line');
     return reasons;
   }
-  const api={summarize,workloadWarning,project,reviewChecks};
+  const api={summarize,workloadSummary,workloadWarning,project,reviewChecks};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
