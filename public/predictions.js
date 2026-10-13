@@ -216,6 +216,39 @@ for (let i = rows.length - 1; i >= 0; i--) {
     } else if (board.dataset.sort === 'sample') {
       rows.sort((a, b) => b.values.length - a.values.length);
     }
+    const copy = document.createElement('button');
+    copy.id = 'copy-prop-board';
+    copy.type = 'button';
+    copy.textContent = 'Copy filtered board';
+    copy.disabled = !rows.length;
+    const copyStatus = document.createElement('p');
+    copyStatus.id = 'copy-prop-board-status';
+    copyStatus.setAttribute('role', 'status');
+    copy.addEventListener('click', async () => {
+      // Reassess availability and line age at the click, not the last render.
+      const scope = lineScope;
+      const report = renderComparisons();
+      const feedback = el('copy-prop-board-status');
+      if (!report) { feedback.textContent = 'No current lines match these filters.'; return; }
+      try {
+        await navigator.clipboard.writeText(report);
+        if (lineScope === scope && el('copy-prop-board-status') === feedback) feedback.textContent = 'Filtered board copied.';
+      } catch {
+        if (lineScope !== scope || el('copy-prop-board-status') !== feedback) return;
+        feedback.textContent = 'Clipboard unavailable. Select and copy the text below.';
+        const fallback = document.createElement('textarea');
+        fallback.id = 'prop-board-copy-text';
+        fallback.readOnly = true;
+        fallback.rows = 10;
+        fallback.style.cssText = 'width:100%;box-sizing:border-box';
+        fallback.setAttribute('aria-label', 'Filtered prop board text');
+        fallback.value = report;
+        feedback.after(fallback);
+        fallback.focus();
+        fallback.select?.();
+      }
+    });
+    board.append(copy, copyStatus);
     if (!rows.length) {
       const empty = document.createElement('p');
      empty.textContent = 'No lines match these filters. Reset the filters, or enter a line on a player card below.';
@@ -244,6 +277,13 @@ for (let i = rows.length - 1; i >= 0; i--) {
     head.append(header);
     table.append(head);
     const body = document.createElement('tbody');
+    const report = [
+      'Unit 501 — filtered prop comparisons',
+      `${matchupTeams.map(t => t.name).join(' vs ')} | ${el('date').value} | Game ${selected.id}`,
+      `Copied ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT`,
+      'Historical comparisons only; not ranked picks or win probabilities. Verify participation, role, current line and price.',
+      ''
+    ];
     for (const row of rows) {
       const tr = document.createElement('tr');
       const projection = Number(row.adjusted.toFixed(1));
@@ -255,6 +295,10 @@ for (let i = rows.length - 1; i >= 0; i--) {
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
+      const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
+      const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | ${fields[6]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[7]} | ${source}: ${lineTime}`);
+      report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
@@ -294,6 +338,7 @@ cell.append(details);
     table.append(body);
     wrap.append(table);
     board.append(wrap);
+    return report.join('\n');
   }
   function addLineComparison(card, record, def, projection, values) {
     const key = lineKey(record, def);

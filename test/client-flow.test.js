@@ -348,3 +348,22 @@ test('prop board filters direction and groups gap ordering by stat, with reset o
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('prop-filter-sort').value,'');assert.equal(h.nodes.get('prop-filter-review').value,'');assert.equal(h.nodes.get('prop-filter-stat').value,'');
 });
+
+
+test('copy prop board respects filters, rechecks stale quotes and offers clipboard fallback',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
+ let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Line 19.5/);assert.match(copied,/FanDuel automatic/);assert.match(copied,/Verify participation/);assert.doesNotMatch(copied,/Line 22.5/);
+ assert.match(h.nodes.get('copy-prop-board-status').textContent,/copied/);
+ h.context.navigator.clipboard.writeText=async()=>{throw Error('Denied');};
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.match(h.nodes.get('prop-board-copy-text').value,/Line 19.5/);
+ assert.match(h.nodes.get('copy-prop-board-status').textContent,/Select and copy/);
+ const future=Date.now()+1800001;h.context.Date=class extends Date{static now(){return future;}};
+ copied='';h.context.navigator.clipboard.writeText=async text=>{copied=text;};
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
+});
