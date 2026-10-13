@@ -32,13 +32,32 @@
     const forecast=form.project(unique,key),audit=validate(prior,key);
     if(!forecast||forecast.withheld||!Number.isFinite(forecast.baseline))return {available:false,count:audit.count,reason:'Recent recorded coverage cannot support a baseline range.'};
     if(audit.count<10)return {available:false,count:audit.count,reason:'Need at least 10 earlier replay errors for a historical-error range.'};
-    const errors=audit.records.map(r=>r.actual-r.prediction).sort((a,b)=>a-b);
+    return {available:true,count:audit.count,baseline:forecast.baseline,...errorBounds(audit.records,forecast.baseline,key)};
+  }
+  function errorBounds(records,baseline,key){
+    const errors=records.map(r=>r.actual-r.prediction).sort((a,b)=>a-b);
     const quantile=p=>{const index=(errors.length-1)*p,low=Math.floor(index),high=Math.ceil(index);return errors[low]+(errors[high]-errors[low])*(index-low);};
     const bound=v=>key.endsWith('Yds')?v:Math.max(0,v);
-    return {available:true,count:audit.count,baseline:forecast.baseline,
-      low:bound(forecast.baseline+quantile(.1)),high:bound(forecast.baseline+quantile(.9))};
+    return {low:bound(baseline+quantile(.1)),high:bound(baseline+quantile(.9))};
   }
-  const api={validate,range};
+  function validateRanges(history,key,before){
+    if(!Number.isFinite(before))return {available:false,count:0,coverage:null,reason:'Target kickoff is unknown.'};
+    const audit=validate(history.filter(g=>Number.isFinite(g.gameDate)&&g.gameDate<before-86400),key);
+    const records=[];let insufficient=0;
+    for(const target of audit.records){
+      const prior=audit.records.filter(r=>r.gameDate<target.historyBefore);
+      if(prior.length<10){insufficient++;continue;}
+      const {low,high}=errorBounds(prior,target.prediction,key);
+      records.push({gameDate:target.gameDate,actual:target.actual,low,high,trainingErrors:prior.length,
+        covered:target.actual>=low&&target.actual<=high});
+    }
+    const count=records.length,covered=records.filter(r=>r.covered).length;
+    return {available:count>0,count,covered,coverage:count?covered/count:null,
+      below:records.filter(r=>r.actual<r.low).length,above:records.filter(r=>r.actual>r.high).length,
+      meanWidth:count?records.reduce((sum,r)=>sum+r.high-r.low,0)/count:null,
+      insufficient,records,reason:count?null:'Need 10 earlier replay errors plus a later eligible outcome to check range coverage.'};
+  }
+  const api={validate,range,validateRanges};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerBacktest=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -9,3 +9,7 @@ This is a foundation for position-specific player ratings, not an overall talent
 ## October 10 projection audit
 
 Yardage now uses season/recent workload × blended pooled/median efficiency when at least two paired usage records exist; otherwise it retains the season/form yardage baseline. Rush attempts are a separate market. Negative recorded yardage remains valid. Opponent adjustments use completed league and opposing team defensive totals of the same metric. Team histories no longer merge across a trade; saved browser lines retain their original player-ID keys. See FOOTBALL-AUDIT.md for live-data limits and tests.
+
+## Historical range coverage
+
+Player cards now replay the historical-error range against later recorded outcomes. Each evaluated range requires at least ten earlier baseline replay errors, all starting more than 24 hours before that evaluated game. The selected matchup and later results are excluded. The calculation uses the same 10th–90th percentile residual bounds as the displayed range, retains negative yardage and floors count-stat bounds at zero. It reports inside/below/above counts and average width; fewer than 30 evaluated outcomes is explicitly limited evidence. Missing, duplicate and withheld outcomes never become zeros. The observed fraction inside is not a calibrated prop probability, and the check excludes matchup, injury and workload adjustments.

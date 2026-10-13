@@ -50,3 +50,48 @@ test('range retains negative yardage, floors count stats at zero and avoids dupl
  const removed=history.slice(1);
  assert.deepEqual(range(duplicated,'recYds',before),range(removed,'recYds',before));
 });
+
+test('range coverage replays the displayed formula with strictly earlier training errors',()=>{
+ const {range,validateRanges}=require('../public/player-backtest');
+ const history=rows(Array.from({length:18},(_,i)=>i%3===0?120:20+i*2));
+ const audit=validateRanges(history,'recYds',19*604800);
+ assert.equal(audit.count,6);
+ for(const r of audit.records){
+  const expected=range(history,'recYds',r.gameDate);
+  assert.equal(r.low,expected.low);assert.equal(r.high,expected.high);
+  assert.equal(r.trainingErrors,expected.count);
+  assert.equal(r.covered,r.actual>=r.low&&r.actual<=r.high);
+ }
+ assert.equal(audit.covered+audit.below+audit.above,audit.count);
+ assert.equal(audit.coverage,audit.covered/audit.count);
+ assert.ok(audit.meanWidth>=0);
+});
+test('range evaluation excludes target, future and one-day boundary results',()=>{
+ const {validateRanges}=require('../public/player-backtest');
+ const history=rows(Array.from({length:16},(_,i)=>i*10)),before=17*604800;
+ const first=validateRanges(history,'recYds',before);
+ const extra=[...history,{gameDate:before-86400,recYds:9999},{gameDate:before,recYds:9999},{gameDate:before+604800,recYds:9999}];
+ assert.deepEqual(validateRanges(extra,'recYds',before),first);
+ history[15].recYds=9000;
+ assert.deepEqual(validateRanges(history,'recYds',before).records.slice(0,-1),first.records.slice(0,-1));
+ const last=validateRanges(history,'recYds',before).records.at(-1);
+ assert.equal(last.low,first.records.at(-1).low);assert.equal(last.high,first.records.at(-1).high);
+});
+test('range evaluation keeps insufficient, missing and duplicate outcomes out of accuracy',()=>{
+ const {validateRanges}=require('../public/player-backtest');
+ const empty=validateRanges(rows(Array(12).fill(20)),'recYds',13*604800);
+ assert.equal(empty.count,0);assert.equal(empty.coverage,null);assert.equal(empty.meanWidth,null);
+ assert.equal(validateRanges([], 'recYds',NaN).available,false);
+ const history=rows(Array(16).fill(20));history[13].recYds=undefined;
+ history.push({...history[14]});
+ const audit=validateRanges(history,'recYds',17*604800);
+ assert.ok(audit.records.every(r=>r.gameDate!==history[13].gameDate&&r.gameDate!==history[14].gameDate));
+ assert.ok(audit.records.every(r=>Number.isFinite(r.actual)));
+});
+test('range coverage retains negative yards and floors count ranges at zero',()=>{
+ const {validateRanges}=require('../public/player-backtest');
+ const history=rows(Array.from({length:16},(_,i)=>i%2?-20:0));
+ assert.ok(validateRanges(history,'recYds',17*604800).records.some(r=>r.low<0));
+ const audit=validateRanges(history.map(g=>({...g,rec:0})),'rec',17*604800);
+ assert.equal(audit.coverage,1);assert.ok(audit.records.every(r=>r.low===0&&r.high===0));
+});
