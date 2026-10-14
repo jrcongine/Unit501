@@ -367,3 +367,25 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
  assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
 });
+
+test('shortlist keeps selected markets through filters, copies current rows and resets for another matchup',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const select=h.nodes.get('shortlist-1:7-carries');select.checked=true;await select.dispatchEvent({type:'change'});
+ const change=async(key,value)=>{const node=h.nodes.get('prop-filter-'+key);node.value=value;await node.dispatchEvent({type:'change'});};
+ await change('shortlist','selected');
+ let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.match(copied,/my filtered prop shortlist/);assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Rushing attempts/);assert.doesNotMatch(copied,/Receiving yards/);
+ await change('direction','below');assert.equal(h.nodes.get('copy-prop-board').disabled,true);
+ await change('direction','');assert.equal(h.nodes.get('shortlist-1:7-carries').checked,true);
+ const future=Date.now()+1800001;h.context.Date=class extends Date{static now(){return future;}};
+ copied='';await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
+ await h.nodes.get('clear-prop-shortlist').dispatchEvent({type:'click'});assert.match(h.nodes.get('saved-line-comparisons').textContent,/0 shortlisted/);
+ const next={...h.game,game:{...h.game.game,id:1000}};
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{if(new URL(url,'http://localhost').pathname==='/api/games')return {ok:true,json:async()=>({response:[h.game,next]})};return original(url);};
+ h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('prop-filter-shortlist').value,'');assert.match(h.nodes.get('saved-line-comparisons').textContent,/0 shortlisted/);
+});

@@ -12,6 +12,7 @@
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
+  const shortlisted = new Set();
   let lineScope = '';
   let sequence = 0;
   let propSequence = 0;
@@ -133,6 +134,8 @@
       }
     }
     if (board.dataset.scope !== lineScope) {
+  shortlisted.clear();
+  board.dataset.shortlist = '';
   board.dataset.scope = lineScope;
   board.dataset.team = '';
   board.dataset.stat = '';
@@ -171,6 +174,10 @@ addFilter('team', 'Team', [
   ['', 'Both teams'],
   ...matchupTeams.map(team => [team.id, team.name])
 ]);
+addFilter('shortlist', 'Show', [
+  ['', 'All comparisons'],
+  ['selected', 'My shortlist']
+]);
 
 addFilter('stat', 'Stat', [
   ['', 'All stats'],
@@ -194,6 +201,15 @@ addFilter('sort', 'Order', [
   ['sample', 'Most recorded games']
 ]);
 board.append(filters);
+const shortlistNote = document.createElement('p');
+shortlistNote.textContent = `${shortlisted.size} shortlisted. Selections last for this matchup session. Use My shortlist to view and copy selected props; other filters still apply. Unavailable players and expired automatic lines are withheld.`;
+const clearShortlist = document.createElement('button');
+clearShortlist.id = 'clear-prop-shortlist';
+clearShortlist.type = 'button';
+clearShortlist.textContent = 'Clear shortlist';
+clearShortlist.disabled = !shortlisted.size;
+clearShortlist.addEventListener('click', () => { shortlisted.clear(); renderComparisons(); });
+board.append(shortlistNote, clearShortlist);
 const orderingNote = document.createElement('p');
 orderingNote.textContent = 'Difference ordering groups each stat separately so yards and counts are not compared. A larger projection difference is not a higher chance of winning; prices and validated probabilities are needed to assess betting value.';
 orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
@@ -201,6 +217,7 @@ board.append(orderingNote);
 
 for (let i = rows.length - 1; i >= 0; i--) {
   if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
+      (board.dataset.shortlist === 'selected' && !shortlisted.has(lineKey(rows[i].record, rows[i].def))) ||
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
       (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].workloadHistory.missing > 0 || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
       (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line')) ||
@@ -219,7 +236,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     const copy = document.createElement('button');
     copy.id = 'copy-prop-board';
     copy.type = 'button';
-    copy.textContent = 'Copy filtered board';
+    copy.textContent = board.dataset.shortlist === 'selected' ? 'Copy filtered shortlist' : 'Copy filtered board';
     copy.disabled = !rows.length;
     const copyStatus = document.createElement('p');
     copyStatus.id = 'copy-prop-board-status';
@@ -278,7 +295,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(head);
     const body = document.createElement('tbody');
     const report = [
-      'Unit 501 — filtered prop comparisons',
+      board.dataset.shortlist === 'selected' ? 'Unit 501 — my filtered prop shortlist' : 'Unit 501 — filtered prop comparisons',
       `${matchupTeams.map(t => t.name).join(' vs ')} | ${el('date').value} | Game ${selected.id}`,
       `Copied ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT`,
       'Historical comparisons only; not ranked picks or win probabilities. Verify participation, role, current line and price.',
@@ -305,6 +322,19 @@ for (let i = rows.length - 1; i >= 0; i--) {
         const cell = document.createElement('td');
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
         if (index === 0) {
+          const shortlistLabel = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `shortlist-${row.record.id}-${row.def.key}`;
+          const key = lineKey(row.record, row.def);
+          checkbox.checked = shortlisted.has(key);
+          checkbox.setAttribute('aria-label', `Shortlist ${row.record.name}, ${row.record.team}, ${row.def.title}`);
+          checkbox.addEventListener('change', () => {
+            if (checkbox.checked) shortlisted.add(key); else shortlisted.delete(key);
+            renderComparisons();
+          });
+          shortlistLabel.append(checkbox, ' Shortlist ');
+          cell.append(shortlistLabel);
           const open = document.createElement('button');
           open.type = 'button';
           open.textContent = `${row.record.name} — ${row.record.team}`;
