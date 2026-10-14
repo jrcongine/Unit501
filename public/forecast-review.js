@@ -2,13 +2,30 @@
 (()=>{
  'use strict';
  const panel=document.getElementById('forecast-review-results');
+ const filters={league:'',season:'',modelVersion:''};
  const labels={passYds:'Passing yards',passTD:'Passing TDs',carries:'Rushing attempts',rushYds:'Rushing yards',rushTD:'Rushing TDs',recYds:'Receiving yards',rec:'Receptions',recTD:'Receiving TDs'};
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  function render(){
   panel.replaceChildren();
   try{
    const archive=Unit501ForecastArchive.read(localStorage);
-   const picks=archive.snapshots.filter(s=>s.selection);
+   panel.append(node('h3','Accuracy dashboard'));
+   const controls=node('div','');
+   const records=archive.snapshots.flatMap(s=>s.records||[]);
+   for(const [key,title] of [['league','League'],['season','Season'],['modelVersion','Model version']]){
+    const label=node('label',title+' '),select=node('select','');
+    const values=[...new Set(records.map(r=>String(r[key]??'')).filter(Boolean))].sort();
+    if(!values.includes(filters[key]))filters[key]='';
+    for(const value of ['',...values]){
+     const option=node('option',value?(key==='league'?({'1':'NFL','2':'College'}[value]||value):value):'All');option.value=value;select.append(option);
+    }
+    select.value=filters[key];select.addEventListener('change',()=>{filters[key]=select.value;render();});
+    label.append(select);controls.append(label);
+   }
+   panel.append(controls,node('p','Filter saved forecasts and selected picks by league, season or model version. All-model results exclude markets with mixed versions; select a version to review those forecasts separately.'));
+   const scoped=Unit501ForecastDashboard.filter(archive.snapshots,filters);
+   panel.append(node('p',`${scoped.length} of ${archive.snapshots.length} saved snapshots in this view. History starts when forecasts were saved on this browser; earlier season predictions are not reconstructed.`));
+   const picks=scoped.filter(s=>s.selection);
    panel.append(node('h3','Selected picks'),node('p',picks.length?'Selections are separate from all forecast accuracy. Results below compare final statistics with the saved line; sportsbook participation, void and settlement rules still require review.':'No picks marked yet. Use Save selected pick on a player card or after a game simulation.'));
    if(picks.length){const results=picks.map(Unit501ForecastArchive.selectionResult);panel.append(node('p',`${results.filter(r=>r==='Win by statistic').length} wins · ${results.filter(r=>r==='Loss by statistic').length} losses · ${results.filter(r=>r==='Push by statistic').length} pushes · ${results.filter(r=>r==='Pending statistic').length} pending. Statistical results only; no bankroll profit inferred.`));}
    for(const s of picks){
@@ -18,7 +35,7 @@
     panel.append(node('p',`${name} · ${labels[p.market]||p.market} · ${p.direction} ${line} · price ${p.price===null?'unknown':p.price>0?'+'+p.price:p.price} · ${Unit501ForecastArchive.selectionResult(s)} · ${new Date(p.selectedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT · ${r.modelVersion}`));
    }
    panel.append(node('h3','All saved forecasts'));
-   const audit=Unit501InjuryBacktest.compare(archive.snapshots.filter(s=>!s.selection).flatMap(s=>s.records||[]));
+   const audit=Unit501InjuryBacktest.compare(scoped.filter(s=>!s.selection).flatMap(s=>s.records||[]));
    panel.append(node('p',`${audit.accepted} matched targets. ${audit.skips.pending} pending final outcomes. Excluded: ${audit.skips.ambiguous} duplicate, ${audit.skips.invalid} invalid, ${audit.skips.late} late and ${audit.skips.version} mixed-model targets.`));
    if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
    const wrap=document.createElement('div');wrap.style.overflowX='auto';
