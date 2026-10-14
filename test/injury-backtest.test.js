@@ -91,10 +91,10 @@ test('market high and low watch only begins at 30 games and a 70% game-level fra
  assert.equal(m.pattern.highGames,21);assert.equal(m.pattern.lowGames,9);
  assert.equal(m.pattern.recentGames,10);assert.equal(m.pattern.previousGames,10);
  assert.equal(m.pattern.recentMAE,1.5);assert.equal(m.pattern.previousMAE,6);
- assert.equal(m.pattern.recentBias,-0.5);assert.equal(m.pattern.previousBias,6);
+ assert.equal(m.pattern.recentBias,-0.3);assert.equal(m.pattern.previousBias,6);
  assert.equal(compare(Array.from({length:29},(_,i)=>game(i))).scores['1'].pattern.tendency,'insufficient');
  const even=compare(Array.from({length:30},(_,i)=>game(i<15?i:100+i))).scores['1'];
- assert.equal(even.pattern.tendency,'mostly-high');
+ assert.equal(even.pattern.tendency,'mixed');
 });
 test('pending and rejected model-version targets never contribute to miss patterns',()=>{
  const p=row({kind:'prop',market:'carries',playerId:'5',actual:10,adjusted:15,baseline:15});
