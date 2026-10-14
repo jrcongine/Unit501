@@ -47,3 +47,11 @@ Scoring uses offense plus opposing defense deviations around the game-weighted l
 Run `npm test` for regression and client-flow checks. Actual provider coverage, current prop quotes and production accuracy require deployment validation with the configured API keys.
 
 Football player ratings, confirmed replacement scenarios and gated probability calibration are described in [FOOTBALL-MODEL.md](FOOTBALL-MODEL.md). Basketball/baseball remain deferred. Unsupported positions and incomplete data stay explicitly unrated or withheld.
+
+
+## 501 War Room
+The collapsible **501 War Room** panel records one proposed bet (matchup, exact selection, date, line/price) at a time. J.R., Aria, and Unit 501 each get one independent **For / Against / Not cast** vote. Two For votes approve the candidate, two Against votes reject it, otherwise there is no majority. A vote is a manual record, not an AI-generated endorsement.
+
+Covers, WagerTalk, Juice Reel, and EV are non-voting research sources. The panel links to the first three sources and provides plain-text fields to manually record each source's current opinion and source/date; it does **not** scrape, authenticate with, or verify outside betting picks or outcomes. The EV channel is intentionally not guessed or deep-linked.
+
+Board decisions are frozen once saved; final results are manually graded as won/lost/push/void/pending. The displayed W–L counts only approved, graded selections, excluding pushes and voids, and is **not** a verified profit/loss or sportsbook-settlement ledger. War Room data uses versioned browser-local storage and is separate from the forecast archive. Download JSON backups regularly; merging a compatible backup preserves existing records by ID. No cross-device sync is provided.

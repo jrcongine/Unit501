@@ -50,6 +50,52 @@
 
 </section>
 
+<details id="war-room" class="card war-room">
+<summary><strong>⚔ 501 WAR ROOM</strong> <span class="war-muted">Board votes • outside intelligence • results</span></summary>
+<p class="war-muted">Three equal votes: J.R., Aria and Unit 501. Two matching votes decide a candidate. Outside handicappers advise but never vote. Approval is not a recommendation to bet without checking price and availability.</p>
+<h3>Intelligence division</h3>
+<nav class="war-sources" aria-label="Outside handicapper sources">
+<a href="https://www.covers.com/picks" target="_blank" rel="noopener noreferrer">Covers ↗</a>
+<a href="https://www.wagertalk.com/free-sports-picks" target="_blank" rel="noopener noreferrer">WagerTalk ↗</a>
+<a href="https://www.juicereel.com/" target="_blank" rel="noopener noreferrer">Juice Reel ↗</a>
+<span>EV (YouTube)</span>
+</nav>
+<p class="war-muted">These links open research sources; picks, quotes and records are not automatically retrieved or verified. Enter sourced opinions below.</p>
+<h3>Call a board vote</h3>
+<form id="war-form">
+<div class="war-fields">
+<label>Date<input id="war-date" type="date" required></label>
+<label>Matchup<input id="war-matchup" type="text" maxlength="140" placeholder="Away @ Home" required></label>
+</div>
+<button id="war-use-game" type="button" class="war-secondary">Use selected Game Lab matchup</button>
+<label>Proposed pick + exact line and price<input id="war-pick" type="text" maxlength="180" placeholder="Example: Kennesaw -3 (-110)" required></label>
+<h4>Command staff — independent votes</h4>
+<div class="war-fields">
+<label>J.R.<select id="war-vote-jr"><option value="pending">Not cast</option><option value="for">For</option><option value="against">Against</option></select></label>
+<label>Aria<select id="war-vote-aria"><option value="pending">Not cast</option><option value="for">For</option><option value="against">Against</option></select></label>
+<label>Unit 501<select id="war-vote-unit501"><option value="pending">Not cast</option><option value="for">For</option><option value="against">Against</option></select></label>
+</div>
+<h4>Outside intelligence — manual entry</h4>
+<div class="war-fields">
+<label>Covers<input id="war-source-covers" type="text" maxlength="400" placeholder="Pick, reasoning, source/date"></label>
+<label>WagerTalk<input id="war-source-wagertalk" type="text" maxlength="400" placeholder="Pick, reasoning, source/date"></label>
+<label>Juice Reel<input id="war-source-juicereel" type="text" maxlength="400" placeholder="Pick, tracked record, source/date"></label>
+<label>EV<input id="war-source-ev" type="text" maxlength="400" placeholder="Pick, video/date"></label>
+</div>
+<label>Our reasoning or links<textarea id="war-notes" rows="2" maxlength="600" placeholder="Key matchup factors, disagreements, price checks and source URLs"></textarea></label>
+<button type="submit">Save board decision</button>
+</form>
+<p id="war-message" role="status" aria-live="polite"></p>
+<h3>Decision log</h3>
+<p id="war-stats" class="war-muted"></p>
+<div class="war-record-actions">
+<button id="war-export" type="button" class="war-secondary">Download backup</button>
+<label class="war-import">Restore/merge backup<input id="war-import" type="file" accept=".json,application/json"></label>
+</div>
+<p class="war-muted">Records live in this browser only. Voting is frozen when saved, but game results can be graded manually. Download backups regularly; this does not change your existing forecast archive.</p>
+<div id="war-list"></div>
+</details>
+
 <section id="games" class="grid"></section>
 
 <section id="lab" class="card hidden">
@@ -183,6 +229,8 @@
 <script src="player-stats.js"></script>
 <script src="player-backtest.js"></script>
 <script src="predictions.js"></script>
+<script src="war-room-core.js"></script>
+<script src="war-room.js"></script>
 
 </body>
 
