@@ -2,7 +2,7 @@
 (()=>{
  'use strict';
  const panel=document.getElementById('forecast-review-results');
- const filters={league:'',season:'',modelVersion:''};
+ const filters={league:'',season:'',modelVersion:'',from:'',to:''};
  const labels={passYds:'Passing yards',passTD:'Passing TDs',carries:'Rushing attempts',rushYds:'Rushing yards',rushTD:'Rushing TDs',recYds:'Receiving yards',rec:'Receptions',recTD:'Receiving TDs'};
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  function render(){
@@ -22,7 +22,13 @@
     select.value=filters[key];select.addEventListener('change',()=>{filters[key]=select.value;render();});
     label.append(select);controls.append(label);
    }
-   panel.append(controls,node('p','Filter saved forecasts and selected picks by league, season or model version. All-model results exclude markets with mixed versions; select a version to review those forecasts separately.'));
+   for(const [key,title] of [['from','Games from'],['to','Games through']]){
+    const label=node('label',title+' '),input=node('input','');input.type='date';input.value=filters[key];
+    input.addEventListener('change',()=>{filters[key]=input.value;render();});label.append(input);controls.append(label);
+   }
+   const reset=node('button','Reset filters');reset.type='button';reset.addEventListener('click',()=>{for(const key of Object.keys(filters))filters[key]='';render();});controls.append(reset);
+   if(filters.from&&filters.to&&filters.from>filters.to)panel.append(node('p','Start date is after end date. Change the dates to see results.'));
+   panel.append(controls,node('p','Filter saved forecasts and selected picks by league, season, model version or game date (Central Time). All-model results exclude markets with mixed versions; select a version to review those forecasts separately.'));
    const scoped=Unit501ForecastDashboard.filter(archive.snapshots,filters);
    panel.append(node('p',`${scoped.length} of ${archive.snapshots.length} saved snapshots in this view. History starts when forecasts were saved on this browser; earlier season predictions are not reconstructed.`));
    const picks=scoped.filter(s=>s.selection);
@@ -37,11 +43,17 @@
    panel.append(node('h3','All saved forecasts'));
    const audit=Unit501InjuryBacktest.compare(scoped.filter(s=>!s.selection).flatMap(s=>s.records||[]));
    panel.append(node('p',`${audit.accepted} matched targets. ${audit.skips.pending} pending final outcomes. Excluded: ${audit.skips.ambiguous} duplicate, ${audit.skips.invalid} invalid, ${audit.skips.late} late and ${audit.skips.version} mixed-model targets.`));
+   const download=node('button','Download filtered accuracy report');download.type='button';
+   download.addEventListener('click',()=>{
+    const report=Unit501ForecastDashboard.report(scoped,filters,audit);
+    const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+    const link=node('a','');link.href=url;link.download='unit501-accuracy-report.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+   });panel.append(download);
    if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
    const wrap=document.createElement('div');wrap.style.overflowX='auto';
    const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;text-align:left';
    const head=document.createElement('thead'),header=document.createElement('tr');
-   for(const text of ['Forecast','Scored games','Scored targets','Pending targets','Baseline avg miss','Adjusted avg miss','Error change','Baseline bias','Adjusted bias','Evidence']){const th=node('th',text);th.setAttribute('scope','col');header.append(th);}
+   for(const text of ['Forecast','Scored games','Scored targets','Pending targets','Baseline avg miss','Adjusted avg miss','Error change','Baseline bias','Adjusted bias','Projection tendency','Evidence']){const th=node('th',text);th.setAttribute('scope','col');header.append(th);}
    head.append(header);table.append(head);const body=document.createElement('tbody');
    const display=v=>v===null?'—':v.toFixed(2);
    const bias=v=>v===null?'—':`${v>0?'+':''}${v.toFixed(2)}`;
@@ -52,7 +64,7 @@
      const tr=document.createElement('tr');
      const change=m.improvement===null?'—':m.improvement===0?'Unchanged':`${display(Math.abs(m.improvement))} ${m.improvement>0?'lower':'higher'}`;
      const evidence=!m.games?'Awaiting matched final outcomes':m.games<30?`${m.games}/30 games — insufficient`:m.status==='lower-observed-error'?'Lower error in this sample':'No improvement in this sample';
-     for(const text of [`${name} · ${label}`,String(m.games),String(m.pairs),String(m.pending),display(m.baselineMAE),display(m.adjustedMAE),change,bias(m.baselineBias),bias(m.adjustedBias),evidence]){const td=node('td',text);td.style.padding='8px 6px';tr.append(td);}
+     for(const text of [`${name} · ${label}`,String(m.games),String(m.pairs),String(m.pending),display(m.baselineMAE),display(m.adjustedMAE),change,bias(m.baselineBias),bias(m.adjustedBias),Unit501ForecastDashboard.diagnosis(m),evidence]){const td=node('td',text);td.style.padding='8px 6px';tr.append(td);}
      body.append(tr);
     }
    }

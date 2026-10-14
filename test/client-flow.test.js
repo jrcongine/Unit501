@@ -235,7 +235,7 @@ test('pending-only prop markets display separately from score results',async()=>
  assert.doesNotMatch(panel.textContent,/NFL · Team points/);
  const table=panel.children.find(n=>n.children?.some(c=>c.tag==='table')).children[0];
  const cells=table.children.find(n=>n.tag==='tbody').children[0].children.map(n=>n.textContent);
- assert.deepEqual(cells,['NFL · Receptions','0','0','1','—','—','—','—','—','Awaiting matched final outcomes']);
+ assert.deepEqual(cells,['NFL · Receptions','0','0','1','—','—','—','—','—','Awaiting final outcomes','Awaiting matched final outcomes']);
 });
 test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
  const h=harness();await h.settle();let calls=0;
@@ -394,4 +394,17 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  copied='';h.context.navigator.clipboard.writeText=async text=>{copied=text;};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
  assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
+});
+
+test('accuracy date controls narrow the displayed report and reset restores its scope',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');
+ const panel=h.nodes.get('forecast-review-results');
+ const descendants=n=>[n,...(n.children||[]).flatMap(descendants)];
+ const start=descendants(panel).find(n=>n.tag==='input'&&n.type==='date');
+ start.value='2099-01-01';await start.dispatchEvent({type:'change'});
+ assert.match(panel.textContent,/0 of 1 saved snapshots/);
+ const reset=descendants(panel).find(n=>n.tag==='button'&&n.textContent==='Reset filters');
+ await reset.dispatchEvent({type:'click'});
+ assert.match(panel.textContent,/1 of 1 saved snapshots/);
+ assert.match(panel.textContent,/Download filtered accuracy report/);
 });
