@@ -108,3 +108,24 @@ test('overlapping earlier kickoffs cannot leak final scores or error fits into a
  assert.ok(first.records.every(r=>r.historyBefore===r.kickoff-86400000));
  assert.notDeepEqual(changed.records.filter(r=>r.kickoff===800000000),first.records.filter(r=>r.kickoff===800000000));
 });
+
+test('probability evaluation gives games equal weight when pushes remove thresholds',()=>{
+ const {probabilitySummary}=require('../backtest');
+ const rows=[{id:'a',brier:.8,rawBrier:.4},...Array.from({length:3},()=>({id:'b',brier:.1,rawBrier:.4}))];
+ const result=probabilitySummary(rows);
+ assert.equal(result.games,2);assert.equal(result.thresholds,4);
+ assert.ok(Math.abs(result.brier-.45)<1e-12);
+ assert.ok(result.brier>result.rawBrier); // Threshold averaging would incorrectly favor calibration.
+ assert.equal(probabilitySummary([]).brier,null);
+});
+test('exported variance excludes games inside the final 24-hour safety window',()=>{
+ const {roster,games}=season();
+ const before=800000000+3600000,query={league:'1',season:'2026',before};
+ const run=rows=>validate(rows,query,cutoff=>summarize(rows,new Map(),{...query,before:cutoff},roster));
+ const result=run(games);
+ const expected=fit(result.records.filter(r=>r.kickoff<before-86400000));
+ assert.deepEqual(result.calibration,expected);
+ assert.equal(result.calibration.games,80);
+ const changed=games.map(g=>g.game.date.timestamp===800000?{...g,scores:{away:{total:99},home:{total:0}}}:g);
+ assert.deepEqual(run(changed).calibration,result.calibration);
+});
