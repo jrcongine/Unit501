@@ -3,6 +3,7 @@
  'use strict';
  const panel=document.getElementById('forecast-review-results');
  const filters={league:'',season:'',modelVersion:'',from:'',to:''};
+ let patternsOpen=false;
  const labels={passYds:'Passing yards',passTD:'Passing TDs',carries:'Rushing attempts',rushYds:'Rushing yards',rushTD:'Rushing TDs',recYds:'Receiving yards',rec:'Receptions',recTD:'Receiving TDs'};
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  function render(){
@@ -49,7 +50,7 @@
     const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
     const link=node('a','');link.href=url;link.download='unit501-accuracy-report.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
    });panel.append(download);
-   if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
+   if(!audit.accepted)panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));
    const wrap=document.createElement('div');wrap.style.overflowX='auto';
    const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;text-align:left';
    const head=document.createElement('thead'),header=document.createElement('tr');
@@ -69,6 +70,82 @@
     }
    }
    table.append(body);wrap.append(table);panel.append(wrap,node('p','Pending targets have no matched final statistic yet; this can include upcoming games or missing player statistics after a game ends. They do not count toward scored games or accuracy, and missing stats are never treated as zero. Bias is forecast minus actual: positive means projections ran too high; negative means they ran too low. Near-zero bias can hide large misses in opposite directions, so read it alongside average absolute miss. Both measures use equal weight per game, comparing the same targets with and without scenario adjustments. Leagues and prop markets stay separate. Fewer than 30 games is insufficient evidence; larger samples describe observed errors and do not establish future accuracy or betting profit. Device timestamps and captured reports still require review.'));
+
+   // Diagnostic view is intentionally read-only and collapsed by default.
+   // It uses the same eligible archive targets as the accuracy comparison above.
+   const missDetails=node('details','');missDetails.id='forecast-miss-patterns';
+   missDetails.open=patternsOpen;
+   missDetails.addEventListener('toggle',()=>{patternsOpen=missDetails.open;});
+   missDetails.append(node('summary','Where projections miss — recent patterns & examples'));
+   missDetails.append(node('p','Each game counts once within its league and market. Recent means the latest 10 completed, matched games; previous means the 10 matched games immediately before those, not the last 10 calendar days. These are descriptive checks, not automatic adjustments or validated betting edges.'));
+   const names=new Map();
+   const identity=r=>JSON.stringify([String(r.league),String(r.season),String(r.gameId),String(r.teamId),r.playerId==null?null:String(r.playerId),r.market]);
+   for(const snap of scoped){
+    if(snap.selection)continue;
+    const g=snap.game||{};
+    for(const r of snap.records||[]){
+     if(!r||typeof r!=='object')continue;
+     const team=String(r.teamId)===String(g.awayId)?g.a:String(r.teamId)===String(g.homeId)?g.h:null;
+     const match=g.a&&g.h?g.a+' vs '+g.h:'Game '+r.gameId;
+     const who=r.playerId==null?team:(snap.inputs?.playerName||'Player '+r.playerId);
+     names.set(identity(r),(who?who+' · ':'')+match);
+    }
+   }
+   const breakdown=node('div','');breakdown.style.overflowX='auto';
+   const patternTable=node('table','');patternTable.style.cssText='width:100%;border-collapse:collapse;text-align:left;font-size:.9em';
+   const headings=node('tr','');
+   for(const heading of ['Market','Matched games','Game-level high / low / even','Latest 10 avg miss','Previous 10 avg miss','Directional review','Largest matched miss']){
+    const h=node('th',heading);h.style.padding='8px 6px';headings.append(h);
+   }
+   patternTable.append(headings);
+   let found=false;
+   const fmt=n=>n===null?'—':n.toFixed(2);
+   const windowText=(value,count)=>fmt(value)+' ('+count+' '+(count===1?'game':'games')+')';
+   for(const [league,leagueName]of [['1','NFL'],['2','College']]){
+    const series=[['Team points',audit.scores[league]],...Object.entries(audit.props[league]).map(([market,m])=>[labels[market]||market,m])];
+    for(const [market,m] of series){
+     if(!m.games)continue;
+     found=true;
+     const p=m.pattern;
+     const signal=p.tendency==='insufficient'?'Too few games (<30)':
+       p.tendency==='mostly-high'?'Watch: ≥70% games high':
+       p.tendency==='mostly-low'?'Watch: ≥70% games low':'Mixed directions';
+     const example=p.worst[0];
+     const sample=example?(names.get(identity(example))||'Game '+example.gameId)+
+       ` — ${example.adjusted.toFixed(1)} projected / ${example.actual.toFixed(1)} actual (${example.signedMiss>0?'+':''}${example.signedMiss.toFixed(1)} miss)`:'—';
+     const tr=node('tr','');
+     for(const value of [leagueName+' · '+market,String(m.games),
+       `${p.highGames} / ${p.lowGames} / ${p.evenGames}`,
+       windowText(p.recentMAE,p.recentGames),
+       windowText(p.previousMAE,p.previousGames),signal,sample]){
+      const td=node('td',value);td.style.cssText='padding:9px 6px;border-bottom:1px solid #293142;vertical-align:top';tr.append(td);
+     }
+     patternTable.append(tr);
+    }
+   }
+   if(found){breakdown.append(patternTable);missDetails.append(breakdown);}
+   else missDetails.append(node('p','No eligible completed game forecasts yet. Pending outcomes cannot establish a pattern.'));
+   missDetails.append(node('p','High/low compares each game’s average adjusted forecast with its actual results; score games average both teams. Opposite misses can cancel the signed direction, so inspect absolute error too. The largest example is the single biggest adjusted miss per market, not a guaranteed future outcome. A 70% direction in at least 30 games is only a manual-review flag; multiple markets are being examined. Spreads and totals are graded as selected picks below, not reconstructed as historical bookmaker-line accuracy.'));
+   if(picks.length){
+    missDetails.append(node('h4','Saved selected picks by market'));
+    const groups=new Map();
+    for(const pick of picks){
+     const groupKey=String(pick.game?.league)+'|'+pick.selection.market;
+     const tally=groups.get(groupKey)||{league:String(pick.game?.league),market:pick.selection.market,wins:0,losses:0,pushes:0,pending:0};
+     const result=Unit501ForecastArchive.selectionResult(pick);
+     if(result==='Win by statistic')tally.wins++;
+     else if(result==='Loss by statistic')tally.losses++;
+     else if(result==='Push by statistic')tally.pushes++;
+     else tally.pending++;
+     groups.set(groupKey,tally);
+    }
+    for(const item of [...groups.values()].sort((a,b)=>a.league.localeCompare(b.league)||a.market.localeCompare(b.market))){
+     const market={spread:'Spread',total:'Total',...labels}[item.market]||item.market;
+     missDetails.append(node('p',`${{'1':'NFL','2':'College'}[item.league]||item.league} · ${market}: ${item.wins}W–${item.losses}L · ${item.pushes} push · ${item.pending} pending (${item.wins+item.losses} graded decisions).`));
+    }
+    missDetails.append(node('p','Selected-pick results are statistical outcomes only. They are not verified sportsbook settlement or profit, and selected games are not an unbiased model-accuracy sample.'));
+   }
+   panel.append(missDetails);
   }catch{panel.append(node('p','Saved forecast archive could not be read. Existing data retained.'));}
  }
  document.addEventListener('unit501:archive-updated',render);
