@@ -59,8 +59,10 @@ test('player ratings start compact, with both rosters and replacement controls a
   assert.equal(panel.tag,'details');
   assert.equal(panel.open,false);
   await h.nodes.get('build-player-ratings').onclick();await h.settle();
-  const teams=h.created.filter(n=>n.className==='player-rating-team');
-  const scenarios=h.created.filter(n=>n.className==='player-rating-scenario');
+  const find=(root,cssClass)=>[...root.children].flatMap(child=>typeof child==='string'?[]:[...(child.className===cssClass?[child]:[]),...find(child,cssClass)]);
+  const results=h.nodes.get('ratings-results');
+  const teams=find(results,'player-rating-team');
+  const scenarios=find(results,'player-rating-scenario');
   assert.equal(teams.length,2);
   assert.ok(teams.every(t=>t.open===false));
   assert.equal(scenarios.length,2);
