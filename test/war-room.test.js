@@ -50,7 +50,7 @@ test('index exposes the War Room and source links without claiming auto verified
   for(const id of ['war-room','war-form','war-list','war-matchup','war-pick','war-source-covers','war-source-ev','war-vote-jr','war-vote-aria','war-vote-unit501','war-export','war-import'])assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(html,/war-room-core\.js/);
   assert.match(html,/war-room\.js/);
-  assert.match(html,/not automatically retrieved or verified/);
+  assert.match(html,/public selections appear here automatically/);
 });
 test('real UI saves and grades a board-approved candidate on browser-local storage', async () => {
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
