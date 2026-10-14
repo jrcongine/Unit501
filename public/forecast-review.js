@@ -8,9 +8,19 @@
   panel.replaceChildren();
   try{
    const archive=Unit501ForecastArchive.read(localStorage);
-   const audit=Unit501InjuryBacktest.compare(archive.snapshots.flatMap(s=>s.records||[]));
+   const picks=archive.snapshots.filter(s=>s.selection);
+   panel.append(node('h3','Selected picks'),node('p',picks.length?'Selections are separate from all forecast accuracy. Results below compare final statistics with the saved line; sportsbook participation, void and settlement rules still require review.':'No picks marked yet. Use Save selected pick on a player card or after a game simulation.'));
+   if(picks.length){const results=picks.map(Unit501ForecastArchive.selectionResult);panel.append(node('p',`${results.filter(r=>r==='Win by statistic').length} wins · ${results.filter(r=>r==='Loss by statistic').length} losses · ${results.filter(r=>r==='Push by statistic').length} pushes · ${results.filter(r=>r==='Pending statistic').length} pending. Statistical results only; no bankroll profit inferred.`));}
+   for(const s of picks){
+    const p=s.selection,r=s.records[0];
+    const name=s.inputs?.playerName||`${s.game.a||s.game.awayId} vs ${s.game.h||s.game.homeId}`;
+    const line=p.market==='spread'&&p.direction==='home'?-p.line:p.line;
+    panel.append(node('p',`${name} · ${labels[p.market]||p.market} · ${p.direction} ${line} · price ${p.price===null?'unknown':p.price>0?'+'+p.price:p.price} · ${Unit501ForecastArchive.selectionResult(s)} · ${new Date(p.selectedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT · ${r.modelVersion}`));
+   }
+   panel.append(node('h3','All saved forecasts'));
+   const audit=Unit501InjuryBacktest.compare(archive.snapshots.filter(s=>!s.selection).flatMap(s=>s.records||[]));
    panel.append(node('p',`${audit.accepted} matched targets. ${audit.skips.pending} pending final outcomes. Excluded: ${audit.skips.ambiguous} duplicate, ${audit.skips.invalid} invalid, ${audit.skips.late} late and ${audit.skips.version} mixed-model targets.`));
-   if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run adjusted pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
+   if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
    const wrap=document.createElement('div');wrap.style.overflowX='auto';
    const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;text-align:left';
    const head=document.createElement('thead'),header=document.createElement('tr');

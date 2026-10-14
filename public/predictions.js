@@ -51,7 +51,7 @@
           const key = lineKey(record, def);
           const entry = readLine(key);
           if (entry.value !== '') continue;
-          enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto'});
+          enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',over:quote.over,under:quote.under});
           count++;
         }
       }
@@ -128,6 +128,7 @@
         if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) continue;
         const model = projectionFor(record, def);
         if (!model) continue;
+        if(window.Unit501ForecastArchive)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const checks = Unit501PlayerForm.reviewChecks(model, entry, window.Unit501Availability?.assess(record.teamId, record.playerId));
         rows.push({record, def, entry, line, checks, ...model});
       }
@@ -376,6 +377,7 @@ cell.append(details);
           entry.persisted = true;
         } catch { /* Continue with this session's entry if saving is unavailable. */ }
         enteredLines.set(key, entry);
+        price.value = '';
         renderComparisons();
       }
       savedInfo.textContent = entry.source === 'auto' && valid
@@ -407,8 +409,23 @@ cell.append(details);
         : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
       comparison.textContent = `${summary} Recorded season games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
     }
+    const direction=document.createElement('select');direction.id=`pick-direction-${record.id}-${def.key}`;
+    for(const side of ['over','under']){const option=document.createElement('option');option.value=side;option.textContent=side;direction.append(option);}
+    direction.setAttribute('aria-label',def.title+' pick direction');
+    const price=document.createElement('input');price.id=`pick-price-${record.id}-${def.key}`;price.type='number';price.step='1';price.placeholder='American price (optional)';price.setAttribute('aria-label',def.title+' American price');
+    const fillPrice=()=>{const value=entry.source==='auto'&&Date.now()-entry.savedAt<=1800000?entry[direction.value]:null;price.value=Number.isInteger(value)&&Math.abs(value)>=100?String(value):'';};
+    direction.addEventListener('change',fillPrice);fillPrice();
+    const pick=document.createElement('button');pick.type='button';pick.id=`save-pick-${record.id}-${def.key}`;pick.textContent='Save selected pick';
+    const pickStatus=document.createElement('p');pickStatus.setAttribute('role','status');
+    const game=selected;
+    pick.addEventListener('click',()=>{
+      if(selected!==game||window.Unit501Availability?.assess(record.teamId,record.playerId).blocked){pickStatus.textContent='Selection changed or player unavailable. Reload the projection.';return;}
+      const model=projectionFor(record,def);
+      const snapshot=model?propSnapshot(record,def,model):null;
+      pickStatus.textContent=Unit501ForecastArchive.select(localStorage,snapshot,{market:def.key,direction:direction.value,line:n(input.value),price:price.value.trim()===''?null:Number(price.value)}).message;
+    });
     input.addEventListener('input', () => update(true));
-    card.append(label, savedInfo, comparison);
+    card.append(label, savedInfo, comparison,direction,price,pick,pickStatus);
     update();
   }
   function projectionFor(record, def) {
@@ -441,6 +458,13 @@ cell.append(details);
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
     return {baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+  }
+  function propSnapshot(record,def,model){
+    const entry=readLine(lineKey(record,def));
+    return Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
+      inputs:{playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
+        quote:{line:n(entry.value),over:Number.isFinite(entry.over)?entry.over:null,under:Number.isFinite(entry.under)?entry.under:null,source:entry.source||'manual',updatedAt:entry.savedAt},
+        availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
   }
   function showPlayer() {
     for (const option of Array.from(picker.children)) {
@@ -519,14 +543,9 @@ results.appendChild(workload);
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
-      if(window.Unit501ForecastArchive&&(model.lineupChange||model.workload!==100)){
-        try{
-          const archived=Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
-            inputs:{history,form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
-              availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
-          const saved=Unit501ForecastArchive.save(localStorage,archived);
-          const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
-        }catch{const info=document.createElement('p');info.textContent=def.title+': forecast could not be archived on this browser.';results.append(info);}
+      if(window.Unit501ForecastArchive){
+        const saved=Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
+        const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
       }
       const trend = model.form.trend + ' • ' + model.form.sample;
       const card = document.createElement('div');

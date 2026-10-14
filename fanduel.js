@@ -17,6 +17,7 @@ function selectLines(events, { away, home, kickoff, league }, now = Date.now()) 
   const spread = fresh('spreads');
   const total = fresh('totals');
   const awayOutcome = spread?.outcomes?.find(o => o.name === matches[0].away_team);
+  const homeOutcome = spread?.outcomes?.find(o => o.name === matches[0].home_team);
   const over = total?.outcomes?.find(o => o.name === 'Over');
   const under = total?.outcomes?.find(o => o.name === 'Under');
   const awaySpread = Number.isFinite(awayOutcome?.point) ? awayOutcome.point : null;
@@ -24,6 +25,12 @@ function selectLines(events, { away, home, kickoff, league }, now = Date.now()) 
   return {
     available: awaySpread !== null || gameTotal !== null,
     bookmaker: 'FanDuel', awaySpread, total: gameTotal,
+    prices: {
+      away: Number.isInteger(awayOutcome?.price) && Math.abs(awayOutcome.price)>=100 ? awayOutcome.price : null,
+      home: homeOutcome?.point === -awaySpread && Number.isInteger(homeOutcome?.price) && Math.abs(homeOutcome.price)>=100 ? homeOutcome.price : null,
+      over: Number.isInteger(over?.price) && Math.abs(over.price)>=100 ? over.price : null,
+      under: Number.isInteger(under?.price) && Math.abs(under.price)>=100 ? under.price : null
+    },
     spreadUpdated: spread?.last_update || (spread ? book.last_update : null),
     totalUpdated: total?.last_update || (total ? book.last_update : null),
     message: 'Missing or older-than-30-minute markets require manual entry.'

@@ -47,3 +47,14 @@ test('different forecast models can be compared in separate markets, never mixed
  const out=compare([score,prop]);assert.equal(out.accepted,2);assert.equal(out.props['1'].rec.pairs,1);
  const mixed=compare([score,prop,{...prop,gameId:'10',modelVersion:'prop-v2'}]);assert.equal(mixed.accepted,1);assert.equal(mixed.skips.version,2);
 });
+
+test('matching preserves general and selected snapshots sharing the same forecast timestamp',async()=>{
+ const {snapshot,games}=fixture();
+ const pick=structuredClone(snapshot);pick.selection={market:'spread',direction:'away',line:3.5,price:-110,selectedAt:95000};
+ const data=new Map([[archive.key,JSON.stringify({schema:1,snapshots:[snapshot,pick]})]]);
+ const storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ await refresh(storage,async()=>games,()=>200000);
+ const saved=archive.read(storage).snapshots;
+ assert.equal(saved[0].selection,undefined);assert.equal(saved[1].selection.price,-110);
+ assert.equal(saved[0].records[0].actual,19);assert.equal(saved[1].records[0].actual,19);
+});
