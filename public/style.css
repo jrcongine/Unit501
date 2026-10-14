@@ -51,3 +51,32 @@
 .war-feed-source{min-width:0;max-height:640px;overflow:auto;padding-right:6px}
 .war-feed-source a{color:#9ce4f5;font-size:14px}
 .war-feed-source h4{position:sticky;top:0;background:#121620;padding:8px 0;margin-top:0}
+
+/* Compact, on-demand player rating and lineup editor */
+.player-rating-panel>summary{cursor:pointer;font-size:18px;font-weight:800;padding:4px 0}
+.player-rating-panel[open]>summary{margin-bottom:12px}
+.player-rating-panel>button{width:100%;max-width:340px}
+.player-rating-panel>p{font-size:14px;line-height:1.45;color:#b9c5d9}
+.player-rating-help{margin:10px 0;color:#b9c5d9;font-size:14px;line-height:1.5}
+.player-rating-help>summary,.player-rating-team>summary,.player-rating-scenario>summary,.player-rating-note>summary{cursor:pointer}
+.player-rating-help>summary{color:#c8e9f9}
+.player-rating-team{margin:10px 0;border:1px solid #354057;border-radius:12px;background:#0c1018;overflow:hidden}
+.player-rating-team>summary{padding:12px 14px;font-weight:800}
+.player-rating-team[open]>summary{border-bottom:1px solid #354057}
+.player-rating-team>div{padding:0 12px 8px}
+.player-rating-scenario>summary{color:#9ce4f5;font-size:13px;font-weight:700;white-space:normal}
+.player-rating-settings{min-width:240px;padding:10px 0 4px;white-space:normal;font-size:13px;line-height:1.4}
+.player-rating-settings p{margin:6px 0;overflow-wrap:anywhere}
+.player-rating-settings button{font-size:13px;min-height:36px;margin-top:7px;padding:7px}
+.player-rating-settings select{min-height:36px;font-size:13px;padding:7px}
+.player-rating-note{margin-top:4px;color:#acbad0;font-size:12px;white-space:normal}
+.player-rating-note p{margin:5px 0;line-height:1.4}
+.player-ratings-table th,.player-ratings-table td{padding:7px 10px}
+.player-ratings-table td:last-child{min-width:200px;max-width:260px}
+.player-ratings-table td:last-child label{font-size:13px}
+@media(max-width:600px){
+ .player-rating-panel{padding:13px}
+ .player-rating-team>summary{padding:11px}
+ .player-ratings-table{font-size:13px}
+ .player-ratings-table th,.player-ratings-table td{padding:7px}
+}

@@ -52,6 +52,26 @@ function harness(storage=new Map(),extras=false) {
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
 }
+test('player ratings start compact, with both rosters and replacement controls available on demand',async()=>{
+  const h=harness(new Map(),true);await h.settle();
+  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+  const panel=h.nodes.get('player-ratings-panel');
+  assert.equal(panel.tag,'details');
+  assert.equal(panel.open,false);
+  await h.nodes.get('build-player-ratings').onclick();await h.settle();
+  const find=(root,cssClass)=>[...root.children].flatMap(child=>typeof child==='string'?[]:[...(child.className===cssClass?[child]:[]),...find(child,cssClass)]);
+  const results=h.nodes.get('ratings-results');
+  const teams=find(results,'player-rating-team');
+  const scenarios=find(results,'player-rating-scenario');
+  assert.equal(teams.length,2);
+  assert.ok(teams.every(t=>t.open===false));
+  assert.equal(scenarios.length,2);
+  assert.ok(scenarios.every(s=>s.open===false));
+  assert.match(teams[0].textContent,/Team A · 2 rated \/ 2 players/);
+  assert.ok(h.nodes.get('baseline-1:7'));
+  assert.ok(h.nodes.get('replacement-1:7'));
+  assert.match(h.nodes.get('lineup-status').textContent,/No confirmed replacement scenario/);
+});
 test('actual client home-context control changes margin and resets on game selection',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="home"; sim()');const first=h.nodes.get('score').textContent;
