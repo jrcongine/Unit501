@@ -2,6 +2,13 @@
 const model=require('./public/team-model');
 const probability=require('./public/probability-calibration');
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+// Average within each game first, so non-push threshold counts cannot change its weight.
+function probabilitySummary(rows) {
+ const groups=new Map();
+ for(const row of rows){if(!groups.has(row.id))groups.set(row.id,[]);groups.get(row.id).push(row);}
+ const average=key=>groups.size?mean([...groups.values()].map(game=>mean(game.map(r=>r[key])))):null;
+ return {games:groups.size,thresholds:rows.length,brier:average('brier'),rawBrier:average('rawBrier')};
+}
 function fit(errors) {
   if(errors.length<30)return null;
   // RMS includes systematic error rather than hiding bias by centering residuals.
@@ -104,6 +111,8 @@ function validate(games,query,snapshot) {
   };
   const offenseDiagnostics={overall:diagnose(records),later:diagnose(later),
     explanation:'Groups use each team’s recorded scoring average before kickoff relative to that replay’s league scoring baseline. Positive bias means projected points exceeded actual points. Counts are team-games; two teams from the same matchup are not independent observations. These diagnostics do not tune the scoring formula.'};
+  const trainingBefore=query.before-86400000;
+  const checksForActivation=Object.fromEntries(Object.entries(probabilityChecks).map(([key,rows])=>[key,probabilitySummary(rows.filter(r=>r.kickoff<trainingBefore))]));
   const evaluated=records.filter(r=>Number.isFinite(r.brier));
   return {modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
     scoreMAE:errors.length?mean(errors.map(e=>(Math.abs(e.away)+Math.abs(e.home))/2)):null,
@@ -117,14 +126,14 @@ function validate(games,query,snapshot) {
     }:null,
     brier:evaluated.length?mean(evaluated.map(r=>r.brier)):null,
     bins:bins.map(b=>({...b,predicted:b.games?b.predicted/b.games:null,observed:b.games?b.observed/b.games:null})),
-    calibration:fit(errors),records,
+    calibration:fit(errors.filter(e=>e.kickoff<trainingBefore)),records,
     probabilityCalibration:{modelVersion:'scoring-v2',league:query.league,season:query.season,before:query.before,
-      ...Object.fromEntries(Object.entries(training).map(([key,rows])=>{const checks=probabilityChecks[key],tested=new Set(checks.map(r=>r.id)).size;const eligible=tested>=30&&mean(checks.map(r=>r.brier))<mean(checks.map(r=>r.rawBrier));return [key,eligible?{...probability.fit(rows),evaluationGames:tested}:null];}))},
+      ...Object.fromEntries(Object.entries(training).map(([key,rows])=>{const check=checksForActivation[key];const fitted=probability.fit(rows.filter(r=>r.kickoff<trainingBefore));const eligible=fitted&&check.games>=30&&check.brier<check.rawBrier;return [key,eligible?{...fitted,evaluationGames:check.games}:null];}))},
     probabilityChecks:Object.fromEntries(Object.entries(probabilityChecks).map(([key,rows])=>[key,{
-      games:new Set(rows.map(r=>r.id)).size,thresholds:rows.length,
-      brier:rows.length?mean(rows.map(r=>r.brier)):null,rawBrier:rows.length?mean(rows.map(r=>r.rawBrier)):null,
+      ...probabilitySummary(rows),
+      activation:checksForActivation[key],
       bins:Array.from({length:10},(_,i)=>{const bin=rows.filter(r=>Math.min(9,Math.floor(r.calibrated*10))===i);return {lower:i/10,upper:(i+1)/10,games:new Set(bin.map(r=>r.id)).size,thresholds:bin.length,predicted:bin.length?mean(bin.map(r=>r.calibrated)):null,observed:bin.length?mean(bin.map(r=>r.y)):null};})
     }])),
-    explanation:'Chronological replay excludes results from the previous 24 hours before each kickoff, including score-error and probability training. Completion timestamps are unavailable; this conservative lag limits overlap leakage but is not an exact archive of when results were published. Variance fits earlier score errors after 30 predictions. Symmetric probability calibration trains after 100 distinct earlier evaluated games with both outcomes, and is checked on later games. Calibration is activated only after at least 30 later distinct games have lower aggregate Brier error than raw frequencies; this is a rolling in-season gate, not an independent future guarantee. Spread/total checks use three model-centered reference thresholds per game, not sportsbook history. Pushes and tied finals are excluded from probability fitting; displayed probabilities are conditional on no push/tie. Weather and historical injuries are unavailable. No historical bookmaker lines: spread/total profitability and prop calibration are not measured.'};
+    explanation:'Chronological replay excludes results from the previous 24 hours before each kickoff, including score-error and probability training. Completion timestamps are unavailable; this conservative lag limits overlap leakage but is not an exact archive of when results were published. Variance fits earlier score errors after 30 predictions. Symmetric probability calibration trains after 100 distinct earlier evaluated games with both outcomes, and is checked on later games. Calibration is activated only after at least 30 later distinct games have lower game-weighted Brier error than raw frequencies; this is a rolling in-season gate, not an independent future guarantee. Exported calibration and activation checks also exclude the most recent 24 hours. Brier comparisons average thresholds within each game before averaging games. Reliability bins describe individual thresholds. Spread/total checks use three model-centered reference thresholds per game, not sportsbook history. Pushes and tied finals are excluded from probability fitting; displayed probabilities are conditional on no push/tie. Weather and historical injuries are unavailable. No historical bookmaker lines: spread/total profitability and prop calibration are not measured.'};
 }
-module.exports={fit,validate};
+module.exports={fit,validate,probabilitySummary};

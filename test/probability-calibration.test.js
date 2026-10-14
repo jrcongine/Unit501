@@ -19,3 +19,8 @@ test('each game carries the same fitting weight even with repeated thresholds',(
  const rows=Array.from({length:150},(_,i)=>({id:String(i),p:i%2?.9:.1,y:i%3?1:0}));
  assert.ok(Math.abs(fit(rows).slope-fit([...rows,...rows,...rows]).slope)<1e-10);
 });
+test('malformed calibration sample counts never produce probabilities',()=>{
+ for(const games of [undefined,NaN,Infinity,'100',100.5]){
+  assert.equal(apply(.7,{method:'temperature-v1',games,slope:1}),null);
+ }
+});

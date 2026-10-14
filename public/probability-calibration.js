@@ -23,7 +23,7 @@
     return {method:'temperature-v1',slope:(low+high)/2,games};
   }
   function apply(p,fit) {
-    if(!Number.isFinite(p)||p<0||p>1||fit?.method!=='temperature-v1'||fit.games<100||!Number.isFinite(fit.slope)||fit.slope<.25||fit.slope>2)return null;
+    if(!Number.isFinite(p)||p<0||p>1||fit?.method!=='temperature-v1'||!Number.isInteger(fit.games)||fit.games<100||!Number.isFinite(fit.slope)||fit.slope<.25||fit.slope>2)return null;
     return logistic(fit.slope*logit(p));
   }
   const api={fit,apply};
