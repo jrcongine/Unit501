@@ -68,3 +68,40 @@ test('invalid, duplicate and late pending targets cannot inflate market progress
  assert.equal(out.skips.late,1);assert.equal(out.skips.invalid,1);
  assert.deepEqual(out.props['1'],{});
 });
+
+test('miss diagnosis counts game averages, not each player target, and names biggest complete miss',()=>{
+ const first=row({kind:'prop',market:'recYds',playerId:'1',actual:20,adjusted:30,baseline:40});
+ const second=row({kind:'prop',market:'recYds',playerId:'2',actual:20,adjusted:10,baseline:10});
+ const older=row({kind:'prop',market:'recYds',gameId:'101',playerId:'3',kickoff:100100,resultKnownAt:120100,actual:20,adjusted:25,baseline:25});
+ const m=compare([first,second,older]).props['1'].recYds;
+ assert.equal(m.games,2);
+ assert.equal(m.pattern.highGames,1);assert.equal(m.pattern.lowGames,0);assert.equal(m.pattern.evenGames,1);
+ assert.equal(m.pattern.recentMAE,7.5);
+ assert.equal(m.pattern.recentGames,2);assert.equal(m.pattern.previousGames,0);
+ assert.equal(m.pattern.tendency,'insufficient');
+ assert.equal(m.pattern.worst.length,2);
+ assert.equal(m.pattern.worst[0].absoluteMiss,10);
+ assert.ok(new Set(m.pattern.worst.map(x=>x.gameId)).size===2);
+});
+test('market high and low watch only begins at 30 games and a 70% game-level fraction',()=>{
+ const game=i=>row({gameId:String(1000+i),kickoff:100000+i,resultKnownAt:120000+i,
+   baseline:20,actual:20,adjusted:i<21?26:19});
+ const m=compare(Array.from({length:30},(_,i)=>game(i))).scores['1'];
+ assert.equal(m.pattern.tendency,'mostly-high');
+ assert.equal(m.pattern.highGames,21);assert.equal(m.pattern.lowGames,9);
+ assert.equal(m.pattern.recentGames,10);assert.equal(m.pattern.previousGames,10);
+ assert.equal(m.pattern.recentMAE,1.5);assert.equal(m.pattern.previousMAE,6);
+ assert.equal(m.pattern.recentBias,-0.5);assert.equal(m.pattern.previousBias,6);
+ assert.equal(compare(Array.from({length:29},(_,i)=>game(i))).scores['1'].pattern.tendency,'insufficient');
+ const even=compare(Array.from({length:30},(_,i)=>game(i<15?i:100+i))).scores['1'];
+ assert.equal(even.pattern.tendency,'mostly-high');
+});
+test('pending and rejected model-version targets never contribute to miss patterns',()=>{
+ const p=row({kind:'prop',market:'carries',playerId:'5',actual:10,adjusted:15,baseline:15});
+ const data=[p,row({kind:'prop',market:'carries',playerId:'6',gameId:'101',actual:null,resultKnownAt:null}),
+ row({kind:'prop',market:'carries',playerId:'7',gameId:'102',modelVersion:'v2'})];
+ const m=compare(data).props['1'].carries;
+ assert.equal(m.games,0);assert.equal(m.pending,1);
+ assert.equal(m.pattern.highGames,0);assert.equal(m.pattern.worst.length,0);
+ assert.equal(m.pattern.recentMAE,null);
+});
