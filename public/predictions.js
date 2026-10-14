@@ -325,6 +325,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
         if (index === 0) {
           const shortlistLabel = document.createElement('label');
+          shortlistLabel.className = 'prop-shortlist-label';
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.id = `shortlist-${row.record.id}-${row.def.key}`;
