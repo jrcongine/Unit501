@@ -36,3 +36,13 @@
 .war-remove{background:#311d22;border-color:#75424f}
 .war-import input{max-width:220px;min-height:38px;font-size:13px}
 @media(max-width:600px){.war-record-actions label{align-items:flex-start;flex-wrap:wrap}.war-fields{grid-template-columns:1fr}}
+
+/* 501 War Room video channel quick links */
+.war-youtube-desk{margin:18px 0 22px;border:1px solid #354057;border-radius:12px;background:#0c1220;padding:12px}
+.war-youtube-desk>summary{cursor:pointer;font-size:16px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-weight:800}
+.war-youtube-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px;margin:12px 0}
+.war-youtube-grid>a{display:flex;flex-direction:column;gap:5px;padding:12px;min-height:110px;border:1px solid #3b4a61;background:#151c29;border-radius:12px;text-decoration:none;color:#f5f7fb;overflow-wrap:anywhere}
+.war-youtube-grid>a:hover{border-color:#91d7db;background:#1c2938}
+.war-youtube-grid>a span{font-size:13px;line-height:1.35;color:#b7c4d7}
+.war-youtube-grid>a small{margin-top:auto;color:#8fe1d3;letter-spacing:normal;font-weight:700}
+@media(max-width:500px){.war-youtube-grid{grid-template-columns:1fr 1fr;gap:8px}.war-youtube-grid>a{padding:10px;min-height:118px}}
