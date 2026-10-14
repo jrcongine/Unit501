@@ -50,7 +50,7 @@
     const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
     const link=node('a','');link.href=url;link.download='unit501-accuracy-report.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
    });panel.append(download);
-   if(!audit.accepted){panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));if(!audit.skips.pending)return;}
+   if(!audit.accepted)panel.append(node('p','No eligible final outcomes to compare yet. Run pregame forecasts, then match them with final results.'));
    const wrap=document.createElement('div');wrap.style.overflowX='auto';
    const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;text-align:left';
    const head=document.createElement('thead'),header=document.createElement('tr');
@@ -84,6 +84,7 @@
     if(snap.selection)continue;
     const g=snap.game||{};
     for(const r of snap.records||[]){
+     if(!r||typeof r!=='object')continue;
      const team=String(r.teamId)===String(g.awayId)?g.a:String(r.teamId)===String(g.homeId)?g.h:null;
      const match=g.a&&g.h?g.a+' vs '+g.h:'Game '+r.gameId;
      const who=r.playerId==null?team:(snap.inputs?.playerName||'Player '+r.playerId);
