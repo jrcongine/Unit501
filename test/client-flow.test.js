@@ -231,7 +231,7 @@ test('miss-pattern panel shows eligible errors and selected spread decisions sep
  const after=h.nodes.get('forecast-review-results').textContent;
  assert.match(after,/Where projections miss/);
  assert.match(after,/NFL · Team points/);
- assert.match(after,/\(1 games\)/);
+ assert.match(after,/\(1 game\)/);
  assert.match(after,/projected \/ 19.0 actual/);
  assert.match(after,/NFL · Spread: [01]W–[01]L · 0 push · 0 pending/);
  const details=h.nodes.get('forecast-miss-patterns');
