@@ -219,6 +219,26 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  assert.match(text,/positive means projections ran too high/);
 });
 
+test('miss-pattern panel shows eligible errors and selected spread decisions separately',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.nodes.get('game-pick-direction').value='spread:home';h.run('sim()');
+ h.nodes.get('save-game-pick').onclick();
+ const initial=h.nodes.get('forecast-review-results').textContent;
+ assert.match(initial,/Where projections miss/);
+ assert.match(initial,/No eligible completed game forecasts/);
+ assert.match(initial,/NFL · Spread: 0W–0L · 0 push · 1 pending/);
+ h.run(`const a=Unit501ForecastArchive.read(localStorage);for(const s of a.snapshots)for(const r of s.records){r.actual=19;r.resultKnownAt=r.kickoff+10000;}localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify(a));Unit501ForecastReview.render();`);
+ const after=h.nodes.get('forecast-review-results').textContent;
+ assert.match(after,/Where projections miss/);
+ assert.match(after,/NFL · Team points/);
+ assert.match(after,/1\/10 games/);
+ assert.match(after,/projected \/ 19.0 actual/);
+ assert.match(after,/NFL · Spread: [01]W–[01]L · 0 push · 0 pending/);
+ const details=h.nodes.get('forecast-miss-patterns');
+ details.open=true;await details.dispatchEvent({type:'toggle'});
+ h.run('Unit501ForecastReview.render()');
+ assert.equal(h.nodes.get('forecast-miss-patterns').open,true);
+});
 test('ordinary prop forecasts and chosen picks stay separate with exact line and price',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
