@@ -49,7 +49,7 @@
   for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
    const players=ratings.players.filter(p=>String(p.teamId)===id).sort((a,b)=>(b.rating??-1)-(a.rating??-1)||a.name.localeCompare(b.name));
    const team=node('details','');team.className='player-rating-team';team.dataset.ratingKey='team:'+id;team.open=expanded.get('team:'+id)??false;
-   team.append(node('summary',`${name} · ${players.filter(p=>p.rating!==null).length} rated / ${players.length} players`));
+   team.append(node('summary',`${name} · ${players.filter(p=>p.rating!==null).length} rated / ${players.length} ${players.length===1?'player':'players'}`));
    const table=node('table','');table.className='player-ratings-table';
    const head=node('tr','');for(const text of ['Player / position','Production / trend','Sample','Baseline role and replacement scenario'])head.append(node('th',text));table.append(head);
    for(const p of players){
