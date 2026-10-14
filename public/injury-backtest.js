@@ -54,8 +54,42 @@ function compare(records) {
       adjustedBias: rs.reduce((n,r) => n+r.adjusted-r.actual,0)/rs.length
     }));
     const average = key => errors.length ? errors.reduce((n,r) => n+r[key],0)/errors.length : null;
+    // All diagnosis uses the SAME accepted, pregame, version-scoped targets
+    // as the accuracy report. Summarize each game once so crowded games
+    // cannot dominate directional rates or recent-window comparisons.
+    const byDate=[...games.values()].map(rs=>({
+      gameId:String(rs[0].gameId),season:String(rs[0].season),kickoff:rs[0].kickoff,
+      bias:rs.reduce((n,r)=>n+r.adjusted-r.actual,0)/rs.length,
+      mae:rs.reduce((n,r)=>n+r.adjustedError,0)/rs.length
+    })).sort((a,b)=>b.kickoff-a.kickoff||b.gameId.localeCompare(a.gameId));
+    const recent=byDate.slice(0,10),previous=byDate.slice(10,20);
+    const windowAverage=(sample,key)=>sample.length?sample.reduce((n,g)=>n+g[key],0)/sample.length:null;
+    const highGames=byDate.filter(g=>g.bias>1e-9).length;
+    const lowGames=byDate.filter(g=>g.bias< -1e-9).length;
+    const evenGames=byDate.length-highGames-lowGames;
+    // The 70% / 30-game threshold is a transparent manual-review heuristic,
+    // not a significance test or permission to adjust the model.
+    const tendency=byDate.length<30?'insufficient':
+      highGames/byDate.length>=0.7?'mostly-high':
+      lowGames/byDate.length>=0.7?'mostly-low':'mixed';
+    const seen=new Set(),worst=[];
+    for(const r of [...rows].sort((a,b)=>b.adjustedError-a.adjustedError||b.kickoff-a.kickoff)){
+      const gameKey=JSON.stringify([String(r.league),String(r.season),String(r.gameId)]);
+      if(seen.has(gameKey))continue;
+      seen.add(gameKey);
+      worst.push({league:String(r.league),season:String(r.season),gameId:String(r.gameId),
+        teamId:String(r.teamId),playerId:r.playerId==null?null:String(r.playerId),market:r.market,
+        kickoff:r.kickoff,adjusted:r.adjusted,actual:r.actual,
+        signedMiss:r.adjusted-r.actual,absoluteMiss:r.adjustedError});
+      if(worst.length>=3)break;
+    }
+    const pattern={highGames,lowGames,evenGames,tendency,
+      recentGames:recent.length,previousGames:previous.length,
+      recentMAE:windowAverage(recent,'mae'),previousMAE:windowAverage(previous,'mae'),
+      recentBias:windowAverage(recent,'bias'),previousBias:windowAverage(previous,'bias'),
+      worst};
     const baselineMAE = average('baseline'), adjustedMAE = average('adjusted');
-    return {pairs: rows.length, games: errors.length, pending: pendingRows.length, baselineMAE, adjustedMAE,
+    return {pairs: rows.length, games: errors.length, pending: pendingRows.length, baselineMAE, adjustedMAE, pattern,
       baselineBias: average('baselineBias'), adjustedBias: average('adjustedBias'),
       improvement: errors.length ? baselineMAE-adjustedMAE : null,
       status: errors.length < 30 ? 'insufficient' : adjustedMAE < baselineMAE ? 'lower-observed-error' : 'no-observed-improvement'};
