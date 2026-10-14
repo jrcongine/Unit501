@@ -91,3 +91,26 @@ test('real UI saves and grades a board-approved candidate on browser-local stora
   assert.equal(core.load(localStorage)[0].result,'won');
   assert.match(nodes.get('war-stats').textContent,/1W–0L/);
 });
+
+
+test('YouTube scouting desk links six real channels and preserves independent board voting', () => {
+  const html = fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
+  const section = html.match(/<details id="war-youtube-desk"[\s\S]*?<\/details>/);
+  assert.ok(section,'Scouting desk exists');
+  const videoLinks = [...section[0].matchAll(/href="(https:\/\/www\.youtube\.com\/[^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(videoLinks, [
+    'https://www.youtube.com/@kylekirms/videos',
+    'https://www.youtube.com/@theactionnetwork/videos',
+    'https://www.youtube.com/@SportsLine/videos',
+    'https://www.youtube.com/@BettingPros/videos',
+    'https://www.youtube.com/@WagerTalk/videos',
+    'https://www.youtube.com/c/GuyBostonSports/videos'
+  ]);
+  assert.match(section[0],/EV and Guy Boston Sports are the same source/);
+  assert.match(section[0],/rel="noopener noreferrer"/);
+  assert.match(html,/id="war-vote-jr"/);
+  assert.match(html,/id="war-vote-aria"/);
+  assert.match(html,/id="war-vote-unit501"/);
+  assert.equal(core.MEMBERS.length,3);
+  assert.equal(core.ADVISERS.length,4);
+});
