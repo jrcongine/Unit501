@@ -169,15 +169,15 @@ test('forecast shows incomplete injury coverage and clears its coverage claim wh
  h.run("invalidateSimulation('Inputs changed')");assert.equal(h.nodes.get('availability-score-status').textContent,'');
 });
 
-test('simulation archives the first adjusted score forecast and retains it across reload',async()=>{
+test('simulation archives ordinary forecasts and keeps the first forecast across edits and reload',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.run('sim()');assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),0);
+ h.run('sim()');assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
  h.run('$("awayOffenseLoss").value="4"; sim()');
  const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots[0]');
- assert.equal(saved.baseline.away,24);assert.equal(saved.adjusted.away,20);assert.equal(saved.records[0].actual,null);
+ assert.equal(saved.baseline.away,24);assert.equal(saved.adjusted.away,24);assert.equal(saved.records[0].actual,null);
  assert.ok(saved.forecastAt<saved.game.kickoff);assert.match(h.nodes.get('forecast-archive-status').textContent,/saved on this browser/);
  h.run('$("awayOffenseLoss").value="7"; sim()');
- assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots[0].adjusted.away'),20);
+ assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots[0].adjusted.away'),24);
  const next=harness(h.storage);await next.settle();assert.equal(next.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
 });
 
@@ -197,6 +197,34 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
  assert.match(text,/Baseline bias/);assert.match(text,/Adjusted bias/);
  assert.match(text,/\+5.00/);assert.match(text,/\+3.00/);
  assert.match(text,/positive means projections ran too high/);
+});
+
+test('ordinary prop forecasts and chosen picks stay separate with exact line and price',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const archive=()=>h.run('Unit501ForecastArchive.read(localStorage).snapshots');
+ assert.ok(archive().some(s=>s.kind==='prop'&&!s.selection&&s.records[0].market==='carries'));
+ const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
+ h.nodes.get('pick-direction-1:7-carries').value='under';h.nodes.get('pick-price-1:7-carries').value='-136';
+ await h.nodes.get('save-pick-1:7-carries').dispatchEvent({type:'click'});
+ const pick=archive().find(s=>s.selection);assert.equal(pick.selection.line,21.5);assert.equal(pick.selection.price,-136);assert.equal(pick.selection.direction,'under');
+ const firstCount=archive().length;
+ input.value='30.5';await input.dispatchEvent({type:'input'});assert.equal(h.nodes.get('pick-price-1:7-carries').value,'');
+ await h.nodes.get('save-pick-1:7-carries').dispatchEvent({type:'click'});
+ assert.equal(archive().length,firstCount);assert.equal(archive().find(s=>s.selection).selection.line,21.5);
+ assert.match(h.nodes.get('forecast-review-results').textContent,/under 21.5 · price -136/);
+});
+
+test('game picks freeze simulation lines and cannot use invalidated forecasts',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.nodes.get('game-pick-direction').value='spread:home';h.run('sim()');
+ h.nodes.get('game-pick-price').value='-110';h.nodes.get('save-game-pick').onclick();
+ const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots');
+ assert.equal(saved.length,2);assert.equal(saved[1].selection.line,7.5);assert.equal(saved[1].selection.direction,'home');
+ assert.equal(saved[0].inputs.marketContext.total,48.5);
+ assert.match(h.nodes.get('forecast-review-results').textContent,/home -7.5/);
+ h.nodes.get('spread').value='9.5';await h.nodes.get('spread').dispatchEvent({type:'input'});
+ h.nodes.get('save-game-pick').onclick();assert.match(h.nodes.get('forecast-archive-status').textContent,/Run an eligible pregame forecast first/);
 });
 
 test('pending-only prop markets display separately from score results',async()=>{

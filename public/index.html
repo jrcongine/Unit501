@@ -134,6 +134,10 @@
 <p id="availability-score-status" role="status" style="color:#e8b95b"></p>
 <p id="note"></p>
 <p id="forecast-archive-status" role="status"></p>
+<label>Pick to track <select id="game-pick-direction"><option value="spread:away">Away spread</option><option value="spread:home">Home spread</option><option value="total:over">Over total</option><option value="total:under">Under total</option></select></label>
+<label>American price (optional)<input id="game-pick-price" type="number" step="1" placeholder="Example: -110"></label>
+<button id="save-game-pick" type="button">Save selected pick</button>
+<p>Run the simulation first. Picks freeze the displayed spread or total. Prices left blank stay unknown. Saved forecasts and picks are local to this browser; download a backup to transfer them.</p>
 <button id="refresh-forecast-results" type="button">Match saved forecasts with final results</button>
 <button id="download-forecast-archive" type="button">Download saved forecasts</button>
 <label>Restore forecast archive <input id="import-forecast-archive" type="file" accept=".json,application/json"></label>

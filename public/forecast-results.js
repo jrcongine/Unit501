@@ -66,7 +66,7 @@
   }
   // Re-read after network awaits so forecasts saved during refresh survive.
   const latest=archiver.read(storage);
-  const identity=s=>JSON.stringify([s.game.league,s.game.season,s.game.id,s.kind||'score',s.records?.[0]?.teamId,s.records?.[0]?.playerId,s.records?.[0]?.market,s.forecastAt].map(String));
+  const identity=s=>JSON.stringify([s.game.league,s.game.season,s.game.id,s.kind||'score',s.records?.[0]?.teamId,s.records?.[0]?.playerId,s.records?.[0]?.market,s.forecastAt,s.selection?.market||'forecast'].map(String));
   const updates=new Map(archive.snapshots.map(s=>[identity(s),s]));
   latest.snapshots=latest.snapshots.map(s=>updates.get(identity(s))||s);
   storage.setItem(archiver.key,JSON.stringify(latest));

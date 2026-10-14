@@ -15,10 +15,10 @@ test('archive holds both forecasts at one timestamp with identical weather, venu
  inputs.data.teams[0].metrics.pointsFor.average=999;inputs.availability.current=false;
  assert.equal(s.inputs.data.teams[0].metrics.pointsFor.average,24);assert.equal(s.inputs.availability.current,true);
 });
-test('past games, games beyond seven days, missing data and unadjusted forecasts cannot enter archive',()=>{
+test('past games, games beyond seven days, and missing data cannot enter archive',()=>{
  const {inputs,now}=fixture();assert.equal(capture(inputs,inputs.game.kickoff),null);
  assert.equal(capture({...inputs,game:{...inputs.game,kickoff:now+7*86400000+1}},now),null);
- assert.equal(capture({...inputs,data:null},now),null);assert.equal(capture({...inputs,options:{}},now),null);
+ assert.equal(capture({...inputs,data:null},now),null);assert.ok(capture({...inputs,options:{}},now));
  assert.equal(capture({...inputs,game:{...inputs.game,id:undefined}},now),null);
 });
 test('first game forecast persists, later versions never overwrite, storage failure is explicit',()=>{
@@ -61,4 +61,37 @@ test('import rejects malformed, late, duplicate and inconsistent targets atomica
  assert.throws(()=>require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[s,s]}),now+1));
  assert.equal(data.get(key),before);
  storage.setItem=()=>{throw Error('quota');};assert.throws(()=>require('../public/forecast-archive').importArchive(storage,JSON.stringify({schema:1,snapshots:[s]}),now+1));assert.equal(data.get(key),before);
+});
+
+test('selected picks freeze separately, reject late/invalid picks and survive export/import',()=>{
+ const api=require('../public/forecast-archive'),{inputs,now}=fixture();
+ const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ const snapshot=capture({...inputs,options:{}},now);
+ save(storage,snapshot);
+ const pick={market:'spread',direction:'home',line:3.5,price:-115};
+ assert.equal(api.select(storage,snapshot,pick,now+1).saved,true);
+ assert.equal(api.select(storage,snapshot,{...pick,line:9.5},now+2).saved,false);
+ assert.equal(read(storage).snapshots.length,2);
+ assert.equal(read(storage).snapshots[1].selection.line,3.5);
+ for(const invalid of [{...pick,price:0},{...pick,line:null},{...pick,direction:'over'}])assert.equal(api.select(storage,snapshot,invalid,now+3).saved,false);
+ assert.equal(api.select(storage,snapshot,{market:'total',direction:'over',line:48.5,price:null},inputs.game.kickoff).saved,false);
+ const restored=new Map(),dest={getItem:k=>restored.get(k),setItem:(k,v)=>restored.set(k,v)};
+ assert.equal(api.importArchive(dest,data.get(key),now+4).imported,2);
+ assert.equal(read(dest).snapshots[1].selection.price,-115);
+ const bad=JSON.parse(data.get(key));bad.snapshots[1].selection.selectedAt=inputs.game.kickoff;
+ assert.throws(()=>api.importArchive(dest,JSON.stringify(bad),inputs.game.kickoff+1));
+});
+
+test('selected outcomes handle away-spread convention, totals, props, pushes and missing stats',()=>{
+ const api=require('../public/forecast-archive'),{inputs,now}=fixture(),s=capture(inputs,now);
+ s.selection={market:'spread',direction:'home',line:3,price:null,selectedAt:now};
+ assert.equal(api.selectionResult(s),'Pending statistic');
+ s.records[0].actual=20;s.records[1].actual=24;
+ assert.equal(api.selectionResult(s),'Win by statistic');
+ s.selection.direction='away';assert.equal(api.selectionResult(s),'Loss by statistic');
+ s.selection.line=4;assert.equal(api.selectionResult(s),'Push by statistic');
+ s.selection={market:'total',direction:'over',line:43.5};assert.equal(api.selectionResult(s),'Win by statistic');
+ s.kind='prop';s.records=[{actual:0}];s.selection={market:'rec',direction:'under',line:0.5};
+ assert.equal(api.selectionResult(s),'Win by statistic');
+ s.records[0].actual=null;assert.equal(api.selectionResult(s),'Pending statistic');
 });

@@ -11,6 +11,15 @@ test('Southern Miss aliases match for game odds and player props',()=>{
  const result=selectLines([e],q,now);
  assert.equal(result.awaySpread,7.5);assert.equal(result.total,48.5);
 });
+test('game prices stay paired to their market and absent prices remain unknown',()=>{
+ const event=structuredClone(e),markets=event.bookmakers[0].markets;
+ markets[0].outcomes[0].price=-105;markets[0].outcomes.push({name:e.home_team,point:-7.5,price:-115});
+ markets[1].outcomes[0].price=110;markets[1].outcomes[1].price=-130;
+ assert.deepEqual(selectLines([event],q,now).prices,{away:-105,home:-115,over:110,under:-130});
+ markets[0].outcomes[1].point=-8.5;
+ assert.equal(selectLines([event],q,now).prices.home,null);
+ assert.deepEqual(selectLines([e],q,now).prices,{away:null,home:null,over:null,under:null});
+});
 test('different schools, reversed home/away, kickoff mismatch and NFL aliases are rejected',()=>{
  for(const [a,b] of [['Virginia Tech Hokies','Virginia'],['Ohio State Buckeyes','Ohio'],['Southern Methodist','Southern Miss'],['Miami (OH)','Miami (FL)']]) assert.equal(teamMatches(a,b,true),false);
  assert.equal(teamMatches('Southern Mississippi','Southern Miss',false),false);

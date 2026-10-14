@@ -4,7 +4,11 @@ const games = $('games');
 let selected = null;
 let scoringContext = null;
 let forecastContext = null;
+let latestForecast = null;
+let gameQuotes = null;
 function invalidateSimulation(message) {
+  latestForecast=null;
+  $('game-pick-price').value='';
   $('availability-score-status').textContent='';
   $('forecast-archive-status').textContent='';
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
@@ -62,12 +66,14 @@ refreshOdds.type = 'button';
 $('matchup').after(oddsStatus, refreshOdds);
 for (const id of ['spread', 'total']) $(id).addEventListener('input', () => {
   lineEdits++;
+  gameQuotes=null;
   oddsStatus.textContent = 'Manual lines — refresh FanDuel lines to replace them.';
 });
 async function loadFanDuel() {
   if (!selected) return;
   const game = selected;
   const task = ++oddsSequence;
+  gameQuotes=null;
   const edits = lineEdits;
   refreshOdds.disabled = true;
   oddsStatus.textContent = 'Loading FanDuel spread and total…';
@@ -80,6 +86,7 @@ async function loadFanDuel() {
     if (task !== oddsSequence || selected !== game || edits !== lineEdits) return;
     if (!response.ok || data.error) throw new Error(data.error || 'FanDuel feed unavailable.');
     if (!data.available) { oddsStatus.textContent = data.message; return; }
+    gameQuotes={game,data};
     const messages = [];
     for (const [id, key, stamp] of [['spread', 'awaySpread', 'spreadUpdated'], ['total', 'total', 'totalUpdated']]) {
       if (Number.isFinite(data[key])) {
@@ -708,11 +715,29 @@ function sim() {
   $('note').textContent+=' '+paceNote;
   if(window.Unit501ForecastArchive){
     try{
-      const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
+      const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,marketContext:{awaySpread:spread,total,quotes:gameQuotes?.game===selected?gameQuotes.data:null},availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
+      latestForecast=snapshot;
+      fillGamePickPrice();
       $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
     }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
   }
 }
+
+function fillGamePickPrice(){
+  const [market,direction]=$('game-pick-direction').value.split(':');
+  const q=latestForecast?.inputs.marketContext?.quotes;
+  const updated=Date.parse(q?.[market==='spread'?'spreadUpdated':'totalUpdated']);
+  const value=q?.prices?.[direction];
+  $('game-pick-price').value=Number.isInteger(value)&&Number.isFinite(updated)&&Date.now()-updated<=1800000&&updated<=Date.now()+60000?String(value):'';
+}
+$('game-pick-direction').addEventListener('change',fillGamePickPrice);
+$('save-game-pick').onclick=()=>{
+  const choice=$('game-pick-direction').value;
+  const [market,direction]=choice.split(':');
+  const line=latestForecast?.inputs.marketContext?.[market==='spread'?'awaySpread':'total'];
+  const raw=$('game-pick-price').value.trim();
+  $('forecast-archive-status').textContent=Unit501ForecastArchive.select(localStorage,latestForecast,{market,direction,line,price:raw===''?null:Number(raw)}).message;
+};
 
 $('load').onclick = load;
 $('sim').onclick = sim;
@@ -732,7 +757,7 @@ document.addEventListener('unit501:availability-updated',()=>{if($('availability
 $('download-forecast-archive').onclick=()=>{
   try{
     const archive=Unit501ForecastArchive.read(localStorage);
-    if(!archive.snapshots.length){$('forecast-archive-status').textContent='No adjusted pregame forecasts have been saved on this browser yet.';return;}
+    if(!archive.snapshots.length){$('forecast-archive-status').textContent='No pregame forecasts have been saved on this browser yet.';return;}
     const url=URL.createObjectURL(new Blob([JSON.stringify(archive,null,2)],{type:'application/json'}));
     const link=document.createElement('a');link.href=url;link.download='unit501-forecasts.json';link.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
