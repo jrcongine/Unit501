@@ -100,6 +100,7 @@
    patternTable.append(headings);
    let found=false;
    const fmt=n=>n===null?'—':n.toFixed(2);
+   const windowText=(value,count)=>fmt(value)+' ('+count+' '+(count===1?'game':'games')+')';
    for(const [league,leagueName]of [['1','NFL'],['2','College']]){
     const series=[['Team points',audit.scores[league]],...Object.entries(audit.props[league]).map(([market,m])=>[labels[market]||market,m])];
     for(const [market,m] of series){
@@ -115,8 +116,8 @@
      const tr=node('tr','');
      for(const value of [leagueName+' · '+market,String(m.games),
        `${p.highGames} / ${p.lowGames} / ${p.evenGames}`,
-       fmt(p.recentMAE)+' ('+p.recentGames+' games)',
-       fmt(p.previousMAE)+' ('+p.previousGames+' games)',signal,sample]){
+       windowText(p.recentMAE,p.recentGames),
+       windowText(p.previousMAE,p.previousGames),signal,sample]){
       const td=node('td',value);td.style.cssText='padding:9px 6px;border-bottom:1px solid #293142;vertical-align:top';tr.append(td);
      }
      patternTable.append(tr);
