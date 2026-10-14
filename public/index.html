@@ -54,13 +54,20 @@
 <summary><strong>⚔ 501 WAR ROOM</strong> <span class="war-muted">Board votes • outside intelligence • results</span></summary>
 <p class="war-muted">Three equal votes: J.R., Aria and Unit 501. Two matching votes decide a candidate. Outside handicappers advise but never vote. Approval is not a recommendation to bet without checking price and availability.</p>
 <h3>Intelligence division</h3>
+<div class="war-record-actions">
+<label>Public picks <select id="war-feed-league"><option value="nfl">NFL</option><option value="ncaaf">College football</option></select></label>
+<button id="war-feed-refresh" type="button">Refresh picks</button>
+</div>
+<p class="war-muted">Covers and WagerTalk public selections appear here automatically. Source prices are not live FanDuel quotes. This feed covers the selected league, not just your Game Lab matchup. Outside picks never cast board votes.</p>
+<p id="war-feed-status" role="status" aria-live="polite">Open the War Room to load public picks.</p>
+<div id="war-feed" class="war-feed-grid"></div>
 <nav class="war-sources" aria-label="Outside handicapper sources">
 <a href="https://www.covers.com/picks" target="_blank" rel="noopener noreferrer">Covers ↗</a>
 <a href="https://www.wagertalk.com/free-sports-picks" target="_blank" rel="noopener noreferrer">WagerTalk ↗</a>
 <a href="https://www.juicereel.com/" target="_blank" rel="noopener noreferrer">Juice Reel ↗</a>
 <a href="https://www.youtube.com/c/GuyBostonSports/videos" target="_blank" rel="noopener noreferrer">EV / Guy Boston ↗</a>
 </nav>
-<p class="war-muted">These links open research sources; picks, quotes and records are not automatically retrieved or verified. Enter sourced opinions below.</p>
+<p class="war-muted">Original source pages and additional research. EV video picks and Juice Reel records still require source review.</p>
 <details id="war-youtube-desk" class="war-youtube-desk" open>
 <summary>▶ YouTube scouting desk <span class="war-muted">6 channels · latest videos</span></summary>
 <p class="war-muted">One-tap links to the channels' videos. This does not retrieve or verify picks automatically.</p>
@@ -245,6 +252,7 @@
 <script src="predictions.js"></script>
 <script src="war-room-core.js"></script>
 <script src="war-room.js"></script>
+<script src="outside-picks.js"></script>
 
 </body>
 

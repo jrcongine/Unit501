@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const path = require('path');
 const fanduel = require('./fanduel');
+const outsidePicks = require('./outside-picks').createFeed();
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
@@ -69,6 +70,11 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/outside-picks'){
+      const league=u.searchParams.get('league')||'nfl';
+      if(!['nfl','ncaaf'].includes(league))return send(res,400,{error:'Choose NFL or college football.'});
+      return send(res,200,await outsidePicks(league));
+    }
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
     if (u.pathname === '/api/player-ratings') {
       const q={league:u.searchParams.get('league')||'1',season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
