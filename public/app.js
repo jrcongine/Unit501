@@ -370,6 +370,7 @@ function showTeamContext(data, game) {
       : 'Not enough earlier complete scoring history for a model check yet.';
     const explanation=document.createElement('p');explanation.textContent=validation.explanation;
     details.append(summary,description,explanation);
+    if(validation.scoreAudit)details.append(Unit501ScoreAuditUI.render(validation.scoreAudit,'Replay scoring audit'));
     if(validation.legacy){
       const comparison=document.createElement('p');
       comparison.textContent=`Previous formula on the same games: score error ${validation.legacy.scoreMAE.toFixed(1)}, margin error ${validation.legacy.marginMAE.toFixed(1)}, total error ${validation.legacy.totalMAE.toFixed(1)}. Lower is better; the new formula is not assumed to win this comparison.`;

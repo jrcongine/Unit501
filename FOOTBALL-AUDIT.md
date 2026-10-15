@@ -30,3 +30,26 @@ Existing schedule-strength, home-field, injury-scenario and wind tests remain in
 Production ratings now cover NFL and verified FBS rosters and update with season/recent results. Confirmed same-position replacement scenarios transfer recorded workload, update supported props, and change team scores when complete offensive yardage exists. They compare workload and efficiency rather than multiplying production percentiles into baseline scores. The scenario score conversion is an explicitly unvalidated assumption. Full talent grades and automatic valuations for every position remain unfinished: blocking, detailed coverage, verified starters, replacement quality and complete transaction history are not supplied by the existing box-score model. Multiplying team scores or props by production percentiles would count the same performance twice; this audit does not introduce that shortcut. Prop baselines already change with recorded usage and recent efficiency. Basketball and baseball remain deferred until football's live validation is satisfactory.
 
 The first football fix set was merged as PR #14. The subsequent player/replacement/calibration extension is described in FOOTBALL-MODEL.md. Deployment status must be checked separately from creating a PR.
+
+## October 14: total and margin diagnostics
+
+Historical model check and saved-forecast accuracy now include full-game total
+MAE/bias, margin MAE, and bias in the predicted favorite's winning margin.
+Positive favorite bias includes upset losses; it does not take the absolute value
+of the actual margin. Pick'em projections are excluded from favorite bias.
+Reports show all eligible games, the latest ten, and pregame margin bands.
+
+Saved audits require both eligible team-score targets from the same snapshot time
+and kickoff, exclude selected-pick snapshots, and separate league, season and
+model version. Existing archive validation still rejects ambiguous, late and
+mixed-version targets. Reports export the scoring audit with existing metrics.
+
+An experimental candidate subtracts earlier mean total error (bounded to +/-6)
+and multiplies margins by 0.85. It trains on at least 30 earlier games with a
+24-hour kickoff gap and result timestamps preceding the forecast. Replay uses a
+24-hour result-availability proxy, not actual publication timestamps. Comparison
+uses exactly the same later games; 30 later games and improvement in both total
+and margin MAE flag a candidate for review only. This is an in-season diagnostic,
+not independent validation, and does not activate corrections or change scores.
+Actual device-local forecast history is evaluated on that device; development
+fixtures are not evidence of live predictive improvement.

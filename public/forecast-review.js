@@ -44,6 +44,7 @@
    panel.append(node('h3','All saved forecasts'));
    const audit=Unit501InjuryBacktest.compare(scoped.filter(s=>!s.selection).flatMap(s=>s.records||[]));
    panel.append(node('p',`${audit.accepted} matched targets. ${audit.skips.pending} pending final outcomes. Excluded: ${audit.skips.ambiguous} duplicate, ${audit.skips.invalid} invalid, ${audit.skips.late} late and ${audit.skips.version} mixed-model targets.`));
+   for(const check of audit.scoringAudits||[])panel.append(Unit501ScoreAuditUI.render(check,`${check.league==='1'?'NFL':'College'} ${check.season} · saved scoring audit`));
    const download=node('button','Download filtered accuracy report');download.type='button';
    download.addEventListener('click',()=>{
     const report=Unit501ForecastDashboard.report(scoped,filters,audit);

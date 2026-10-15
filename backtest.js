@@ -1,5 +1,6 @@
 'use strict';
 const model=require('./public/team-model');
+const scoreAudit=require('./public/score-audit');
 const probability=require('./public/probability-calibration');
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
 // Average within each game first, so non-push threshold counts cannot change its weight.
@@ -114,7 +115,9 @@ function validate(games,query,snapshot) {
   const trainingBefore=query.before-86400000;
   const checksForActivation=Object.fromEntries(Object.entries(probabilityChecks).map(([key,rows])=>[key,probabilitySummary(rows.filter(r=>r.kickoff<trainingBefore))]));
   const evaluated=records.filter(r=>Number.isFinite(r.brier));
-  return {modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
+  const scoringAudit=scoreAudit.audit(records.map(r=>({...r,knownAt:r.kickoff+86400000})));
+  scoringAudit.explanation+=' Replay uses kickoff plus 24 hours as a conservative result-availability proxy, not an archived publication timestamp. Replay omits historical weather and injuries.';
+  return {scoreAudit:scoringAudit,modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
     scoreMAE:errors.length?mean(errors.map(e=>(Math.abs(e.away)+Math.abs(e.home))/2)):null,
     marginMAE:errors.length?mean(errors.map(e=>Math.abs(e.home-e.away))):null,
     totalMAE:errors.length?mean(errors.map(e=>Math.abs(e.home+e.away))):null,
