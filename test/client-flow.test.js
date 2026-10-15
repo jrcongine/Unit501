@@ -47,8 +47,8 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
- if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','line-watch.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
 }
@@ -621,4 +621,35 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  assert.equal(h.run('latestForecast'),null);
  assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded/i);
  assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
+});
+
+test('observed FanDuel changes appear in Game Lab only after newer valid price timestamps',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ const scope=h.run('selected'),key='unit501:observed-fanduel:v1:'+scope.league+':'+scope.season+':'+scope.id+':game:total';
+ assert.equal(JSON.parse(h.storage.get(key)).firstLine,48.5);
+ const old=h.context.fetch;
+ h.context.fetch=async url=>String(url).startsWith('/api/fanduel')?
+   {ok:true,json:async()=>({available:true,awaySpread:7.5,total:47.5,spreadUpdated:Date.now(),totalUpdated:Date.now()+10})}:old(url);
+ const btn=h.created.find(x=>x.textContent==='Refresh FanDuel lines');
+ await btn.dispatchEvent({type:'click'});await h.settle();
+ const x=JSON.parse(h.storage.get(key));assert.equal(x.firstLine,48.5);assert.equal(x.lastLine,47.5);
+ const line=h.created.find(x=>x.tag==='p'&&x.textContent.includes('since first observed'));
+ assert.ok(line);assert.match(line.textContent,/since first observed 48.5/);
+});
+test('automatic research queue omits thin samples and never casts board votes',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const choice=h.nodes.get('prop-filter-shortlist');
+ choice.value='automatic';await choice.dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Automatic research queue only/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/No lines match these filters/);
+ assert.equal(h.nodes.get('war-stats')?.textContent||'', '');
+});
+test('auto prep waits for complete official injury coverage instead of freezing early forecasts',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ const timer=h.timers.find(x=>x.delay===0&&x.active);
+ assert.ok(timer);timer.fn();await h.settle();
+ assert.match(h.nodes.get('auto-prep-status').textContent,/waiting for fresh, matching NFL/);
+ assert.equal(h.nodes.get('score').textContent,'—');
 });
