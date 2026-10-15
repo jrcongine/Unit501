@@ -644,9 +644,10 @@ async function choose(game) {
   scoringContext = null;
   game.league = $('league').value;
   game.season = $('date').value.slice(0,4);
+  const priorLeague=selected?.league;
   selected = game;
-  $('autoInjuries').checked=game.league==='1';
-  injuryModeChanged();
+  if(game.league!=='1'){ $('autoInjuries').checked=false;injuryModeChanged(); }
+  else if(priorLeague&&priorLeague!=='1'){ $('autoInjuries').checked=true;injuryModeChanged(); }
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
   $('player-lab').classList.remove('hidden');
