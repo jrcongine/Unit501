@@ -84,6 +84,16 @@ test('already-reviewed lineup role does not get a second automatic offensive ded
  assert.equal(r.injury.awayOffense,0);
  assert.match(r.withheld.join(' '),/already has a lineup scenario/);
 });
+test('one team's missing official or depth coverage blocks adjustment to both sides',()=>{
+ const d=build();add(d,'1',{id:'5',name:'Away Starter',position:'CB'});
+ d.teams[1].official.available=false;
+ const out=evaluate(d,game,null,now);
+ assert.equal(out.ready,false);assert.equal(out.injury.awayDefense,0);
+ assert.equal(out.injury.homeDefense,0);
+ assert.equal(out.applied.length,0);
+ assert.match(out.message,/No automatic points for either team/);
+});
+
 test('no live data, post-kickoff and non-NFL games never imply health or adjustments',()=>{
  assert.equal(evaluate(null,game,null,now).injury.homeDefense,0);
  assert.match(evaluate(null,game,null,now).message,/unknown, not healthy/);
