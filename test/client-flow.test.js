@@ -648,6 +648,7 @@ test('automatic research queue omits thin samples and never casts board votes',a
 test('auto prep waits for complete official injury coverage instead of freezing early forecasts',async()=>{
  const h=harness(new Map(),true);await h.settle();
  h.nodes.get('auto-prep-enabled').checked=true; // The minimal DOM harness does not parse checked attributes.
+ h.nodes.get('autoInjuries').checked=true; // Real browser honors the checked attribute.
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('auto-prep-now').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('auto-prep-status').textContent,/waiting for fresh, matching NFL/);
