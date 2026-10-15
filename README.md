@@ -166,3 +166,23 @@ no automated model support/review flags, no incomplete workload, and a
 projection differing from the line. It is a data-quality filter for human
 research, **not** a pick, hit probability or EV ranking. It preserves the
 existing manual shortlist and independent J.R./Aria/Unit 501 War Room votes.
+
+
+### Latest completed-day report and replacement review
+The Saved forecast accuracy view now leads with the **latest game date
+containing at least one final statistic in this browser's saved forecasts**.
+It reuses the strict eligibility gates already applied to accuracy audits and
+shows matched targets, game-weighted per-market absolute misses, signed bias,
+and the statistical outcomes of any separately saved selected picks. Missing
+box scores and earlier unsaved forecasts cannot be reconstructed; this is not
+a bookmaker settlement or automatic profit ledger. The report updates when
+the archive's final-result refresh completes.
+
+After building league-wide player ratings, expand **Automatic missing-starter
+replacement review** to see flagged offensive starters from current matched
+availability reports and available same-position depth/usage candidates together
+in one place. Missing profiles, unmatched roles and uncertain workload are
+reported rather than filled. This is a **read-only proposal**: the existing
+review/confirmation flow still controls whether any inferred replacement
+touches or score changes actually apply. The automatic injury-point heuristic
+and this workload-review display are separate.
