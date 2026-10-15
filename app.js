@@ -159,7 +159,14 @@ async function load() {
       throw new Error('The data provider did not return a game list.');
     }
 
-    const slate = data.response.map(parseGame);
+    // The provider includes aggregate Division II/III rows with no teams.
+    // Keep partially identified matchups, but do not render empty placeholders.
+    const slate = data.response.filter(game => {
+      const teams = game.teams || {};
+      return [teams.away || teams.visitors, teams.home].some(team =>
+        team && (Number(team.id) > 0 || (typeof team.name === 'string' && team.name.trim()))
+      );
+    }).map(parseGame);
 
     if (!slate.length) {
       $('status').textContent = 'NO GAMES RETURNED';
