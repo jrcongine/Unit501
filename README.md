@@ -142,6 +142,7 @@ betting edges or guaranteed injury scoring.
 
 
 ### Matchup-prep and line-monitor automation (experimental)
+Automatic injury scoring is NFL-only and switches off when an FBS matchup is selected; college automatic game prep does **not** wait for NFL official injury and depth feeds, which are not comparable to college availability data. College injury point fields remain manual and default to zero.
 **Automatic game prep** is enabled on matchup selection. It reuses existing
 automatic current FanDuel spread/total, scoring, weather and availability
 requests, starts player projections and their quoted prop comparisons, and runs
