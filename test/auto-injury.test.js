@@ -84,7 +84,7 @@ test('already-reviewed lineup role does not get a second automatic offensive ded
  assert.equal(r.injury.awayOffense,0);
  assert.match(r.withheld.join(' '),/already has a lineup scenario/);
 });
-test('one team's missing official or depth coverage blocks adjustment to both sides',()=>{
+test("one team's missing official or depth coverage blocks adjustment to both sides",()=>{
  const d=build();add(d,'1',{id:'5',name:'Away Starter',position:'CB'});
  d.teams[1].official.available=false;
  const out=evaluate(d,game,null,now);
