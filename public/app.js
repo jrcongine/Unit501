@@ -645,6 +645,8 @@ async function choose(game) {
   game.league = $('league').value;
   game.season = $('date').value.slice(0,4);
   selected = game;
+  $('autoInjuries').checked=game.league==='1';
+  injuryModeChanged();
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
   $('player-lab').classList.remove('hidden');
