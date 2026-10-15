@@ -42,6 +42,18 @@
     const line=p.market==='spread'&&p.direction==='home'?-p.line:p.line;
     panel.append(node('p',`${name} · ${labels[p.market]||p.market} · ${p.direction} ${line} · price ${p.price===null?'unknown':p.price>0?'+'+p.price:p.price} · ${Unit501ForecastArchive.selectionResult(s)} · ${new Date(p.selectedAt).toLocaleString('en-US',{timeZone:'America/Chicago'})} CT · ${r.modelVersion}`));
    }
+   const latest=Unit501ForecastDashboard.latestDay(scoped,Unit501InjuryBacktest.compare,Unit501ForecastArchive.selectionResult);
+   panel.append(node('h3','Latest completed game-day report'));
+   if(!latest)panel.append(node('p','No completed game-day forecasts with final statistics have been recorded in this browser and filter scope yet.'));
+   else{
+    panel.append(node('p',`${latest.date} CT · ${latest.matchedTargets} eligible matched targets. ${latest.selected.wins} selected-pick statistical wins, ${latest.selected.losses} losses, ${latest.selected.pushes} pushes, ${latest.selected.pending} pending (not sportsbook settlements).`));
+    if(!latest.markets.length)panel.append(node('p','The latest completed date has no eligible matched forecasts after validation; review the excluded and pending targets below.'));
+    for(const m of latest.markets){
+     const name=m.market==='Team points'?'Team points':labels[m.market]||m.market;
+     panel.append(node('p',`${m.league==='1'?'NFL':'College'} · ${name}: ${m.games} matched games / ${m.targets} targets · adjusted average absolute miss ${m.averageMiss.toFixed(2)} vs unadjusted ${m.baselineMiss.toFixed(2)} · ${m.bias>0?'+':''}${m.bias.toFixed(2)} signed projection bias.`));
+    }
+    panel.append(node('p','Latest game date with at least one saved final statistic, not a reconstruction of every game played that day. Missing results and unsaved predictions are not counted as losses. Errors are in each market’s own units and cannot establish a betting edge.'));
+   }
    panel.append(node('h3','All saved forecasts'));
    const audit=Unit501InjuryBacktest.compare(scoped.filter(s=>!s.selection).flatMap(s=>s.records||[]));
    panel.append(node('p',`${audit.accepted} matched targets. ${audit.skips.pending} pending final outcomes. Excluded: ${audit.skips.ambiguous} duplicate, ${audit.skips.invalid} invalid, ${audit.skips.late} late and ${audit.skips.version} mixed-model targets.`));
