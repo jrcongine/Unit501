@@ -750,7 +750,10 @@ function sim() {
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
   $('note').textContent+=' '+paceNote;
   if(window.Unit501ForecastArchive){
-    try{
+    if(automatic&&!automatic.ready){
+      latestForecast=null;
+      $('forecast-archive-status').textContent='Forecast not archived: automatic injury feeds or depth coverage are incomplete. Rerun after both teams have current reports; missing coverage must not become the frozen first forecast.';
+    }else try{
       const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,marketContext:{awaySpread:spread,total,quotes:gameQuotes?.game===selected?gameQuotes.data:null},availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
       latestForecast=snapshot;
       fillGamePickPrice();
