@@ -46,6 +46,26 @@
   const results=document.getElementById('ratings-results');if(!results||!ratings)return;
   const expanded=new Map(Array.from(results.querySelectorAll?.('details[data-rating-key]')||[],el=>[el.dataset.ratingKey,el.open]));
   results.replaceChildren();
+  const availability=window.Unit501Availability?.snapshot();
+  const review=node('details','');review.id='automatic-replacement-review';
+  review.append(node('summary','Automatic missing-starter replacement review'));
+  review.append(node('p','Read-only scouting: official or supported availability reports identify the absence. Depth-chart candidates and workload splits are estimates based on recorded usage; nothing is applied to team scores or player props until a scenario is reviewed and confirmed.'));
+  let missing=0;
+  for(const [teamId,teamName]of [[game.awayId,game.a],[game.homeId,game.h]]){
+   for(const p of ratings.players.filter(p=>String(p.teamId)===teamId&&['QB','RB','FB','WR','TE'].includes(p.role))){
+    const reported=Unit501InjuryModel.assess(availability,game,teamId,p.id,Date.now(),true);
+    if(!['unavailable','nonstarter'].includes(reported.state))continue;
+    missing++;
+    const proposal=Unit501LineupModel.recommend(ratings.players,p,availability,game,Unit501InjuryModel.assess);
+    const candidates=proposal.candidates.map(c=>c.name+
+      ' (role '+c.roleState+', workload '+c.workloadState+')').join(', ');
+    review.append(node('p',teamName+' · '+p.name+' ('+p.position+') — '+reported.state+
+      '. Replacement: '+(candidates||'unknown')+'. '+proposal.reason));
+    for(const gap of proposal.workloadGaps||[])review.append(node('p','Incomplete '+gap.category+' profile — '+gap.player+': '+gap.reason));
+   }
+  }
+  if(!missing)review.append(node('p','No confirmed missing QB/RB/FB/WR/TE with a supported roster identity in the current reviewed reports. This is not a guarantee everyone is healthy.'));
+  results.append(review);
   for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
    const players=ratings.players.filter(p=>String(p.teamId)===id).sort((a,b)=>(b.rating??-1)-(a.rating??-1)||a.name.localeCompare(b.name));
    const team=node('details','');team.className='player-rating-team';team.dataset.ratingKey='team:'+id;team.open=expanded.get('team:'+id)??false;
