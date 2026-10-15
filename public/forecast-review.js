@@ -84,14 +84,14 @@
     const div=node('div','');div.style.overflowX='auto';
     const tbl=node('table','');tbl.style.cssText='width:100%;border-collapse:collapse;text-align:left;font-size:.9em';
     const header=node('tr','');
-    for(const heading of ['League / season / model','Market','Matched games / targets','Pending targets','Average miss','Average signed bias','Latest 10 avg miss','Previous 10 avg miss','Recent direction']){const h=node('th',heading);h.setAttribute('scope','col');h.style.padding='8px 6px';header.append(h);}
+    for(const heading of ['League / season / model','Market','Matched games / targets','Pending targets','Unadjusted avg miss','Adjusted avg miss','Average signed bias','Latest 10 avg miss','Previous 10 avg miss','Recent direction']){const h=node('th',heading);h.setAttribute('scope','col');h.style.padding='8px 6px';header.append(h);}
     const thead=node('thead','');thead.append(header);tbl.append(thead);
     const tbody=node('tbody','');
     const n2=x=>Number.isFinite(x)?x.toFixed(2):'—';
     for(const m of reliabilityRows){
      const tr=node('tr','');
      const scope=`${m.league==='1'?'NFL':'College'} · ${m.season} · ${m.modelVersion}`;
-     for(const v of [scope,labels[m.market]||m.market,`${m.games} games / ${m.targets} targets`,String(m.pending),n2(m.mae),n2(m.bias),
+     for(const v of [scope,labels[m.market]||m.market,`${m.games} games / ${m.targets} targets`,String(m.pending),n2(m.baselineMAE),n2(m.mae),n2(m.bias),
        `${n2(m.recentMAE)} (${m.recentGames})`,`${n2(m.previousMAE)} (${m.previousGames})`,m.trend]){
       const td=node('td',v);td.style.cssText='padding:8px 6px;border-bottom:1px solid #293142;vertical-align:top';tr.append(td);
      }
