@@ -665,3 +665,17 @@ test('player ratings automatically summarize reported missing starters without a
  assert.match(review.textContent,/nothing is applied/i);
  assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
 });
+
+test('college selection does not enable NFL injury scoring or wait for unmatched NFL reports',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ h.nodes.get('league').value='2';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('autoInjuries').checked,false);
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
+ await h.nodes.get('auto-prep-now').dispatchEvent({type:'click'});await h.settle();
+ assert.doesNotMatch(h.nodes.get('auto-prep-status').textContent,/matching NFL roster/);
+ h.nodes.get('league').value='1';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('autoInjuries').checked,true);
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
+});
