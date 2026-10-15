@@ -611,3 +611,14 @@ test('Game Lab automatically scores a confirmed defender absence and cleanly swi
  assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0);
  assert.doesNotMatch(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
 });
+
+test('missing auto-injury feed coverage leaves baseline visible but does not freeze an incomplete archived forecast',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.nodes.get('autoInjuries').checked=true;
+ await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ h.run('sim()');
+ assert.notEqual(h.nodes.get('score').textContent,'—');
+ assert.equal(h.run('latestForecast'),null);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded/i);
+ assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
+});
