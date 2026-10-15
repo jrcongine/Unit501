@@ -43,3 +43,26 @@ test('download report captures the displayed scope and separate pick counts',()=
  filters.league='2';assert.equal(out.filters.league,'1');
  assert.equal(JSON.parse(JSON.stringify(out)).accuracy.accepted,2);
 });
+
+test('latest recorded game-day report only summarizes matched archived finals in Central Time',()=>{
+ const {latestDay}=require('../public/forecast-dashboard');
+ const {compare}=require('../public/injury-backtest');
+ const {selectionResult}=require('../public/forecast-archive');
+ const earlier=Date.parse('2026-10-12T22:00:00Z'),later=Date.parse('2026-10-15T23:00:00Z');
+ const row=(gameId,kickoff,actual)=>({
+  league:'1',season:'2026',gameId:String(gameId),teamId:'1',kind:'score',market:'points',
+  modelVersion:'v1',evidenceUrl:'https://example.com/captured',kickoff,
+  forecastAt:kickoff-600000,inputAsOf:kickoff-600000,resultKnownAt:actual===null?null:kickoff+9000000,
+  baseline:21,adjusted:20,actual
+ });
+ const snap=(id,kickoff,actual)=>({game:{id:String(id),kickoff,league:'1',season:'2026',awayId:'1',homeId:'2'},records:[row(id,kickoff,actual)]});
+ const old=snap(10,earlier,17),recent=snap(11,later,15),pending=snap(12,later,null);
+ const statPick={...recent,selection:{market:'total',direction:'over',line:40}};
+ const summary=latestDay([old,recent,pending,statPick],compare,selectionResult);
+ assert.equal(summary.date,'2026-10-15');assert.equal(summary.matchedTargets,1);
+ assert.equal(summary.markets.length,1);assert.equal(summary.markets[0].averageMiss,5);
+ assert.equal(summary.markets[0].baselineMiss,6);
+ assert.equal(summary.selected.pending,1);
+ assert.equal(summary.markets[0].games,1);
+ assert.equal(latestDay([pending],compare,selectionResult),null);
+});

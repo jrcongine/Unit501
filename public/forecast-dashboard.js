@@ -28,7 +28,35 @@
    snapshots:snapshots.length,forecastSnapshots:snapshots.filter(s=>!s.selection).length,selectedPickSnapshots:snapshots.filter(s=>s.selection).length,
    accuracy:audit,note:'Forecast accuracy excludes selected picks. Dates refer to game kickoff in America/Chicago. Browser-local history only; not reconstructed season history. Descriptive errors are not betting profit or proof of future accuracy.'};
  }
- const api={filter,dateKey,diagnosis,report};
+ function latestDay(snapshots,compare,selectionResult){
+  // The latest game day with at least one recorded final statistic. No historical reconstruction.
+  const completed=snapshots.filter(s=>!s.selection&&Array.isArray(s.records)&&
+    s.records.some(r=>Number.isFinite(r?.actual)&&Number.isFinite(r?.resultKnownAt)));
+  const dates=completed.map(s=>dateKey(s.game?.kickoff)).filter(Boolean).sort();
+  if(!dates.length)return null;
+  const date=dates[dates.length-1];
+  const scoped=snapshots.filter(s=>dateKey(s.game?.kickoff)===date);
+  const audit=compare(scoped.filter(s=>!s.selection).flatMap(s=>s.records||[]));
+  const markets=[];
+  for(const league of ['1','2']){
+   const values=[['Team points',audit.scores[league]],
+     ...Object.entries(audit.props[league]).map(([market,m])=>[market,m])];
+   for(const [market,m] of values)if(m.games)markets.push({
+    league,market,games:m.games,targets:m.pairs,pending:m.pending,
+    averageMiss:m.adjustedMAE,bias:m.adjustedBias,baselineMiss:m.baselineMAE
+   });
+  }
+  const pickStats={wins:0,losses:0,pushes:0,pending:0};
+  for(const snap of scoped.filter(s=>s.selection)){
+   const outcome=selectionResult(snap);
+   if(outcome==='Win by statistic')pickStats.wins++;
+   else if(outcome==='Loss by statistic')pickStats.losses++;
+   else if(outcome==='Push by statistic')pickStats.pushes++;
+   else pickStats.pending++;
+  }
+  return {date,matchedTargets:audit.accepted,excluded:audit.skips,markets,selected:pickStats};
+ }
+ const api={filter,dateKey,diagnosis,report,latestDay};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.Unit501ForecastDashboard=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
