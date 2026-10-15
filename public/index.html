@@ -151,7 +151,10 @@
 </div>
 
 <details>
-<summary>Injury impact scenario — optional</summary>
+<summary>Injury scoring — automatic or manual</summary>
+<label><input id="autoInjuries" type="checkbox" checked> Automatically apply conservative injury scenarios (experimental)</label>
+<p id="auto-injury-status" role="status" aria-live="polite">Automatic mode is on. Confirmed NFL Out reports must match current roster and depth-chart evidence. Unsupported absences stay unvalued; zero does not mean healthy.</p>
+<p>Automatic mode computes injury-point sensitivities when you run the simulation. The manual boxes below are disabled while it is on. To enter your own assumptions, turn automatic mode off. Avoid counting the same absence in player replacement scenarios. The automatic estimates are not calibrated or proven player values.</p>
 <p>Review the roster and injury reports below, then enter your estimated impact in points. Reports do not determine player value or replacement quality. Zero means no scenario adjustment, not confirmed health. These estimates change team scores and simulations, not player props.</p>
 <div class="grid">
 <label>Away offense loss (points)<input id="awayOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
@@ -243,6 +246,7 @@
 <script src="forecast-dashboard.js"></script>
 <script src="forecast-review.js"></script>
 <script src="venue-weather.js"></script>
+<script src="auto-injury.js"></script>
 <script src="app.js"></script>
 
 <script src="injury-model.js"></script>
