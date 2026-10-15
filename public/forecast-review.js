@@ -4,6 +4,7 @@
  const panel=document.getElementById('forecast-review-results');
  const filters={league:'',season:'',modelVersion:'',from:'',to:''};
  let patternsOpen=false;
+ let reliabilityOpen=false;
  const labels={passYds:'Passing yards',passTD:'Passing TDs',carries:'Rushing attempts',rushYds:'Rushing yards',rushTD:'Rushing TDs',recYds:'Receiving yards',rec:'Receptions',recTD:'Receiving TDs'};
  const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  function render(){
@@ -71,6 +72,35 @@
     }
    }
    table.append(body);wrap.append(table);panel.append(wrap,node('p','Pending targets have no matched final statistic yet; this can include upcoming games or missing player statistics after a game ends. They do not count toward scored games or accuracy, and missing stats are never treated as zero. Bias is forecast minus actual: positive means projections ran too high; negative means they ran too low. Near-zero bias can hide large misses in opposite directions, so read it alongside average absolute miss. Both measures use equal weight per game, comparing the same targets with and without scenario adjustments. Leagues and prop markets stay separate. Fewer than 30 games is insufficient evidence; larger samples describe observed errors and do not establish future accuracy or betting profit. Device timestamps and captured reports still require review.'));
+
+   // Segregate leagues, seasons, models, and prop units; never rank yardage against TD counts.
+   const reliability=node('details','');reliability.id='forecast-market-reliability';reliability.open=reliabilityOpen;
+   reliability.addEventListener('toggle',()=>{reliabilityOpen=reliability.open;});
+   reliability.append(node('summary','Market reliability — recorded results by prop type'));
+   reliability.append(node('p','Each completed game counts once per market, even if multiple players were projected. The latest and previous windows each use up to 10 matched games, not calendar days. Leagues, seasons and model versions stay separate. These are diagnostic errors measured in each market’s own units; do not compare yards with touchdowns or interpret the smallest error as the best wager.'));
+   const reliabilityRows=audit.marketReliability||[];
+   if(!reliabilityRows.length)reliability.append(node('p','No recorded prop forecasts in this view yet. Load pregame player projections, then match completed-game statistics to build this history.'));
+   else{
+    const div=node('div','');div.style.overflowX='auto';
+    const tbl=node('table','');tbl.style.cssText='width:100%;border-collapse:collapse;text-align:left;font-size:.9em';
+    const header=node('tr','');
+    for(const heading of ['League / season / model','Market','Matched games / targets','Pending targets','Unadjusted avg miss','Adjusted avg miss','Average signed bias','Latest 10 avg miss','Previous 10 avg miss','Recent direction']){const h=node('th',heading);h.setAttribute('scope','col');h.style.padding='8px 6px';header.append(h);}
+    const thead=node('thead','');thead.append(header);tbl.append(thead);
+    const tbody=node('tbody','');
+    const n2=x=>Number.isFinite(x)?x.toFixed(2):'—';
+    for(const m of reliabilityRows){
+     const tr=node('tr','');
+     const scope=`${m.league==='1'?'NFL':'College'} · ${m.season} · ${m.modelVersion}`;
+     for(const v of [scope,labels[m.market]||m.market,`${m.games} games / ${m.targets} targets`,String(m.pending),n2(m.baselineMAE),n2(m.mae),n2(m.bias),
+       `${n2(m.recentMAE)} (${m.recentGames})`,`${n2(m.previousMAE)} (${m.previousGames})`,m.trend]){
+      const td=node('td',v);td.style.cssText='padding:8px 6px;border-bottom:1px solid #293142;vertical-align:top';tr.append(td);
+     }
+     tbody.append(tr);
+    }
+    tbl.append(tbody);div.append(tbl);reliability.append(div);
+   }
+   reliability.append(node('p','A minimum of 30 distinct matched games in the same league, season, model version and market is required before comparing recent and prior errors; a 10% change is only a review heuristic, not statistical significance. Pending or missing statistics do not count as misses or as zeros. Duplicate, late, invalid, mixed-model and selected-pick rows are excluded using the forecast accuracy gates. Observed accuracy cannot validate a hit probability, sportsbook edge or future profitability. Browser-local archive history can be incomplete.'));
+   panel.append(reliability);
 
    // Diagnostic view is intentionally read-only and collapsed by default.
    // It uses the same eligible archive targets as the accuracy comparison above.

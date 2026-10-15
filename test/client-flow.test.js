@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -558,4 +558,29 @@ test('data-support display and filters keep thin samples visible without claimin
   currentFilter.value='clean';await currentFilter.dispatchEvent({type:'change'});
   assert.equal(h.nodes.get('copy-prop-board').disabled,true);
   assert.match(board.textContent,/No lines match these filters/);
+});
+
+test('saved accuracy UI shows market reliability without counting selected picks as model forecasts',async()=>{
+  const h=harness();await h.settle();
+  const forecast={
+    schema:1,kind:'prop',forecastAt:90000,
+    game:{league:'1',season:'2026',id:'100',awayId:'1',homeId:'2',a:'Team A',h:'Team B',kickoff:100000},
+    inputs:{playerName:'RB 1'},records:[{
+      league:'1',season:'2026',gameId:'100',teamId:'1',playerId:'7',
+      kind:'prop',market:'recYds',modelVersion:'player-v1',
+      evidenceUrl:'https://example.org/archived',kickoff:100000,forecastAt:90000,inputAsOf:80000,
+      resultKnownAt:120000,baseline:30,adjusted:26,actual:20
+    }]
+  };
+  const chosen={...forecast,selection:{market:'recYds',direction:'over',line:19.5,price:-110,selectedAt:95000}};
+  h.storage.set('unit501-score-archive-v1',JSON.stringify({schema:1,snapshots:[forecast,chosen]}));
+  h.run('window.Unit501ForecastReview.render()');
+  const reliability=h.nodes.get('forecast-market-reliability');
+  assert.ok(reliability);
+  assert.match(reliability.textContent,/Market reliability/);
+  assert.match(reliability.textContent,/NFL · 2026 · player-v1/);
+  assert.match(reliability.textContent,/Receiving yards/);
+  assert.match(reliability.textContent,/1 games \/ 1 targets/);
+  assert.match(reliability.textContent,/Not enough games to review/);
+  assert.match(reliability.textContent,/not statistical significance/);
 });
