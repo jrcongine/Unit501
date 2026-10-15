@@ -511,3 +511,30 @@ test('matchup review exposes unmatched official injury names without inventing r
  const report=h.context.Unit501Availability.snapshot().teams[0].official;
  assert.equal(report.rows.length,0);assert.equal(report.unresolved[0].id,undefined);
 });
+
+test('prop board shows and copies fresh prices, handles malformed odds and clears prices on manual line edit',async()=>{
+ const h=harness();await h.settle();
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const response=await original(url);
+  if(new URL(url,'http://localhost').pathname!=='/api/fanduel-props')return response;
+  const data=await response.json();
+  data.props=data.props.map(p=>({...p,over:p.stat==='rec'?99:-136,under:p.stat==='rec'?null:120}));
+  return {ok:true,json:async()=>data};
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.match(copied,/over -136 \(57\.6% break-even\)/);
+ assert.match(copied,/under \+120 \(45\.5% break-even\)/);
+ assert.match(copied,/over: price unavailable/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/57\.6% break-even/);
+ assert.match(copied,/pushes excluded/);
+ h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ const input=h.nodes.get('line-1:7-carries');input.value='20.5';await input.dispatchEvent({type:'input'});
+ const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
+ await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+ assert.match(copied,/Line 20\.5/);assert.match(copied,/over: price unavailable/);
+ assert.doesNotMatch(copied,/57\.6% break-even/);
+});
