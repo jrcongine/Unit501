@@ -559,3 +559,28 @@ test('data-support display and filters keep thin samples visible without claimin
   assert.equal(h.nodes.get('copy-prop-board').disabled,true);
   assert.match(board.textContent,/No lines match these filters/);
 });
+
+test('saved accuracy UI shows market reliability without counting selected picks as model forecasts',async()=>{
+  const h=harness();await h.settle();
+  const forecast={
+    schema:1,kind:'prop',forecastAt:90000,
+    game:{league:'1',season:'2026',id:'100',awayId:'1',homeId:'2',a:'Team A',h:'Team B',kickoff:100000},
+    inputs:{playerName:'RB 1'},records:[{
+      league:'1',season:'2026',gameId:'100',teamId:'1',playerId:'7',
+      kind:'prop',market:'recYds',modelVersion:'player-v1',
+      evidenceUrl:'https://example.org/archived',kickoff:100000,forecastAt:90000,inputAsOf:80000,
+      resultKnownAt:120000,baseline:30,adjusted:26,actual:20
+    }]
+  };
+  const chosen={...forecast,selection:{market:'recYds',direction:'over',line:19.5,price:-110,selectedAt:95000}};
+  h.storage.set('unit501-score-archive-v1',JSON.stringify({schema:1,snapshots:[forecast,chosen]}));
+  h.run('window.Unit501ForecastReview.render()');
+  const reliability=h.nodes.get('forecast-market-reliability');
+  assert.ok(reliability);
+  assert.match(reliability.textContent,/Market reliability/);
+  assert.match(reliability.textContent,/NFL · 2026 · player-v1/);
+  assert.match(reliability.textContent,/Receiving yards/);
+  assert.match(reliability.textContent,/1 games \/ 1 targets/);
+  assert.match(reliability.textContent,/Not enough games to review/);
+  assert.match(reliability.textContent,/not statistical significance/);
+});
