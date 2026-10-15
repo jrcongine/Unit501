@@ -47,7 +47,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -583,4 +583,31 @@ test('saved accuracy UI shows market reliability without counting selected picks
   assert.match(reliability.textContent,/1 games \/ 1 targets/);
   assert.match(reliability.textContent,/Not enough games to review/);
   assert.match(reliability.textContent,/not statistical significance/);
+});
+
+test('Game Lab automatically scores a confirmed defender absence and cleanly switches back to manual',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ const game=h.run('selected'),now=Date.now();
+ const team=(id)=>({id,
+   roster:{available:true,checkedAt:now,rows:id==='2'?[{id:'18',name:'Starting CB',position:'CB'}]:[]},
+   injuries:{available:true,checkedAt:now,rows:[]},
+   depth:{available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:id==='2'?[{id:'18',position:'CB',rank:1,slot:'CB:0'}]:[]},
+   official:{available:true,checkedAt:now,league:'1',season:'2026',gameId:game.id,kickoff:game.kickoff,
+     rows:id==='2'?[{id:'18',teamId:'2',name:'Starting CB',status:'Out'}]:[]}
+ });
+ const data={current:true,teams:[team('1'),team('2')]};
+ h.context.Unit501Availability={snapshot:()=>data};
+ const box=h.nodes.get('autoInjuries');box.checked=true;await box.dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
+ h.run('sim()');
+ assert.equal(h.nodes.get('homeDefenseLoss').value,'0.5');
+ assert.match(h.nodes.get('auto-injury-status').textContent,/Starting CB/);
+ assert.match(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
+ assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0.5);
+ box.checked=false;await box.dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
+ assert.equal(h.nodes.get('homeDefenseLoss').value,'0');
+ h.run('sim()');
+ assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0);
+ assert.doesNotMatch(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
 });
