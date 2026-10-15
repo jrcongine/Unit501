@@ -14,8 +14,9 @@
      !Number.isFinite(first.lastAt)||first.lastAt>now||!Number.isFinite(first.lastLine)))return null;
    const entry=first||{firstLine:line,firstAt:sourceAt,lastLine:line,lastAt:sourceAt};
    // Do not treat an older cached quote as a change, or overwrite a newer source quote.
-   if(sourceAt>entry.lastAt){entry.lastAt=sourceAt;entry.lastLine=line;}
-   if(!first||sourceAt>first.lastAt)storage.setItem(key,JSON.stringify(entry));
+   const newer=sourceAt>entry.lastAt;
+   if(newer){entry.lastAt=sourceAt;entry.lastLine=line;}
+   if(!first||newer)storage.setItem(key,JSON.stringify(entry));
    return {firstLine:entry.firstLine,firstAt:entry.firstAt,line:entry.lastLine,lastAt:entry.lastAt,
      delta:Math.round((entry.lastLine-entry.firstLine)*100)/100,changed:entry.lastLine!==entry.firstLine};
   }catch{return null;}
