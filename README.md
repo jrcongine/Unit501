@@ -67,3 +67,19 @@ EV and the other YouTube channels remain video research links; video picks are n
 
 ### Forecast miss diagnostics
 Under **Saved forecast accuracy**, open **Where projections miss — recent patterns & examples** to see league/market-separated game-level high/low counts, last 10 versus previous 10 matched-game average absolute misses, a largest archived miss example, and selected-pick W–L–push–pending counts by market (including spread and total). Records must have been saved before kickoff in that browser and matched to final results. The diagnostics reuse the identical admissibility, no-future-info, duplicate, and single-model-per-market gates of the underlying accuracy audit. Games with more prop rows get only one game-level vote. A directional review flag requires at least 30 eligible games and ≥70% game-level misses pointing the same way; this is a manual-review heuristic, not automatic tuning, statistical significance, demonstrated betting value, or validated improvement. Latest/previous are windows of up to 10 *matched games* each, not date windows. For score forecasts, game bias can hide offsetting opposite-team errors; inspect the individual largest miss and absolute error together. Spread/total picks are graded separately from forecast error and do not establish sportsbook settlement or profit. No earlier forecasts can be reconstructed if they weren't originally saved.
+
+
+### Prop comparison data support
+The player comparison board and individual cards now show a **data support** label:
+thin (2–4 recorded games), developing (5–8), or larger (9+), with review
+flags for missing or latest-game statistics, uncertain workload, efficiency
+outlier adjustments, user/lineup scenarios, and conditional availability.
+Filter the board by data support and preserve the same label in copied lists.
+
+This is a transparent input-coverage checklist, **not** an empirically
+calibrated confidence score, probability, value/EV estimate, or recommendation.
+Even a larger clean sample does not confirm participation, a starting role, a
+current sportsbook line, or a profitable edge. Thin samples can remain on the
+board for review rather than being silently dropped. The existing forecasting
+formulas, saved archive, price freshness rules, and user shortlist choices are
+unchanged.

@@ -106,3 +106,32 @@ test('sustained higher efficiency is retained rather than treated as a single ou
  const rows=[40,40,100,100,100].map((recYds,i)=>({gameDate:i+1,rec:4,recYds}));
  const result=project(rows,'recYds');assert.equal(result.usage.dampened,0);assert.ok(result.baseline>70);
 });
+
+test('data support separates sample depth from model confidence and betting value',()=>{
+  const {dataSupport}=require('../public/player-form');
+  const model=count=>({values:Array(count).fill(50),form:{coverage:{recorded:count,total:count,missing:0,latestMissing:false}},workload:100,workloadHistory:{missing:0}});
+  const thin=dataSupport(model(4),null);
+  assert.equal(thin.sample,'Thin sample');assert.equal(thin.count,4);assert.equal(thin.needsReview,true);
+  const developing=dataSupport(model(5),null);
+  assert.equal(developing.sample,'Developing sample');assert.equal(developing.needsReview,false);
+  const larger=dataSupport(model(9),null);
+  assert.equal(larger.sample,'Larger sample');assert.equal(larger.needsReview,false);
+  assert.match(larger.label,/No additional data flags/);
+  assert.equal(larger.label.includes('probability'),false);
+});
+
+test('data support surfaces stat gaps, changing workload, outliers, scenarios and conditional availability',()=>{
+  const {dataSupport}=require('../public/player-form');
+  const dirty=dataSupport({
+    values:Array(10).fill(100),
+    form:{coverage:{recorded:10,total:12,missing:2,latestMissing:true},usage:{dampened:1},usageUnavailable:'Missing usage'},
+    workload:75,workloadWarning:'Role changed',workloadHistory:{missing:1},lineupChange:{}
+  },{state:'conditional'});
+  assert.equal(dirty.sample,'Larger sample');assert.equal(dirty.needsReview,true);
+  for(const flag of ['stat gaps','latest stat missing','workload uncertainty','efficiency outlier adjustment','scenario input','conditional availability'])
+    assert.ok(dirty.flags.includes(flag),flag);
+  assert.equal(dataSupport({
+    values:Array(9).fill(0),form:{coverage:{recorded:9,total:9,missing:0}},
+    workload:100,workloadHistory:{missing:0}
+  },{state:'unknown'}).needsReview,false);
+});

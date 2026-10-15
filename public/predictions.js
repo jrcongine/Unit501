@@ -126,7 +126,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Player line comparisons';
     const note = document.createElement('p');
-    note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks are not a confidence score, ranked picks or win probabilities. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
+    note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks and data support are not a confidence score, ranked picks or win probabilities. Data support counts recorded games and highlights gaps; it does not verify participation or value. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     const rows = [];
@@ -139,8 +139,10 @@
         const model = projectionFor(record, def);
         if (!model) continue;
         if(window.Unit501ForecastArchive)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
-        const checks = Unit501PlayerForm.reviewChecks(model, entry, window.Unit501Availability?.assess(record.teamId, record.playerId));
-        rows.push({record, def, entry, line, checks, ...model});
+        const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
+        const checks = Unit501PlayerForm.reviewChecks(model, entry, availability);
+        const support = Unit501PlayerForm.dataSupport(model, availability);
+        rows.push({record, def, entry, line, checks, support, ...model});
       }
     }
     if (board.dataset.scope !== lineScope) {
@@ -150,6 +152,7 @@
   board.dataset.team = '';
   board.dataset.stat = '';
   board.dataset.review = '';
+  board.dataset.support = '';
   board.dataset.direction = '';
   board.dataset.sort = '';
 }
@@ -201,6 +204,13 @@ addFilter('review', 'Review', [
   ['refresh', 'Lines needing refresh']
 ]);
 
+addFilter('support', 'Data support', [
+  ['', 'All samples'],
+  ['review', 'Needs data review'],
+  ['clean', 'No extra statistical flags (5+ games)'],
+  ['thin', 'Thin sample (<5 games)']
+]);
+
 addFilter('direction', 'Projection', [
   ['', 'Above and below line'],
   ['above', 'Above line'],
@@ -232,6 +242,9 @@ for (let i = rows.length - 1; i >= 0; i--) {
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
       (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].workloadHistory.missing > 0 || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
       (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line')) ||
+      (board.dataset.support === 'review' && !rows[i].support.needsReview) ||
+      (board.dataset.support === 'clean' && rows[i].support.needsReview) ||
+      (board.dataset.support === 'thin' && rows[i].support.count >= 5) ||
       (board.dataset.direction === 'above' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) <= 0) ||
       (board.dataset.direction === 'below' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) >= 0)) {
     rows.splice(i, 1);
@@ -298,7 +311,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Review checks', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even']) {
+    for (const name of ['Player / team', 'Stat', 'Review checks', 'Data support', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -323,7 +336,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, row.checks.join(' • ') || 'No automated data flags; verify role and price', projection.toFixed(1) + ` (${row.workload}% workload)` + (row.workloadWarning ? ' • Check role' : ''), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, row.checks.join(' • ') || 'No automated data flags; verify role and price', row.support.label, projection.toFixed(1) + ` (${row.workload}% workload)` + (row.workloadWarning ? ' • Check role' : ''), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text,
@@ -332,7 +345,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       fields.push(prices);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | ${fields[6]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[7]} | ${source}: ${lineTime} | ${prices}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices}`);
       report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
@@ -597,6 +610,10 @@ results.appendChild(workload);
       const trend = model.form.trend + ' • ' + model.form.sample;
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
+      const support = Unit501PlayerForm.dataSupport(model, window.Unit501Availability?.assess(record.teamId, record.playerId));
+      const supportInfo = document.createElement('p');
+      supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
+      card.append(supportInfo);
       if (model.workloadWarning) {
         const warning = document.createElement('p');
         warning.style.cssText = 'color:#e8b95b;margin:8px 0;';

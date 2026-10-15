@@ -94,7 +94,22 @@
     if(!Number.isFinite(entry.savedAt) || entry.savedAt>now || now-entry.savedAt>1800000) reasons.push('Refresh line');
     return reasons;
   }
-  const api={efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks};
+  // Describes input coverage and cautions, never the likelihood of a wager winning.
+  function dataSupport(model,availability) {
+    const count=Array.isArray(model?.values)?model.values.length:0;
+    const sample=count<5?'Thin sample':count<9?'Developing sample':'Larger sample';
+    const flags=[];
+    if(model?.form?.coverage?.missing>0)flags.push('stat gaps');
+    if(model?.form?.coverage?.latestMissing)flags.push('latest stat missing');
+    if(model?.workloadWarning || model?.form?.usageUnavailable || model?.workloadHistory?.missing>0)flags.push('workload uncertainty');
+    if(model?.form?.usage?.dampened>0)flags.push('efficiency outlier adjustment');
+    if(model?.workload!==100 || model?.lineupChange)flags.push('scenario input');
+    if(availability?.state==='conditional')flags.push('conditional availability');
+    const needsReview=count<5 || flags.length>0;
+    return {sample,count,flags,needsReview,
+      label:`${sample} (${count} recorded games)${flags.length?' • Review: '+flags.join(', '):' • No additional data flags'}`};
+  }
+  const api={efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
