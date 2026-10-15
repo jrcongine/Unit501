@@ -538,3 +538,23 @@ test('prop board shows and copies fresh prices, handles malformed odds and clear
  assert.match(copied,/Line 20\.5/);assert.match(copied,/over: price unavailable/);
  assert.doesNotMatch(copied,/57\.6% break-even/);
 });
+
+test('data-support display and filters keep thin samples visible without claiming a betting probability',async()=>{
+  const h=harness();await h.settle();
+  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+  const board=h.nodes.get('saved-line-comparisons');
+  assert.match(board.textContent,/Data support/);
+  assert.match(board.textContent,/Thin sample/);
+  let copied='';
+  h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+  assert.match(copied,/Data support: Thin sample/);
+  const filter=h.nodes.get('prop-filter-support');
+  assert.ok(filter);
+  filter.value='thin';await filter.dispatchEvent({type:'change'});
+  assert.equal(h.nodes.get('copy-prop-board').disabled,false);
+  filter.value='clean';await h.nodes.get('prop-filter-support').dispatchEvent({type:'change'});
+  assert.equal(h.nodes.get('copy-prop-board').disabled,true);
+  assert.match(board.textContent,/No lines match these filters/);
+});
