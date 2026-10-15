@@ -103,3 +103,39 @@ missing stats remain unknown, and units cannot be compared across markets
 (e.g. yardage vs touchdowns). The archive is browser-local and can be incomplete.
 **This feature does not validate probabilities, rank betting opportunities,
 establish future accuracy, or change model predictions.**
+
+
+### Automatic injury scoring (experimental)
+Game Lab defaults to **Automatically apply conservative injury scenarios**. On each simulation,
+Unit 501 checks the live, game-scoped official NFL **Out** list against fresh roster
+membership and a unique rank-one player position on the matching depth chart. It
+uses intentionally small, **hand-set and unvalidated positional sensitivities**:
+defensive starters roughly 0.3–0.5 extra opponent points and eligible offensive
+starters roughly 0.15–0.35 lost team points, capped at two per team and side.
+These are *sensitivity scenarios*, not measured player value or calibrated
+predictions. There is no automatic QB point estimate; it needs supported
+replacement passing production.
+
+Both teams must have fresh, matching official injury reports, rosters and depth
+charts; if either side lacks coverage, no automatic injury points apply for
+*either* team. This prevents one-sided report gaps from biasing the simulation.
+
+Unmatched reports, conflicting ownership or statuses, conditional players, stale
+feeds and unmatched depth roles receive **no score adjustment and a visible
+warning**. Zero does not establish player health. Incomplete or missing feed
+coverage does not invent absences. A player already reduced in a confirmed
+lineup workload scenario cannot also receive an automatic estimate.
+
+The four manual injury fields are disabled while automatic mode is on and display
+the current auto-calculated adjustments after a simulation. Switch automatic
+mode **off** to enter your own four point adjustments; switching modes clears the
+old point values to prevent carryover. Injury-feed refreshes invalidate saved
+on-screen simulation outputs so stale results cannot be mistaken for fresh
+ones; rerun the simulation.
+
+**Important:** Season averages may already reflect earlier absences, so even a
+confirmed current Out report does not prove how much the upcoming game's
+performance changes. This heuristic still requires chronological backtesting,
+especially in weeks with repeated absences. It does not change or backfill
+past saved forecast records. Do not interpret auto values as trustworthy
+betting edges or guaranteed injury scoring.
