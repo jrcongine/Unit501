@@ -1,6 +1,15 @@
 /* UNIT 501 player projections: transparent recent-game averages, not betting advice. */
 (() => {
   'use strict';
+  function priceSummary(entry) {
+    const fresh = entry.source === 'auto' && Number.isFinite(entry.savedAt) && entry.savedAt <= Date.now() && Date.now()-entry.savedAt <= 1800000;
+    return ['over','under'].map(side => {
+      const price = fresh ? entry[side] : null;
+      if (!Number.isInteger(price) || Math.abs(price) < 100) return `${side}: price unavailable`;
+      const rate = price < 0 ? -price / (100-price) : 100 / (100+price);
+      return `${side} ${price>0?'+':''}${price} (${(rate*100).toFixed(1)}% break-even)`;
+    }).join(' • ');
+  }
   const el = id => document.getElementById(id);
   const button = el('predict');
   const status = el('predict-status');
@@ -268,6 +277,9 @@ for (let i = rows.length - 1; i >= 0; i--) {
       }
     });
     board.append(copy, copyStatus);
+    const priceNote = document.createElement('p');
+    priceNote.textContent = 'Break-even is the price-implied win rate among settled wins/losses (pushes excluded), not a model probability or estimated edge. Missing prices stay unavailable; manual line edits clear automatic prices.';
+    board.append(priceNote);
     if (!rows.length) {
       const empty = document.createElement('p');
      empty.textContent = 'No lines match these filters. Reset the filters, or enter a line on a player card below.';
@@ -286,7 +298,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Review checks', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)']) {
+    for (const name of ['Player / team', 'Stat', 'Review checks', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -301,6 +313,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       `${matchupTeams.map(t => t.name).join(' vs ')} | ${el('date').value} | Game ${selected.id}`,
       `Copied ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT`,
       'Historical comparisons only; not ranked picks or win probabilities. Verify participation, role, current line and price.',
+      'Break-even rates are price-implied thresholds among wins/losses (pushes excluded), not model probabilities or an edge estimate.',
       ''
     ];
     for (const row of rows) {
@@ -315,9 +328,11 @@ for (let i = rows.length - 1; i >= 0; i--) {
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text,
         row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
+      const prices = priceSummary(row.entry);
+      fields.push(prices);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | ${fields[6]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[7]} | ${source}: ${lineTime}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | ${fields[6]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[7]} | ${source}: ${lineTime} | ${prices}`);
       report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
