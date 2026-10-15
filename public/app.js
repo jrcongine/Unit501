@@ -698,7 +698,7 @@ function sim() {
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const forecastAt=Date.now();
   const lineup=window.Unit501Lineups?.evaluate();
-  const automatic=$('autoInjuries').checked&&window.Unit501AutoInjury?
+  const automatic=selected.league==='1'&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt):null;
   if(automatic){
     for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],
