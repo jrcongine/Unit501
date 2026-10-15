@@ -139,3 +139,30 @@ performance changes. This heuristic still requires chronological backtesting,
 especially in weeks with repeated absences. It does not change or backfill
 past saved forecast records. Do not interpret auto values as trustworthy
 betting edges or guaranteed injury scoring.
+
+
+### Matchup-prep and line-monitor automation (experimental)
+**Automatic game prep** is enabled on matchup selection. It reuses existing
+automatic current FanDuel spread/total, scoring, weather and availability
+requests, starts player projections and their quoted prop comparisons, and runs
+one pregame simulation **only once** after current odds, scored teams and both
+teams' injury/depth coverage are ready. Missing inputs leave a visible
+waiting message; you can still click Run manually. Optional **Also build
+league-wide player ratings** is switched off by default because it consumes
+many provider requests. The prep control never votes in the War Room or
+places bets and never invents absent lines.
+
+Fresh automatic FanDuel line captures show **first observed in this browser**
+versus latest observed quote for the same matchup and market. Game spreads
+and totals are shown next to the FanDuel refresh status; player props show an
+extra comparison column and include movement in copied boards. The provider
+timestamp must be current, increasing and available. These observations are
+**not** an opening line, historical closing-line record or a source of
+profitability measurements; manual prices and lines do not enter observations.
+
+The prop board Show filter includes an **Automatic research queue**. This
+only surfaces fresh, priced FanDuel lines with at least five recorded games,
+no automated model support/review flags, no incomplete workload, and a
+projection differing from the line. It is a data-quality filter for human
+research, **not** a pick, hit probability or EV ranking. It preserves the
+existing manual shortlist and independent J.R./Aria/Unit 501 War Room votes.
