@@ -1,5 +1,5 @@
 'use strict';
-const {summarize}=require('./public/player-form');
+const {summarize,efficiencySummary}=require('./public/player-form');
 const {fbsName,canonicalizeGames}=require('./team-identity');
 const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const numeric=v=>typeof v==='number' && Number.isFinite(v)?v:typeof v==='string' && /^-?\d+(\.\d+)?$/.test(v.trim())?Number(v):null;
@@ -80,7 +80,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
    const rows=history.map(g=>{const yards=g[normalize(group)+':yards'],usage=aliases.map(name=>g[normalize(group)+':'+normalize(name)]).find(Number.isFinite);return {...g,usage:Number.isFinite(yards)?usage:undefined,yards};});
    const paired=rows.filter(g=>g.usage>0&&Number.isFinite(g.yards));
    const usage=summarize(rows,'usage');
-   if(usage&&paired.length>=2){const total=paired.reduce((v,g)=>v+g.usage,0),rates=paired.map(g=>g.yards/g.usage).sort((a,b)=>a-b),mid=Math.floor(rates.length/2),median=rates.length%2?rates[mid]:(rates[mid-1]+rates[mid])/2;profiles[key]={usage:usage.weighted,efficiency:(paired.reduce((v,g)=>v+g.yards,0)/total+median)/2,games:paired.length,totalGames:rows.length,latestMissing:!Number.isFinite(rows.sort((a,b)=>b.gameDate-a.gameDate)[0]?.usage),coverage:usage.coverage};}
+   if(usage&&paired.length>=2){const estimate=efficiencySummary(paired,'yards','usage');profiles[key]={usage:usage.weighted,efficiency:estimate.efficiency,dampened:estimate.dampened,efficiencyCap:estimate.cap,games:paired.length,totalGames:rows.length,latestMissing:!Number.isFinite(rows.sort((a,b)=>b.gameDate-a.gameDate)[0]?.usage),coverage:usage.coverage};}
   }
   const components=(specs[p.role]||[]).map(([group,name,direction])=>({name,direction,key:normalize(group)+':'+normalize(name)}))
    .map(c=>{

@@ -94,7 +94,7 @@
     if(!Number.isFinite(entry.savedAt) || entry.savedAt>now || now-entry.savedAt>1800000) reasons.push('Refresh line');
     return reasons;
   }
-  const api={summarize,workloadSummary,workloadWarning,project,reviewChecks};
+  const api={efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -192,7 +192,7 @@ async function loadVenueForecast(game, conditions, roof) {
     }
 
     forecastContext = {game,data:{...data,roof:exposure,kickoff:game.kickoff}};
-    if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance'].some(key => previous[key] !== data[key])) {
+    if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance'].some(key => previous[key] !== data[key]) || JSON.stringify(previous.gameHours) !== JSON.stringify(data.gameHours)) {
       invalidateSimulation('Weather forecast updated. Run the simulation to use it.');
     }
 
@@ -219,6 +219,12 @@ async function loadVenueForecast(game, conditions, roof) {
       `Gusts: ${format(data.gustMph, ' mph')} • ` +
       `Precipitation chance: ${format(data.precipitationChance, '%')}`;
 
+    const hours = Array.isArray(data.gameHours) ? data.gameHours : [];
+    if (hours.length) conditions.textContent += ' • Hourly outlook (kickoff through +3 hours): ' + hours.map(hour =>
+      `${new Date(hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'})} CT: ${format(hour.temperatureF,'°F')}, wind ${format(hour.windMph,' mph')}, gusts ${format(hour.gustMph,' mph')}, precipitation ${format(hour.precipitationChance,'%')}`
+    ).join(' | ');
+    else conditions.textContent += ' • Later game-hour forecasts unavailable.';
+
     const source = watch.source || document.createElement('p');
     source.replaceChildren();
     source.style.cssText = 'font-size:.85em;opacity:.8';
@@ -232,7 +238,7 @@ async function loadVenueForecast(game, conditions, roof) {
       link,
       ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
       'Outdoor forecast near the stadium; actual field conditions may differ. ' +
-      (exposure === 'outdoor' ? 'The experimental wind setting affects team scores only; rain chance, gusts and temperature are context.' : 'Roof or field exposure is unverified; all forecast values are context only.')
+      (exposure === 'outdoor' ? 'The experimental wind setting uses kickoff sustained wind for team scores only. Later hours, rain chance, gusts and temperature are context; player props are unchanged.' : 'Roof or field exposure is unverified; all forecast values are context only.')
     );
     if (!watch.source) conditions.after(source);
     watch.source = source;

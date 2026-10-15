@@ -85,9 +85,20 @@ async function getForecast({ latitude, longitude, kickoff }) {
     return Number.isFinite(number) ? number : null;
   };
 
+  // Keep kickoff inputs stable; later hours provide reviewable game-window context.
+  const gameHours = hourly.time.flatMap((time, i) => {
+    const at = time * 1000;
+    if (!Number.isFinite(time) || at < kickoff || at > kickoff + 3 * 3600000) return [];
+    const read = name => Number.isFinite(hourly[name]?.[i]) ? hourly[name][i] : null;
+    return [{forecastTime:at, temperatureF:read('temperature_2m'),
+      windMph:read('wind_speed_10m'), gustMph:read('wind_gusts_10m'),
+      precipitationChance:read('precipitation_probability')}];
+  }).sort((a,b) => a.forecastTime - b.forecastTime);
+
   const result = {
     available: true,
     source: 'Open-Meteo',
+    gameHours,
     fetchedAt: Date.now(),
     forecastTime: hourly.time[index] * 1000,
     temperatureF: value('temperature_2m'),

@@ -168,3 +168,17 @@ test('defensive grades state missing coverage and snap context; blockers and lon
  assert.equal(p.find(p=>p.id==='2').rating,null);assert.match(p.find(p=>p.id==='2').limitation,/Snap accuracy/);
  assert.equal(p.find(p=>p.id==='99').rating,null);assert.match(p.find(p=>p.id==='99').limitation,/Blocking quality/);
 });
+
+test('replacement efficiency damps isolated spikes while preserving recorded production',()=>{
+ const f=fixture();
+ for(const [id,boxes] of f.boxes){
+  const stats=boxes[0].groups[0].players[0].statistics;
+  stats[0].value=id==='10'?1000:100;
+  stats.push({name:'attempts',value:20});
+ }
+ const p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='1');
+ assert.equal(p.profiles.passing.dampened,1);
+ assert.ok(p.profiles.passing.efficiency<6);
+ assert.equal(f.boxes.get('10')[0].groups[0].players[0].statistics[0].value,1000);
+ assert.equal(p.profiles.passing.games,10);
+});

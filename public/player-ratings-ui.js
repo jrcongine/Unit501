@@ -64,6 +64,9 @@
     const review=node('details','');review.className='player-rating-scenario';review.dataset.ratingKey='player:'+id+':'+p.id;review.open=expanded.get(review.dataset.ratingKey)??false;
     review.append(node('summary','Review / adjust'));
     const settings=node('div','');settings.className='player-rating-settings';
+    for(const [category,profile] of Object.entries(p.profiles||{})){
+     settings.append(node('p',`${category}: ${profile.usage.toFixed(1)} baseline workload, ${profile.efficiency.toFixed(2)} estimated yards per touch, ${profile.games} paired games${profile.dampened?`; ${profile.dampened} high-efficiency game(s) dampened in estimate`:''}. Recorded statistics are unchanged.`));
+    }
     const availability=window.Unit501Availability?.snapshot();
     const reported=Unit501InjuryModel.assess(availability,game,id,p.id,Date.now(),true);
     const proposal=['unavailable','nonstarter'].includes(reported.state)?Unit501LineupModel.recommend(ratings.players,p,availability,game,Unit501InjuryModel.assess):null;
