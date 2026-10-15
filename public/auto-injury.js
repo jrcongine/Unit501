@@ -21,17 +21,21 @@
   if(!game||String(game.league)!=='1'||!Number.isFinite(now)||!Number.isFinite(game.kickoff)||game.kickoff<=now||
     game.kickoff>now+7*86400000){state.message='Automatic scenarios currently support upcoming NFL games within seven days only.';return state;}
   if(!data?.current||!Array.isArray(data.teams)){state.message='Live roster and official injury feeds have not loaded. Zero means unknown, not healthy.';return state;}
-  for(const [teamId,side] of [[String(game.awayId),'away'],[String(game.homeId),'home']]){
-   const t=data.teams.find(t=>String(t.id)===teamId);
-   const label=side==='away'?game.a||'Away':game.h||'Home';
-   if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game)){
+  const teams=[[String(game.awayId),'away'],[String(game.homeId),'home']].map(([teamId,side])=>({
+   teamId,side,label:side==='away'?game.a||'Away':game.h||'Home',
+   team:data.teams.find(t=>String(t.id)===teamId)
+  }));
+  for(const {label,team:t} of teams){
+   if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
     withheld.push(label+': current matched roster and official NFL game report required; no point estimate.');
-    continue;
-   }
-   if(!fresh(t.depth,3600000,now)||!matchGame(t.depth,game)){
+   if(!t||!fresh(t.depth,3600000,now)||!matchGame(t.depth,game))
     withheld.push(label+': depth chart unavailable, expired, or for a different matchup; no point estimate.');
-    continue;
-   }
+  }
+  if(withheld.length){
+   state.message='Automatic injury coverage incomplete for at least one team. No automatic points for either team; keep baseline until both official game reports and depth charts are fresh.';
+   return state;
+  }
+  for(const {teamId,side,label,team:t} of teams){
    const roster=new Map((t.roster.rows||[]).filter(r=>r?.id).map(r=>[String(r.id),r]));
    const outs=(t.official.rows||[]).filter(r=>status(r.status)==='out'&&String(r.teamId)===teamId);
    const seen=new Set();
