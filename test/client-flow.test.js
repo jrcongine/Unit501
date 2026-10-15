@@ -654,3 +654,14 @@ test('auto prep waits for complete official injury coverage instead of freezing 
  assert.match(h.nodes.get('auto-prep-status').textContent,/waiting for fresh, matching NFL/);
  assert.equal(h.nodes.get('score').textContent,'—');
 });
+
+test('player ratings automatically summarize reported missing starters without approving guesses',async()=>{
+ const h=harness(new Map(),true);h.context.injuryOut=true;
+ await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ await h.nodes.get('build-player-ratings').onclick();await h.settle();
+ const review=h.nodes.get('automatic-replacement-review');
+ assert.ok(review);assert.match(review.textContent,/RB 1 \(RB\)/);
+ assert.match(review.textContent,/Replacement: unknown/);
+ assert.match(review.textContent,/nothing is applied/i);
+ assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
+});
