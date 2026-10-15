@@ -554,7 +554,8 @@ test('data-support display and filters keep thin samples visible without claimin
   assert.ok(filter);
   filter.value='thin';await filter.dispatchEvent({type:'change'});
   assert.equal(h.nodes.get('copy-prop-board').disabled,false);
-  filter.value='clean';await h.nodes.get('prop-filter-support').dispatchEvent({type:'change'});
+  const currentFilter=h.nodes.get('prop-filter-support');
+  currentFilter.value='clean';await currentFilter.dispatchEvent({type:'change'});
   assert.equal(h.nodes.get('copy-prop-board').disabled,true);
   assert.match(board.textContent,/No lines match these filters/);
 });
