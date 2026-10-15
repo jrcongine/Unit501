@@ -61,7 +61,11 @@
           const key = lineKey(record, def);
           const entry = readLine(key);
           if (entry.value !== '') continue;
-          enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',over:quote.over,under:quote.under});
+          const movement=window.Unit501LineWatch?.observe(localStorage,
+            [game.league,game.season,game.id,record.teamId,record.playerId,def.key].join(':'),
+            quote.line,quote.updatedAt);
+          enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',
+            over:quote.over,under:quote.under,movement});
           count++;
         }
       }
@@ -190,7 +194,8 @@ addFilter('team', 'Team', [
 
 addFilter('shortlist', 'Show', [
   ['', 'All comparisons'],
-  ['selected', 'My shortlist']
+  ['selected', 'My shortlist'],
+   ['automatic', 'Automatic research queue']
 ]);
 
 addFilter('stat', 'Stat', [
@@ -231,7 +236,11 @@ clearShortlist.textContent = 'Clear shortlist';
 clearShortlist.disabled = !shortlisted.size;
 clearShortlist.addEventListener('click', () => { shortlisted.clear(); renderComparisons(); });
 board.append(shortlistNote, clearShortlist);
-const orderingNote = document.createElement('p');
+const researchNote = document.createElement('p');
+ researchNote.textContent = 'Automatic research queue only: fresh FanDuel lines with at least one quoted side, 5+ recorded games, no model data-review flags, full recorded workload and a projection different from the line. Players still require independent starter, injury and price verification. This is not a betting edge, prediction confidence or automatic board vote.';
+ researchNote.style.cssText='font-size:.9em;opacity:.85';
+ if(board.dataset.shortlist==='automatic')board.append(researchNote);
+ const orderingNote = document.createElement('p');
 orderingNote.textContent = 'Difference ordering groups each stat separately so yards and counts are not compared. A larger projection difference is not a higher chance of winning; prices and validated probabilities are needed to assess betting value.';
 orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
 board.append(orderingNote);
@@ -239,6 +248,14 @@ board.append(orderingNote);
 for (let i = rows.length - 1; i >= 0; i--) {
   if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
       (board.dataset.shortlist === 'selected' && !shortlisted.has(lineKey(rows[i].record, rows[i].def))) ||
+       (board.dataset.shortlist === 'automatic' && (
+        rows[i].entry.source!=='auto'||!Number.isFinite(rows[i].entry.savedAt)||
+        Date.now()-rows[i].entry.savedAt>1800000||rows[i].entry.savedAt>Date.now()||
+        !['over','under'].some(side=>Number.isInteger(rows[i].entry[side])&&Math.abs(rows[i].entry[side])>=100)||
+        rows[i].support.count<5||rows[i].support.needsReview||rows[i].checks.length>0||
+        rows[i].form.usageUnavailable||rows[i].workloadWarning||rows[i].workloadHistory.missing>0||
+        rows[i].workload!==100||rows[i].lineupChange||
+        Number(rows[i].adjusted.toFixed(1))===rows[i].line)) ||
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
       (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].workloadHistory.missing > 0 || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
       (board.dataset.review === 'refresh' && !rows[i].checks.includes('Refresh line')) ||
@@ -260,7 +277,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     const copy = document.createElement('button');
     copy.id = 'copy-prop-board';
     copy.type = 'button';
-    copy.textContent = board.dataset.shortlist === 'selected' ? 'Copy filtered shortlist' : 'Copy filtered board';
+    copy.textContent = board.dataset.shortlist === 'selected' ? 'Copy filtered shortlist' : board.dataset.shortlist==='automatic'?'Copy research queue':'Copy filtered board';
     copy.disabled = !rows.length;
     const copyStatus = document.createElement('p');
     copyStatus.id = 'copy-prop-board-status';
@@ -311,7 +328,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Review checks', 'Data support', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even']) {
+    for (const name of ['Player / team', 'Stat', 'Review checks', 'Data support', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -322,7 +339,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(head);
     const body = document.createElement('tbody');
     const report = [
-      board.dataset.shortlist === 'selected' ? 'Unit 501 — my filtered prop shortlist' : 'Unit 501 — filtered prop comparisons',
+      board.dataset.shortlist === 'selected' ? 'Unit 501 — my filtered prop shortlist' : board.dataset.shortlist==='automatic'?'Unit 501 — automatic research queue (not betting recommendations)':'Unit 501 — filtered prop comparisons',
       `${matchupTeams.map(t => t.name).join(' vs ')} | ${el('date').value} | Game ${selected.id}`,
       `Copied ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT`,
       'Historical comparisons only; not ranked picks or win probabilities. Verify participation, role, current line and price.',
@@ -343,9 +360,14 @@ for (let i = rows.length - 1; i >= 0; i--) {
         row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
       const prices = priceSummary(row.entry);
       fields.push(prices);
+      const observed=row.entry.source==='auto'?row.entry.movement:null;
+      const movement=observed?(observed.changed?
+        `First observed ${observed.firstLine} → ${observed.line} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:
+        `First observed ${observed.firstLine}; no detected change`):'No automatic line history';
+      fields.push(movement);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices} | ${movement}`);
       report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {

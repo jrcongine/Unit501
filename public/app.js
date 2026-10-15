@@ -103,7 +103,10 @@ async function loadFanDuel() {
       if (Number.isFinite(data[key])) {
         $(id).value = data[key];
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
-        messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)`);
+        const observed=window.Unit501LineWatch?.observe(localStorage,
+          [game.league,game.season,game.id,'game',key].join(':'),data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
+        const movement=observed?.changed?` • since first observed ${observed.firstLine} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:'';
+        messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)${movement}`);
       } else {
         $(id).value = '';
         messages.push(`${id} unavailable — enter manually`);
@@ -111,6 +114,7 @@ async function loadFanDuel() {
     }
     oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
     $('note').textContent = 'Review the lines and ratings, then run the simulation.';
+    document.dispatchEvent(new Event('unit501:odds-updated'));
   } catch (error) {
     if (task === oddsSequence && selected === game && edits === lineEdits)
       oddsStatus.textContent = error.message + ' Enter lines manually.';
