@@ -116,6 +116,10 @@ These are *sensitivity scenarios*, not measured player value or calibrated
 predictions. There is no automatic QB point estimate; it needs supported
 replacement passing production.
 
+Both teams must have fresh, matching official injury reports, rosters and depth
+charts; if either side lacks coverage, no automatic injury points apply for
+*either* team. This prevents one-sided report gaps from biasing the simulation.
+
 Unmatched reports, conflicting ownership or statuses, conditional players, stale
 feeds and unmatched depth roles receive **no score adjustment and a visible
 warning**. Zero does not establish player health. Incomplete or missing feed
