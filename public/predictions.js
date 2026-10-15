@@ -152,6 +152,7 @@
   board.dataset.team = '';
   board.dataset.stat = '';
   board.dataset.review = '';
+  board.dataset.support = '';
   board.dataset.direction = '';
   board.dataset.sort = '';
 }
