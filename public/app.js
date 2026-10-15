@@ -104,7 +104,7 @@ async function loadFanDuel() {
         $(id).value = data[key];
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
         const observed=window.Unit501LineWatch?.observe(localStorage,
-          [game.league,game.season,game.id,'game',key].join(':'),data[key],Date.parse(data[stamp]));
+          [game.league,game.season,game.id,'game',key].join(':'),data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
         const movement=observed?.changed?` • since first observed ${observed.firstLine} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:'';
         messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)${movement}`);
       } else {
