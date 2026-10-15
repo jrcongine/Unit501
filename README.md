@@ -83,3 +83,23 @@ current sportsbook line, or a profitable edge. Thin samples can remain on the
 board for review rather than being silently dropped. The existing forecasting
 formulas, saved archive, price freshness rules, and user shortlist choices are
 unchanged.
+
+
+### Market reliability (saved pregame props only)
+Inside **Saved forecast accuracy**, expand **Market reliability — recorded results
+by prop type**. The read-only table counts distinct completed games, matched
+player targets, and pending statistics within the *same league, season, model
+version and prop market*. It shows game-weighted average absolute miss, signed
+bias, and latest vs previous ten matched-game error windows. A game with ten
+player forecasts counts once, not ten times. Comparisons require 30 distinct
+matched games in that exact subgroup; changes greater than 10% (with a
+0.1-stat-unit minimum) receive a descriptive "recent error higher/lower"
+review label, not a significance claim.
+
+This table shares the existing forecast audit's eligibility rules: reject
+ambiguous duplicates, invalid or late forecasts, and mixed model versions.
+Selected-pick copies are excluded. No historical outcomes are reconstructed,
+missing stats remain unknown, and units cannot be compared across markets
+(e.g. yardage vs touchdowns). The archive is browser-local and can be incomplete.
+**This feature does not validate probabilities, rank betting opportunities,
+establish future accuracy, or change model predictions.**
