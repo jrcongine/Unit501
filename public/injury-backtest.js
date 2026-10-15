@@ -1,6 +1,7 @@
 (function(root){
 'use strict';
 const scoreAudit=typeof module!=='undefined'&&module.exports?require('./score-audit'):root.Unit501ScoreAudit;
+const marketReliability=typeof module!=='undefined'&&module.exports?require('./market-reliability'):root.Unit501MarketReliability;
 // Compare archived forecasts, not reconstructed historical injury reports.
 function compare(records) {
   if (!Array.isArray(records)) throw new TypeError('Expected an array of archived forecast records.');
@@ -116,7 +117,7 @@ function compare(records) {
     audits.get(key).rows.push({id:String(a.gameId),kickoff:a.kickoff,forecastAt:a.forecastAt,knownAt:Math.max(a.resultKnownAt,b.resultKnownAt),projectedAway:a.adjusted,projectedHome:b.adjusted,actualAway:a.actual,actualHome:b.actual});
   }
   const scoringAudits=[...audits.values()].map(({rows,...scope})=>({...scope,...scoreAudit.audit(rows)}));
-  return {scoringAudits,modelVersion: version, accepted: pairs.length, skips, scores, props,
+  return {scoringAudits,marketReliability:marketReliability.summarize(pairs,pendingRecords),modelVersion: version, accepted: pairs.length, skips, scores, props,
     explanation: 'Paired archived forecasts only. Timestamp and source fields are assertions requiring independent archive review. At least 30 distinct games are needed to label observed improvement; this is descriptive, not independent validation, causality, profitability, or automatic model activation. Missing appearances are not zero outcomes.'};
 }
 
