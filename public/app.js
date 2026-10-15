@@ -28,6 +28,17 @@ $('homeFieldMode').addEventListener('change',()=>{
   invalidateSimulation('Home advantage mode changed. Run the simulation again.');
 });
 $('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override reason changed. Run the simulation again.'));
+const injuryFields=['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'];
+function injuryModeChanged(){
+  const automatic=$('autoInjuries').checked;
+  for(const id of injuryFields){$(id).disabled=automatic;$(id).value='0';}
+  $('auto-injury-status').textContent=automatic?
+    'Automatic injury scoring ON. Run the simulation after live official reports load; missing or unmatched players remain unvalued.':
+    'Manual injury scoring ON. Enter your own point estimates; no automatic injury points will be added.';
+  invalidateSimulation('Injury scoring mode changed. Run the simulation again.');
+}
+$('autoInjuries').addEventListener('change',injuryModeChanged);
+injuryModeChanged();
 function describeMatchup(game){
   const divisions=[
     ['Bills','Dolphins','Patriots','Jets'],['Ravens','Bengals','Browns','Steelers'],
@@ -680,13 +691,26 @@ function sim() {
   }
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const forecastAt=Date.now();
+  const lineup=window.Unit501Lineups?.evaluate();
+  const automatic=$('autoInjuries').checked&&window.Unit501AutoInjury?
+    window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt):null;
+  if(automatic){
+    for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],
+      ['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']])$(id).value=String(automatic.injury[key]);
+    const who=automatic.applied.map(p=>`${p.side==='away'?selected.a:selected.h}: ${p.name} (${p.position}) ${p.category==='offense'?'offense reduction':'defense loss'} +${p.points.toFixed(2)} points`);
+    $('auto-injury-status').textContent=automatic.message+
+      (who.length?' Applied: '+who.join(' · ')+'.':' No supported automatic points were applied.')+
+      (automatic.withheld.length?' Unvalued: '+automatic.withheld.join(' · '):'');
+  }
   const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
-    injury:{awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
+    injury:automatic?{...automatic.injury}:{
+      awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
-    lineup:window.Unit501Lineups?.evaluate(),
+    automaticInjury:automatic?{applied:automatic.applied,withheld:automatic.withheld,message:automatic.message}:null,
+    lineup,
     weatherEnabled:$('weatherEnabled').checked
   };
   const prediction = Unit501TeamModel.project(data, selected, options);
@@ -706,13 +730,15 @@ function sim() {
     ? prediction.pace?.applied ? 'Schedule strength corrections are included in scoring per drive, using opponents’ other pre-kickoff games with conservative limits. Cross-division strength remains experimental.'
     : `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
     : `Schedule strength unavailable: opponent coverage ${strength.away.covered}/${strength.away.total} away and ${strength.home.covered}/${strength.home.total} home. Baseline retained for both teams; missing opponents are not guessed. Unresolved: ${[...new Set([...strength.away.missing,...strength.home.missing])].join(", ") || "incomplete scoring history"}.`;
-  const availabilityReview = window.Unit501InjuryModel?.impactReview(window.Unit501Availability?.snapshot(),selected,window.Unit501Lineups?.evaluate());
+  const availabilityReview = window.Unit501InjuryModel?.impactReview(window.Unit501Availability?.snapshot(),selected,lineup);
   const availabilityNote = availabilityReview ? availabilityReview.teams.map(t=>{
     const name=t.id===selected.awayId?selected.a:selected.h;
     return `${name}: ${t.applied.length} absences or announced QB role changes covered by a lineup score scenario; ${t.unvalued.length} without a score valuation${t.unvalued.length?' ('+t.unvalued.map(p=>p.name).join(', ')+')':''}; ${t.conflicts.length} conflicting, ${t.conditional.length} conditional and ${t.unknown.length} unresolved reports. ${t.reportsVerified?'Fresh provider roster and injury feeds checked; this does not confirm full health or starters.':'Roster/injury feed coverage incomplete or expired; zero listed absences does not mean healthy.'}`;
   }).join(' ')+' '+availabilityReview.reason : 'Availability score coverage has not been reviewed.';
   $('availability-score-status').textContent='Availability score coverage: '+availabilityNote;
-  const injuryNote = prediction.injury.applied
+  const injuryNote = automatic?
+    `Automatic experimental injury scenario: away offense ${prediction.injury.awayOffense.toFixed(2)}, away defense ${prediction.injury.awayDefense.toFixed(2)}, home offense ${prediction.injury.homeOffense.toFixed(2)}, home defense ${prediction.injury.homeDefense.toFixed(2)} points. ${automatic.applied.length} matched top-depth Out player(s), ${automatic.withheld.length} review item(s). These assumed weights are not validated and may overlap the baseline; manual boxes were not added. See injury scoring section for names and withheld cases.`:
+    prediction.injury.applied
     ? `User injury scenario: away offense loss ${prediction.injury.awayOffense.toFixed(1)}, away defense loss ${prediction.injury.awayDefense.toFixed(1)}, home offense loss ${prediction.injury.homeOffense.toFixed(1)}, home defense loss ${prediction.injury.homeDefense.toFixed(1)} points. Scores ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} → ${prediction.preVenueAway.toFixed(1)}–${prediction.preVenueHome.toFixed(1)} before home field and weather. User estimates in addition to any replacement scenario.`
     : 'No injury scenario entered; this does not confirm either team is healthy. Confirmed replacement scenarios can change scores after the player-ratings build; missing role or replacement data is withheld.';
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
@@ -759,7 +785,15 @@ for (const id of ['date', 'league']) {
 health();
 load();
 
-document.addEventListener('unit501:availability-updated',()=>{if($('availability-score-status').textContent)$('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';});
+document.addEventListener('unit501:availability-updated',()=>{
+  if($('autoInjuries').checked&&selected){
+    for(const id of injuryFields)$(id).value='0';
+    $('auto-injury-status').textContent='Roster or official injury evidence updated. Run the simulation for freshly evaluated automatic adjustments.';
+    invalidateSimulation('Injury evidence updated. Run the simulation again.');
+  }else if($('availability-score-status').textContent){
+    $('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';
+  }
+});
 
 $('download-forecast-archive').onclick=()=>{
   try{
