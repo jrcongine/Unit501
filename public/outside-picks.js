@@ -5,7 +5,7 @@
   let request=0,loaded=false,loadedAt=0,lastAttempt=0,loading=false,timer=null;
   function el(tag,value,className){const node=document.createElement(tag);if(value)node.textContent=value;if(className)node.className=className;return node;}
   async function load(){
-    if(loading)return;
+    // User-initiated refresh or league switch may supersede an in-flight request.
     loading=true;lastAttempt=Date.now();
     const version=++request, league=byId('war-feed-league').value;
     loaded=true; list.replaceChildren();byId('war-feed-status').textContent='Loading public selections…';
@@ -42,11 +42,11 @@
     if((!loaded||now-loadedAt>=300000)&&(!lastAttempt||now-lastAttempt>=300000))load();
   }
   function watch(){
-    clearTimeout(timer);
-    if(!room.open)return;
+    if(timer!==null && typeof clearTimeout==='function')clearTimeout(timer);
+    if(!room.open||typeof setTimeout!=='function')return;
     timer=setTimeout(()=>{refreshIfDue();watch();},60000);
   }
   room.addEventListener('toggle',()=>{refreshIfDue();watch();});
-  document.addEventListener('visibilitychange',refreshIfDue);
+  document.addEventListener?.('visibilitychange',refreshIfDue);
   if(room.open){refreshIfDue();watch();}
 })();
