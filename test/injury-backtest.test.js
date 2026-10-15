@@ -105,3 +105,15 @@ test('pending and rejected model-version targets never contribute to miss patter
  assert.equal(m.pattern.highGames,0);assert.equal(m.pattern.worst.length,0);
  assert.equal(m.pattern.recentMAE,null);
 });
+
+test('full-game scoring audits require paired valid scores and isolate seasons and leagues',()=>{
+ const a=row(),b=row({teamId:'17',adjusted:30,actual:25});
+ const report=compare([a,b]);assert.equal(report.scoringAudits.length,1);
+ assert.equal(report.scoringAudits[0].overall.totalBias,6);
+ assert.equal(report.scoringAudits[0].overall.favoriteMarginBias,4);
+ for(const other of [{actual:null,resultKnownAt:null},{forecastAt:91000},{kickoff:100001},{modelVersion:'v2'}])assert.equal(compare([a,{...b,...other}]).scoringAudits.length,0);
+ assert.equal(compare([a,a,b]).scoringAudits.length,0);
+ const multi=compare([a,b,{...a,season:'2025'},{...b,season:'2025'},{...a,league:'2'},{...b,league:'2'}]);
+ assert.equal(multi.scoringAudits.length,3);
+ assert.ok(multi.scoringAudits.every(x=>x.overall.games===1));
+});
