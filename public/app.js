@@ -780,6 +780,16 @@ async function refreshForecastResults(){
 };
 
 $('refresh-forecast-results').onclick=refreshForecastResults;
+function autoRefreshForecastResults(){
+ if(document.hidden)return;
+ try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults();}catch{}
+}
+// Browser-local archives can only be checked while this app is open.
+setTimeout(autoRefreshForecastResults,0);
+setTimeout(function checkForecastResults(){autoRefreshForecastResults();setTimeout(checkForecastResults,300000);},300000);
+document.addEventListener('visibilitychange',autoRefreshForecastResults);
+document.addEventListener('unit501:archive-updated',autoRefreshForecastResults);
+
 $('forecast-review').addEventListener('toggle',()=>{
  if($('forecast-review').open&&Date.now()-forecastRefreshAt>=300000){
   try{if(Unit501ForecastArchive.read(localStorage).snapshots.some(s=>s.game.kickoff<Date.now()))refreshForecastResults();}catch{}

@@ -142,3 +142,14 @@ test('score coverage includes announced QB role losses and does not call missing
  data.teams[0].injuries.checkedAt=now-900001;assert.equal(impactReview(data,match,lineup,now).teams[0].reportsVerified,false);
  assert.equal(impactReview(null,match,null,now).teams[0].reportsVerified,false);
 });
+
+test('automatic refresh checks official and depth timestamps independently of provider injuries',()=>{
+ const {refreshDue}=require('../public/injury-model');
+ for(const [key,ttl] of [['official',900000],['inactives',900000],['starters',900000],['transactions',900000],['depth',3600000]]){
+  const data=fixture();data.teams[0][key]={available:true,checkedAt:now-ttl};
+  assert.equal(refreshDue(data,game,now),true,key);
+  data.teams[0][key].checkedAt=now;assert.equal(refreshDue(data,game,now),false,key);
+  data.teams[0][key].available=false;assert.equal(refreshDue(data,game,now),false,'fresh failed check waits for retry window');
+  data.teams[0][key].checkedAt=now+1;assert.equal(refreshDue(data,game,now),true,'future timestamp rejected');
+ }
+});

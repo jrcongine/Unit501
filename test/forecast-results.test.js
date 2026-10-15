@@ -58,3 +58,16 @@ test('matching preserves general and selected snapshots sharing the same forecas
  assert.equal(saved[0].selection,undefined);assert.equal(saved[1].selection.price,-110);
  assert.equal(saved[0].records[0].actual,19);assert.equal(saved[1].records[0].actual,19);
 });
+
+test('automatic result checks wait for kickoff, throttle retries, and skip fully graded archives',()=>{
+ const {autoRefreshDue}=require('../public/forecast-results');
+ const {snapshot}=fixture(),data={snapshots:[snapshot]},now=1000000;
+ assert.equal(autoRefreshDue(data,0,now),true);
+ assert.equal(autoRefreshDue(data,now-299999,now),false);
+ assert.equal(autoRefreshDue(data,now-300000,now),true);
+ snapshot.game.kickoff=now;assert.equal(autoRefreshDue(data,0,now),false);
+ snapshot.game.kickoff=100000;snapshot.records[0].actual=0;
+ assert.equal(autoRefreshDue(data,0,now),false);
+ snapshot.records[0].actual=null;assert.equal(autoRefreshDue(data,0,now),true);
+ assert.equal(autoRefreshDue({snapshots:[]},0,now),false);
+});
