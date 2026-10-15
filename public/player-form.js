@@ -51,6 +51,18 @@
     if(mean(values)<threshold)return `Limited recorded workload: ${mean(values).toFixed(1)} ${label} per appearance. A new starting role or larger workload can make this baseline misleading; verify the role first.`;
     return null;
   }
+  function efficiencySummary(pairs,key,usageKey) {
+    const median=a=>{const v=[...a].sort((a,b)=>a-b),m=Math.floor(v.length/2);return v.length%2?v[m]:(v[m-1]+v[m])/2;};
+    const rates=pairs.map(g=>g[key]/g[usageKey]);
+    const typical=median(rates);
+    // Four paired games are required before damping high efficiency outliers.
+    // Keep actual statistics and negative yardage intact; change only the estimate.
+    const mad=median(rates.map(v=>Math.abs(v-typical)));
+    const cap=pairs.length>=4?typical+Math.max(3*1.4826*mad,Math.abs(typical)*.5,1):Infinity;
+    const totalUsage=pairs.reduce((n,g)=>n+g[usageKey],0);
+    const pooled=pairs.reduce((n,g,i)=>n+Math.min(rates[i],cap)*g[usageKey],0)/totalUsage;
+    return {efficiency:(pooled+typical)/2,dampened:rates.filter(v=>v>cap).length,cap:Number.isFinite(cap)?cap:null};
+  }
   function project(history,key) {
     const form=summarize(history,key);
     if(!form)return null;
@@ -65,16 +77,10 @@
         usageUnavailable='Latest workload statistic is missing. Yardage uses recorded yardage form instead of an older workload estimate; verify current usage.';
         return {...form,baseline,usage,usageUnavailable};
       }
-      const sum=a=>a.reduce((s,v)=>s+v,0);
-      const pooled=sum(pairs.map(g=>g[key]))/sum(pairs.map(g=>g[usageKey]));
-      const rates=pairs.map(g=>g[key]/g[usageKey]).sort((a,b)=>a-b);
-      const mid=Math.floor(rates.length/2);
-      const median=rates.length%2?rates[mid]:(rates[mid-1]+rates[mid])/2;
-      // Blend a typical efficiency with total efficiency: one long catch should
-      // not automatically establish a new weekly receiving-yard baseline.
-      const efficiency=(pooled+median)/2;
-      baseline=touches.weighted*efficiency;
-      usage={key:usageKey,workload:touches.weighted,efficiency,games:pairs.length};
+      const estimate=efficiencySummary(pairs,key,usageKey);
+      baseline=touches.weighted*estimate.efficiency;
+      usage={key:usageKey,workload:touches.weighted,efficiency:estimate.efficiency,games:pairs.length,
+        dampened:estimate.dampened,efficiencyCap:estimate.cap};
     }
     return {...form,baseline,usage,usageUnavailable};
   }

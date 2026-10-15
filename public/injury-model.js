@@ -6,8 +6,15 @@
   function refreshDue(data, game, now = Date.now()) {
     if (!Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day) return false;
     if (!data?.current || !data.teams?.length) return true;
-    return data.teams.some(team => [[team.injuries,900000],[team.roster,3600000]].some(([report,age]) =>
-      !report?.available || !Number.isFinite(report.checkedAt) || report.checkedAt > now || now-report.checkedAt >= age));
+    return data.teams.some(team => {
+      const reports=[[team.injuries,900000],[team.roster,3600000]];
+      // Optional feeds are absent when unsupported. Retry returned feeds using
+      // their own timestamps, including unsuccessful checks, without hot-looping.
+      for(const [key,age] of [['official',900000],['inactives',900000],['starters',900000],['transactions',900000],['depth',3600000]]){
+        if(team[key])reports.push([team[key],age]);
+      }
+      return reports.some(([report,age])=>!report || !Number.isFinite(report.checkedAt) || report.checkedAt>now || now-report.checkedAt>=age);
+    });
   }
   function assess(data, game, teamId, playerId, now = Date.now(), requireMembership = false) {
     const unknown = reason => ({blocked:false, state:'unknown', reason});

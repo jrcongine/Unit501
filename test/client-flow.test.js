@@ -481,3 +481,16 @@ test('shortlist preserves chosen markets through filters, copies current rows an
  assert.equal(h.nodes.get('prop-filter-shortlist').value,'');
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/0 shortlisted/);
 });
+
+test('returning to visible app grades saved forecasts without opening accuracy panel',async()=>{
+ const h=harness();await h.settle();
+ const kickoff=Math.floor((Date.now()-86400000)/1000)*1000;
+ const snapshot={schema:1,forecastAt:kickoff-1000,game:{id:'999',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},records:[{kind:'score',market:'points',gameId:'999',league:'1',season:'2026',teamId:'1',kickoff,forecastAt:kickoff-1000,actual:null,resultKnownAt:null}]};
+ h.storage.set('unit501-score-archive-v1',JSON.stringify({schema:1,snapshots:[snapshot]}));
+ h.game.game.date.timestamp=kickoff/1000;h.game.game.status.short='FT';h.game.scores.away.total=21;
+ let calls=0;const original=h.context.fetch;h.context.fetch=async url=>{if(String(url).startsWith('/api/games'))calls++;return original(url);};
+ h.context.document.hidden=true;await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,0);
+ h.context.document.hidden=false;await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();await h.settle();
+ assert.equal(calls,1);assert.equal(JSON.parse(h.storage.get('unit501-score-archive-v1')).snapshots[0].records[0].actual,21);
+ await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,1);
+});

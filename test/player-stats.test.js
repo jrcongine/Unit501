@@ -24,7 +24,7 @@ test('usage and typical efficiency reduce a one-game receiving spike without inv
   const rows=[{gameDate:5,rec:5,recYds:200},...Array.from({length:4},(_,i)=>({gameDate:4-i,rec:5,recYds:50}))];
   const p=project(rows,'recYds');
   assert.ok(p.baseline<p.weighted);assert.equal(p.usage.workload,5);assert.equal(p.usage.games,5);
-  assert.equal(p.baseline,65);
+  assert.equal(p.baseline,52.5);assert.equal(p.usage.dampened,1);
   assert.equal(project([{gameDate:1,recYds:10},{gameDate:2,recYds:20}],'recYds').usage,null);
 });
 test('yardage losses are valid results and sparse paired usage falls back to form',()=>{

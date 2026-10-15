@@ -88,3 +88,21 @@ test('workload summary preserves recent calendar gaps and real zeros without pro
  const flags=reviewChecks({values:[1,2,3,4,5],form:{coverage:{missing:0}},workload:100,workloadHistory:result},{savedAt:1000},null,1000);
  assert.ok(flags.includes('Verify current workload'));
 });
+
+test('efficiency outlier damping reduces a single explosion without rewriting recorded outcomes',()=>{
+ const {project}=require('../public/player-form');
+ const rows=[40,40,40,400].map((recYds,i)=>({gameDate:i+1,rec:4,recYds}));
+ const result=project(rows,'recYds');
+ assert.equal(result.usage.dampened,1);assert.equal(result.usage.efficiencyCap,15);
+ assert.equal(result.baseline,42.5);assert.equal(result.average,130);
+ assert.deepEqual(result.values,[400,40,40,40]);assert.equal(rows[3].recYds,400);
+ const stable=project(rows.map(g=>({...g,recYds:40})),'recYds');
+ assert.equal(stable.baseline,40);assert.equal(stable.usage.dampened,0);
+ const small=project(rows.slice(1),'recYds');assert.equal(small.usage.dampened,0);
+ const negative=project(rows.map(g=>({...g,recYds:-4})),'recYds');assert.equal(negative.baseline,-4);
+});
+test('sustained higher efficiency is retained rather than treated as a single outlier',()=>{
+ const {project}=require('../public/player-form');
+ const rows=[40,40,100,100,100].map((recYds,i)=>({gameDate:i+1,rec:4,recYds}));
+ const result=project(rows,'recYds');assert.equal(result.usage.dampened,0);assert.ok(result.baseline>70);
+});

@@ -40,6 +40,11 @@
   }
   return {snapshot:out,matched};
  }
+ function autoRefreshDue(archive,lastAttempt,now=Date.now()){
+  if(!Number.isFinite(now)||now-lastAttempt<300000)return false;
+  return (archive.snapshots||[]).some(s=>Number.isFinite(s.game?.kickoff)&&s.game.kickoff<now&&
+    (s.records||[]).some(r=>!Number.isFinite(r.actual)));
+ }
  async function refresh(storage,request,now=Date.now){
   const archiver=typeof module!=='undefined'&&module.exports?require('./forecast-archive'):root.Unit501ForecastArchive;
   const archive=archiver.read(storage);
@@ -73,6 +78,6 @@
   if(root.document&&typeof root.Event==='function')root.document.dispatchEvent(new root.Event('unit501:archive-updated'));
   return {matched,failed};
  }
- const api={match,refresh};
+ const api={match,refresh,autoRefreshDue};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501ForecastResults=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

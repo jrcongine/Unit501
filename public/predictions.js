@@ -593,6 +593,7 @@ results.appendChild(workload);
         const usage=document.createElement('p');
         usage.textContent=`Usage estimate: ${model.form.usage.workload.toFixed(1)} ${model.form.usage.key==='rec'?'receptions':model.form.usage.key} × ${model.form.usage.efficiency.toFixed(1)} yards each (${model.form.usage.games} paired games).`;
         card.append(usage);
+        if(model.form.usage.dampened){const note=document.createElement('p');note.textContent=`Efficiency outlier adjustment: ${model.form.usage.dampened} unusually high game(s) reduced in the estimate. Actual historical stats are unchanged. This rule has not been calibrated to betting outcomes.`;card.append(note);}
       }
       if(model.form.coverage.missing) {
         const coverage=document.createElement('p');
