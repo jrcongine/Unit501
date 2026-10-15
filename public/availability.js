@@ -98,6 +98,13 @@
       if(t.official) {
         panel.append(node('p',t.official.available ? `${t.official.publisher || `Official NFL Week ${t.official.week}`}  cross-check: checked ${timestamp(t.official.checkedAt)}${t.official.publishedAt?'; published '+timestamp(t.official.publishedAt):''}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
         if(t.official.available) {
+          if(t.official.unresolved?.length) {
+            const warning=node('div','');
+            warning.append(node('p','Unmatched official reports — review before using player projections. These names are not linked to a verified roster identity:'));
+            const list=node('ul','');
+            for(const r of t.official.unresolved) list.append(node('li',`${r.name || 'Unnamed player'}${r.position?' ('+r.position+')':''} — ${r.status || 'no game status'}${r.description?'; '+r.description:''}${r.practice?'; '+r.practice:''}`));
+            warning.append(list);panel.append(warning);
+          }
           const link=node('a','Review official availability report');link.href=t.official.url;link.target='_blank';link.rel='noopener';panel.append(link);
         }
       }
