@@ -494,3 +494,20 @@ test('returning to visible app grades saved forecasts without opening accuracy p
  assert.equal(calls,1);assert.equal(JSON.parse(h.storage.get('unit501-score-archive-v1')).snapshots[0].records[0].actual,21);
  await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,1);
 });
+
+test('matchup review exposes unmatched official injury names without inventing roster identities',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const response=await original(url);
+  if(!String(url).startsWith('/api/availability'))return response;
+  const data=await response.json();
+  data.teams[0].official={available:true,checkedAt:Date.now(),week:6,rows:[],unmatched:1,url:'https://www.nfl.com/injuries',unresolved:[{name:'Unmatched Runner',position:'RB',status:'Out',description:'Knee',practice:'Limited'}]};
+  return {ok:true,json:async()=>data};
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ const panel=h.created.find(n=>n.tag==='section'&&n.textContent.includes('Unmatched official reports'));
+ assert.ok(panel);assert.match(panel.textContent,/Unmatched Runner \(RB\) — Out; Knee; Limited/);
+ const report=h.context.Unit501Availability.snapshot().teams[0].official;
+ assert.equal(report.rows.length,0);assert.equal(report.unresolved[0].id,undefined);
+});
