@@ -31,7 +31,7 @@
    return;
   }
   const auto=document.getElementById('autoInjuries');
-  if(auto?.checked){
+  if(game.league==='1'&&auto?.checked){
    const review=window.Unit501AutoInjury?.evaluate(window.Unit501Availability?.snapshot(),game,window.Unit501Lineups?.evaluate());
    if(!review?.ready){
     status.textContent='Preparing: waiting for fresh, matching NFL roster, depth and official reports for both teams. No automatic injury points or frozen forecast yet.';
