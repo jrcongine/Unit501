@@ -114,6 +114,7 @@ async function loadFanDuel() {
     }
     oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
     $('note').textContent = 'Review the lines and ratings, then run the simulation.';
+    document.dispatchEvent(new Event('unit501:odds-updated'));
   } catch (error) {
     if (task === oddsSequence && selected === game && edits === lineEdits)
       oddsStatus.textContent = error.message + ' Enter lines manually.';
