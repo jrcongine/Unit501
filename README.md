@@ -186,3 +186,13 @@ reported rather than filled. This is a **read-only proposal**: the existing
 review/confirmation flow still controls whether any inferred replacement
 touches or score changes actually apply. The automatic injury-point heuristic
 and this workload-review display are separate.
+
+
+### War Room public-feed refresh
+When the 501 War Room is expanded and visible, published public picks are
+rechecked once cached observations are at least five minutes old. It also
+checks when you reopen the panel or return to the tab. Failed requests observe
+the same cooldown; manual Refresh remains available. Source dates and links
+are still required; EV and Juice Reel entries without an accessible public
+pick feed remain manual and are **not** automatically filled or counted as
+votes. Background polling stops when the War Room is closed.

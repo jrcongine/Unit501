@@ -2,9 +2,11 @@
   'use strict';
   const byId=id=>document.getElementById(id), room=byId('war-room'), list=byId('war-feed');
   if(!room || !list)return;
-  let request=0,loaded=false;
+  let request=0,loaded=false,loadedAt=0,lastAttempt=0,loading=false,timer=null;
   function el(tag,value,className){const node=document.createElement(tag);if(value)node.textContent=value;if(className)node.className=className;return node;}
   async function load(){
+    // User-initiated refresh or league switch may supersede an in-flight request.
+    loading=true;lastAttempt=Date.now();
     const version=++request, league=byId('war-feed-league').value;
     loaded=true; list.replaceChildren();byId('war-feed-status').textContent='Loading public selections…';
     try{
@@ -27,11 +29,24 @@
         list.append(section);
       }
       for(const entry of data.manual || []){const section=el('section',null,'war-feed-source');section.append(el('h4',entry.name),el('p',entry.message,'war-muted'));list.append(section);}
+      loadedAt=Date.now();
       byId('war-feed-status').textContent=count+' public selections loaded. Check the displayed game date and price before using a pick.';
     }catch(error){if(version!==request)return;loaded=false;list.replaceChildren();byId('war-feed-status').textContent='Could not load public picks. Try Refresh picks or use the source links below.';}
+    finally{if(version===request)loading=false;}
   }
   byId('war-feed-refresh').addEventListener('click',load);
   byId('war-feed-league').addEventListener('change',load);
-  room.addEventListener('toggle',()=>{if(room.open && !loaded)load();});
-  if(room.open)load();
+  function refreshIfDue(){
+    if(!room.open||document.hidden||loading)return;
+    const now=Date.now();
+    if((!loaded||now-loadedAt>=300000)&&(!lastAttempt||now-lastAttempt>=300000))load();
+  }
+  function watch(){
+    if(timer!==null && typeof clearTimeout==='function')clearTimeout(timer);
+    if(!room.open||typeof setTimeout!=='function')return;
+    timer=setTimeout(()=>{refreshIfDue();watch();},60000);
+  }
+  room.addEventListener('toggle',()=>{refreshIfDue();watch();});
+  document.addEventListener?.('visibilitychange',refreshIfDue);
+  if(room.open){refreshIfDue();watch();}
 })();
