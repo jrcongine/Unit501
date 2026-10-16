@@ -415,6 +415,16 @@ test('prop board sorts largest raw discrepancy across stats or within a stat, wi
  assert.match(rows()[1].textContent,/RB 2/); // The -5.5 gap ranks second because raw distance is absolute.
  await change('sort','stat-gap');
  assert.match(rows()[0].textContent,/RB 2/); // Grouped sorting still begins with rushing attempts.
+ const originalSupport=h.context.Unit501PlayerForm.dataSupport;
+ h.context.Unit501PlayerForm.dataSupport=(model,availability)=>{
+  const support=originalSupport(model,availability);
+  // Simulate a clean rushing sample and a flagged receiving sample to verify priority.
+  return {...support,needsReview:model.average!==20};
+ };
+ await change('sort','reviewed-gap');
+ assert.match(rows()[0].textContent,/RB 2/);
+ assert.match(rows()[0].textContent,/Rushing attempts/);
+ assert.match(rows()[rows().length-1].textContent,/Receiving yards/);
  await change('stat','carries');assert.equal(rows().length,2);assert.match(rows()[0].textContent,/RB 2/);
  await change('review','workload');assert.equal(rows().length,0);assert.match(board.textContent,/Reset the filters/);
  const next={...h.game,game:{...h.game.game,id:1000}};
