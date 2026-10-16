@@ -57,3 +57,34 @@ test('all modeled markets have explicit coverage and duplicate market snapshots 
  assert.equal(coverage.find(m=>m.stat==='passYds').lines,1);
  assert.ok(coverage.filter(m=>m.stat!=='passYds').every(m=>m.lines===0));
 });
+
+test('401 reports safe provider code and does not cache failed authentication for five minutes',async()=>{
+ const oldFetch=global.fetch,oldKey=process.env.ODDS_API_KEY;
+ process.env.ODDS_API_KEY='fake-testing-key';
+ const q={away:'Auth Test Away',home:'Auth Test Home',league:'2',kickoff:Date.now()+3*86400000};
+ let calls=0;
+ global.fetch=async()=>{
+   calls++;
+   return {ok:false,status:401,json:async()=>({error_code:'INVALID_KEY',message:'https://example.invalid/?apiKey=SECRET_SHOULD_NOT_LEAK'})};
+ };
+ try {
+   await assert.rejects(getProps(q),e=>e.message.includes('401 (INVALID_KEY)')&&e.message.includes('ODDS_API_KEY')&&!e.message.includes('SECRET_SHOULD_NOT_LEAK'));
+   await assert.rejects(getProps(q),/INVALID_KEY/);
+   assert.equal(calls,2,'A failed response must not be cached for five minutes');
+ }finally{
+   global.fetch=oldFetch;
+   if(oldKey===undefined)delete process.env.ODDS_API_KEY;else process.env.ODDS_API_KEY=oldKey;
+ }
+});
+test('exhausted monthly credits receive a distinct actionable message',async()=>{
+ const oldFetch=global.fetch,oldKey=process.env.ODDS_API_KEY;
+ process.env.ODDS_API_KEY='fake-testing-key';
+ const q={away:'Quota Test Away',home:'Quota Test Home',league:'1',kickoff:Date.now()+3*86400000};
+ global.fetch=async()=>({ok:false,status:401,json:async()=>({error_code:'OUT_OF_USAGE_CREDITS'})});
+ try {
+   await assert.rejects(getProps(q),/monthly usage credits exhausted/);
+ }finally{
+   global.fetch=oldFetch;
+   if(oldKey===undefined)delete process.env.ODDS_API_KEY;else process.env.ODDS_API_KEY=oldKey;
+ }
+});
