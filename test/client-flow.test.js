@@ -393,7 +393,7 @@ test('weather displays retractable and covered venues as context and skips fixed
 });
 
 
-test('prop board filters direction and groups gap ordering by stat, with reset on game selection',async()=>{
+test('prop board sorts largest raw discrepancy across stats or within a stat, with reset on game selection',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
@@ -407,6 +407,14 @@ test('prop board filters direction and groups gap ordering by stat, with reset o
  // Same market: the larger gap must lead even when that player loaded later.
  h.nodes.get('predict-player').value='2:8';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const second=h.nodes.get('line-2:8-carries');second.value='25.5';await second.dispatchEvent({type:'input'});
+ const receiving=h.nodes.get('line-1:7-recYds');receiving.value='6.5';await receiving.dispatchEvent({type:'input'});
+ await change('stat','');
+ await change('sort','gap');
+ assert.equal(rows().length,4);
+ assert.match(rows()[0].textContent,/Receiving yards/); // The +17.5 gap leads overall even though receiving follows rushing in stat order.
+ assert.match(rows()[1].textContent,/RB 2/); // The -5.5 gap ranks second because raw distance is absolute.
+ await change('sort','stat-gap');
+ assert.match(rows()[0].textContent,/RB 2/); // Grouped sorting still begins with rushing attempts.
  await change('stat','carries');assert.equal(rows().length,2);assert.match(rows()[0].textContent,/RB 2/);
  await change('review','workload');assert.equal(rows().length,0);assert.match(board.textContent,/Reset the filters/);
  const next={...h.game,game:{...h.game.game,id:1000}};
