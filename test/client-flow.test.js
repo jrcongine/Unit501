@@ -561,6 +561,24 @@ test('matchup review exposes unmatched official injury names without inventing r
  assert.equal(report.rows.length,0);assert.equal(report.unresolved[0].id,undefined);
 });
 
+test('failed FanDuel props refresh keeps fresh automatic quotes and table lines',async()=>{
+ const h=harness();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.match(h.nodes.get('all-player-projections').textContent,/19.5/);
+ const original=h.context.fetch;
+ h.context.fetch=async url=>new URL(url,'http://localhost').pathname==='/api/fanduel-props'
+   ? {ok:false,status:500,json:async()=>({error:'FanDuel prop feed returned 401 (INVALID_KEY). Check ODDS_API_KEY.'})}
+   : original(url);
+ const refresh=h.created.find(node=>node.tag==='button'&&node.textContent==='Refresh FanDuel props');
+ await refresh.dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.match(h.nodes.get('all-player-projections').textContent,/19.5/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/FanDuel/);
+ assert.match(h.nodes.get('prop-feed-status').textContent,/401 \(INVALID_KEY\)/);
+ assert.match(h.nodes.get('prop-feed-status').textContent,/Existing fresh quotes were kept/);
+});
 test('prop board shows and copies fresh prices, handles malformed odds and clears prices on manual line edit',async()=>{
  const h=harness();await h.settle();
  const original=h.context.fetch;
