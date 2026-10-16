@@ -219,3 +219,11 @@ these recent ungraded plays carry a date-review label and do not contribute to
 consensus until reliable event identification is available. Video-only picks are
 not inferred. The existing refresh button/five-minute cache applies, with bounded
 same-origin requests and partial-source failure messages.
+
+### Public vs. Money
+A separate War Room panel links to Action Network's NFL and college public
+betting boards and offers a manual ticket-share vs dollar-share comparison.
+Direct retrieval returned HTTP 403 during development; no automatic feed is
+claimed or bypass attempted. Refresh the original source for current figures.
+Blank money data remains unknown, zero is valid, and the gap uses percentage
+points. Inputs are temporary and never affect expert consensus or simulations.

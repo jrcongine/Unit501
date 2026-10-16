@@ -90,6 +90,23 @@
 </nav>
 <p class="war-muted">EV and Guy Boston Sports are the same source, not two independent confirmations. Check each pick's publication date, market, price, and line.</p>
 </details>
+<details id="war-public-money" class="war-public-money">
+<summary><strong>Public vs. Money</strong><span class="war-muted">Action Network · market context</span></summary>
+<p class="war-muted">View the current percentages on Action Network. Automatic data loading is not connected. Source availability and subscription requirements may vary.</p>
+<nav class="war-sources" aria-label="Action Network public betting boards">
+<a href="https://www.actionnetwork.com/nfl/public-betting" target="_blank" rel="noopener noreferrer">Open NFL board ↗</a>
+<a href="https://www.actionnetwork.com/ncaaf/public-betting" target="_blank" rel="noopener noreferrer">Open college board ↗</a>
+</nav>
+<p class="war-muted">Refresh the Action Network page for newer figures. Choose the same game, market and side for both percentages.</p>
+<div class="war-fields">
+<label>Selection being compared<input id="war-money-selection" type="text" maxlength="160" placeholder="Team / matchup / spread, total or ML"></label>
+<label>Bets %<input id="war-money-bets" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="Ticket share"></label>
+<label>Money %<input id="war-money-dollars" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="Dollar share, if shown"></label>
+</div>
+<p id="war-money-result" role="status" aria-live="polite">Enter both percentages to compare. These are manual inputs, not a live feed.</p>
+<button type="button" id="war-money-clear" class="war-secondary">Clear comparison</button>
+<p class="war-muted">Bets % measures reported ticket share; Money % measures reported dollar share. Their difference is in percentage points. A positive gap means a larger dollar share than ticket share, not proof of professional action. Missing money data stays unknown. This comparison is not saved and never counts as an expert pick or changes the simulation.</p>
+</details>
 <h3>Call a board vote</h3>
 <form id="war-form">
 <div class="war-fields">
@@ -274,6 +291,7 @@
 <script src="war-room.js"></script>
 <script src="pick-consensus.js"></script>
 <script src="outside-picks.js"></script>
+<script src="public-money.js"></script>
 <script src="auto-prep.js"></script>
 
 </body>

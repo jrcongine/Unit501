@@ -198,3 +198,7 @@ a{color:#97e3fc}
 .war-consensus{padding:14px;margin:16px 0;background:#0c1c25;border:1px solid #31616b;border-radius:14px}
 .war-consensus h3{margin-top:0}.war-agreement{margin:10px 0;padding:12px;background:#101923;border:1px solid #405269;border-radius:10px;overflow-wrap:anywhere}
 .war-agreement-match{border-left:4px solid #7de2c2}.war-agreement summary{font-size:15px;align-items:center;gap:10px}.war-agreement-count{color:#8fe6d2;font-size:13px}.war-disagreement{color:#ffd290;font-size:13px}.war-agreement a{color:#9ce4f5}.war-agreement p{font-size:14px}
+
+.war-public-money{margin:18px 0;padding:14px;border:1px solid #8c6c39;border-radius:12px;background:#211c14}
+.war-public-money>summary{color:#f5d49b;font-size:17px}.war-public-money .war-fields{margin-top:14px}.war-public-money input{min-width:0;width:100%}
+#war-money-result{padding:12px;background:#121620;border-radius:9px;line-height:1.5;overflow-wrap:anywhere}
