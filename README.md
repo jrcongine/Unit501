@@ -197,3 +197,14 @@ the same cooldown; manual Refresh remains available. Source dates and links
 are still required; EV and Juice Reel entries without an accessible public
 pick feed remain manual and are **not** automatically filled or counted as
 votes. Background polling stops when the War Room is closed.
+
+### War Room agreement counter
+The **Who agrees?** panel groups public full-game spread, total and moneyline
+selections by league, event date, matchup, market and side. It sorts by website
+count, then unique named handicappers. Syndicated/repeated names count once;
+exact published lines and source links remain in expandable cards. Opposing
+sides are flagged, including cases with different lines (which may allow middles).
+Website counts describe coverage, not proven independent opinions or win odds.
+Unknown dates, unmatched team names, props and period markets stay in the source
+cards without being grouped. EV and Juice Reel are not automatically counted.
+The panel refreshes with the existing public feed and clears on a failed reload.

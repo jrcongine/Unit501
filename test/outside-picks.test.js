@@ -40,9 +40,9 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
     append(...n){this.children.push(...n);}replaceChildren(){this.children=[];this._text='';}
     set textContent(t){this._text=t;}get textContent(){return this._text+this.children.map(n=>n.textContent).join('');}
     addEventListener(e,fn){this.listeners[e]=fn;}}
-  for(const id of ['war-room','war-feed','war-feed-league','war-feed-refresh','war-feed-status'])nodes.set(id,new Node());
+  for(const id of ['war-room','war-feed','war-feed-league','war-feed-refresh','war-feed-status','war-consensus'])nodes.set(id,new Node());
   const pending=[];
-  const context={document:{getElementById:id=>nodes.get(id),createElement:()=>new Node()},Date,AbortSignal,encodeURIComponent,
+  const context={window:{Unit501PickConsensus:require('../public/pick-consensus')},document:{getElementById:id=>nodes.get(id),createElement:()=>new Node()},Date,AbortSignal,encodeURIComponent,
     fetch:()=>new Promise(resolve=>pending.push(resolve))};
   vm.runInNewContext(fs.readFileSync(require.resolve('../public/outside-picks.js'),'utf8'),context);
   assert.equal(pending.length,0);nodes.get('war-room').open=true;nodes.get('war-room').listeners.toggle();assert.equal(pending.length,1);
@@ -50,8 +50,10 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
   const payload=name=>({sources:[{name,message:'public',checkedAt:'2026-10-14T20:00Z',picks:[{pick:'<img onerror=bad>',matchup:'AAA at BBB',author:name,eventLabel:'Oct 15',url:'https://www.covers.com/picks/ncaaf'}]}],manual:[]});
   pending[1]({ok:true,json:async()=>payload('New league')});await second;
   pending[0]({ok:true,json:async()=>payload('Old league')});await new Promise(r=>setImmediate(r));
+  assert.match(nodes.get('war-consensus').textContent,/No safely matched picks/);
   assert.match(nodes.get('war-feed').textContent,/New league/);assert.doesNotMatch(nodes.get('war-feed').textContent,/Old league/);
   assert.match(nodes.get('war-feed').textContent,/<img onerror=bad>/);
   const third=nodes.get('war-feed-refresh').listeners.click();pending[2]({ok:false});await third;
+  assert.match(nodes.get('war-consensus').textContent,/Agreement unavailable/);
   assert.match(nodes.get('war-feed-status').textContent,/Could not load/);assert.equal(nodes.get('war-feed').children.length,0);
 });
