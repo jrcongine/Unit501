@@ -79,7 +79,7 @@ test('401 reports safe provider code and does not cache failed authentication fo
 test('exhausted monthly credits receive a distinct actionable message',async()=>{
  const oldFetch=global.fetch,oldKey=process.env.ODDS_API_KEY;
  process.env.ODDS_API_KEY='fake-testing-key';
- const q={away:'Quota Test Away',home:'Quota Test Home',league:'1',kickoff:Date.now()+3*86400000};
+ const q={away:'Quota Test Away',home:'Quota Test Home',league:'2',kickoff:Date.now()+3*86400000};
  global.fetch=async()=>({ok:false,status:401,json:async()=>({error_code:'OUT_OF_USAGE_CREDITS'})});
  try {
    await assert.rejects(getProps(q),/monthly usage credits exhausted/);
