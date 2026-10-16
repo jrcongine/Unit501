@@ -194,3 +194,19 @@ a{color:#97e3fc}
  html{scroll-behavior:auto}
  .game,.quick-nav a,button{transition:none}
 }
+
+/* All-matchup player projection overview; separate from priced-prop comparisons. */
+#all-player-projections{margin:18px 0 24px;padding:14px;border:1px solid #53709a;border-radius:13px;background:#101e2d}
+#all-player-projections h3{margin:0 0 6px;color:#d9cbff}
+#all-player-projections>p{font-size:13px;color:#c8d6e6;line-height:1.5}
+.all-projection-filters{display:grid;grid-template-columns:minmax(200px,2fr) repeat(2,minmax(140px,1fr));gap:8px;margin:12px 0}
+.all-projection-filters>*{min-width:0;width:100%}
+.all-projection-scroll{overflow:auto;max-height:560px;border:1px solid #334f67;border-radius:10px}
+.all-projection-table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}
+.all-projection-table th,.all-projection-table td{padding:9px 11px;border-bottom:1px solid #344558;white-space:nowrap}
+.all-projection-table thead th{position:sticky;top:0;z-index:1;background:#193c53}
+.all-projection-table th:first-child,.all-projection-table td:first-child{min-width:170px;font-weight:700}
+.all-projection-table td:nth-child(6){white-space:normal;min-width:165px;max-width:230px}
+.all-projection-table tr[hidden]{display:none}
+.all-projection-table button{font-size:12px;min-height:34px;padding:6px 9px;background:#294862;white-space:nowrap}
+@media(max-width:750px){.all-projection-filters{grid-template-columns:1fr}.all-projection-scroll{max-height:460px}}
