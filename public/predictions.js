@@ -39,16 +39,17 @@
     const selection = sequence;
     const game = selected;
     refreshProps.disabled = true;
-    propStatus.textContent = 'Loading FanDuel prop lines…';
-    // Clear old automatic quotes, keeping all manual entries.
-    for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
-    showPlayer();
+    propStatus.textContent = 'Loading FanDuel prop lines… Existing quotes stay visible unless a new response succeeds.';
     try {
       const params = new URLSearchParams({away:game.a,home:game.h,league:game.league || el('league').value,kickoff:game.kickoff});
       const res = await fetch('/api/fanduel-props?' + params, {signal:AbortSignal.timeout(30000)});
       const data = await res.json();
       if (task !== propSequence || selection !== sequence) return;
       if (!res.ok || data.error) throw new Error(data.error || 'FanDuel props unavailable.');
+      if (!Array.isArray(data.props)) throw new Error('FanDuel prop response had no valid list of quotes.');
+      // Replace previous automatic quotes only after a successful feed response.
+      // A 401, exhausted quota, network failure or invalid response must not erase them.
+      for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
       let count = 0;
       for (const record of choices) {
         // Never guess abbreviated names or select between duplicate player names.
@@ -76,7 +77,7 @@
       propStatus.textContent = `${data.message || ''}${detail} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
       showPlayer();
     } catch (e) {
-      if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' You can enter lines manually.';
+      if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' Existing fresh quotes were kept; you can also enter lines manually.';
     } finally {
       if (task === propSequence && selection === sequence) refreshProps.disabled = false;
     }
