@@ -63,6 +63,20 @@
     const pooled=pairs.reduce((n,g,i)=>n+Math.min(rates[i],cap)*g[usageKey],0)/totalUsage;
     return {efficiency:(pooled+typical)/2,dampened:rates.filter(v=>v>cap).length,cap:Number.isFinite(cap)?cap:null};
   }
+  // Protect fallback yardage estimates from a single exceptionally high game.
+  // Historical results remain untouched; only the estimate is recomputed.
+  function guardedYardage(history,key,form) {
+    if (!key.endsWith('Yds') || form.values.length<4)
+      return {baseline:form.weighted,outlierAdjustment:null};
+    const median=items=>{const ordered=[...items].sort((a,b)=>a-b),mid=Math.floor(ordered.length/2);return ordered.length%2?ordered[mid]:(ordered[mid-1]+ordered[mid])/2;};
+    const typical=median(form.values);
+    const deviation=median(form.values.map(value=>Math.abs(value-typical)));
+    const cap=typical+Math.max(3*1.4826*deviation,Math.abs(typical)*0.5,1);
+    const count=form.values.filter(value=>value>cap).length;
+    if (!count) return {baseline:form.weighted,outlierAdjustment:null};
+    const guarded=summarize(history.map(game=>Number.isFinite(game[key])&&game[key]>cap?{...game,[key]:cap}:game),key);
+    return {baseline:guarded.weighted,outlierAdjustment:{count,cap,originalBaseline:form.weighted,adjustedBaseline:guarded.weighted}};
+  }
   function project(history,key) {
     const form=summarize(history,key);
     if(!form)return null;
@@ -70,25 +84,31 @@
       return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
     const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
     const pairs=usageKey?history.filter(g=>Number.isFinite(g.gameDate)&&Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
-    let baseline=form.weighted,usage=null,usageUnavailable=null;
+    let baseline=form.weighted,usage=null,usageUnavailable=null,outlierAdjustment=null;
     if(pairs.length>=2) {
       const touches=summarize(history,usageKey);
       if(touches.coverage.latestMissing){
         usageUnavailable='Latest workload statistic is missing. Yardage uses recorded yardage form instead of an older workload estimate; verify current usage.';
-        return {...form,baseline,usage,usageUnavailable};
+      } else {
+        const estimate=efficiencySummary(pairs,key,usageKey);
+        baseline=touches.weighted*estimate.efficiency;
+        usage={key:usageKey,workload:touches.weighted,efficiency:estimate.efficiency,games:pairs.length,
+          dampened:estimate.dampened,efficiencyCap:estimate.cap};
       }
-      const estimate=efficiencySummary(pairs,key,usageKey);
-      baseline=touches.weighted*estimate.efficiency;
-      usage={key:usageKey,workload:touches.weighted,efficiency:estimate.efficiency,games:pairs.length,
-        dampened:estimate.dampened,efficiencyCap:estimate.cap};
     }
-    return {...form,baseline,usage,usageUnavailable};
+    if (!usage) {
+      const guarded=guardedYardage(history,key,form);
+      baseline=guarded.baseline;
+      outlierAdjustment=guarded.outlierAdjustment;
+    }
+    return {...form,baseline,usage,usageUnavailable,outlierAdjustment};
   }
   function reviewChecks(model,entry,availability,now=Date.now()) {
     const reasons=[];
     reasons.push(availability?.state==='conditional' ? 'Conditional availability: verify participation' : 'Verify participation');
     if(model.values.length<5) reasons.push('Fewer than 5 recorded games');
     if(model.form.coverage.missing>0) reasons.push('Missing game statistics');
+    if(model.form.outlierAdjustment?.count) reasons.push('Review outlier-adjusted yardage');
     if(model.workloadWarning || model.form.usageUnavailable || model.workloadHistory?.missing>0) reasons.push('Verify current workload');
     if(model.workload!==100 || model.lineupChange) reasons.push('Scenario-adjusted projection');
     if(!Number.isFinite(entry.savedAt) || entry.savedAt>now || now-entry.savedAt>1800000) reasons.push('Refresh line');
@@ -101,6 +121,7 @@
     const flags=[];
     if(model?.form?.coverage?.missing>0)flags.push('stat gaps');
     if(model?.form?.coverage?.latestMissing)flags.push('latest stat missing');
+    if(model?.form?.outlierAdjustment?.count)flags.push('yardage spike dampened');
     if(model?.workloadWarning || model?.form?.usageUnavailable || model?.workloadHistory?.missing>0)flags.push('workload uncertainty');
     if(model?.form?.usage?.dampened>0)flags.push('efficiency outlier adjustment');
     if(model?.workload!==100 || model?.lineupChange)flags.push('scenario input');
