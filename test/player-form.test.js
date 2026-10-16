@@ -135,3 +135,39 @@ test('data support surfaces stat gaps, changing workload, outliers, scenarios an
     workload:100,workloadHistory:{missing:0}
   },{state:'unknown'}).needsReview,false);
 });
+
+test('an isolated 229-yard receiving game is dampened when missing workload forces a fallback',()=>{
+ const {project,dataSupport,reviewChecks}=require('../public/player-form');
+ const history=[
+  {gameDate:6}, // Latest completed team game has no recorded stat: never impute a zero.
+  {gameDate:5,recYds:31},
+  {gameDate:4,recYds:31},
+  {gameDate:3,recYds:229},
+  {gameDate:2,recYds:16},
+  {gameDate:1,recYds:60}
+ ];
+ const model=project(history,'recYds');
+ assert.equal(model.coverage.recorded,5);
+ assert.equal(model.coverage.missing,1);
+ assert.equal(model.coverage.latestMissing,true);
+ assert.equal(model.values.includes(229),true);
+ assert.ok(model.weighted>70,'Raw formula shows an exaggerated yardage estimate');
+ assert.equal(model.usage,null);
+ assert.equal(model.outlierAdjustment.count,1);
+ assert.ok(model.outlierAdjustment.cap<229);
+ assert.ok(model.baseline<55,'Fallback estimate limits the one-game spike');
+ assert.ok(model.baseline>30,'Fallback is not just an arbitrary zero or median');
+ assert.equal(history[3].recYds,229,'Historical game result must not be changed');
+ const support=dataSupport({...model,values:model.values,form:model,workload:100,workloadHistory:{missing:6}},null);
+ assert.ok(support.needsReview);
+ assert.match(support.label,/yardage spike dampened/);
+ const checks=reviewChecks({...model,form:model,workload:100,workloadHistory:{missing:6}},{savedAt:Date.now()},null);
+ assert.ok(checks.includes('Review outlier-adjusted yardage'));
+});
+test('consistent receiving production is not suppressed by spike safeguard',()=>{
+ const {project}=require('../public/player-form');
+ const history=[90,85,80,75,70].map((recYds,i)=>({gameDate:10-i,recYds}));
+ const model=project(history,'recYds');
+ assert.equal(model.outlierAdjustment,null);
+ assert.equal(model.baseline,model.weighted);
+});
