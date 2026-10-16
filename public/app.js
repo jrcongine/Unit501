@@ -493,6 +493,10 @@ function clearSelection() {
   selected = null;
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
+  for (const [id, label] of [['quick-lab','🎯 Game Lab · select game'],['quick-player','📊 Player props · select game']]) {
+    const link = $(id);
+    if (link) { link.classList.add('is-unavailable'); link.setAttribute('aria-disabled','true'); link.tabIndex = -1; link.textContent = label; }
+  }
   document.dispatchEvent(new Event('unit501:selection-changed'));
 }
 
@@ -636,8 +640,31 @@ async function load() {
           ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}`
           : '');
 
-      card.append(matchup, details);
-      card.onclick = () => choose(game);
+      const action = document.createElement('span');
+      action.className = 'open-game';
+      action.textContent = 'Open Game Lab →';
+      action.setAttribute('aria-hidden', 'true');
+      card.append(matchup, details, action);
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-pressed', 'false');
+      card.setAttribute('aria-label', 'Open Game Lab for ' + game.a + ' at ' + game.h);
+      const activate = () => {
+        for (const other of games.querySelectorAll('.game')) {
+          other.classList.remove('selected');
+          other.setAttribute('aria-pressed', 'false');
+        }
+        card.classList.add('selected');
+        card.setAttribute('aria-pressed', 'true');
+        choose(game);
+      };
+      card.addEventListener('click', activate);
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activate();
+        }
+      });
       games.appendChild(card);
     });
   } catch (error) {
@@ -658,6 +685,10 @@ async function choose(game) {
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
   $('player-lab').classList.remove('hidden');
+  for (const [id,label] of [['quick-lab','🎯 Game Lab'],['quick-player','📊 Player props']]) {
+    const link = $(id);
+    if (link) { link.classList.remove('is-unavailable'); link.setAttribute('aria-disabled','false'); link.tabIndex = 0; link.textContent = label; }
+  }
   $('matchup').textContent = `${game.a} @ ${game.h}`;
 
   // Do not invent a betting line when current odds are unavailable.
