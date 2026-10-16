@@ -424,7 +424,7 @@ test('prop board sorts largest raw discrepancy across stats or within a stat, wi
  await change('sort','reviewed-gap');
  assert.match(rows()[0].textContent,/RB 2/);
  assert.match(rows()[0].textContent,/Rushing attempts/);
- assert.match(rows()[rows().length-1].textContent,/Receiving yards/);
+ assert.match(rows()[2].textContent,/Receiving yards/); // Larger flagged gap follows both clean rushing lines.
  await change('stat','carries');assert.equal(rows().length,2);assert.match(rows()[0].textContent,/RB 2/);
  await change('review','workload');assert.equal(rows().length,0);assert.match(board.textContent,/Reset the filters/);
  const next={...h.game,game:{...h.game.game,id:1000}};
