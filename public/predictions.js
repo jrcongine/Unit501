@@ -223,6 +223,7 @@ addFilter('direction', 'Projection', [
 ]);
 addFilter('sort', 'Order', [
   ['', 'Player order'],
+  ['reviewed-gap', 'Cleaner data first — biggest difference'],
   ['gap', 'Largest discrepancy overall'],
   ['stat-gap', 'Largest difference within each stat'],
   ['sample', 'Most recorded games']
@@ -242,7 +243,9 @@ const researchNote = document.createElement('p');
  researchNote.style.cssText='font-size:.9em;opacity:.85';
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
-orderingNote.textContent = board.dataset.sort === 'gap'
+orderingNote.textContent = board.dataset.sort === 'reviewed-gap'
+   ? 'Cleaner data first sorts props with at least five recorded games and no statistical or workload flags ahead of those needing review, then orders by absolute projection-versus-line difference. It is not a betting-edge ranking; playing status, odds and model calibration still need verification.'
+   : board.dataset.sort === 'gap'
    ? 'Largest discrepancy overall ranks every visible prop by the absolute distance between projection and line, biggest first. It mixes yards, attempts and counts, so this is a raw numerical comparison, not betting value or a win probability.'
    : 'Largest difference within each stat keeps stat categories separate and sorts by absolute projection-versus-line distance inside each category. Neither sort predicts the chance of winning; verify participation, prices and model reliability.';
 orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
@@ -270,11 +273,13 @@ for (let i = rows.length - 1; i >= 0; i--) {
     rows.splice(i, 1);
   }
 }
-    if (board.dataset.sort === 'gap' || board.dataset.sort === 'stat-gap') {
+    if (['gap','stat-gap','reviewed-gap'].includes(board.dataset.sort)) {
       const statOrder = new Map(definitions.map((def, index) => [def.key, index]));
       const gap = row => Math.abs(Number((Number(row.adjusted.toFixed(1)) - row.line).toFixed(1)));
       rows.sort((a, b) => (board.dataset.sort === 'stat-gap'
         ? statOrder.get(a.def.key) - statOrder.get(b.def.key) || gap(b) - gap(a)
+        : board.dataset.sort === 'reviewed-gap'
+        ? Number(a.support.needsReview) - Number(b.support.needsReview) || gap(b) - gap(a)
         : gap(b) - gap(a)) || statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
         a.record.name.localeCompare(b.record.name));
     } else if (board.dataset.sort === 'sample') {
@@ -649,6 +654,12 @@ results.appendChild(workload);
         card.appendChild(warning);
       }
       if(model.form.usageUnavailable){const warning=document.createElement('p');warning.textContent=model.form.usageUnavailable;card.append(warning);}
+      if(model.form.outlierAdjustment?.count){
+        const warning=document.createElement('p');
+        warning.style.cssText='color:#e8b95b;margin:8px 0';
+        warning.textContent=`Outlier safeguard: ${model.form.outlierAdjustment.count} unusually high yardage game(s) limited to ${model.form.outlierAdjustment.cap.toFixed(1)} in the fallback estimate. Raw form baseline ${model.form.outlierAdjustment.originalBaseline.toFixed(1)} → guarded ${model.form.outlierAdjustment.adjustedBaseline.toFixed(1)}. Actual box scores unchanged; not a validated betting edge.`;
+        card.append(warning);
+      }
       if(model.form.usage) {
         const usage=document.createElement('p');
         usage.textContent=`Usage estimate: ${model.form.usage.workload.toFixed(1)} ${model.form.usage.key==='rec'?'receptions':model.form.usage.key} × ${model.form.usage.efficiency.toFixed(1)} yards each (${model.form.usage.games} paired games).`;
@@ -717,7 +728,7 @@ results.appendChild(workload);
     }
     const note = document.createElement('p');
     note.style.opacity = '.8';
-    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses season/form yardage. Missing statistics are omitted, not treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
+    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses a conservative season/form yardage fallback that dampens extreme single-game spikes when at least four recorded games exist. Missing statistics remain unknown, never automatically treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
     results.appendChild(note);
   }
   function reset() {
