@@ -121,9 +121,124 @@
     }
     return entry;
   }
+  // Compact, complete matchup overview; individual player cards remain available below.
+  const overview = document.createElement('section');
+  overview.id = 'all-player-projections';
+  results.before(overview);
   const board = document.createElement('section');
   board.id = 'saved-line-comparisons';
   results.before(board);
+  function renderOverview() {
+    overview.replaceChildren();
+    if (!loadedFor) return;
+    const title = document.createElement('h3');
+    title.textContent = 'All player projections — both teams';
+    const intro = document.createElement('p');
+    intro.textContent = 'Every available model projection from this matchup, including players without a FanDuel line. Missing stats are never guessed. A projection is not a bet recommendation; confirm role and data before relying on it.';
+    overview.append(title, intro);
+
+    const records = [];
+    for (const player of choices) {
+      const availability = window.Unit501Availability?.assess(player.teamId, player.playerId);
+      if (availability?.blocked) {
+        records.push({player,def:null,projection:null,line:null,gap:null,detail:'Unavailable — projection withheld'});
+        continue;
+      }
+      let added=0;
+      for (const def of definitions) {
+        const model=projectionFor(player,def);
+        if (!model) continue;
+        const entry=readLine(lineKey(player,def));
+        const priceLine=n(entry.value);
+        const line=priceLine!==null && Number.isInteger(priceLine*2) ? priceLine : null;
+        const projection=Number(model.adjusted.toFixed(1));
+        const gap=line===null?null:Number((projection-line).toFixed(1));
+        const support=Unit501PlayerForm.dataSupport(model,availability);
+        records.push({player,def,projection,line,gap,detail:`${support.count} recorded · ${support.needsReview?'Review data':'No extra statistical flags'}`});
+        added++;
+      }
+      if (!added) records.push({player,def:null,projection:null,line:null,gap:null,detail:'Insufficient recorded data for projection'});
+    }
+    const filters = document.createElement('div');
+    filters.className = 'all-projection-filters';
+    const search = document.createElement('input');
+    search.id = 'all-projection-search';
+    search.type = 'search';
+    search.placeholder = 'Find a player in the loaded matchup';
+    search.setAttribute('aria-label','Search loaded player projections');
+    search.value = overview.dataset.query || '';
+    const team = document.createElement('select');
+    team.id = 'all-projection-team';
+    team.setAttribute('aria-label','Filter loaded projections by team');
+    for (const [value,label] of [['','Both teams'],...matchupTeams.map(t=>[t.id,t.name])]) {
+      const option=document.createElement('option'); option.value=value; option.textContent=label; team.append(option);
+    }
+    team.value=overview.dataset.team||'';
+    const stat = document.createElement('select');
+    stat.id = 'all-projection-stat';
+    stat.setAttribute('aria-label','Filter loaded projections by stat');
+    for(const [value,label] of [['','All stats'],...definitions.map(d=>[d.key,d.title])]){
+      const option=document.createElement('option');option.value=value;option.textContent=label;stat.append(option);
+    }
+    stat.value=overview.dataset.stat||'';
+    filters.append(search,team,stat);
+    const count = document.createElement('p');
+    count.id = 'all-projection-count';
+    const scroll = document.createElement('div');
+    scroll.className = 'all-projection-scroll';
+    scroll.tabIndex = 0;
+    scroll.setAttribute('role','region');
+    scroll.setAttribute('aria-label','All loaded player projections');
+    const table=document.createElement('table');
+    table.className='all-projection-table';
+    const head=document.createElement('thead');
+    const heading=document.createElement('tr');
+    for(const label of ['Player / team','Stat','Projected','FanDuel line','Difference','Data support','Details']){
+      const th=document.createElement('th');th.scope='col';th.textContent=label;heading.append(th);
+    }
+    head.append(heading);table.append(head);
+    const body=document.createElement('tbody');
+    const visibleRows=[];
+    for(const item of records){
+      const tr=document.createElement('tr');
+      const values=[`${item.player.name} — ${item.player.team}`,item.def?.title||'—',
+        item.projection===null?'Withheld':item.projection.toFixed(1),
+        item.line===null?'—':String(item.line),
+        item.gap===null?'—':item.gap===0?'Equal':`${Math.abs(item.gap).toFixed(1)} ${item.gap>0?'above':'below'}`,item.detail];
+      for(const value of values){const cell=document.createElement('td');cell.textContent=value;tr.append(cell);}
+      const action=document.createElement('td');
+      const open=document.createElement('button');
+      open.type='button';
+      open.textContent='View player';
+      open.setAttribute('aria-label',`View ${item.player.name} projections`);
+      open.addEventListener('click',()=>{
+        picker.value=item.player.id;
+        showPlayer();
+        results.scrollIntoView?.({behavior:'smooth',block:'start'});
+      });
+      action.append(open);tr.append(action);body.append(tr);visibleRows.push({tr,item});
+    }
+    table.append(body);scroll.append(table);overview.append(filters,count,scroll);
+    const apply=()=>{
+      const query=search.value.trim().toLowerCase();
+      overview.dataset.query=search.value;
+      overview.dataset.team=team.value;
+      overview.dataset.stat=stat.value;
+      let shown=0;
+      for(const {tr,item} of visibleRows){
+        const visible=(!query||(`${item.player.name} ${item.player.team}`).toLowerCase().includes(query))&&
+          (!team.value||item.player.teamId===team.value)&&
+          (!stat.value||item.def?.key===stat.value);
+        tr.hidden=!visible;
+        if(visible)shown++;
+      }
+      count.textContent=`${shown} of ${records.length} rows shown · ${choices.length} players loaded. Rows without lines still have projections.`;
+    };
+    search.addEventListener('input',apply);
+    team.addEventListener('change',apply);
+    stat.addEventListener('change',apply);
+    apply();
+  }
   function renderComparisons() {
     board.replaceChildren();
     if (!loadedFor) return;
@@ -567,6 +682,7 @@ cell.append(details);
       option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?.state==='conditional'?' — Conditional availability':''}`;
     }
     renderComparisons();
+    renderOverview();
     results.replaceChildren();
     const record = choices.find(x => x.id === picker.value);
     if (!record) return;
@@ -744,6 +860,10 @@ results.appendChild(workload);
     workloadScenarios.clear();
     lineScope = '';
     board.replaceChildren();
+    overview.replaceChildren();
+    overview.dataset.query='';
+    overview.dataset.team='';
+    overview.dataset.stat='';
     picker.disabled = true;
     picker.replaceChildren();
     results.replaceChildren();
@@ -759,7 +879,7 @@ results.appendChild(workload);
     const game = selected;
     const gameId = String(game.id);
     if (loadedFor === gameId && choices.length) {
-      status.textContent = 'Projections loaded. Choose a player below.'; return;
+      status.textContent = 'All player projections are shown below. Select a player for details.'; renderOverview(); return;
     }
     button.disabled = true;
     picker.disabled = true;
@@ -843,7 +963,7 @@ if (league === '1' && stage !== 'regular season') return false;
       loadedFor = gameId;
       lineScope = `${league}:${season}:${date}:${gameId}`;
       picker.disabled = false;
-      status.textContent = `${choices.length} players with recent stats. Select a player.`;
+      status.textContent = `${choices.length} players loaded. All supported projections are listed below; select a player for a detailed breakdown.`;
       showPlayer();
       loadProps();
     } catch (e) {
