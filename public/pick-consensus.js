@@ -10,6 +10,7 @@
     return Number.isFinite(+candidates[0])?candidates[0].toISOString().slice(0,10):null;
   }
   function identify(p,checkedAt){
+    if(p.requiresReview)return null;
     const date=dateOf(p,checkedAt);if(!date)return null;
     const teams=clean(p.matchup).replace(/:\s*(total|spread|moneyline).*$/,'').split(/\s+(?:vs\.?|at|@)\s+/);
     if(teams.length!==2 || teams.some(t=>!t))return null;

@@ -206,5 +206,16 @@ exact published lines and source links remain in expandable cards. Opposing
 sides are flagged, including cases with different lines (which may allow middles).
 Website counts describe coverage, not proven independent opinions or win odds.
 Unknown dates, unmatched team names, props and period markets stay in the source
-cards without being grouped. EV and Juice Reel are not automatically counted.
+cards without being grouped. EV plays requiring date review and Juice Reel manual research are not automatically counted.
 The panel refreshes with the existing public feed and clears on a failed reload.
+
+### EV written picks
+The public feed now checks Ev Singleton’s author archive at Guy Boston Sports
+and the latest three matching NFL or college-football articles. It extracts only
+his explicit written Plays list, retaining source prices, units and article links.
+Posts older than seven days, future-dated posts, result-marked plays, other authors
+and other leagues are excluded. Publication date is not treated as game date:
+these recent ungraded plays carry a date-review label and do not contribute to
+consensus until reliable event identification is available. Video-only picks are
+not inferred. The existing refresh button/five-minute cache applies, with bounded
+same-origin requests and partial-source failure messages.

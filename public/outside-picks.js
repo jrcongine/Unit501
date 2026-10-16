@@ -46,6 +46,7 @@
         for(const pick of source.picks){
           count++;const card=el('article',null,'war-record');
           card.append(el('strong',pick.pick),el('p',pick.matchup),el('p',pick.author+' • '+pick.eventLabel,'war-muted'));
+          if(pick.requiresReview)card.append(el('p','NEEDS DATE REVIEW • not counted in agreement','war-disagreement'));
           if(pick.publishedLabel)card.append(el('p','Source release: '+pick.publishedLabel+' (as of check time)','war-muted'));
           const link=el('a','View original pick ↗');link.href=pick.url;link.target='_blank';link.rel='noopener noreferrer';card.append(link);
           section.append(card);
