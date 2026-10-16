@@ -34,6 +34,14 @@
 
 </header>
 
+<nav class="quick-nav" aria-label="Command center sections">
+  <a href="#slate-section" class="nav-slate"><span aria-hidden="true">🏈</span> Game slate</a>
+  <a href="#war-room" class="nav-war"><span aria-hidden="true">⚔</span> 501 War Room</a>
+  <a href="#lab" id="quick-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">🎯</span> Game Lab · select game</a>
+  <a href="#player-lab" id="quick-player" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">📊</span> Player props · select game</a>
+</nav>
+<p class="quick-help">Start with a date and league, load the slate, then tap a game card. Colored headers and highlighted rows open more tools.</p>
+
 <section class="card controls">
 
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">   <input     id="date"     type="date"     aria-label="Game date"     style="color-scheme:dark;min-width:0;flex:1;"   >   <button     type="button"     onclick="const field = document.getElementById('date'); try { field.showPicker(); } catch { field.focus(); }"   >     Choose date ▾   </button> </div>
@@ -116,10 +124,12 @@
 <div id="war-list"></div>
 </details>
 
-<section id="games" class="grid"></section>
+<div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
+<section id="games" class="grid" aria-label="Available matchups"></section>
 
 <section id="lab" class="card hidden">
 
+<span class="section-kicker">02 / RUN THE NUMBERS</span>
 <h2 id="matchup">Game Lab</h2>
 
 <div class="inputs">
@@ -216,6 +226,7 @@
 
 <section id="player-lab" class="card hidden">
 
+<span class="section-kicker">03 / PLAYER MARKETS</span>
 <h2>Player Projections</h2>
 
 <p id="predict-status">Select a game to load players.</p>
