@@ -1,6 +1,8 @@
 'use strict';
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
+const {fetchEv,AUTHOR_URL}=require('./ev-picks');
 const SOURCES = {
+  ev:{name:'EV / Guy Boston Sports',urls:{nfl:AUTHOR_URL,ncaaf:AUTHOR_URL}},
   covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf'}},
   wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football'}}
 };
@@ -48,8 +50,8 @@ function parseWagerTalk(html,league) {
       eventAt:new Date(at).toISOString(),publishedLabel:cls(block,'r-date'),url:SOURCES.wagertalk.urls[league]}];
   });
 }
-async function fetchPage(url,fetcher) {
-  const response=await fetcher(url,{signal:AbortSignal.timeout(12000),headers:{Accept:'text/html'},redirect:'error'});
+async function fetchPage(url,fetcher,timeout=12000) {
+  const response=await fetcher(url,{signal:AbortSignal.timeout(timeout),headers:{Accept:'text/html'},redirect:'error'});
   if(!response.ok)throw Error('Source unavailable');
   // Bound upstream responses as well as request duration.
   const reader=response.body.getReader();let size=0;const chunks=[];
@@ -66,10 +68,14 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
     const work=(async()=>{
       let value;
       try {
+        if(key==='ev'){
+          value={source:key,name:SOURCES[key].name,checkedAt:new Date(now()).toISOString(),...await fetchEv(league,fetchPage,fetcher,now(),text)};
+        }else{
         const html=await fetchPage(SOURCES[key].urls[league],fetcher);
         const picks=(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
         value={source:key,name:SOURCES[key].name,status:picks.length?'available':'empty',checkedAt:new Date(now()).toISOString(),picks,
           message:picks.length?'Public selections; source prices may have changed.':'No readable public selections returned. Check the source; its page format may have changed.'};
+        }
       }catch{value={source:key,name:SOURCES[key].name,status:'unavailable',checkedAt:new Date(now()).toISOString(),picks:[],message:'Source could not be retrieved. Try again later or open the source.'};}
       cache.set(id,{saved:now(),value});return value;
     })();
@@ -77,10 +83,9 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
   }
   return async league=>{
     if(!['nfl','ncaaf'].includes(league))throw Error('Unsupported league');
-    const sources=await Promise.all(Object.keys(SOURCES).map(key=>source(key,league)));
-    return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())})),
-      manual:[{name:'EV / Guy Boston Sports',message:'Video picks are not automatically transcribed. Use the video desk and record the exact selection below.'},
-        {name:'Juice Reel',message:'No connected pick feed. Records and selections still require checking in Juice Reel.'}]};
+    const sources=await Promise.all(['covers','wagertalk','ev'].map(key=>source(key,league)));
+    return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>(!p.eventAt || Date.parse(p.eventAt)>now()) && (!p.publishedAt || now()-Date.parse(p.publishedAt)<=7*86400000))})),
+      manual:[{name:'Juice Reel',message:'No connected pick feed. Records and selections still require checking in Juice Reel.'}]};
   };
 }
 module.exports={parseCovers,parseWagerTalk,createFeed,text};
