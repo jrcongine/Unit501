@@ -223,7 +223,8 @@ addFilter('direction', 'Projection', [
 ]);
 addFilter('sort', 'Order', [
   ['', 'Player order'],
-  ['gap', 'Largest difference within each stat'],
+  ['gap', 'Largest discrepancy overall'],
+  ['stat-gap', 'Largest difference within each stat'],
   ['sample', 'Most recorded games']
 ]);
 board.append(filters);
@@ -241,7 +242,9 @@ const researchNote = document.createElement('p');
  researchNote.style.cssText='font-size:.9em;opacity:.85';
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
-orderingNote.textContent = 'Difference ordering groups each stat separately so yards and counts are not compared. A larger projection difference is not a higher chance of winning; prices and validated probabilities are needed to assess betting value.';
+orderingNote.textContent = board.dataset.sort === 'gap'
+   ? 'Largest discrepancy overall ranks every visible prop by the absolute distance between projection and line, biggest first. It mixes yards, attempts and counts, so this is a raw numerical comparison, not betting value or a win probability.'
+   : 'Largest difference within each stat keeps stat categories separate and sorts by absolute projection-versus-line distance inside each category. Neither sort predicts the chance of winning; verify participation, prices and model reliability.';
 orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
 board.append(orderingNote);
 
@@ -267,10 +270,13 @@ for (let i = rows.length - 1; i >= 0; i--) {
     rows.splice(i, 1);
   }
 }
-    if (board.dataset.sort === 'gap') {
+    if (board.dataset.sort === 'gap' || board.dataset.sort === 'stat-gap') {
       const statOrder = new Map(definitions.map((def, index) => [def.key, index]));
-      rows.sort((a, b) => statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
-        Math.abs(Number(b.adjusted.toFixed(1)) - b.line) - Math.abs(Number(a.adjusted.toFixed(1)) - a.line));
+      const gap = row => Math.abs(Number((Number(row.adjusted.toFixed(1)) - row.line).toFixed(1)));
+      rows.sort((a, b) => (board.dataset.sort === 'stat-gap'
+        ? statOrder.get(a.def.key) - statOrder.get(b.def.key) || gap(b) - gap(a)
+        : gap(b) - gap(a)) || statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
+        a.record.name.localeCompare(b.record.name));
     } else if (board.dataset.sort === 'sample') {
       rows.sort((a, b) => b.values.length - a.values.length);
     }
