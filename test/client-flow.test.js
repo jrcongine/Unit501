@@ -325,35 +325,13 @@ test('switching matchups clears scenarios and ignores late injury, rating, ranki
  assert.equal(h.nodes.get('predict-results').textContent,'');assert.equal(h.nodes.get('prop-feed-status').textContent,'');assert.equal(propButton.disabled,true);
 });
 
-test('Load Player Projections displays all available matchup projections without selecting names',async()=>{
+test('player view shows quoted comparisons without the unpriced overview',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
- const overview=h.nodes.get('all-player-projections');
- const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
- const dataRows=()=>walk(overview,'tbody')[0]?.children||[];
- assert.match(h.nodes.get('predict-status').textContent,/All supported projections are listed/);
- assert.match(overview.textContent,/All player projections/);
- assert.match(overview.textContent,/RB 1 — Team A/);
- assert.match(overview.textContent,/RB 2 — Team B/);
- assert.match(overview.textContent,/Rushing yards/);
- assert.match(overview.textContent,/Receiving yards/);
- assert.ok(dataRows().some(row=>/RB 2 — Team B/.test(row.textContent)&&/Rushing yards/.test(row.textContent)&&/100.0/.test(row.textContent)&&row.textContent.includes('—')), 'Unpriced player projections must still appear');
- assert.ok(dataRows().length>=8,'Show every supported market, not only quoted FanDuel lines');
- const search=h.nodes.get('all-projection-search');search.value='RB 2';await search.dispatchEvent({type:'input'});
- assert.ok(dataRows().some(row=>row.hidden===true));
- assert.ok(dataRows().some(row=>row.hidden===false));
- assert.match(h.nodes.get('all-projection-count').textContent,/rows shown/);
- const stat=h.nodes.get('all-projection-stat');stat.value='recYds';await stat.dispatchEvent({type:'change'});
- assert.ok(dataRows().filter(row=>!row.hidden).every(row=>row.textContent.includes('Receiving yards')));
- const row=dataRows().find(row=>!row.hidden&&row.textContent.includes('RB 2'));
- const open=row.children[row.children.length-1].children[0];
- await open.dispatchEvent({type:'click'});
- assert.equal(h.nodes.get('predict-player').value,'2:8');
- assert.match(h.nodes.get('predict-results').textContent,/RB 2 — Team B/);
- assert.equal(h.nodes.get('all-projection-search').value,'RB 2','Filtering survives opening an individual player');
- const next={...h.game,game:{...h.game.game,id:1000}};
- h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();
- assert.equal(overview.textContent,'','No stale projection rows after changing matchups');
+ assert.equal(h.nodes.get('all-player-projections'),undefined);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Our projections vs FanDuel/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
 });
 
 test('an old player-stat load cannot repopulate projections after a matchup switch',async()=>{
@@ -566,7 +544,7 @@ test('failed FanDuel props refresh keeps fresh automatic quotes and table lines'
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
- assert.match(h.nodes.get('all-player-projections').textContent,/19.5/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
  const original=h.context.fetch;
  h.context.fetch=async url=>new URL(url,'http://localhost').pathname==='/api/fanduel-props'
    ? {ok:false,status:500,json:async()=>({error:'FanDuel prop feed returned 401 (INVALID_KEY). Check ODDS_API_KEY.'})}
@@ -574,7 +552,7 @@ test('failed FanDuel props refresh keeps fresh automatic quotes and table lines'
  const refresh=h.created.find(node=>node.tag==='button'&&node.textContent==='Refresh FanDuel props');
  await refresh.dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
- assert.match(h.nodes.get('all-player-projections').textContent,/19.5/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/FanDuel/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/401 \(INVALID_KEY\)/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/Existing fresh quotes were kept/);
@@ -747,20 +725,3 @@ test('college selection does not enable NFL injury scoring or wait for unmatched
  assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
 });
 
-test('overview keeps scroll element on unchanged reports and scroll position on new quotes',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
- const scroll=h.nodes.get('all-projection-scroll');scroll.scrollTop=420;scroll.scrollLeft=35;
- await h.context.document.dispatchEvent({type:'unit501:team-context-updated'});
- assert.equal(h.nodes.get('all-projection-scroll'),scroll);
- assert.equal(scroll.scrollTop,420);
- const original=h.context.fetch;
- h.context.fetch=async url=>String(url).startsWith('/api/fanduel-props')?{ok:true,json:async()=>({props:[{name:'RB 1',stat:'carries',line:18.5,updatedAt:Date.now()},{name:'Unknown Player',stat:'carries',line:11.5,updatedAt:Date.now()}]})}:original(url);
- const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');
- await refresh.dispatchEvent({type:'click'});await h.settle();
- const updated=h.nodes.get('all-projection-scroll');assert.notEqual(updated,scroll);
- assert.equal(updated.scrollTop,420);assert.equal(updated.scrollLeft,35);
- assert.match(h.nodes.get('all-player-projections').textContent,/18.5/);
- assert.match(h.nodes.get('prop-feed-status').textContent,/2 usable quotes returned/);
- assert.match(h.nodes.get('prop-feed-status').textContent,/Unmatched or ambiguous player names: Unknown Player/);
-});
