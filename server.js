@@ -83,6 +83,11 @@ const server = http.createServer(async (req, res) => {
         return send(res,400,{error:'Valid football league, season and kickoff cutoff required.'});
       return send(res,200,getPlayerRatings(q));
     }
+    if(u.pathname==='/api/game-venue'){
+      const q={league:u.searchParams.get('league'),season:u.searchParams.get('season'),kickoff:Number(u.searchParams.get('kickoff')),home:u.searchParams.get('home'),away:u.searchParams.get('away')};
+      if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!Number.isFinite(q.kickoff)||q.kickoff<=0||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
+      return send(res,200,await require('./game-venue').resolveVenue(q));
+    }
     if (u.pathname === '/api/weather') {
   const names = ['latitude', 'longitude', 'kickoff'];
   const values = names.map(name => u.searchParams.get(name));

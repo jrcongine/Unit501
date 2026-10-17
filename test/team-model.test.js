@@ -35,7 +35,7 @@ test('domes, unknown roofs, disabled weather, stale and mismatched forecasts ret
 });
 test('rain probability and gusts alone never substitute for sustained wind',()=>{
  const {game,data,now}=forecast(10);
- assert.equal(weatherEffect(game,{...data,gustMph:60,precipitationChance:100,temperatureF:0},true,now).reduction,0);
+ assert.equal(weatherEffect(game,{...data,gustMph:60,precipitationChance:100,temperatureF:70},true,now).reduction,0);
 });
 test('weather flows into final scores and simulator after home-field and manual adjustments',()=>{
  const {game,data}=setup();

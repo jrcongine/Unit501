@@ -4,24 +4,11 @@
   const probability=typeof module!=='undefined'&&module.exports?require('./probability-calibration'):root.Unit501ProbabilityCalibration;
   const paceModel=typeof module!=='undefined'&&module.exports?require('./pace-model'):root.Unit501PaceModel;
   function weatherEffect(game, forecast, enabled = true, now = Date.now()) {
-    const skip = reason => ({applied:false,reduction:0,reason});
-    if (!enabled) return skip('Weather adjustment switched off.');
-    if (forecast?.roof === 'indoor') return skip('Enclosed stadium: no outdoor weather adjustment.');
-    if (forecast?.roof !== 'outdoor') return skip('Roof or stadium location unverified: no weather adjustment.');
-    if (!forecast.available) return skip('Forecast unavailable or loading: no weather adjustment.');
-    if (forecast.kickoff !== game.kickoff || !Number.isFinite(game.kickoff) || game.kickoff <= now ||
-        !Number.isFinite(forecast.fetchedAt) || forecast.fetchedAt > now || now - forecast.fetchedAt > 15 * 60000 ||
-        !Number.isFinite(forecast.forecastTime) || Math.abs(forecast.forecastTime - game.kickoff) > 30 * 60000)
-      return skip('Forecast expired or does not match this kickoff: weather refreshes automatically while the game tab is visible.');
-    if (!Number.isFinite(forecast.windMph) || forecast.windMph < 0 || forecast.windMph > 200)
-      return skip('Sustained wind unavailable: no weather adjustment.');
-    // Explicit uncalibrated assumption: reduce both scores by 1% per mph over
-    // 15 mph, capped at 15%. Gusts and rain probability are display-only.
-    const reduction = Math.min(0.15,Math.max(0,forecast.windMph - 15) * 0.01);
-    return {applied:reduction > 0,reduction,reason:reduction > 0
-      ? `Experimental wind adjustment: sustained wind ${forecast.windMph.toFixed(1)} mph reduces both projected scores by ${(reduction*100).toFixed(1)}%. Assumption, not calibrated; player props unchanged.`
-      : 'Sustained wind at or below 15 mph: no scoring reduction.'};
+    const weatherModel=typeof module!=='undefined'&&module.exports?require('./weather-model'):root.Unit501WeatherModel;
+    const result=weatherModel.effect(game,forecast,'score',enabled,now);
+    return {...result,reduction:Number((1-result.factor).toFixed(6))};
   }
+
   function venueEffect(game, home, away, mode = 'auto', settings = {}) {
     if (!['auto','home','neutral'].includes(mode)) return {valid:false};
     let context=settings.homeContext??0;

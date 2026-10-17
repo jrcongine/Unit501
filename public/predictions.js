@@ -133,7 +133,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
     const note = document.createElement('p');
-    note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks and data support are not a confidence score, ranked picks or win probabilities. Data support counts recorded games and highlights gaps; it does not verify participation or value. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
+    note.textContent = 'Selected game only. Open Report details to inspect sources and data gaps. No injury listed does not confirm game-day participation. Checks and data support are not a confidence score, ranked picks or win probabilities. Data support counts recorded games and highlights gaps; it does not verify participation or value. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     const rows = [];
@@ -342,7 +342,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Review checks', 'Data support', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Data support', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -367,7 +367,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, row.checks.join(' • ') || 'No automated data flags; verify role and price', row.support.label, projection.toFixed(1) + ` (${row.workload}% workload)` + (row.workloadWarning ? ' • Check role' : ''), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.support.label, projection.toFixed(1) + ` (${row.workload}% workload)` + ' • '+row.weather.reason + (row.workloadWarning ? ' • Check role' : ''), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text,
@@ -421,12 +421,10 @@ const details = document.createElement('details');
 details.style.cssText = 'margin-top:8px;font-size:.85em;color:#e8b95b';
 
 const summary = document.createElement('summary');
-summary.textContent = /AVAILABILITY WARNING|Reported /i.test(availabilityText)
-  ? '⚠ Review roster / injury report'
-  : 'Playing status unconfirmed';
+summary.textContent = 'Report details';
 
 const explanation = document.createElement('p');
-explanation.textContent = availabilityText;
+explanation.textContent = availabilityText + ' ' + row.checks.join(' • ');
 details.append(summary, explanation);
 cell.append(details);
         } else cell.textContent = value;
@@ -553,12 +551,15 @@ cell.append(details);
     if(adjustment!==null)adjusted*=1+adjustment;
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
-    return {baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    const weather=window.Unit501WeatherModel?.effect(selected,typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,def.key,el('weatherEnabled')?.checked!==false) || {factor:1,reason:'Weather unavailable.'};
+    const preWeather=adjusted;
+    adjusted*=weather.factor;
+    return {weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function propSnapshot(record,def,model){
     const entry=readLine(lineKey(record,def));
     return Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
-      inputs:{playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
+      inputs:{weather:model.weather,preWeather:model.preWeather,weatherForecast:typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
         quote:{line:n(entry.value),over:Number.isFinite(entry.over)?entry.over:null,under:Number.isFinite(entry.under)?entry.under:null,source:entry.source||'manual',updatedAt:entry.savedAt},
         availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
   }
@@ -723,6 +724,7 @@ results.appendChild(workload);
     : `Usage/form baseline: ${model.form.baseline.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
   card.appendChild(explanation);
 }
+      const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${adjusted.toFixed(1)}.`;card.append(weatherNote);
       addLineComparison(card, record, def, adjusted, values);
       shown++;
     }
@@ -857,6 +859,8 @@ if (league === '1' && stage !== 'regular season') return false;
   });
   document.addEventListener('unit501:team-context-updated', () => { if (loadedFor) showPlayer(); });
   document.addEventListener('unit501:lineup-updated', () => { if (loadedFor) showPlayer(); });
+  document.addEventListener('unit501:weather-updated',()=>{if(loadedFor)showPlayer();});
+  el('weatherEnabled')?.addEventListener('change',()=>{if(loadedFor)showPlayer();});
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
   picker.addEventListener('change', () => {   showPlayer();   results.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
   reset();

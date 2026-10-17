@@ -84,6 +84,22 @@
       return {blocked:true,state:'unavailable',reason:`Latest provider report: ${status}. Projection and line comparison withheld; not treated as a zero-yard under.`};
     return {blocked:false,state:'conditional',reason:`Latest provider report: ${status || 'unknown'}. Projection assumes normal workload if the player participates; no playing probability is inferred.`};
   }
+  // Display the actual report designation without upgrading it to confirmed participation.
+  function statusLabel(assessment) {
+    const reason=assessment?.reason || '';
+    if(assessment?.state==='conflict')return 'Conflicting reports';
+    if(assessment?.state==='nonstarter')return 'Not starting';
+    if(assessment?.state==='team-unconfirmed')return 'Team listing needs update';
+    if(/injured reserve/i.test(reason))return 'Injured reserve';
+    if(/inactive list|: inactive\b/i.test(reason))return 'Inactive';
+    if(/: out[.;]/i.test(reason))return 'Out';
+    if(assessment?.blocked)return 'Unavailable';
+    const designation=/(?:report:|provider report:)\s*([^.;]+)/i.exec(reason)?.[1];
+    if(designation)return designation.charAt(0).toUpperCase()+designation.slice(1);
+    if(/No injury entry returned/i.test(reason))return 'No injury listed';
+    if(/stale|undated/i.test(reason))return 'Report needs refresh';
+    return 'Report unavailable';
+  }
   function workloadProjection(baseline, percent) {
     if (!Number.isFinite(baseline) || !Number.isFinite(percent) || percent < 0 || percent > 100)
       throw new Error('Workload must be between 0 and 100 percent.');
@@ -131,7 +147,7 @@
     }
     return {teams,reason:'Only reported entries are reviewed. Missing reports do not establish health. Applied score scenarios use confirmed role and workload assumptions; previous games may already reflect an absence.'};
   }
-  const api = {assess, workloadProjection,teamSummary,refreshDue,impactReview};
+  const api = {statusLabel,assess, workloadProjection,teamSummary,refreshDue,impactReview};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Unit501InjuryModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

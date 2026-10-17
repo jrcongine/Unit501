@@ -149,11 +149,26 @@ function watchWeather() {
 }
 document.addEventListener('visibilitychange', watchWeather);
 async function loadVenueForecast(game, conditions, roof) {
-  const venue = window.Unit501Venues?.resolve(game);
+  let venue = game.weatherVenue || window.Unit501Venues?.resolve(game);
+  if(!venue){
+    conditions.textContent='Looking up matchup stadium…';
+    try{
+      const query=new URLSearchParams({league:game.league,season:game.season,kickoff:game.kickoff,home:game.h,away:game.a});
+      const response=await fetch('/api/game-venue?'+query,{signal:AbortSignal.timeout(35000)});
+      const result=await response.json();
+      if(selected!==game||!conditions.isConnected)return;
+      if(response.ok&&result.available){venue=result;game.weatherVenue=result;conditions.previousElementSibling.textContent=result.name+(result.locationPrecision==='city'?' • '+result.city+', '+result.state+' (city-area forecast)':'');}
+    }catch{}
+  }
+  if(venue?.roof==='indoor'){
+    forecastContext={game,data:{roof:'indoor',kickoff:game.kickoff}};
+    conditions.textContent='Indoor venue: no outdoor weather adjustment.';roof.textContent='Enclosed playing conditions.';
+    document.dispatchEvent(new CustomEvent('unit501:weather-updated'));return;
+  }
   const location = venue && [venue.latitude, venue.longitude];
   if (!location) {
     conditions.textContent =
-      'Forecast unavailable: stadium location has not been reviewed for this season.';
+      'Forecast unavailable: matchup stadium could not be located. No weather adjustment applied.';
     return;
   }
 
@@ -176,6 +191,7 @@ async function loadVenueForecast(game, conditions, roof) {
   if (!previous) {
     if (forecastContext?.data.available) invalidateSimulation('Weather forecast expired. Refreshing weather; run the simulation again.');
     forecastContext = {game, data:{roof:exposure,available:false,kickoff:game.kickoff}};
+    document.dispatchEvent(new CustomEvent('unit501:weather-updated'));
     conditions.textContent = 'Loading forecast near kickoff…';
     watch.source?.replaceChildren();
   }
@@ -201,16 +217,18 @@ async function loadVenueForecast(game, conditions, roof) {
     if (!data.available) {
       if (previous) invalidateSimulation('Weather forecast unavailable. Run the simulation again.');
       forecastContext = {game,data:{roof:exposure,available:false,kickoff:game.kickoff}};
+      document.dispatchEvent(new CustomEvent('unit501:weather-updated'));
       watch.source?.replaceChildren();
       conditions.textContent = data.message || 'Forecast unavailable.';
       return;
     }
 
     forecastContext = {game,data:{...data,roof:exposure,kickoff:game.kickoff}};
-    if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance'].some(key => previous[key] !== data[key]) || JSON.stringify(previous.gameHours) !== JSON.stringify(data.gameHours)) {
+    if (!previous || ['windMph','forecastTime','temperatureF','gustMph','precipitationChance','precipitationMm'].some(key => previous[key] !== data[key]) || JSON.stringify(previous.gameHours) !== JSON.stringify(data.gameHours)) {
       invalidateSimulation('Weather forecast updated. Run the simulation to use it.');
     }
 
+    document.dispatchEvent(new CustomEvent('unit501:weather-updated'));
     const format = (value, unit) =>
       Number.isFinite(value) ? `${Math.round(value)}${unit}` : 'Unavailable';
 
@@ -232,7 +250,7 @@ async function loadVenueForecast(game, conditions, roof) {
       `${format(data.temperatureF, '°F')} • ` +
       `Wind: ${format(data.windMph, ' mph')} • ` +
       `Gusts: ${format(data.gustMph, ' mph')} • ` +
-      `Precipitation chance: ${format(data.precipitationChance, '%')}`;
+      `Precipitation chance: ${format(data.precipitationChance, '%')} • Amount: ${Number.isFinite(data.precipitationMm)?data.precipitationMm.toFixed(1)+' mm/hour':'Unavailable'}`;
 
     const hours = Array.isArray(data.gameHours) ? data.gameHours : [];
     if (hours.length) conditions.textContent += ' • Hourly outlook (kickoff through +3 hours): ' + hours.map(hour =>
@@ -253,7 +271,7 @@ async function loadVenueForecast(game, conditions, roof) {
       link,
       ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
       'Outdoor forecast near the stadium; actual field conditions may differ. ' +
-      (exposure === 'outdoor' ? 'The experimental wind setting uses kickoff sustained wind for team scores only. Later hours, rain chance, gusts and temperature are context; player props are unchanged.' : 'Roof or field exposure is unverified; all forecast values are context only.')
+      (exposure === 'outdoor' ? 'Weather adjustments use wind, precipitation amount and temperature. Each prop shows its adjustment. Experimental estimates; not backtested.' : 'Roof or field exposure is unverified; all forecast values are context only.')
     );
     if (!watch.source) conditions.after(source);
     watch.source = source;

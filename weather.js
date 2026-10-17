@@ -38,7 +38,8 @@ async function getForecast({ latitude, longitude, kickoff }) {
       'temperature_2m',
       'wind_speed_10m',
       'wind_gusts_10m',
-      'precipitation_probability'
+      'precipitation_probability',
+      'precipitation'
     ].join(','),
     temperature_unit: 'fahrenheit',
     wind_speed_unit: 'mph',
@@ -92,7 +93,7 @@ async function getForecast({ latitude, longitude, kickoff }) {
     const read = name => Number.isFinite(hourly[name]?.[i]) ? hourly[name][i] : null;
     return [{forecastTime:at, temperatureF:read('temperature_2m'),
       windMph:read('wind_speed_10m'), gustMph:read('wind_gusts_10m'),
-      precipitationChance:read('precipitation_probability')}];
+      precipitationChance:read('precipitation_probability'),precipitationMm:read('precipitation')}];
   }).sort((a,b) => a.forecastTime - b.forecastTime);
 
   const result = {
@@ -104,7 +105,8 @@ async function getForecast({ latitude, longitude, kickoff }) {
     temperatureF: value('temperature_2m'),
     windMph: value('wind_speed_10m'),
     gustMph: value('wind_gusts_10m'),
-    precipitationChance: value('precipitation_probability')
+    precipitationChance: value('precipitation_probability'),
+    precipitationMm: value('precipitation')
   };
 
   if (cache.size >= 250) cache.delete(cache.keys().next().value);

@@ -194,7 +194,7 @@
 <input id="homeFieldReason" type="text" maxlength="240" placeholder="Example: playoff elimination stakes and documented trash talk" disabled>
 <p>4–5 total points are reserved for rare manual scenarios and require a reason. Rivalry, evening kickoff, trash talk and playoff stakes do not automatically add points. Overrides are unvalidated, preserve the projected total and are ignored at neutral or unverified venues.</p>
 </details>
-<label><input id="weatherEnabled" type="checkbox" checked> Apply experimental wind adjustment</label>
+<label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
 <p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
 <button id="sim">Run 50,000 Sims</button>
 
@@ -259,6 +259,7 @@
 <script src="venue-weather.js"></script>
 <script src="auto-injury.js"></script>
 <script src="line-watch.js"></script>
+<script src="weather-model.js"></script>
 <script src="app.js"></script>
 
 <script src="injury-model.js"></script>
