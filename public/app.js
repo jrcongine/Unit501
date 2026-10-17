@@ -33,8 +33,8 @@ function injuryModeChanged(){
   const automatic=$('autoInjuries').checked;
   for(const id of injuryFields){$(id).disabled=automatic;$(id).value='0';}
   $('auto-injury-status').textContent=automatic?
-    'Automatic injury scoring ON. Run the simulation after live official reports load; missing or unmatched players remain unvalued.':
-    'Manual injury scoring ON. Enter your own point estimates; no automatic injury points will be added.';
+    'Auto injuries ON — applied when you run the prediction.':
+    'Manual mode — enter injury points below.';
   invalidateSimulation('Injury scoring mode changed. Run the simulation again.');
 }
 $('autoInjuries').addEventListener('change',injuryModeChanged);
@@ -698,8 +698,7 @@ async function choose(game) {
   game.season = $('date').value.slice(0,4);
   const priorLeague=selected?.league;
   selected = game;
-  if(game.league!=='1'){ $('autoInjuries').checked=false;injuryModeChanged(); }
-  else if(priorLeague&&priorLeague!=='1'){ $('autoInjuries').checked=true;injuryModeChanged(); }
+  $('autoInjuries').checked=true;injuryModeChanged();
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
   $('player-lab').classList.remove('hidden');
@@ -755,15 +754,13 @@ function sim() {
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const forecastAt=Date.now();
   const lineup=window.Unit501Lineups?.evaluate();
-  const automatic=selected.league==='1'&&$('autoInjuries').checked&&window.Unit501AutoInjury?
+  const automatic=['1','2'].includes(selected.league)&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt):null;
   if(automatic){
     for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],
       ['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']])$(id).value=String(automatic.injury[key]);
     const who=automatic.applied.map(p=>`${p.side==='away'?selected.a:selected.h}: ${p.name} (${p.position}) ${p.category==='offense'?'offense reduction':'defense loss'} +${p.points.toFixed(2)} points`);
-    $('auto-injury-status').textContent=automatic.message+
-      (who.length?' Applied: '+who.join(' · ')+'.':' No supported automatic points were applied.')+
-      (automatic.withheld.length?' Unvalued: '+automatic.withheld.join(' · '):'');
+    $('auto-injury-status').textContent=who.length?'Applied: '+who.join(' · '):automatic.ready?'No supported injury adjustment.':'Waiting for injury reports or player-role data.';
   }
   const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,

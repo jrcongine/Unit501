@@ -18,8 +18,8 @@
   const injury=empty(),applied=[],withheld=[];
   const state={injury,applied,withheld,ready:false,
    message:'Automatic injury scoring unavailable. Baseline retained; no absence is assumed healthy.'};
-  if(!game||String(game.league)!=='1'||!Number.isFinite(now)||!Number.isFinite(game.kickoff)||game.kickoff<=now||
-    game.kickoff>now+7*86400000){state.message='Automatic scenarios currently support upcoming NFL games within seven days only.';return state;}
+  if(!game||!['1','2'].includes(String(game.league))||!Number.isFinite(now)||!Number.isFinite(game.kickoff)||game.kickoff<=now||
+    game.kickoff>now+7*86400000){state.message='Automatic scenarios currently support upcoming NFL and college games within seven days only.';return state;}
   if(!data?.current||!Array.isArray(data.teams)){state.message='Live roster and official injury feeds have not loaded. Zero means unknown, not healthy.';return state;}
   const teams=[[String(game.awayId),'away'],[String(game.homeId),'home']].map(([teamId,side])=>({
    teamId,side,label:side==='away'?game.a||'Away':game.h||'Home',
@@ -27,12 +27,12 @@
   }));
   for(const {label,team:t} of teams){
    if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
-    withheld.push(label+': current matched roster and official NFL game report required; no point estimate.');
-   if(!t||!fresh(t.depth,3600000,now)||!matchGame(t.depth,game))
-    withheld.push(label+': depth chart unavailable, expired, or for a different matchup; no point estimate.');
+    withheld.push(label+': current matched roster and official game report required; no point estimate.');
+   if(!t||!fresh(String(game.league)==='2'?t.injuryUsage:t.depth,3600000,now)||!matchGame(String(game.league)==='2'?t.injuryUsage:t.depth,game))
+    withheld.push(label+': player-role data unavailable, expired, or for a different matchup; no point estimate.');
   }
   if(withheld.length){
-   state.message='Automatic injury coverage incomplete for at least one team. No automatic points for either team; keep baseline until both official game reports and depth charts are fresh.';
+   state.message='Automatic injury coverage incomplete for at least one team. No automatic points for either team; keep baseline until both official game reports and player-role data are fresh.';
    return state;
   }
   for(const {teamId,side,label,team:t} of teams){
@@ -55,11 +55,12 @@
     const statuses=(t.official.rows||[]).filter(r=>String(r.id)===id&&String(r.teamId)===teamId).map(r=>status(r.status));
     const other=(fresh(t.injuries,900000,now)?t.injuries.rows||[]:[])
       .filter(r=>String(r.id)===id&&(!r.teamId||String(r.teamId)===teamId));
-    const alternative=other.some(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&
+    const alternative=other.some(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&(!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)>=t.official.publishedAt)&&
       !['out','sidelined','inactive','injured reserve','ir'].includes(status(r.status)));
     if(statuses.some(s=>s!=='out')||alternative){withheld.push(label+': '+name+' has conflicting or conditional reports; no estimate.');continue;}
-    const slots=(t.depth.rows||[]).filter(r=>String(r.id)===id&&String(r.position).toUpperCase()===String(base.position).toUpperCase()&&r.rank===1);
-    if(slots.length!==1){withheld.push(label+': '+name+' not verified as unique top-depth player; no estimate.');continue;}
+    const roleRows=String(game.league)==='2'?(t.injuryUsage.rows||[]).map(r=>({...r,rank:1})):(t.depth.rows||[]);
+    const slots=roleRows.filter(r=>String(r.id)===id&&String(r.position).toUpperCase()===String(base.position).toUpperCase()&&r.rank===1);
+    if(slots.length!==1){withheld.push(label+': '+name+' has no verified starter or recent regular workload; no estimate.');continue;}
     const pos=String(base.position||'').toUpperCase();
     if(pos==='QB'){withheld.push(label+': '+name+' (QB) requires confirmed replacement and passing-workload evidence; no automatic points.');continue;}
     const weight=weights[pos];
@@ -81,7 +82,7 @@
    if(!outs.length)withheld.push(label+': no confirmed matched top-depth Out entries; this does not establish full health.');
   }
   state.ready=true;
-  state.message='Experimental positional injury sensitivity: only fresh, matched NFL official Out reports with unique top-depth roles; capped at 2 points per team and side. '+
+  state.message='Experimental positional injury sensitivity: only fresh, matched official Out reports with starter or recent college workload evidence; capped at 2 points per team and side. '+
     'Weights are hand-set assumptions, not validated player values. An absence may already be reflected in season averages; do not use this as a proven betting edge.';
   return state;
  }

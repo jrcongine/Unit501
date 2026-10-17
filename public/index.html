@@ -162,10 +162,9 @@
 
 <details>
 <summary>Injury scoring — automatic or manual</summary>
-<label><input id="autoInjuries" type="checkbox" checked> Automatically apply conservative injury scenarios (experimental)</label>
-<p id="auto-injury-status" role="status" aria-live="polite">Automatic mode is on. Confirmed NFL Out reports must match current roster and depth-chart evidence. Unsupported absences stay unvalued; zero does not mean healthy.</p>
-<p>Automatic mode computes injury-point sensitivities when you run the simulation. The manual boxes below are disabled while it is on. To enter your own assumptions, turn automatic mode off. Avoid counting the same absence in player replacement scenarios. The automatic estimates are not calibrated or proven player values.</p>
-<p>Review the roster and injury reports below, then enter your estimated impact in points. Reports do not determine player value or replacement quality. Zero means no scenario adjustment, not confirmed health. These estimates change team scores and simulations, not player props.</p>
+<label><input id="autoInjuries" type="checkbox" checked> Auto injuries — NFL & college</label>
+<p id="auto-injury-status" role="status" aria-live="polite">Auto injuries ON — applied when you run the prediction.</p>
+<p>Confirmed Out players only. Estimated impact depends on role data. Turn off for manual points.</p>
 <div class="grid">
 <label>Away offense loss (points)<input id="awayOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
 <label>Away defense loss (extra opponent points)<input id="awayDefenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>

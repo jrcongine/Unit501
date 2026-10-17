@@ -94,9 +94,23 @@ test("one team's missing official or depth coverage blocks adjustment to both si
  assert.match(out.message,/No automatic points for either team/);
 });
 
-test('no live data, post-kickoff and non-NFL games never imply health or adjustments',()=>{
+test('no live data, post-kickoff and unsupported leagues never imply health or adjustments',()=>{
  assert.equal(evaluate(null,game,null,now).injury.homeDefense,0);
  assert.match(evaluate(null,game,null,now).message,/unknown, not healthy/);
  assert.equal(evaluate(build(),{...game,kickoff:now},null,now).ready,false);
- assert.equal(evaluate(build(),{...game,league:'2'},null,now).ready,false);
+ assert.equal(evaluate(build(),{...game,league:'3'},null,now).ready,false);
+});
+
+test('college confirmed Out regular contributors adjust points; uncertain and missing roles do not',()=>{
+ const d=build(),g={...game,league:'2'};
+ add(d,'1',{id:'7',name:'WR One',position:'WR'});
+ for(const t of d.teams){t.official.league='2';t.injuryUsage={...t.depth,league:'2',rows:t.depth.rows.map(r=>({id:r.id,position:r.position,role:'recent regular contributor'}))};delete t.depth;}
+ assert.equal(evaluate(d,g,null,now).injury.awayOffense,0.35);
+ d.teams[0].official.rows[0].status='Questionable';
+ assert.equal(evaluate(d,g,null,now).injury.awayOffense,0);
+ d.teams[0].official.rows[0].status='Out';
+ d.teams[0].injuryUsage.rows=[];
+ assert.equal(evaluate(d,g,null,now).injury.awayOffense,0);
+ d.teams[1].injuryUsage.checkedAt=now-3600001;
+ assert.equal(evaluate(d,g,null,now).ready,false);
 });
