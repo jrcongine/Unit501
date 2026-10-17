@@ -66,6 +66,7 @@ async function providerAPI(endpoint) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if(!require('./private-access').allowRequest(req,res))return;
 
   try {
 
