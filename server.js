@@ -23,6 +23,7 @@ async function api(endpoint){
   return data;
 }
 const getRankings = require('./rankings').createRankings(api);
+const getBettingSplits=require('./betting-splits').createSplits();
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
 
@@ -71,6 +72,11 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/betting-splits'){
+      const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
+      if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
+      return send(res,200,await getBettingSplits(q));
+    }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
       if(!['nfl','ncaaf'].includes(league))return send(res,400,{error:'Choose NFL or college football.'});

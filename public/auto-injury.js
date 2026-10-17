@@ -14,9 +14,10 @@
  const matchGame=(r,game)=>r&&String(r.gameId)===String(game.id)&&r.kickoff===game.kickoff&&
    (!r.league||String(r.league)===String(game.league))&&(!r.season||String(r.season)===String(game.season));
  const status=v=>String(v||'').trim().toLowerCase();
- function evaluate(data,game,lineup,now=Date.now()){
+ function evaluate(data,game,lineup,now=Date.now(),context=null){
   const injury=empty(),applied=[],withheld=[];
-  const state={injury,applied,withheld,ready:false,
+  const quarterback={away:0,home:0};
+  const state={injury,quarterback,applied,withheld,ready:false,
    message:'Automatic injury scoring unavailable. Baseline retained; no absence is assumed healthy.'};
   if(!game||!['1','2'].includes(String(game.league))||!Number.isFinite(now)||!Number.isFinite(game.kickoff)||game.kickoff<=now||
     game.kickoff>now+7*86400000){state.message='Automatic scenarios currently support upcoming NFL and college games within seven days only.';return state;}
@@ -28,7 +29,7 @@
   for(const {label,team:t} of teams){
    if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
     withheld.push(label+': current matched roster and official game report required; no point estimate.');
-   if(!t||!fresh(String(game.league)==='2'?t.injuryUsage:t.depth,3600000,now)||!matchGame(String(game.league)==='2'?t.injuryUsage:t.depth,game))
+   if(!t||(!(fresh(String(game.league)==='2'?t.injuryUsage:t.depth,3600000,now)&&matchGame(String(game.league)==='2'?t.injuryUsage:t.depth,game))&&!(fresh(t.quarterback,3600000,now)&&matchGame(t.quarterback,game)&&t.quarterback.rows?.length>0)))
     withheld.push(label+': player-role data unavailable, expired, or for a different matchup; no point estimate.');
   }
   if(withheld.length){
@@ -58,11 +59,32 @@
     const alternative=other.some(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&(!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)>=t.official.publishedAt)&&
       !['out','sidelined','inactive','injured reserve','ir'].includes(status(r.status)));
     if(statuses.some(s=>s!=='out')||alternative){withheld.push(label+': '+name+' has conflicting or conditional reports; no estimate.');continue;}
-    const roleRows=String(game.league)==='2'?(t.injuryUsage.rows||[]).map(r=>({...r,rank:1})):(t.depth.rows||[]);
-    const slots=roleRows.filter(r=>String(r.id)===id&&String(r.position).toUpperCase()===String(base.position).toUpperCase()&&r.rank===1);
-    if(slots.length!==1){withheld.push(label+': '+name+' has no verified starter or recent regular workload; no estimate.');continue;}
     const pos=String(base.position||'').toUpperCase();
-    if(pos==='QB'){withheld.push(label+': '+name+' (QB) requires confirmed replacement and passing-workload evidence; no automatic points.');continue;}
+    if(pos==='QB'){
+     const report=t.quarterback;
+     const candidates=fresh(report,3600000,now)&&matchGame(report,game)?(report.rows||[]).filter(r=>String(r.playerId)===id):[];
+     const r=candidates.length===1?candidates[0]:null;
+     const replacementStatus=r?(t.official.rows||[]).filter(x=>String(x.id)===String(r.replacementId)).map(x=>status(x.status)):[];
+     const replacementConflict=r&&data.rosterOwnership?.available&&(data.rosterOwnership.conflicts||[]).some(x=>String(x.id)===String(r.replacementId));
+     if(replacementConflict||replacementStatus.some(s=>s&&!['available','active'].includes(s))){withheld.push(label+': backup status changed; no QB adjustment.');continue;}
+     const stats=context?.before===game.kickoff&&String(context?.season)===String(game.season)?context.teams?.find(x=>String(x.id)===teamId):null;
+     const metrics=['pointsFor','passFor','rushFor'].map(k=>stats?.metrics?.[k]);
+     const overlap=lineup?.applied&&lineup.gameId===String(game.id)&&lineup.kickoff===game.kickoff&&
+       Object.entries(lineup.props||{}).some(([key,value])=>key.startsWith(teamId+':')&&(value.passing||value.receiving));
+     if(overlap){withheld.push(label+': QB passing change already included in lineup scenario.');continue;}
+     if(!r||!Number.isFinite(r.yardChange)||Math.abs(r.yardChange)>100||!roster.has(String(r.replacementId))||r.backupAttempts<20||r.starterAttempts<40||
+       !(stats?.games>=2)||!metrics.every(m=>m?.games===stats.games&&Number.isFinite(m.average)&&m.average>=0)||metrics[1].average+metrics[2].average<=0){
+      withheld.push(label+': '+name+' (QB) requires confirmed replacement or a unique backup estimate with passing-workload evidence; no automatic points.');continue;
+     }
+     const points=Math.round(Math.max(-4,Math.min(4,r.yardChange*metrics[0].average/(metrics[1].average+metrics[2].average)*.5))*100)/100;
+     quarterback[side]=points;
+     applied.push({teamId,side,playerId:id,name,position:'QB',category:'quarterback',points,replacement:r.replacement,role:r.role,evidence:r.source});
+     continue;
+    }
+    const roleReport=String(game.league)==='2'?t.injuryUsage:t.depth;
+    const roleRows=fresh(roleReport,3600000,now)&&matchGame(roleReport,game)?(roleReport.rows||[]):[];
+    const slots=roleRows.filter(r=>String(r.id)===id&&String(r.position).toUpperCase()===pos&&(String(game.league)==='2'||r.rank===1));
+    if(slots.length!==1){withheld.push(label+': '+name+' has no verified starter or recent regular workload; no estimate.');continue;}
     const weight=weights[pos];
     if(!weight){withheld.push(label+': '+name+' ('+pos+') has no supported positional sensitivity assumption.');continue;}
     const lineupProps=lineup?.gameId===String(game.id)&&lineup?.kickoff===game.kickoff?

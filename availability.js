@@ -2,6 +2,7 @@
 // Team-season player lists are provider rosters, not verified transaction histories.
 function createAvailability(api, now = Date.now) {
   const cache = new Map();
+  const quarterbacks=require('./quarterback-impact').createQuarterbackImpact(api,now);
   const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now);
   const college = require('./college-availability').createCollegeAvailability(api,now);
   const official = require('./official-injuries').createOfficialInjuries(api,now,undefined,require('./depth-charts').createDepthCharts(now));
@@ -47,6 +48,7 @@ function createAvailability(api, now = Date.now) {
     await Promise.all([official(q,teams),college(q,teams)]);
     await collegeUsage(q,teams);
     const rosterOwnership=await ownershipTask;
+    await quarterbacks(q,teams,rosterOwnership);
     return {current:true,teams,rosterOwnership,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
   };
 }

@@ -130,8 +130,11 @@
     const lineupAway=lineupValid?lineup.teams?.[game.awayId]?.points??0:0;
     const lineupHome=lineupValid?lineup.teams?.[game.homeId]?.points??0:0;
     if(![lineupAway,lineupHome].every(v=>Number.isFinite(v)&&Math.abs(v)<=8))return {available:false,reason:'Invalid lineup score scenario.'};
-    const preVenueAway = Math.max(0,preInjuryAway+lineupAway-injury.awayOffense+injury.homeDefense);
-    const preVenueHome = Math.max(0,preInjuryHome+lineupHome-injury.homeOffense+injury.awayDefense);
+    const quarterback=adjustments.quarterback||{away:0,home:0};
+    if(![quarterback.away,quarterback.home].every(v=>Number.isFinite(v)&&Math.abs(v)<=4))return {available:false,reason:'Invalid QB adjustment.'};
+    const qbApplied=!!(quarterback.away||quarterback.home);
+    const preVenueAway = Math.max(0,preInjuryAway+lineupAway+quarterback.away-injury.awayOffense+injury.homeDefense);
+    const preVenueHome = Math.max(0,preInjuryHome+lineupHome+quarterback.home-injury.homeOffense+injury.awayDefense);
     injury.applied = Object.values(injury).some(value => value > 0);
     injury.awayChange = Math.max(0,preInjuryAway-injury.awayOffense+injury.homeDefense)-preInjuryAway;
     injury.homeChange = Math.max(0,preInjuryHome-injury.homeOffense+injury.awayDefense)-preInjuryHome;
@@ -140,15 +143,20 @@
     venue.appliedMargin = transfer * 2;
     const preWeatherAway = preVenueAway-transfer, preWeatherHome = preVenueHome+transfer;
     const weather = weatherEffect(game,adjustments.forecast,adjustments.weatherEnabled,adjustments.now);
-    return {available:true,away:preWeatherAway*(1-weather.reduction),home:preWeatherHome*(1-weather.reduction),
+    const splitsModel=typeof module!=='undefined'&&module.exports?require('./betting-splits-model'):root.Unit501BettingSplitsModel;
+    const market=splitsModel?.evaluate(adjustments.bettingSplits,game,adjustments.awaySpread,adjustments.splitsEnabled,adjustments.now)||{applied:false,margin:0};
+    const weatherAway=preWeatherAway*(1-weather.reduction),weatherHome=preWeatherHome*(1-weather.reduction);
+    const marketTransfer=Math.max(-weatherHome,Math.min(weatherAway,market.margin/2));
+    market.appliedMargin=marketTransfer*2;
+    return {available:true,away:weatherAway-marketTransfer,home:weatherHome+marketTransfer,market,
       weather,preWeatherAway,preWeatherHome,
-      injury,lineup:{applied:lineupValid,awayChange:lineupAway,homeChange:lineupHome},preInjuryAway,preInjuryHome,
+      quarterback,injury,lineup:{applied:lineupValid,awayChange:lineupAway,homeChange:lineupHome},preInjuryAway,preInjuryHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),calibration:venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
-      probabilityCalibration:!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),calibration:market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {

@@ -114,3 +114,15 @@ test('college confirmed Out regular contributors adjust points; uncertain and mi
  d.teams[1].injuryUsage.checkedAt=now-3600001;
  assert.equal(evaluate(d,g,null,now).ready,false);
 });
+test('QB score adjustment requires scoped workload and scoring context and cannot duplicate a lineup',()=>{
+ const d=build();add(d,'1',{id:'10',name:'Starter',position:'QB'});
+ d.teams[0].roster.rows.push({id:'11',name:'Backup',position:'QB'});
+ d.teams[0].quarterback={available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:[{playerId:'10',replacementId:'11',replacement:'Backup',yardChange:-60,backupAttempts:30,starterAttempts:75}]};
+ const context={before:game.kickoff,season:'2026',teams:[{id:'1',games:3,metrics:{pointsFor:{games:3,average:28},passFor:{games:3,average:250},rushFor:{games:3,average:100}}}]};
+ assert.equal(evaluate(d,game,null,now,context).quarterback.away,-2.4);
+ assert.equal(evaluate(d,game,null,now).quarterback.away,0);
+ const lineup={applied:true,gameId:game.id,kickoff:game.kickoff,props:{'1:10':{passing:{scale:0}}}};
+ assert.equal(evaluate(d,game,lineup,now,context).quarterback.away,0);
+ d.teams[0].quarterback.kickoff++;
+ assert.equal(evaluate(d,game,null,now,context).quarterback.away,0);
+});

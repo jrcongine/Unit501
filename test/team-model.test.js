@@ -285,3 +285,12 @@ test('probability fits are cutoff, league and season scoped and withheld for adj
  assert.equal(project(data,game,{venueMode:'home'}).probabilityCalibration,null);
  data.validation.probabilityCalibration.league='2';assert.equal(project(data,game).probabilityCalibration,null);
 });
+test('QB and split adjustments reach scores independently, preserve split totals and disable old calibration',()=>{
+ const {game,data}=setup();game.id='9';const now=0;game.kickoff=100;data.before=100;
+ const baseline=project(data,game,{venueMode:'neutral'});
+ const report={available:true,gameId:'9',league:game.league,season:game.season,kickoff:100,fetchedAt:0,sourceAt:0,spread:{awayLine:3,homeLine:-3,awayBets:70,homeBets:30,awayMoney:35,homeMoney:65}};
+ const adjusted=project(data,game,{venueMode:'neutral',quarterback:{away:-2,home:0},bettingSplits:report,awaySpread:3,now});
+ assert.ok(Math.abs(adjusted.away-(baseline.away-2-.15))<1e-9);
+ assert.ok(Math.abs(adjusted.home-(baseline.home+.15))<1e-9);
+ assert.equal(adjusted.calibration,null);assert.equal(adjusted.probabilityCalibration,null);
+});

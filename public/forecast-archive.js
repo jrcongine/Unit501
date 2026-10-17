@@ -9,7 +9,7 @@
   if(!Number.isFinite(now)||!Number.isFinite(game?.kickoff)||game.kickoff<=now||game.kickoff>now+7*86400000)return null;
   const shared={...options,now};
   const adjusted=model.project(data,game,shared);
-  const baseline=model.project(data,game,{...shared,injury:{awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0},lineup:null});
+  const baseline=model.project(data,game,{...shared,injury:{awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0},lineup:null,quarterback:null});
   if(!adjusted.available||!baseline.available)return null;
   // JSON copy freezes the inputs; later refreshes cannot edit archived reports.
   return JSON.parse(JSON.stringify({schema:1,forecastAt:now,game,inputs:{...inputs,options:shared},baseline,adjusted,
