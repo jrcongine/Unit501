@@ -17,8 +17,11 @@ function parse(html,league){
    const pct=x=>{const v=/^(\d+(?:\.\d+)?)%/.exec(clean(x));return v&&Number(v[1])<=100?Number(v[1]):null;};
    const number=x=>{const s=clean(x);return /^[+-]?\d+(?:\.\d+)?$/.test(s)?Number(s):null;};
    const spread={awayLine:number(a.cells[2]),homeLine:number(h.cells[2]),awayMoney:pct(a.cells[3]),homeMoney:pct(h.cells[3]),awayBets:pct(a.cells[4]),homeBets:pct(h.cells[4])};
-   const moneyline={awayMoney:pct(a.cells[9]),homeMoney:pct(h.cells[9]),awayBets:pct(a.cells[10]),homeBets:pct(h.cells[10])};
-   rows.push({date,away:name(a.team),home:name(h.team),spread,moneyline});
+   const moneyline={awayLine:number(a.cells[8]),homeLine:number(h.cells[8]),awayMoney:pct(a.cells[9]),homeMoney:pct(h.cells[9]),awayBets:pct(a.cells[10]),homeBets:pct(h.cells[10])};
+   const total={};
+   for(const entry of [a,h]){const match=/^(o|u|over|under)\s*(\d+(?:\.\d+)?)/i.exec(clean(entry.cells[5]));if(!match)continue;
+    const side=match[1].toLowerCase().startsWith('o')?'over':'under';total[side+'Line']=Number(match[2]);total[side+'Money']=pct(entry.cells[6]);total[side+'Bets']=pct(entry.cells[7]);}
+   rows.push({date,away:name(a.team),home:name(h.team),spread,moneyline,total});
   }
  }
  return rows;

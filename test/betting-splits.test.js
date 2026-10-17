@@ -20,3 +20,10 @@ test('public preview parser keeps paired rows and rejects mismatched sport or la
  assert.equal(parse(html,'2').length,1);assert.equal(parse(html,'2')[0].spread.homeMoney,65);assert.equal(parse(html,'1').length,0);
  assert.equal(parse(html.replace('data-gamecode="same"','data-gamecode="other"'),'2').length,0);
 });
+
+test('three markets retain odds and explicit over/under labels',()=>{
+ const row=(team,cells)=>`<tr class="sp-row"><td data-gamecode="same"></td><td><a>${team}</a></td>${cells.map(x=>`<td>${x}</td>`).join('')}</tr>`;
+ const html='<table class="sp-table"><thead><a href="?gamedate=2026-10-17">NFL - Sunday</a></thead>'+row('Away',[3,'35%','70%','o 44.5','60%','55%',150,'20%','30%'])+row('Home',[-3,'65%','30%','u 44.5','40%','45%',-175,'80%','70%'])+'</table>';
+ const result=parse(html,'1')[0];assert.equal(result.moneyline.awayLine,150);assert.equal(result.moneyline.homeLine,-175);assert.equal(result.total.overLine,44.5);assert.equal(result.total.underMoney,40);assert.equal(result.total.overBets,55);
+ assert.deepEqual(parse(html.replace('o 44.5','44.5').replace('u 44.5','44.5'),'1')[0].total,{});
+});
