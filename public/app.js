@@ -697,7 +697,7 @@ async function choose(game) {
   $('awayRating').value = 0;
   $('homeRating').value = 0;
   for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
-  $('venueMode').value = 'auto';
+  $('venueMode').value = 'home';
   $('variableHomeField').checked=false;
   $('homeContext').value=game.league==='1'?2:3;
   $('homeFieldMode').value='auto';
