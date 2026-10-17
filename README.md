@@ -3,6 +3,14 @@
 Private NFL + college-football simulation app foundation.
 
 ## Run
+Unit 501 now requires owner authentication on every app and data route. Set
+`UNIT501_PRIVATE_PASSWORD` in Railway Variables to a unique password of at least
+16 characters. The browser login username is `jr`. Without this variable (or
+with a shorter password), the app fails closed with a private-access message.
+Use the Railway HTTPS address; Basic authentication must not be used over public
+plain HTTP. `/api/health` remains available for health checks and performs no
+paid provider requests. Keep the password out of GitHub and client-side code.
+
 Requires Node 20+ (uses `fetch` and `AbortSignal.timeout`).
 
 ```bash
