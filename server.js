@@ -328,6 +328,8 @@ if (u.pathname === '/api/team-games') {
 
     }
 
+    // Revalidate app files so a reload receives the latest controls and scripts.
+    res.setHeader('Cache-Control','no-cache, max-age=0, must-revalidate');
     // Serve the existing app.
 
     const publicDir = path.resolve(__dirname, 'public');

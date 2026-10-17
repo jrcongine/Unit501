@@ -35,7 +35,24 @@ function injuryModeChanged(){
   $('auto-injury-status').textContent=automatic?
     'Auto injuries ON — applied when you run the prediction.':
     'Manual mode — enter injury points below.';
+  previewAutomaticInjuries();
   invalidateSimulation('Injury scoring mode changed. Run the simulation again.');
+}
+function renderAutomaticInjuries(result,applied=false){
+  if(!result)return;
+  for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']]){
+    $(id).value=result.ready?String(result.injury[key]):'';$(id).placeholder=result.ready?'0':'Pending';
+  }
+  const who=result.applied.map(p=>p.category==='quarterback'?`${p.name} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name}: ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`);
+  const hasOut=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out'));
+  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment.';
+  const list=$('injury-adjustment-reasons');list.replaceChildren();
+  for(const reason of result.withheld){const row=document.createElement('li');row.textContent=reason;list.append(row);}
+  $('injury-adjustment-details').hidden=!result.withheld.length;
+}
+function previewAutomaticInjuries(){
+  if(!$('autoInjuries').checked||!selected||!window.Unit501AutoInjury)return;
+  renderAutomaticInjuries(Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,window.Unit501Lineups?.evaluate(),Date.now(),scoringContext?.game===selected?scoringContext.data:null));
 }
 $('autoInjuries').addEventListener('change',injuryModeChanged);
 injuryModeChanged();
@@ -756,12 +773,7 @@ function sim() {
   const lineup=window.Unit501Lineups?.evaluate();
   const automatic=['1','2'].includes(selected.league)&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt,data):null;
-  if(automatic){
-    for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],
-      ['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']])$(id).value=String(automatic.injury[key]);
-    const who=automatic.applied.map(p=>p.category==='quarterback'?`${p.name} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.side==='away'?selected.a:selected.h}: ${p.name} (${p.position}) ${p.category==='offense'?'offense reduction':'defense loss'} +${p.points.toFixed(2)} points`);
-    $('auto-injury-status').textContent=who.length?'Applied: '+who.join(' · '):automatic.ready?'No supported injury adjustment.':'Waiting for injury reports or player-role data.';
-  }
+  if(automatic)renderAutomaticInjuries(automatic,true);
   const options = {now:forecastAt,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
@@ -856,8 +868,7 @@ load();
 
 document.addEventListener('unit501:availability-updated',()=>{
   if($('autoInjuries').checked&&selected){
-    for(const id of injuryFields)$(id).value='0';
-    $('auto-injury-status').textContent='Roster or official injury evidence updated. Run the simulation for freshly evaluated automatic adjustments.';
+    previewAutomaticInjuries();
     invalidateSimulation('Injury evidence updated. Run the simulation again.');
   }else if($('availability-score-status').textContent){
     $('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';
@@ -947,3 +958,6 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
     if(!report.issues?.length){const row=document.createElement('li');row.textContent=report.running?'Check in progress. Close and reopen this panel to refresh.':'No review items reported by this sweep. This does not confirm every player is healthy.';$('maintenance-issues').append(row);}
   }catch{$('maintenance-status').textContent='Background check status unavailable. Open a matchup to refresh its reports.';}
 });
+
+document.addEventListener('unit501:team-context-updated',previewAutomaticInjuries);
+document.addEventListener('unit501:lineup-updated',previewAutomaticInjuries);

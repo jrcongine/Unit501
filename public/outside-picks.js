@@ -10,7 +10,7 @@
     const version=++request, league=byId('war-feed-league').value;
     loaded=true; list.replaceChildren();byId('war-feed-status').textContent='Loading public selections…';
     try{
-      const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(18000)});
+      const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(35000)});
       if(!response.ok)throw Error('Unavailable');const data=await response.json();if(version!==request)return;
       if(!Array.isArray(data.sources))throw Error('Invalid feed');
       let count=0;
