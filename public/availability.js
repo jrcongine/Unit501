@@ -58,8 +58,8 @@
     }
   };
   function render(message,loading=false) {
-    panel.replaceChildren(node('h2','Rosters & injury reports'));
-    const refresh=node('button','Refresh roster & injuries');refresh.id='refresh-availability';refresh.type='button';refresh.disabled=loading;
+    panel.replaceChildren(node('h2','Injury watch'));
+    const refresh=node('button','Refresh injuries');refresh.id='refresh-availability';refresh.type='button';refresh.disabled=loading;
     refresh.onclick=load;
     panel.append(refresh,node('p',message));
     if(!data?.current) return;
@@ -127,6 +127,34 @@
       }
       panel.append(details);
     }
+    // Keep the complete source reports accessible without filling the main screen.
+    const full=node('details','');
+    full.append(node('summary','Full roster & report details'));
+    while(panel.children.length>2)full.append(panel.children[2]);
+    for(const t of data.teams){
+      const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
+      const concerns=new Map();
+      const add=(name,status)=>{
+        const key=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+        if(key&&!concerns.has(key))concerns.set(key,{name,status});
+      };
+      for(const p of [...summary.unavailable,...summary.conditional,...(summary.conflicts||[]),...(summary.nonstarters||[])]){
+        const assessment=Unit501InjuryModel.assess(data,game,t.id,p.id);
+        add(p.name,Unit501InjuryModel.statusLabel(assessment));
+      }
+      const official=t.official;
+      const fresh=official?.available && String(official.gameId)===String(game.id) && official.kickoff===game.kickoff &&
+        Number.isFinite(official.checkedAt) && official.checkedAt<=Date.now() && Date.now()-official.checkedAt<=900000;
+      if(fresh)for(const p of official.unresolved||[]){
+        if(/^(out\b|inactive\b|questionable\b|doubtful\b|probable\b|game time decision\b|suspended\b)/i.test(p.status||''))add(p.name,p.status+' · roster match pending');
+      }
+      panel.append(node('h3',t.id===game.awayId?game.a:game.h));
+      const rows=[...concerns.values()];
+      if(rows.length){
+        const list=node('ul','');for(const p of rows)list.append(node('li',p.name+' — '+p.status));panel.append(list);
+      }else panel.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
+    }
+    panel.append(full);
   }
   async function load(background=false) {
     if(background===true && loading)return;
