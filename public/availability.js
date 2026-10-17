@@ -50,8 +50,8 @@
         for(const r of roles)lines.push(`Team depth chart: ${r.position}, listed depth ${r.rank}. Game starter and workload remain unconfirmed.`);
       }
       const reports=t.injuries.rows.filter(p=>p.id===String(playerId));
-      if(!t.injuries.available) lines.push('Injury status unknown: report unavailable.');
-      else if(!reports.length) lines.push('No injury entry returned; playing status is not confirmed.');
+      if(!t.injuries.available && !t.official?.available) lines.push('Injury status unknown: report unavailable.');
+      else if(!reports.length && !t.official?.available) lines.push('No injury entry returned; playing status is not confirmed.');
       else for(const r of reports) lines.push(`Reported ${r.status}: ${r.description} (${reportAge(r.date)}).`);
       lines.push('Injuries checked '+timestamp(t.injuries.checkedAt)+'. ' + this.assess(teamId,playerId).reason);
       return lines.join(' ');
@@ -67,7 +67,7 @@
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
-      panel.append(node('p',`Availability review: ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries, ${summary.conflicts?.length || 0} conflicting entries, ${summary.nonstarters?.length || 0} QBs withheld for a different announced starter. ${summary.reason}`));
+      panel.append(node('p',`Availability review: ${summary.available?.length || 0} listed available, ${summary.unavailable.length} reported unavailable, ${summary.conditional.length} conditional entries, ${summary.unknown.length} unresolved entries, ${summary.conflicts?.length || 0} conflicting entries, ${summary.nonstarters?.length || 0} QBs withheld for a different announced starter. ${summary.reason}`));
       if(summary.nonstarters?.length)panel.append(node('p','Another QB was announced as starter — normal full-game props withheld: '+summary.nonstarters.map(p=>p.name).join(', ')+'. This does not establish injury or inactive status.'));
       if(summary.conflicts?.length)panel.append(node('p','Conflicting reports — projections withheld: '+summary.conflicts.map(p=>p.name).join(', ')+'.'));
       if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));

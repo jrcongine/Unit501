@@ -64,14 +64,16 @@
     const officialStatus=officialStatuses[0];
     if(officialStatus === 'out' || officialStatus === 'inactive')
       return {blocked:true,state:'unavailable',reason:`${official.publisher || `Official NFL Week ${official.week}`}: ${officialStatus}. Projection and line comparison withheld; not treated as a zero-yard under.`};
+    const officialAssessment=()=>({blocked:false,state:officialStatus==='available'?'available':officialStatus==='exempt'?'unknown':'conditional',status:officialStatus,source:official.url,
+      reason:`${official.publisher || 'Official NFL'} report: ${officialStatus}. `+(officialStatus==='available'?'Listed available for this matchup; starting role and workload are separate.':officialStatus==='exempt'?'Exempt from this availability designation; participation is not established.':'Participation or workload may be limited.')});
     if (officialStatus && (!team.injuries?.available || !fresh(team.injuries.checkedAt,900000)))
-      return {blocked:false,state:'conditional',reason:`${official.publisher || 'Official NFL'} report: ${officialStatus}. Starting role and workload remain unconfirmed; no participation probability is inferred.`};
+      return officialAssessment();
     if (!team.injuries?.available || !fresh(team.injuries.checkedAt, 900000))
       return unknown('Injury feed unavailable or fetch expired. Refresh the reports.');
     const reports = team.injuries.rows.filter(p => String(p.id) === String(playerId) &&
       (!p.teamId || String(p.teamId) === String(teamId)));
-    const dated = reports.filter(p => fresh(Date.parse(p.date), 7 * day));
-    if (!dated.length && officialStatus) return {blocked:false,state:'conditional',reason:`${official.publisher || 'Official NFL'} report: ${officialStatus}. Starting role and workload remain unconfirmed; no participation probability is inferred.`};
+    const dated = reports.filter(p => fresh(Date.parse(p.date), 7 * day) && (!officialStatus || !Number.isFinite(official.publishedAt) || Date.parse(p.date)>=official.publishedAt));
+    if (!dated.length && officialStatus) return officialAssessment();
     if (!dated.length) return unknown(reports.length ? 'Injury report is stale or undated; playing status is unconfirmed.' : 'No injury entry returned; playing status is unconfirmed.');
     const latest = Math.max(...dated.map(p => Date.parse(p.date)));
     const current = dated.filter(p => Date.parse(p.date) === latest);
@@ -82,11 +84,14 @@
     const status = statuses[0];
     if (['out','injured reserve','ir','inactive','sidelined','i l','pup','physically unable to perform','suspended'].includes(status))
       return {blocked:true,state:'unavailable',reason:`Latest provider report: ${status}. Projection and line comparison withheld; not treated as a zero-yard under.`};
+    if(officialStatus)return officialAssessment();
     return {blocked:false,state:'conditional',reason:`Latest provider report: ${status || 'unknown'}. Projection assumes normal workload if the player participates; no playing probability is inferred.`};
   }
   // Display the actual report designation without upgrading it to confirmed participation.
   function statusLabel(assessment) {
     const reason=assessment?.reason || '';
+    if(assessment?.state==='available')return 'Available';
+    if(assessment?.status==='exempt')return 'Exempt — status not reported';
     if(assessment?.state==='conflict')return 'Conflicting reports';
     if(assessment?.state==='nonstarter')return 'Not starting';
     if(assessment?.state==='team-unconfirmed')return 'Team listing needs update';
@@ -119,10 +124,10 @@
     for (const p of team.official?.rows || []) if (p.id && p.status) players.set(String(p.id),p);
     for (const p of team.injuries?.rows || []) if (p.id && (!p.teamId || String(p.teamId) === String(teamId))) players.set(String(p.id),p);
     for (const p of team.roster?.rows || []) if (p.id && /\binjured reserve\b/.test(normalize(p.group))) players.set(String(p.id),p);
-    const result = {unavailable:[],conditional:[],unknown:[],conflicts:[],nonstarters:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
+    const result = {available:[],unavailable:[],conditional:[],unknown:[],conflicts:[],nonstarters:[],reason:'Reported players only; missing entries do not confirm health. Starting roles and replacement quality are unverified.'};
     for (const [id,p] of players) {
       const status = assess(data,game,teamId,id,now);
-      result[status.state === 'nonstarter' ? 'nonstarters' : status.state === 'conflict' ? 'conflicts' : status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
+      result[status.state === 'available' ? 'available' : status.state === 'nonstarter' ? 'nonstarters' : status.state === 'conflict' ? 'conflicts' : status.blocked ? 'unavailable' : status.state === 'conditional' ? 'conditional' : 'unknown']
         .push({id,name:p.name || 'Unknown player',reason:status.reason});
     }
     return result;

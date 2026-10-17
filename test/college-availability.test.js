@@ -42,3 +42,25 @@ test('conference State abbreviations resolve only to verified FBS schools',()=>{
  }
  const r=report();r.games[0].teamName='Unknown St.';assert.equal(matchReports({x:r},g,'2026',now).length,0);
 });
+
+test('explicit Available clears generic conditional warnings, while exempt and missing remain unknown',async()=>{
+ const r=report();r.games[0].rows[0].status='Available';
+ const get=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='SEC'?{x:r}:{});
+ const t=teams();await get(q,t);const data={current:true,teams:t},game={id:'100',kickoff};
+ assert.equal(assess(data,game,'1','10',now,true).state,'available');
+ assert.equal(require('../public/injury-model').statusLabel(assess(data,game,'1','10',now,true)),'Available');
+ t[0].official.rows[0].status='Exempt';assert.equal(assess(data,game,'1','10',now,true).state,'unknown');
+ t[0].official.rows=[];assert.equal(assess(data,game,'1','10',now,true).state,'unknown');
+});
+test('college suffix formatting matches one identity and retains unresolved names visibly',async()=>{
+ const r=report();r.games[0].rows[0].name='QB #1 Player One Jr.';r.games[0].rows.push({name:'RB #9 Unmatched Name',status:'Out'});
+ const t=teams();await createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='SEC'?{x:r}:{})(q,t);
+ assert.equal(t[0].official.rows[0].id,'10');assert.equal(t[0].official.unresolved[0].name,'Unmatched Name');
+});
+test('newer published official availability supersedes older provider report but not a newer contradiction',async()=>{
+ const r=report();r.games[0].rows[0].status='Available';
+ const t=teams();await createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='SEC'?{x:r}:{})(q,t);
+ t[0].injuries={available:true,checkedAt:now,rows:[{id:'10',teamId:'1',status:'Questionable',date:new Date(now-7200000).toISOString()}]};
+ const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).state,'available');
+ t[0].injuries.rows[0].date=new Date(now).toISOString();assert.equal(assess(data,game,'1','10',now,true).state,'conflict');
+});

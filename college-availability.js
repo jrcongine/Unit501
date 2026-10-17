@@ -1,5 +1,6 @@
 'use strict';
 const {fbsName}=require('./team-identity');
+const {matchPlayer}=require('./player-name-match');
 const sources={SEC:'https://www.secsports.com/fbreports',ACC:'https://theacc.com/sports/2025/8/28/availability-reporting-football.aspx',B10:'https://bigten.org/sports/2026/9/10/FB_Availability_Reports.aspx'};
 const reportSchool=(name,season)=>fbsName({name},season)||fbsName({name:String(name||'').replace(/\bSt\.$/,'State')},season);
 const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -52,14 +53,14 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
    for(const team of teams){
     const identity=fbsName(String(team.id)===q.away?g.teams.away:g.teams.home,q.season);
     const sections=report.games.filter(t=>reportSchool(t.teamName,q.season)===identity);if(sections.length!==1)continue;
-    const rows=[];let unmatched=0;
+    const rows=[],unresolved=[];let unmatched=0;
     for(const r of sections[0].rows){
-     const match=/^([A-Z]{1,5})\s+#\d+\s+(.+)$/.exec(r.name||'');if(!match||typeof r.status!=='string'){unmatched++;continue;}
-     const matches=(team.roster?.rows||[]).filter(p=>nameKey(p.name)===nameKey(match[2]));
-     if(matches.length!==1){unmatched++;continue;}
-     rows.push({id:matches[0].id,teamId:String(team.id),name:match[2],position:match[1],status:r.status,description:'Conference availability report',date:new Date(report.publishedAt).toISOString()});
+     const match=/^([A-Z]{1,5})\s+#\d+\s+(.+)$/.exec(r.name||'');if(!match||typeof r.status!=='string'){unmatched++;unresolved.push({name:r.name,status:r.status});continue;}
+     const player=matchPlayer({name:match[2],position:match[1]},team.roster?.rows||[],team.id);
+     if(!player){unmatched++;unresolved.push({name:match[2],position:match[1],status:r.status});continue;}
+     rows.push({id:player.id,teamId:String(team.id),name:match[2],position:match[1],status:r.status,description:'Conference availability report',date:new Date(report.publishedAt).toISOString()});
     }
-    team.official={available:true,source:conf,publisher:conf==='B10'?'Big Ten':conf,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
+    team.official={available:true,source:conf,publisher:conf==='B10'?'Big Ten':conf,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,unresolved,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
    }
   }catch{}
  };

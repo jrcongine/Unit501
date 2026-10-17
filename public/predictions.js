@@ -568,7 +568,7 @@ cell.append(details);
       const player=choices.find(p=>p.id===option.value);
       if(!player)continue;
       const assessment=window.Unit501Availability?.assess(player.teamId,player.playerId);
-      option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?.state==='conditional'?' — Conditional availability':''}`;
+      option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?' — '+Unit501InjuryModel.statusLabel(assessment):''}`;
     }
     renderComparisons();
     results.replaceChildren();
