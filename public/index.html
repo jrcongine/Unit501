@@ -160,25 +160,6 @@
 
 </div>
 
-<details id="betting-splits-panel" class="hidden" open>
-<summary>Game betting</summary>
-<button id="refresh-splits" type="button">Refresh splits</button>
-<label><input id="use-betting-splits" type="checkbox" checked> Use eligible splits</label>
-<div id="betting-splits-body"></div>
-<p id="betting-splits-status" role="status"></p>
-<details><summary>Source details / manual entry</summary>
-<p>Bets = number of wagers. Money = dollars wagered. A money lean may suggest sharp action; it does not prove it. One sportsbook sample, not the whole market.</p>
-<p>Free feed coverage is limited. Without a source update time, it is display-only. Sourced entries below can move the predicted margin by up to 0.5 point. This is experimental, not backtested. Totals and props are unchanged.</p>
-<form id="splits-manual" class="grid">
-<label>Away spread<input name="line" type="number" step=".5" required></label>
-<label>Away bets %<input name="bets" type="number" min="0" max="100" step=".1" required></label>
-<label>Away money %<input name="money" type="number" min="0" max="100" step=".1" required></label>
-<label>Sportsbook / source<input name="source" maxlength="120" required></label>
-<label>Source update time<input name="time" type="datetime-local" required></label>
-<button type="submit">Use these splits</button>
-</form>
-</details>
-</details>
 <details>
 <summary>Injury scoring — automatic or manual</summary>
 <label><input id="autoInjuries" type="checkbox" checked> Auto injuries — NFL & college</label>
@@ -281,7 +262,6 @@
 <script src="line-watch.js"></script>
 <script src="weather-model.js"></script>
 <script src="app.js"></script>
-<script src="betting-splits-ui.js"></script>
 
 <script src="injury-model.js"></script>
 <script src="availability.js"></script>

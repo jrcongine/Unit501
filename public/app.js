@@ -781,7 +781,7 @@ function sim() {
     injury:automatic?{...automatic.injury}:{
       awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
-    bettingSplits:window.Unit501BettingSplits?.snapshot(),awaySpread:spread,splitsEnabled:$('use-betting-splits').checked,
+    awaySpread:spread,splitsEnabled:false,
     quarterback:automatic?{...automatic.quarterback}:null,
     automaticInjury:automatic?{applied:automatic.applied,withheld:automatic.withheld,message:automatic.message}:null,
     lineup,
@@ -822,8 +822,7 @@ function sim() {
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
-  $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points. '+prediction.market.reason;
-  $('betting-splits-status').textContent=prediction.market.applied?'Applied: '+Math.abs(prediction.market.appliedMargin).toFixed(2)+' points toward '+(prediction.market.appliedMargin>0?selected.h:selected.a):prediction.market.reason;
+  $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
     if(automatic&&!automatic.ready){
       latestForecast=null;
