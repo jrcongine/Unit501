@@ -758,16 +758,31 @@ async function choose(game) {
 function sim() {
   if (!selected) return;
   invalidateSimulation();
-  if (['spread','total','awayRating','homeRating','awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'].some(id => $(id).value === '')) {
-    $('note').textContent = 'Enter spread, total, point adjustments and injury scenarios (0 is fine).';
-    return;
+  const marketFields=[['spread','FanDuel away spread'],['total','FanDuel total']];
+  for(const [id,label] of marketFields){
+    const field=$(id);
+    if(field.value===''||field.validity?.badInput||!Number.isFinite(Number(field.value))||(id==='total'&&Number(field.value)<=0)){
+      $('note').textContent=field.value===''&&!field.validity?.badInput?
+        `Missing ${label}. Load FanDuel lines or enter it above.`:`Check ${label}: enter ${id==='total'?'a number greater than 0':'a valid number (0 for pick’em)'}.`;
+      field.focus();
+      return;
+    }
+  }
+  const adjustmentFields=[['awayRating','Away point adjustment'],['homeRating','Home point adjustment']];
+  if(!$('autoInjuries').checked)adjustmentFields.push(
+    ['awayOffenseLoss','Away offense loss'],['awayDefenseLoss','Away defense loss'],
+    ['homeOffenseLoss','Home offense loss'],['homeDefenseLoss','Home defense loss']);
+  for(const [id,label] of adjustmentFields){
+    const field=$(id);
+    if(field.validity?.badInput||(field.value!==''&&!Number.isFinite(Number(field.value)))){
+      $('note').textContent=`Check ${label}: enter a valid number.`;
+      field.focus();
+      return;
+    }
+    if(field.value==='')field.value='0';
   }
   const spread = Number($('spread').value);
   const total = Number($('total').value);
-  if (![spread,total].every(Number.isFinite) || total <= 0) {
-    $('note').textContent = 'Check the spread and total.';
-    return;
-  }
   const data = scoringContext?.game === selected ? scoringContext.data : null;
   const forecastAt=Date.now();
   const lineup=window.Unit501Lineups?.evaluate();
