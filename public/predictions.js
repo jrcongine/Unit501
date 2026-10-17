@@ -125,17 +125,17 @@
     return entry;
   }
   // Compact, complete matchup overview; individual player cards remain available below.
-  const overview = document.createElement('section');
+  const overview = document.createElement('details');
   overview.id = 'all-player-projections';
   results.before(overview);
   const board = document.createElement('section');
   board.id = 'saved-line-comparisons';
-  results.before(board);
+  overview.before(board);
   let overviewSignature = '';
   function renderOverview() {
     if (!loadedFor) { overview.replaceChildren(); overviewSignature=''; return; }
-    const title = document.createElement('h3');
-    title.textContent = 'All player projections — both teams';
+    const title = document.createElement('summary');
+    title.textContent = 'All player projections — both teams (including players without lines)';
     const intro = document.createElement('p');
     intro.textContent = 'Every available model projection from this matchup, including players without a FanDuel line. Missing stats are never guessed. A projection is not a bet recommendation; confirm role and data before relying on it.';
     const records = [];
@@ -255,7 +255,7 @@
     board.replaceChildren();
     if (!loadedFor) return;
     const title = document.createElement('h3');
-    title.textContent = 'Player line comparisons';
+    title.textContent = 'Our projections vs FanDuel';
     const note = document.createElement('p');
     note.textContent = 'Selected game only. Use Review checks to inspect data gaps before comparing a line. Checks and data support are not a confidence score, ranked picks or win probabilities. Data support counts recorded games and highlights gaps; it does not verify participation or value. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
@@ -892,7 +892,7 @@ results.appendChild(workload);
     const game = selected;
     const gameId = String(game.id);
     if (loadedFor === gameId && choices.length) {
-      status.textContent = 'All player projections are shown below. Select a player for details.'; renderOverview(); return;
+      status.textContent = 'Compare our projections with FanDuel below. Expand the full player list for unquoted players.'; renderOverview(); return;
     }
     button.disabled = true;
     picker.disabled = true;
