@@ -342,7 +342,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Source / time (CT)', 'Prices / break-even', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Prices / break-even', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -370,8 +370,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), `${row.values.length} ${row.values.length === 1 ? 'game' : 'games'}`, projection.toFixed(1), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
-        row.workloadHistory.text,
-        row.entry.source === 'auto' ? 'FanDuel • ' + new Date(row.entry.savedAt).toLocaleTimeString('en-US', {timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : row.entry.persisted && row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Session only'];
+        row.workloadHistory.text];
       const prices = priceSummary(row.entry);
       fields.push(prices);
       const observed=row.entry.source==='auto'?row.entry.movement:null;
