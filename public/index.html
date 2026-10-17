@@ -177,10 +177,10 @@
 <label for="venueMode">Game location</label>
 <select id="venueMode">
 <option value="auto">Automatic — check venue history</option>
-<option value="home">Home stadium</option>
+<option value="home" selected>Home stadium</option>
 <option value="neutral">Neutral site</option>
 </select>
-<p>Automatic uses a matching venue from at least two earlier home games. Unknown locations receive no home-field boost. This changes team scores, not player props.</p>
+<p>Home stadium is the default for each matchup and automatically applies home-field advantage. Select Neutral site for games played away from the home stadium; this removes the home-field boost. Automatic checks earlier venue history instead. This changes team scores, not player props.</p>
 <label><input id="variableHomeField" type="checkbox"> Use experimental NFL team home-field estimate</label>
 <p id="home-field-status">Historical home-field estimates load with the matchup. These are performance estimates, not crowd-noise ratings.</p>
 <details><summary>NFL historical home-field rankings</summary><div id="home-field-rankings"></div></details>
