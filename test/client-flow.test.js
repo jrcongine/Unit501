@@ -746,3 +746,21 @@ test('college selection does not enable NFL injury scoring or wait for unmatched
  assert.equal(h.nodes.get('autoInjuries').checked,true);
  assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
 });
+
+test('overview keeps scroll element on unchanged reports and scroll position on new quotes',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ const scroll=h.nodes.get('all-projection-scroll');scroll.scrollTop=420;scroll.scrollLeft=35;
+ await h.context.document.dispatchEvent({type:'unit501:team-context-updated'});
+ assert.equal(h.nodes.get('all-projection-scroll'),scroll);
+ assert.equal(scroll.scrollTop,420);
+ const original=h.context.fetch;
+ h.context.fetch=async url=>String(url).startsWith('/api/fanduel-props')?{ok:true,json:async()=>({props:[{name:'RB 1',stat:'carries',line:18.5,updatedAt:Date.now()},{name:'Unknown Player',stat:'carries',line:11.5,updatedAt:Date.now()}]})}:original(url);
+ const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');
+ await refresh.dispatchEvent({type:'click'});await h.settle();
+ const updated=h.nodes.get('all-projection-scroll');assert.notEqual(updated,scroll);
+ assert.equal(updated.scrollTop,420);assert.equal(updated.scrollLeft,35);
+ assert.match(h.nodes.get('all-player-projections').textContent,/18.5/);
+ assert.match(h.nodes.get('prop-feed-status').textContent,/2 usable quotes returned/);
+ assert.match(h.nodes.get('prop-feed-status').textContent,/Unmatched or ambiguous player names: Unknown Player/);
+});
