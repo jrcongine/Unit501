@@ -31,7 +31,7 @@ test('feed caches and shares requests, isolates failures and expires old selecti
   await assert.rejects(feed('https://evil.test'));
 });
 test('oversized responses and changed source markup fail closed',async()=>{
-  const big=createFeed({fetcher:async()=>new Response('x'.repeat(2500001))});assert.equal((await big('nfl')).sources[0].status,'unavailable');
+  const big=createFeed({fetcher:async()=>new Response('x'.repeat(5000001))});assert.equal((await big('nfl')).sources[0].status,'unavailable');
   const empty=createFeed({fetcher:async()=>new Response('<h1>Login or changed layout</h1>')});assert.equal((await empty('nfl')).sources[0].status,'empty');
 });
 test('UI loads on opening, renders text safely, and rejects obsolete league responses',async()=>{
@@ -54,4 +54,9 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
   assert.match(nodes.get('war-feed').textContent,/<img onerror=bad>/);
   const third=nodes.get('war-feed-refresh').listeners.click();pending[2]({ok:false});await third;
   assert.match(nodes.get('war-feed-status').textContent,/Could not load/);assert.equal(nodes.get('war-feed').children.length,0);
+});
+
+test('readable public picks survive a three-megabyte source page',async()=>{
+ const feed=createFeed({fetcher:async url=>new Response(url.includes('covers')?' '.repeat(3000000)+covers:wt)});
+ const result=await feed('nfl');assert.equal(result.sources[0].status,'available');assert.equal(result.sources[0].picks[0].author,'Test Analyst');
 });

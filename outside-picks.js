@@ -53,7 +53,7 @@ async function fetchPage(url,fetcher) {
   if(!response.ok)throw Error('Source unavailable');
   // Bound upstream responses as well as request duration.
   const reader=response.body.getReader();let size=0;const chunks=[];
-  try {while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>2500000)throw Error('Source response too large');chunks.push(Buffer.from(value));}}
+  try {while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>5000000)throw Error('Source response too large');chunks.push(Buffer.from(value));}}
   finally {await reader.cancel().catch(()=>{});}
   return Buffer.concat(chunks).toString('utf8');
 }
