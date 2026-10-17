@@ -46,9 +46,13 @@ function createAvailability(api, now = Date.now) {
       return {id,roster,injuries};
     }));
     await Promise.all([official(q,teams),college(q,teams)]);
-    await collegeUsage(q,teams);
     const rosterOwnership=await ownershipTask;
-    await quarterbacks(q,teams,rosterOwnership);
+    let qbTimer;
+    const qbTask=Promise.race([
+      quarterbacks(q,teams,rosterOwnership),
+      new Promise(resolve=>{qbTimer=setTimeout(resolve,12000);qbTimer.unref?.();})
+    ]).finally(()=>clearTimeout(qbTimer));
+    await Promise.all([collegeUsage(q,teams),qbTask]);
     return {current:true,teams,rosterOwnership,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
   };
 }
