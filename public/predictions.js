@@ -74,7 +74,9 @@
       const covered = coverage.filter(m=>m.lines>0).length;
       const missing = coverage.filter(m=>m.lines===0).map(m=>definitions.find(d=>d.key===m.stat)?.title).filter(Boolean);
       const detail = coverage.length ? ` ${covered}/${coverage.length} modeled markets returned usable lines.${missing.length ? ' No usable lines returned for: '+missing.join(', ')+'.' : ''}` : '';
-      propStatus.textContent = `${data.message || ''}${detail} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
+      const unmatched=[...new Set(data.props.filter(q=>choices.filter(p=>playerName(p.name)===playerName(q.name)).length!==1).map(q=>q.name))];
+      const matchingDetail=` ${data.props.length} usable quotes returned by the feed.${unmatched.length?' Unmatched or ambiguous player names: '+unmatched.join(', ')+'.':''}`;
+      propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
       showPlayer();
     } catch (e) {
       if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' Existing fresh quotes were kept; you can also enter lines manually.';
@@ -129,15 +131,13 @@
   const board = document.createElement('section');
   board.id = 'saved-line-comparisons';
   results.before(board);
+  let overviewSignature = '';
   function renderOverview() {
-    overview.replaceChildren();
-    if (!loadedFor) return;
+    if (!loadedFor) { overview.replaceChildren(); overviewSignature=''; return; }
     const title = document.createElement('h3');
     title.textContent = 'All player projections — both teams';
     const intro = document.createElement('p');
     intro.textContent = 'Every available model projection from this matchup, including players without a FanDuel line. Missing stats are never guessed. A projection is not a bet recommendation; confirm role and data before relying on it.';
-    overview.append(title, intro);
-
     const records = [];
     for (const player of choices) {
       const availability = window.Unit501Availability?.assess(player.teamId, player.playerId);
@@ -160,6 +160,14 @@
       }
       if (!added) records.push({player,def:null,projection:null,line:null,gap:null,detail:'Insufficient recorded data for projection'});
     }
+    const signature=JSON.stringify([loadedFor,records.map(r=>[r.player.id,r.player.name,r.player.team,r.def?.key,r.projection,r.line,r.gap,r.detail])]);
+    // Background reports often repeat unchanged data. Keep the live scroll element intact.
+    if(signature===overviewSignature) return;
+    overviewSignature=signature;
+    const previousScroll=el('all-projection-scroll');
+    const scrollTop=previousScroll?.scrollTop||0,scrollLeft=previousScroll?.scrollLeft||0;
+    overview.replaceChildren();
+    overview.append(title,intro);
     const filters = document.createElement('div');
     filters.className = 'all-projection-filters';
     const search = document.createElement('input');
@@ -187,6 +195,7 @@
     count.id = 'all-projection-count';
     const scroll = document.createElement('div');
     scroll.className = 'all-projection-scroll';
+    scroll.id = 'all-projection-scroll';
     scroll.tabIndex = 0;
     scroll.setAttribute('role','region');
     scroll.setAttribute('aria-label','All loaded player projections');
@@ -233,12 +242,14 @@
         tr.hidden=!visible;
         if(visible)shown++;
       }
-      count.textContent=`${shown} of ${records.length} rows shown · ${choices.length} players loaded. Rows without lines still have projections.`;
+      count.textContent=`${shown} of ${records.length} rows shown · ${choices.length} players loaded. ${records.filter(r=>r.line!==null).length} rows have lines; remaining rows have no usable matched line.`;
     };
     search.addEventListener('input',apply);
     team.addEventListener('change',apply);
     stat.addEventListener('change',apply);
     apply();
+    scroll.scrollTop=scrollTop;
+    scroll.scrollLeft=scrollLeft;
   }
   function renderComparisons() {
     board.replaceChildren();
@@ -862,6 +873,7 @@ results.appendChild(workload);
     lineScope = '';
     board.replaceChildren();
     overview.replaceChildren();
+    overviewSignature='';
     overview.dataset.query='';
     overview.dataset.team='';
     overview.dataset.stat='';
