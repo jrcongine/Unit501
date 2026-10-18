@@ -58,7 +58,13 @@
     const other=(fresh(t.injuries,900000,now)?t.injuries.rows||[]:[])
       .filter(r=>String(r.id)===id&&(!r.teamId||String(r.teamId)===teamId));
     const alternatives=other.filter(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&(!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)>=t.official.publishedAt)&&
-      !['out','sidelined','inactive','injured reserve','ir'].includes(status(r.status)));
+      !['out','sidelined','inactive','injured reserve','ir'].includes(status(r.status))&&
+      // A dated, generic conditional report older than a day cannot overturn
+      // the current matched game's definitive Out report. Keep explicit active,
+      // same-game, recent, or demonstrably newer reports as conflicts.
+      !(['questionable','doubtful'].includes(status(r.status))&&!r.gameId&&
+        now-Date.parse(r.date)>86400000&&
+        (!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)<t.official.publishedAt)));
     if(statuses.some(s=>s!=='out')||alternatives.length){
      const details='official game report: '+statuses.map(s=>s||'blank').join(', ')+(alternatives.length?'; provider: '+alternatives.map(r=>(r.status||'Unknown')+' ('+r.date+')').join(', '):'');
      withheld.push(label+': '+name+' has conflicting or conditional reports; '+details+'; no estimate.');continue;
