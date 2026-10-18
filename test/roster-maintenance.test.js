@@ -75,3 +75,11 @@ test('review priorities surface ownership and unmatched Out without hiding depth
  assert.equal(report.issues.find(i=>i.kind==='depth-identity').priority,3);
  assert.equal(report.issues.find(i=>i.kind==='depth-identity').players[0].name,'Unknown Tackle');
 });
+
+test('college and NFL schedules refresh with correct league and role sources',async()=>{
+ const leagues=[];
+ const worker=createRosterMaintenance(async url=>({response:[{...game(url.includes('league=2')?4:2,1000),league:{id:url.includes('league=2')?2:1,season:2026}}]}),async q=>{
+  leagues.push(q.league);return {current:true,rosterOwnership:{complete:true},teams:[{id:'1',roster:{available:true},official:{available:true},depth:{available:true},injuryUsage:{available:true}}]};
+ },()=>now);
+ const result=await worker.run();assert.deepEqual(leagues,['1','2']);assert.equal(result.gamesChecked,2);assert.equal(result.issues.length,0);
+});

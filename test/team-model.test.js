@@ -294,3 +294,10 @@ test('QB and split adjustments reach scores independently, preserve split totals
  assert.ok(Math.abs(adjusted.home-(baseline.home+.15))<1e-9);
  assert.equal(adjusted.calibration,null);assert.equal(adjusted.probabilityCalibration,null);
 });
+
+test('simulation exposes raw blowout frequencies without changing score means',()=>{
+ const m=require('../public/team-model');let seed=42;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+ const p={available:true,away:7,home:38};const r=m.simulate(p,20.5,45.5,20000,random);
+ assert.equal(r.blowout.threshold,21);assert.ok(r.blowout.home>.7);assert.ok(r.blowout.away<.01);assert.ok(r.blowout.any<=1);
+ assert.ok(Math.abs(r.meanAway-7)<.4);assert.ok(Math.abs(r.meanHome-38)<.4);
+});

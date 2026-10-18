@@ -10,6 +10,7 @@
   const head=node('tr','');
   for(const label of ['Sample','Games','Total avg miss','Total bias','Margin avg miss','Favorite-margin bias']){const th=node('th',label);th.scope='col';head.append(th);}table.append(head);
   const row=(label,m)=>{const tr=node('tr','');for(const value of [label,m.games,fmt(m.totalMAE),fmt(m.totalBias),fmt(m.marginMAE),fmt(m.favoriteMarginBias)])tr.append(node('td',String(value)));table.append(tr);};
+  details.append(node('p',`${check.overall.actualBlowouts ?? 0} actual 21+ point games; ${check.overall.projectedBlowouts ?? 0} point forecasts of 21+. ${check.overall.closeProjectionBlowouts ?? 0} actual blowouts followed projections below 7 points. A mean score need not match the most extreme possible outcome.`));
   row('All eligible games',check.overall);row('Latest 10 eligible games',check.recent);
   for(const band of check.marginBands)row('Projected margin '+band.label,band);
   row('Later games · current',check.candidate.current);row('Same games · candidate',check.candidate.proposed);

@@ -48,7 +48,8 @@ function validate(games,query,snapshot) {
       const record={id:String(g.game.id),kickoff:before,historyBefore,awayId:game.awayId,homeId:game.homeId,
         projectedAway:prediction.away,projectedHome:prediction.home,actualAway,actualHome,...error,
         leagueBaseline:prediction.baseline,awayPriorScoring:data.teams.find(t=>String(t.id)===game.awayId)?.metrics.pointsFor.average,homePriorScoring:data.teams.find(t=>String(t.id)===game.homeId)?.metrics.pointsFor.average,
-        legacyAwayError:actualAway-legacy.away,legacyHomeError:actualHome-legacy.home};
+        legacyAwayError:actualAway-legacy.away,legacyHomeError:actualHome-legacy.home,
+        ratingCandidates:Object.fromEntries([2,3].map(prior=>{const p=model.project(data,game,{},false,prior);return [prior,{projectedAway:p.away,projectedHome:p.home}];}))};
       if(calibration) {
         let seed=123;
         const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
@@ -100,6 +101,8 @@ function validate(games,query,snapshot) {
     current:comparison(later),previous:comparison(later.map(r=>({away:r.legacyAwayError,home:r.legacyHomeError}))),
     sufficient:later.length>=30,
     explanation:'Fixed formulas compared on games after the first 30 eligible predictions; all games at the warm-up boundary kickoff stay in warm-up. This is an in-season comparison, not independent future validation or evidence of betting profit.'};
+  const ratingPriorComparison=[2,3,4].map(prior=>({priorGames:prior,
+    ...scoreAudit.summarize(later.map(r=>({...r,...(prior===4?{}:r.ratingCandidates[prior])}))) }));
   const diagnose=rows=>{
     const groups={belowAverage:[],atOrAboveAverage:[]};
     for(const r of rows)for(const side of ['away','home']){
@@ -117,7 +120,7 @@ function validate(games,query,snapshot) {
   const evaluated=records.filter(r=>Number.isFinite(r.brier));
   const scoringAudit=scoreAudit.audit(records.map(r=>({...r,knownAt:r.kickoff+86400000})));
   scoringAudit.explanation+=' Replay uses kickoff plus 24 hours as a conservative result-availability proxy, not an archived publication timestamp. Replay omits historical weather and injuries.';
-  return {scoreAudit:scoringAudit,modelVersion:'scoring-v2',games:records.length,skipped,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
+  return {scoreAudit:scoringAudit,modelVersion:'scoring-v2',games:records.length,skipped,ratingPriorComparison,laterComparison,offenseDiagnostics,probabilityGames:evaluated.length,
     scoreMAE:errors.length?mean(errors.map(e=>(Math.abs(e.away)+Math.abs(e.home))/2)):null,
     marginMAE:errors.length?mean(errors.map(e=>Math.abs(e.home-e.away))):null,
     totalMAE:errors.length?mean(errors.map(e=>Math.abs(e.home+e.away))):null,

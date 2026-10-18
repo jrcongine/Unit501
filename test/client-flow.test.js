@@ -13,7 +13,7 @@ function harness(storage=new Map(),extras=false) {
   set value(v){this._value=String(v);}get value(){return this._value;}
   set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(c=>typeof c==='string'?c:c.textContent).join('');}
   set innerHTML(v){this.replaceChildren();}get innerHTML(){return '';}
-  append(...children){this.children.push(...children);if(this.tag==='select'&&!this.value&&children[0])this.value=children[0].value;}
+  append(...children){for(const child of children){if(child&&typeof child==='object'){if(child.parentNode)child.parentNode.children=child.parentNode.children.filter(c=>c!==child);child.parentNode=this;}this.children.push(child);}if(this.tag==='select'&&!this.value&&children[0])this.value=children[0].value;}
   appendChild(child){this.append(child);return child;}
   replaceChildren(...children){this.children=[];this._text='';if(this.tag==='select')this.value='';this.append(...children);}
   before(){}after(){}setAttribute(){}scrollIntoView(){}focus(){}
@@ -25,6 +25,7 @@ function harness(storage=new Map(),extras=false) {
  for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)){const node=new Node(match[1]);node.id=match[2];}
  nodes.get('date').value='2026-10-10';nodes.get('league').value='1';nodes.get('weatherEnabled').checked=true;
  const context={document,console,URLSearchParams,AbortSignal,Date,Event:class{constructor(type){this.type=type;}},setTimeout:(fn,delay)=>{timers.push({fn,delay,active:true});return timers.length;},clearTimeout:id=>{if(timers[id-1])timers[id-1].active=false;},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
+ context.CustomEvent=class extends context.Event {constructor(type,options={}){super(type);this.detail=options.detail;}};
  context.window=context;context.addEventListener=(...args)=>document.addEventListener(...args);vm.createContext(context);
  const stamp=Math.floor((Date.now()+86400000)/1000);
  const game={league:{id:1,season:2026},game:{id:999,stage:'Regular Season',date:{timestamp:stamp},status:{short:'NS',long:'Scheduled'},venue:{name:'Test Stadium'}},teams:{away:{id:1,name:'Team A'},home:{id:2,name:'Team B'}},scores:{away:{total:null},home:{total:null}}};
@@ -83,7 +84,7 @@ test('actual client home-context control changes margin and resets on game selec
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('prop-feed-status').textContent,/3\/8 modeled markets/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/No usable lines returned for: Passing yards/);
@@ -104,8 +105,8 @@ test('open matchup refreshes expired reports, skips hidden tabs and preserves da
  const originalFetch=h.context.fetch;let release,calls=0;
  h.context.fetch=async url=>{if(String(url).startsWith('/api/availability')){calls++;await new Promise(resolve=>{release=resolve;});}return originalFetch(url);};
  const pending=h.nodes.get('refresh-availability').onclick();await h.settle();
- assert.equal(h.run('Unit501Availability.snapshot()'),before);assert.equal(h.nodes.get('score').textContent,'24–24');
- release();await pending;assert.equal(h.nodes.get('score').textContent,'24–24');
+ assert.equal(h.run('Unit501Availability.snapshot()'),before);assert.equal(h.nodes.get('score').textContent,'23–25');
+ release();await pending;assert.equal(h.nodes.get('score').textContent,'—'); // Refreshed injury evidence invalidates the prior simulation.
  const clock=Date.now()+900001;h.context.Date=class extends Date{static now(){return clock;}};
  let tick=h.timers.findLast(t=>t.active&&t.delay===60000);assert.ok(tick);
  h.context.document.hidden=true;await tick.fn();assert.equal(calls,1);
@@ -113,24 +114,24 @@ test('open matchup refreshes expired reports, skips hidden tabs and preserves da
  const refreshing=tick.fn();await h.settle();assert.equal(calls,2);release();await refreshing;
 });
 test('completing an accepted pace model invalidates an older scoring simulation only once',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
  for(const t of h.data.teams)t.pace={games:4,drives:40,opponentDrives:40};
  h.data.paceValidation={accepted:true,league:'1',season:'2026',before:h.data.before,evaluatedGames:30,scoreError:8,baselineScoreError:9,totalError:10,baselineTotalError:11,explanation:'Fixture'};
  h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'—');
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
- h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'24–24');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'23–25');
 });
 
 test('actual ratings, roster, replacement, score and prop flows share one scenario and refresh gates it',async()=>{
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('build-player-ratings').onclick();await h.settle();
  const confirm=h.nodes.get('baseline-1:7'),replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7');
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
- h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'24–24');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–25');
  assert.ok(confirm);replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
  const scenario=JSON.parse(h.run('JSON.stringify(window.Unit501Lineups.evaluate())'));assert.equal(scenario.applied,true);assert.equal(scenario.props['1:9'].rushing.extraUsage,20);
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–24');
- h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–24');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'22–25');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'22–25');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('predict-results').textContent,/0.0 projected/);
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
@@ -140,7 +141,7 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  // An unavailable replacement invalidates transferred output after a report refresh.
  h.context.injuryOut=true;
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'9',teamId:'1',status:'Out',date:new Date().toISOString()}];document.dispatchEvent(new Event('unit501:availability-updated'))");await h.settle();
- assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);h.run('sim()');assert.equal(h.nodes.get('score').textContent,'24–24');
+ assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
  // A confirmed baseline starter newly reported out loses all normal workload,
  // even if the scenario dropdown previously remained at 100 percent.
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'7',teamId:'1',status:'Out',date:new Date().toISOString()}]");workload.value='100';workload.onchange();
@@ -185,13 +186,14 @@ test('forecast shows incomplete injury coverage and clears its coverage claim wh
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');
  assert.match(h.nodes.get('availability-score-status').textContent,/coverage incomplete or expired/);
  await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
- assert.match(h.nodes.get('availability-score-status').textContent,/Run the simulation again/);
+ assert.equal(h.nodes.get('availability-score-status').textContent,'');
+ assert.match(h.nodes.get('note').textContent,/Run the simulation again/);
  h.run("invalidateSimulation('Inputs changed')");assert.equal(h.nodes.get('availability-score-status').textContent,'');
 });
 
 test('simulation archives ordinary forecasts and keeps the first forecast across edits and reload',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.run('sim()');assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
+ h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
  h.run('$("awayOffenseLoss").value="4"; sim()');
  const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots[0]');
  assert.equal(saved.baseline.away,24);assert.equal(saved.adjusted.away,24);assert.equal(saved.records[0].actual,null);
@@ -203,7 +205,7 @@ test('simulation archives ordinary forecasts and keeps the first forecast across
 
 test('saved forecast accuracy shows pending outcomes and real paired errors without inventing samples',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.run('$("awayOffenseLoss").value="4"; sim()');
+ h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('$("awayOffenseLoss").value="4"; sim()');
  assert.match(h.nodes.get('forecast-review-results').textContent,/2 pending final outcomes/);
  assert.match(h.nodes.get('forecast-review-results').textContent,/No eligible final outcomes/);
  const pendingText=h.nodes.get('forecast-review-results').textContent;
@@ -221,7 +223,7 @@ test('saved forecast accuracy shows pending outcomes and real paired errors with
 
 test('miss-pattern panel shows eligible errors and selected spread decisions separately',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.nodes.get('game-pick-direction').value='spread:home';h.run('sim()');
+ h.nodes.get('game-pick-direction').value='spread:home';h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
  h.nodes.get('save-game-pick').onclick();
  const initial=h.nodes.get('forecast-review-results').textContent;
  assert.match(initial,/Where projections miss/);
@@ -257,7 +259,7 @@ test('ordinary prop forecasts and chosen picks stay separate with exact line and
 
 test('game picks freeze simulation lines and cannot use invalidated forecasts',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.nodes.get('game-pick-direction').value='spread:home';h.run('sim()');
+ h.nodes.get('game-pick-direction').value='spread:home';h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
  h.nodes.get('game-pick-price').value='-110';h.nodes.get('save-game-pick').onclick();
  const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots');
  assert.equal(saved.length,2);assert.equal(saved[1].selection.line,7.5);assert.equal(saved[1].selection.direction,'home');
@@ -317,7 +319,7 @@ test('switching matchups clears scenarios and ignores late injury, rating, ranki
  assert.equal(h.run('Unit501Lineups.snapshot()'),null);assert.equal(h.run('Unit501Lineups.evaluate()'),null);
  assert.equal(h.nodes.get('predict-results').textContent,'');assert.equal(h.nodes.get('saved-line-comparisons').textContent,'');assert.equal(props.textContent,'');
  assert.equal(h.nodes.get('spread').value,'7.5');assert.equal(h.nodes.get('score').textContent,'—');
- assert.equal(h.nodes.get('awayOffenseLoss').value,'0');assert.equal(h.nodes.get('awayRating').value,'0');
+ assert.equal(h.nodes.get('awayOffenseLoss').value,''); // Automatic injury coverage is pending for the new matchup.assert.equal(h.nodes.get('awayRating').value,'0');
  const current=h.run('Unit501Availability.snapshot()');assert.equal(current.teams[0].injuries.rows.length,0);
  for(const release of releases)release();await Promise.all([injury,rating,odds,propRequest]);await h.settle();await h.settle();
  assert.equal(h.run('Unit501Availability.snapshot()'),current);assert.equal(h.run('scoringContext.game.id'),1000);
@@ -464,7 +466,7 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
 });
 
 test('accuracy date controls narrow the displayed report and reset restores its scope',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
  const panel=h.nodes.get('forecast-review-results');
  const descendants=n=>[n,...(n.children||[]).flatMap(descendants)];
  const start=descendants(panel).find(n=>n.tag==='input'&&n.type==='date');
@@ -664,7 +666,7 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  h.run('sim()');
  assert.notEqual(h.nodes.get('score').textContent,'—');
  assert.equal(h.run('latestForecast'),null);
- assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded/i);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded|incomplete/i);
  assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
 });
 
@@ -711,12 +713,12 @@ test('player ratings automatically summarize reported missing starters without a
  assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);
 });
 
-test('college selection does not enable NFL injury scoring or wait for unmatched NFL reports',async()=>{
+test('college selection enables college injury scoring and preserves NFL defaults on return',async()=>{
  const h=harness(new Map(),true);await h.settle();
  h.nodes.get('league').value='2';
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- assert.equal(h.nodes.get('autoInjuries').checked,false);
- assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
+ assert.equal(h.nodes.get('autoInjuries').checked,true);
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
  await h.nodes.get('auto-prep-now').dispatchEvent({type:'click'});await h.settle();
  assert.doesNotMatch(h.nodes.get('auto-prep-status').textContent,/matching NFL roster/);
  h.nodes.get('league').value='1';

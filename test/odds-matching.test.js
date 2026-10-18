@@ -4,7 +4,7 @@ const {teamMatches,matches,missingMatchMessage}=require('../odds-matching');
 const {selectLines}=require('../fanduel');
 const now=Date.now();
 const q={away:'Southern Miss',home:'Troy',league:'2',kickoff:now+86400000};
-const e={away_team:'Southern Mississippi Golden Eagles',home_team:'Troy Trojans',commence_time:new Date(q.kickoff).toISOString(),bookmakers:[{key:'fanduel',last_update:new Date(now).toISOString(),markets:[{key:'spreads',outcomes:[{name:'Southern Mississippi Golden Eagles',point:7.5}]},{key:'totals',outcomes:[{name:'Over',point:48.5},{name:'Under',point:48.5}]}]}]};
+const e={away_team:'Southern Mississippi Golden Eagles',home_team:'Troy Trojans',commence_time:new Date(q.kickoff).toISOString(),bookmakers:[{key:'fanduel',last_update:new Date(now).toISOString(),markets:[{key:'spreads',outcomes:[{name:'Southern Mississippi Golden Eagles',point:7.5},{name:'Troy Trojans',point:-7.5}]},{key:'totals',outcomes:[{name:'Over',point:48.5},{name:'Under',point:48.5}]}]}]};
 test('Southern Miss aliases match for game odds and player props',()=>{
  for(const name of ['Southern Miss','Southern Mississippi','Southern Miss Golden Eagles','Southern Mississippi Golden Eagles']) assert.equal(matches({...e,away_team:name},q),true);
  assert.equal(require('../fanduel-props').matches(e,q),true);
@@ -13,7 +13,7 @@ test('Southern Miss aliases match for game odds and player props',()=>{
 });
 test('game prices stay paired to their market and absent prices remain unknown',()=>{
  const event=structuredClone(e),markets=event.bookmakers[0].markets;
- markets[0].outcomes[0].price=-105;markets[0].outcomes.push({name:e.home_team,point:-7.5,price:-115});
+ markets[0].outcomes[0].price=-105;markets[0].outcomes[1].price=-115;
  markets[1].outcomes[0].price=110;markets[1].outcomes[1].price=-130;
  assert.deepEqual(selectLines([event],q,now).prices,{away:-105,home:-115,over:110,under:-130});
  markets[0].outcomes[1].point=-8.5;

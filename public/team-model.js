@@ -33,7 +33,7 @@
       (validProfile?` Experimental team home-field estimate: +${baseMargin.toFixed(2)} points (${matches[0].homeGames} home, ${matches[0].awayGames} away games); historical rank ${matches[0].rank}/32.`:` Experimental home-field assumption: +${baseMargin} points to the home margin.`)+
       (override!=null?` Manual total home advantage: ${margin.toFixed(1)} points. Reason: ${String(settings.homeFieldReason||'Manual scenario').trim()}. Unvalidated scenario.`:context?` User matchup-context assumption: +${context.toFixed(1)} additional home-margin points; rivalry/prime time is not automatically valued.`:'')+' Projected total unchanged.',variable:validProfile,context,baseMargin};
   }
-  function project(data, game, adjustments = {}, legacy = false) {
+  function project(data, game, adjustments = {}, legacy = false, ratingPriorGames = 4) {
     if (!data || data.before !== game.kickoff || String(data.season) !== String(game.season))
       return {available:false,reason:'Waiting for scoring stats for this matchup.'};
     const poolSize = game.league === '1' ? 32 : 138;
@@ -100,10 +100,11 @@
     // Apply as a pair, or keep the baseline when either schedule is incomplete.
     const scheduleApplied = awaySchedule.available && homeSchedule.available;
     const corrections = new Map([[away.id,awaySchedule],[home.id,homeSchedule]]);
-    // Four league-average pseudo-games soften small early-season samples.
-    const shrink = (team,key) => (team.metrics[key].average * team.games + baseline * 4) / (team.games + 4);
+    // Research-only fifth argument compares early-season smoothing; live default stays four.
+    if (![2,3,4].includes(ratingPriorGames)) return {available:false,reason:"Unsupported rating prior."};
+    const shrink = (team,key) => (team.metrics[key].average * team.games + baseline * ratingPriorGames) / (team.games + ratingPriorGames);
     const corrected = (team,key) => shrink(team,key) + (scheduleApplied
-      ? corrections.get(team.id)[key === 'pointsFor' ? 'offense' : 'defense'] * team.games / (team.games + 4) : 0);
+      ? corrections.get(team.id)[key === 'pointsFor' ? 'offense' : 'defense'] * team.games / (team.games + ratingPriorGames) : 0);
     // Offense and defense are deviations from one league baseline. Averaging
     // them halves both signals *after* sample shrinkage and compresses margins.
     const score = (offense,defense,adjustment,adjusted) => {
@@ -155,8 +156,8 @@
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),calibration:market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
-      probabilityCalibration:!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),ratingPriorGames,calibration:ratingPriorGames!==4||market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:ratingPriorGames===4&&!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
@@ -188,12 +189,14 @@
       return (low+high)/2;
     };
     const awayLocation=location(prediction.away,awaySD),homeLocation=location(prediction.home,homeSD);
-    let covers=0,overs=0,wins=0,spreadPushes=0,totalPushes=0,ties=0,awaySum=0,homeSum=0;
+    let covers=0,overs=0,wins=0,spreadPushes=0,totalPushes=0,ties=0,awaySum=0,homeSum=0,awayBlowouts=0,homeBlowouts=0;
     for (let i=0;i<runs;i++) {
       const z=normal(),other=normal();
       const away=Math.max(0,Math.round(awayLocation+z*awaySD));
       const home=Math.max(0,Math.round(homeLocation+(correlation*z+Math.sqrt(1-correlation**2)*other)*homeSD));
       awaySum+=away;homeSum+=home;
+      if(away-home>=21)awayBlowouts++;
+      if(home-away>=21)homeBlowouts++;
       if (away+spread>home) covers++;
       if (away+spread===home) spreadPushes++;
       if (away+home>total) overs++;
@@ -204,7 +207,7 @@
     const calibration=prediction.probabilityCalibration?.modelVersion==='scoring-v2'?prediction.probabilityCalibration:null;
     const conditional={win:wins/(runs-ties),cover:covers/(runs-spreadPushes),over:overs/(runs-totalPushes)};
     const calibrated=Object.fromEntries(['win','cover','over'].map(key=>[key,probability?.apply(conditional[key],calibration?.[key])??null]));
-    return {calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
+    return {blowout:{threshold:21,away:awayBlowouts/runs,home:homeBlowouts/runs,any:(awayBlowouts+homeBlowouts)/runs},calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
       varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
   const model={project,simulate,venueEffect,weatherEffect};
