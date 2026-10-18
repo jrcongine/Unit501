@@ -171,3 +171,21 @@ test('older generic conditional reports do not cancel current game Out; recent o
   assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
  }
 });
+
+test('broad defensive depth labels use the uniquely matched provider position for scoring',()=>{
+ for(const [provider,chart,points] of [['DE','DL',.5],['DT','DL',.3],['CB','DB',.5],['S','DB',.5]]){
+  const d=build();add(d,'1',{id:'7',name:'Defender',position:provider});d.teams[0].depth.rows[0].position=chart;
+  assert.equal(evaluate(d,game,null,now).injury.awayDefense,points);
+  d.teams[0].depth.rows[0].position='LB';assert.equal(evaluate(d,game,null,now).injury.awayDefense,0);
+ }
+});
+test('NFL second-string contributors require current matched workload; backups are not automatically valued',()=>{
+ const d=build();add(d,'1',{id:'7',name:'RB Two',position:'RB',rank:2});
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ d.teams[0].injuryUsage={available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:[{id:'7',position:'RB',role:'recent regular contributor'}]};
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,.25);
+ assert.equal(evaluate(d,game,null,now).applied[0].role,'recent regular contributor');
+ d.teams[0].injuryUsage.gameId='wrong';assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ d.teams[0].injuryUsage.gameId=game.id;d.teams[0].injuryUsage.checkedAt=now-3600001;
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+});

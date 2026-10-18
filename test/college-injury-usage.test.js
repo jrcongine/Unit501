@@ -28,3 +28,18 @@ test('usage failure stays unavailable and no-Out report needs no boxscore calls'
  assert.equal(team.injuryUsage.available,true);assert.equal(calls,1);
  assert.equal(team.injuryUsage.gameId,'4');
 });
+
+test('NFL workload uses completed regular-season games before kickoff and ignores preseason',async()=>{
+ const now=Date.parse('2026-10-18T16:00:00Z'),kickoff=now+3600000;
+ const schedule=[1,2,3].map((id,i)=>({league:{id:1,season:2026},teams:{home:{id:10},away:{id:11}},game:{id,stage:i===0?'Pre Season':'Regular Season',status:{short:'FT'},date:{timestamp:(now-(i+1)*86400000)/1000}}}));
+ const requested=[];
+ const enrich=createCollegeInjuryUsage(async path=>{
+  if(path.startsWith('/games?'))return {response:schedule};
+  requested.push(path);
+  return {response:[{team:{id:10},groups:[{name:'Rushing',players:[{player:{id:7,name:'Runner'},statistics:[{name:'Total Rushes',value:10}]}]}]}]};
+ },()=>now);
+ const t={id:'10',official:{available:true,kickoff,rows:[{id:'7',status:'Out'}]},roster:{rows:[{id:'7',position:'RB'}]}};
+ await enrich({league:'1',season:'2026',game:'4'},[t]);
+ assert.equal(t.injuryUsage.available,true);assert.equal(t.injuryUsage.rows[0].id,'7');
+ assert.deepEqual(requested.sort(),['/games/statistics/players?id=2','/games/statistics/players?id=3']);
+});
