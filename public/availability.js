@@ -3,6 +3,8 @@
   const panel=document.createElement('section');
   panel.className='card hidden';
   document.getElementById('player-lab').before(panel);
+  const reportDownload=document.createElement('div');
+  document.getElementById('auto-injury-status').after(reportDownload);
   let version=0, data=null, game=null, timer, loading=false, lastAttempt=0;
   const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
   const timestamp=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT':'unknown';
@@ -58,6 +60,7 @@
     }
   };
   function render(message,loading=false) {
+    reportDownload.replaceChildren();
     panel.replaceChildren(node('h2','Injury watch'));
     const refresh=node('button','Refresh injuries');refresh.id='refresh-availability';refresh.type='button';refresh.disabled=loading;
     refresh.onclick=load;
@@ -70,7 +73,7 @@
       const url=URL.createObjectURL(blob),link=node('a','');link.href=url;link.download='unit501-injuries-'+game.id+'.json';
       document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
-    panel.append(download);
+    reportDownload.append(download);
 
     panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour. Expired reports refresh automatically while this tab is visible for an upcoming matchup within seven days.'));
     for(const t of data.teams) {
