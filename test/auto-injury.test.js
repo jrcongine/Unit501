@@ -180,12 +180,32 @@ test('broad defensive depth labels use the uniquely matched provider position fo
  }
 });
 test('NFL second-string contributors require current matched workload; backups are not automatically valued',()=>{
- const d=build();add(d,'1',{id:'7',name:'RB Two',position:'RB',rank:2});
+ const d=build();add(d,'1',{id:'7',name:'WR Two',position:'WR',rank:2});
  assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
- d.teams[0].injuryUsage={available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:[{id:'7',position:'RB',role:'recent regular contributor'}]};
- assert.equal(evaluate(d,game,null,now).injury.awayOffense,.25);
+ d.teams[0].injuryUsage={available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:[{id:'7',position:'WR',role:'recent regular contributor'}]};
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,.35);
  assert.equal(evaluate(d,game,null,now).applied[0].role,'recent regular contributor');
  d.teams[0].injuryUsage.gameId='wrong';assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
  d.teams[0].injuryUsage.gameId=game.id;d.teams[0].injuryUsage.checkedAt=now-3600001;
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+});
+
+test('NFL unique RB2 Out uses smaller depth sensitivity, with workload taking precedence',()=>{
+ const d=build();add(d,'1',{id:'7',name:'RB Two',position:'RB',rank:2});
+ let r=evaluate(d,game,null,now);
+ assert.equal(r.injury.awayOffense,.1);
+ assert.equal(r.applied[0].status,'Out');
+ assert.match(r.applied[0].role,/RB2.*assumption/);
+ d.teams[0].injuryUsage={available:true,checkedAt:now,gameId:game.id,kickoff:game.kickoff,rows:[{id:'7',position:'RB'}]};
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,.25);
+ delete d.teams[0].injuryUsage;
+ d.teams[0].depth.rows.push({...d.teams[0].depth.rows[0],id:'8'});
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ assert.match(evaluate(d,game,null,now).withheld[0],/RB Two \(OUT\)/);
+ d.teams[0].depth.rows.pop();d.teams[0].depth.rows[0].rank=3;
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ d.teams[0].depth.rows[0].rank=2;d.teams[0].official.rows[0].status='Questionable';
+ assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ d.teams[0].official.rows[0].status='Out';d.teams[0].depth.gameId='other';
  assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
 });

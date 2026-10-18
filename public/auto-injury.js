@@ -96,10 +96,16 @@
     const slots=depthRows.filter(r=>String(r.id)===id&&roleMatches(r.position,pos)&&r.rank===1);
     const usageRows=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?t.injuryUsage.rows||[]:[];
     const usage=usageRows.filter(r=>String(r.id)===id&&position(r.position)===pos&&['RB','WR','TE'].includes(pos));
-    if(slots.length>1||!(slots.length===1||usage.length===1)){withheld.push(label+': '+name+' has no unique starter or recent regular workload evidence; no estimate.');continue;}
-    const role=slots.length===1?'listed first-string':'recent regular contributor';
+    // An NFL RB2 has a documented depth role even when the recent workload
+    // threshold is not met. Use a smaller explicit sensitivity, not starter value.
+    const rbDepth=pos==='RB'?depthRows.filter(r=>String(r.id)===id&&position(r.position)==='RB'):[];
+    const rb2=rbDepth.length===1&&rbDepth[0].rank===2&&
+      depthRows.filter(r=>position(r.position)==='RB'&&r.slot===rbDepth[0].slot&&r.rank===2).length===1;
+    if(slots.length>1||!(slots.length===1||usage.length===1||rb2)){withheld.push(label+': '+name+' (OUT) has no unique starter, RB2, or recent regular workload evidence; no estimate.');continue;}
+    const reserve=slots.length===0&&usage.length!==1&&rb2;
+    const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':'recent regular contributor';
     const weight=weights[pos];
-    if(!weight){withheld.push(label+': '+name+' ('+pos+') has no supported positional sensitivity assumption.');continue;}
+    if(!weight){withheld.push(label+': '+name+' (OUT, '+pos+') has no supported positional sensitivity assumption.');continue;}
     const lineupProps=lineup?.gameId===String(game.id)&&lineup?.kickoff===game.kickoff?
       lineup.props?.[teamId+':'+id]:null;
     if(lineupProps&&Object.values(lineupProps).some(change=>change?.scale<1)){
@@ -107,17 +113,18 @@
     }
     const field=side+(weight[0]==='offense'?'Offense':'Defense');
     const available=Math.max(0,2-injury[field]);
-    const points=Math.round(Math.min(weight[1],available)*100)/100;
+    const points=Math.round(Math.min(reserve?0.10:weight[1],available)*100)/100;
     if(points<=0){withheld.push(label+': positional sensitivity capped at 2 points for '+weight[0]+'.');continue;}
     injury[field]+=points;
-    applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,
+    applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,status:'Out',
       evidence:t.official.url||null});
    }
+   for(const p of t.official.unresolved||[])if(status(p.status)==='out')withheld.push(label+': '+p.name+' (OUT) — provider roster identity missing; impact not estimated.');
    if(t.official.unmatched||t.official.unresolved?.length)withheld.push(label+': unmatched official reports need review; no inferred player IDs.');
    if(!outs.length)withheld.push(label+': no confirmed matched top-depth Out entries; this does not establish full health.');
   }
   state.ready=true;
-  state.message='Experimental positional injury sensitivity: only fresh, matched official Out reports with starter or recent offensive workload evidence; capped at 2 points per team and side. '+
+  state.message='Experimental positional injury sensitivity: only fresh, matched official Out reports with starter, RB2 depth, or recent offensive workload evidence; capped at 2 points per team and side. '+
     'Weights are hand-set assumptions, not validated player values. An absence may already be reflected in season averages; do not use this as a proven betting edge.';
   return state;
  }
