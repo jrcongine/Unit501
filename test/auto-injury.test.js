@@ -144,3 +144,30 @@ test('conflict diagnostic names the conflicting provider status and its date wit
  assert.equal(result.injury.awayOffense,0);
  assert.ok(result.withheld.some(s=>s.includes('official game report: out; provider: Questionable ('+date+')')));
 });
+
+
+test('older generic conditional reports do not cancel current game Out; recent or scoped conflicts remain',()=>{
+ const current=Date.parse('2026-10-18T16:22:00Z'),g={...game,kickoff:current+3600000};
+ for(const status of ['Questionable','Doubtful']){
+  const d=build();add(d,'1',{id:'7',name:'Player',position:'RB'});
+  for(const t of d.teams)for(const field of ['roster','injuries','official','depth']){
+   t[field].checkedAt=current;
+   if(['official','depth'].includes(field))t[field].kickoff=g.kickoff;
+  }
+  const row={id:'7',teamId:'1',status,date:'2026-10-14'};
+  d.teams[0].injuries.rows=[row];
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,.25);
+  row.gameId=g.id;
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
+  delete row.gameId;row.date='2026-10-18';
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
+  row.date='2026-10-14';row.status='Active';
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
+  row.status=status;d.teams[0].official.publishedAt=Date.parse('2026-10-13');
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
+  d.teams[0].official.publishedAt=Date.parse('2026-10-16');
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,.25);
+  d.teams[0].official.checkedAt=current-900001;
+  assert.equal(evaluate(d,g,null,current).injury.awayOffense,0);
+ }
+});
