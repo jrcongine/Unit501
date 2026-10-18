@@ -727,3 +727,16 @@ test('college selection enables college injury scoring and preserves NFL default
  assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
 });
 
+
+test('injury report download exports the selected report without another API request',async()=>{
+ const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
+ let captured,downloaded=false;
+ h.context.Blob=Blob;h.context.URL={createObjectURL(blob){captured=blob;return 'blob:report';},revokeObjectURL(){}};
+ h.context.document.body={append(){}};
+ const create=h.context.document.createElement;
+ h.context.document.createElement=tag=>{const n=create(tag);if(tag==='a'){n.click=()=>{downloaded=n.download==='unit501-injuries-999.json';};n.remove=()=>{};}return n;};
+ const button=h.nodes.get('download-injury-report');assert.ok(button);assert.equal(button.disabled,false);
+ button.onclick();assert.equal(downloaded,true);
+ const payload=JSON.parse(await captured.text());assert.equal(String(payload.game.id),'999');assert.equal(payload.availability.current,true);
+ assert.equal(payload.availability.teams[0].roster.rows[0].id,'7');
+});

@@ -63,6 +63,15 @@
     refresh.onclick=load;
     panel.append(refresh,node('p',message));
     if(!data?.current) return;
+    const download=node('button','Download injury report');download.type='button';download.id='download-injury-report';download.disabled=loading||game!==selected;
+    download.onclick=()=>{
+      if(!data||loading||game!==selected)return;
+      const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),game,availability:data},null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),link=node('a','');link.href=url;link.download='unit501-injuries-'+game.id+'.json';
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+    panel.append(download);
+
     panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour. Expired reports refresh automatically while this tab is visible for an upcoming matchup within seven days.'));
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
