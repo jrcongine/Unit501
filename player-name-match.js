@@ -8,6 +8,8 @@ const nameParts = value => {
   const name=clean(value), suffix=/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i.exec(name);
   return {base:key(suffix?name.slice(0,suffix.index):name),suffix:suffix?key(suffix[1]):''};
 };
+// Side-specific offensive-line labels identify the same position family.
+const positionKey = value => ({lt:'t',rt:'t',ot:'t',lg:'g',rg:'g',og:'g'}[key(value)] || key(value));
 const aliases = require('./injury-name-aliases.json');
 function matchPlayer(row, roster, teamId) {
   const source=nameParts(row.name);
@@ -19,7 +21,7 @@ function matchPlayer(row, roster, teamId) {
   if(candidates.length!==1)return null;
   const p=candidates[0],target=nameParts(p.name);
   const exact=key(p.name)===key(row.name);
-  if(!exact&&key(p.position)!==key(row.position))return null;
+  if(!exact&&positionKey(p.position)!==positionKey(row.position))return null;
   if(source.suffix&&target.suffix&&source.suffix!==target.suffix)return null;
   return p;
 }

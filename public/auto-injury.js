@@ -9,6 +9,7 @@
   T:['offense',0.35],OT:['offense',0.35],G:['offense',0.3],OG:['offense',0.3],C:['offense',0.3],
   WR:['offense',0.35],RB:['offense',0.25],FB:['offense',0.15],TE:['offense',0.2]
  };
+ const position = value => {const p=String(value||'').toUpperCase();return ({LT:'T',RT:'T',OT:'T',LG:'G',RG:'G',OG:'G'})[p]||p;};
  const empty=()=>({awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0});
  const fresh=(record,age,now)=>record?.available===true&&Number.isFinite(record.checkedAt)&&record.checkedAt<=now&&now-record.checkedAt<=age;
  const matchGame=(r,game)=>r&&String(r.gameId)===String(game.id)&&r.kickoff===game.kickoff&&
@@ -56,10 +57,13 @@
     const statuses=(t.official.rows||[]).filter(r=>String(r.id)===id&&String(r.teamId)===teamId).map(r=>status(r.status));
     const other=(fresh(t.injuries,900000,now)?t.injuries.rows||[]:[])
       .filter(r=>String(r.id)===id&&(!r.teamId||String(r.teamId)===teamId));
-    const alternative=other.some(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&(!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)>=t.official.publishedAt)&&
+    const alternatives=other.filter(r=>r.date&&Number.isFinite(Date.parse(r.date))&&Date.parse(r.date)<=now&&now-Date.parse(r.date)<=7*86400000&&(!Number.isFinite(t.official.publishedAt)||Date.parse(r.date)>=t.official.publishedAt)&&
       !['out','sidelined','inactive','injured reserve','ir'].includes(status(r.status)));
-    if(statuses.some(s=>s!=='out')||alternative){withheld.push(label+': '+name+' has conflicting or conditional reports; no estimate.');continue;}
-    const pos=String(base.position||'').toUpperCase();
+    if(statuses.some(s=>s!=='out')||alternatives.length){
+     const details='official game report: '+statuses.map(s=>s||'blank').join(', ')+(alternatives.length?'; provider: '+alternatives.map(r=>(r.status||'Unknown')+' ('+r.date+')').join(', '):'');
+     withheld.push(label+': '+name+' has conflicting or conditional reports; '+details+'; no estimate.');continue;
+    }
+    const pos=position(base.position);
     if(pos==='QB'){
      const report=t.quarterback;
      const candidates=fresh(report,3600000,now)&&matchGame(report,game)?(report.rows||[]).filter(r=>String(r.playerId)===id):[];
@@ -83,7 +87,7 @@
     }
     const roleReport=String(game.league)==='2'?t.injuryUsage:t.depth;
     const roleRows=fresh(roleReport,3600000,now)&&matchGame(roleReport,game)?(roleReport.rows||[]):[];
-    const slots=roleRows.filter(r=>String(r.id)===id&&String(r.position).toUpperCase()===pos&&(String(game.league)==='2'||r.rank===1));
+    const slots=roleRows.filter(r=>String(r.id)===id&&position(r.position)===pos&&(String(game.league)==='2'||r.rank===1));
     if(slots.length!==1){withheld.push(label+': '+name+' has no verified starter or recent regular workload; no estimate.');continue;}
     const weight=weights[pos];
     if(!weight){withheld.push(label+': '+name+' ('+pos+') has no supported positional sensitivity assumption.');continue;}

@@ -126,3 +126,21 @@ test('QB score adjustment requires scoped workload and scoring context and canno
  d.teams[0].quarterback.kickoff++;
  assert.equal(evaluate(d,game,null,now,context).quarterback.away,0);
 });
+
+test('offensive line depth labels match provider position families without crossing positions',()=>{
+ for(const [provider,chart,points] of [['T','LT',.35],['OT','RT',.35],['G','LG',.3],['OG','RG',.3]]){
+  const d=build();add(d,'1',{id:'7',name:'Line Starter',position:provider});
+  d.teams[0].depth.rows[0].position=chart;
+  assert.equal(evaluate(d,game,null,now).injury.awayOffense,points);
+  d.teams[0].depth.rows[0].position='C';
+  assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
+ }
+});
+test('conflict diagnostic names the conflicting provider status and its date without applying points',()=>{
+ const d=build();add(d,'1',{id:'7',name:'Player',position:'RB'});
+ const date=new Date(now).toISOString();
+ d.teams[0].injuries.rows=[{id:'7',teamId:'1',status:'Questionable',date}];
+ const result=evaluate(d,game,null,now);
+ assert.equal(result.injury.awayOffense,0);
+ assert.ok(result.withheld.some(s=>s.includes('official game report: out; provider: Questionable ('+date+')')));
+});

@@ -79,3 +79,15 @@ test('reviewed Josh Palmer identity carries official Out to Joshua Palmer withou
  assert.equal(result.blocked,true);
  assert.match(result.reason,/Official NFL/);
 });
+
+test('suffix matching permits equivalent offensive line labels but preserves identity ambiguity',()=>{
+ const {matchPlayer}=require('../player-name-match');
+ for(const [provider,chart] of [['T','LT'],['OT','RT'],['G','LG'],['OG','RG']]){
+  const p={id:'1',name:'Player One Jr.',position:provider};
+  const row={name:'Player One',position:chart};
+  assert.equal(matchPlayer(row,[p],'16'),p);
+  assert.equal(matchPlayer(row,[{...p,position:'C'}],'16'),null);
+  assert.equal(matchPlayer(row,[p,{...p,id:'2'}],'16'),null);
+  assert.equal(matchPlayer({...row,name:'Player One III'},[p],'16'),null);
+ }
+});
