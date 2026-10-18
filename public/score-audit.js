@@ -5,6 +5,10 @@
  function summarize(rows){
   const favorites=rows.filter(r=>r.projectedHome!==r.projectedAway);
   return {games:rows.length,
+   projectedBlowouts:rows.filter(r=>Math.abs(r.projectedHome-r.projectedAway)>=21).length,
+   actualBlowouts:rows.filter(r=>Math.abs(r.actualHome-r.actualAway)>=21).length,
+   closeProjectionBlowouts:rows.filter(r=>Math.abs(r.projectedHome-r.projectedAway)<7&&Math.abs(r.actualHome-r.actualAway)>=21).length,
+   scoreMAE:mean(rows.map(r=>(Math.abs(r.projectedHome-r.actualHome)+Math.abs(r.projectedAway-r.actualAway))/2)),
    totalMAE:mean(rows.map(r=>Math.abs(r.projectedHome+r.projectedAway-r.actualHome-r.actualAway))),
    totalBias:mean(rows.map(r=>r.projectedHome+r.projectedAway-r.actualHome-r.actualAway)),
    marginMAE:mean(rows.map(r=>Math.abs((r.projectedHome-r.projectedAway)-(r.actualHome-r.actualAway)))),
@@ -31,7 +35,7 @@
   return {overall:summarize(rows),recent:summarize(rows.slice(-10)),
    marginBands:[[0,7],[7,14],[14,Infinity]].map(([min,max])=>({label:max===Infinity?'14+':`${min}–<${max}`, ...summarize(rows.filter(r=>Math.abs(r.projectedHome-r.projectedAway)>=min&&Math.abs(r.projectedHome-r.projectedAway)<max))})),
    candidate:{current,proposed,checks,status:baseline.length<30?'insufficient':proposed.totalMAE<current.totalMAE&&proposed.marginMAE<current.marginMAE?'review-candidate':'retain-current'},
-   explanation:'Positive total bias means totals ran high. Positive favorite-margin bias means the predicted favorite won by less than projected (including upset losses); negative means margins were too small. Pick’em forecasts are excluded from favorite bias. Candidate: subtract earlier mean total bias (capped at 6 points) and shrink margins 15%. Training requires 30 earlier games, a 24-hour kickoff gap and results known before the forecast. Compare on the same later games; at least 30 later games are required for review. This experimental candidate never changes live predictions. No historical sportsbook lines or profit claim.'};
+   explanation:'Positive total bias means totals ran high. Positive favorite-margin bias means the predicted favorite won by less than projected (including upset losses); negative means margins were too small. Pick’em forecasts are excluded from favorite bias. Candidate: subtract earlier mean total bias (capped at 6 points) and shrink margins 15%. Training requires 30 earlier games, a 24-hour kickoff gap and results known before the forecast. Compare on the same later games; at least 30 later games are required for review. This experimental candidate never changes live predictions. Blowouts are final margins of 21+; close projections are below 7. Counts compare point forecasts with outcomes, not predicted blowout probabilities. No historical sportsbook lines or profit claim.'};
  }
  const api={audit,summarize};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501ScoreAudit=api;

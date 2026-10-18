@@ -166,6 +166,7 @@ function watchWeather() {
 }
 document.addEventListener('visibilitychange', watchWeather);
 async function loadVenueForecast(game, conditions, roof) {
+  if (forecastContext?.game !== game) forecastContext={game,data:null,settled:false};
   let venue = game.weatherVenue || window.Unit501Venues?.resolve(game);
   if(!venue){
     conditions.textContent='Looking up matchup stadium…';
@@ -177,8 +178,9 @@ async function loadVenueForecast(game, conditions, roof) {
       if(response.ok&&result.available){venue=result;game.weatherVenue=result;conditions.previousElementSibling.textContent=result.name+(result.locationPrecision==='city'?' • '+result.city+', '+result.state+' (city-area forecast)':'');}
     }catch{}
   }
+  if(selected!==game || !conditions.isConnected)return;
   if(venue?.roof==='indoor'){
-    forecastContext={game,data:{roof:'indoor',kickoff:game.kickoff}};
+    forecastContext={game,data:{roof:'indoor',kickoff:game.kickoff},settled:true};
     conditions.textContent='Indoor venue: no outdoor weather adjustment.';roof.textContent='Enclosed playing conditions.';
     document.dispatchEvent(new CustomEvent('unit501:weather-updated'));return;
   }
@@ -186,11 +188,15 @@ async function loadVenueForecast(game, conditions, roof) {
   if (!location) {
     conditions.textContent =
       'Forecast unavailable: matchup stadium could not be located. No weather adjustment applied.';
+    forecastContext={game,data:null,settled:true};
+    document.dispatchEvent(new Event('unit501:weather-updated'));
     return;
   }
 
   if (Date.now() >= game.kickoff || game.kickoff - Date.now() > 15 * 86400000) {
     conditions.textContent = 'Forecast available for upcoming games within 15 days of kickoff.';
+    forecastContext={game,data:null,settled:true};
+    document.dispatchEvent(new Event('unit501:weather-updated'));
     return;
   }
   if (!weatherWatch || weatherWatch.game !== game) weatherWatch = {game, conditions, roof, lastAttempt:0, pending:false};
@@ -206,7 +212,7 @@ async function loadVenueForecast(game, conditions, roof) {
       ? 'Covered field with open sides — field-level weather exposure unverified. Forecast is context only; no weather scoring adjustment.'
       : 'Open-air playing field. Stadium-area forecast may differ from field conditions.';
   if (!previous) {
-    if (forecastContext?.data.available) invalidateSimulation('Weather forecast expired. Refreshing weather; run the simulation again.');
+    if (forecastContext?.data?.available) invalidateSimulation('Weather forecast expired. Refreshing weather; run the simulation again.');
     forecastContext = {game, data:{roof:exposure,available:false,kickoff:game.kickoff}};
     document.dispatchEvent(new CustomEvent('unit501:weather-updated'));
     conditions.textContent = 'Loading forecast near kickoff…';
@@ -299,6 +305,10 @@ async function loadVenueForecast(game, conditions, roof) {
     }
   } finally {
     watch.pending = false;
+    if (selected===game && forecastContext?.game===game) {
+      forecastContext.settled=true;
+      document.dispatchEvent(new Event('unit501:weather-updated'));
+    }
     if (weatherWatch === watch) watchWeather();
   }
 }
@@ -330,7 +340,7 @@ document.addEventListener('unit501:selection-changed', () => {
   const isIndoor = stadium?.roof === 'indoor';
   roof.textContent = isIndoor ? 'Fixed dome — indoor playing conditions.' : 'Roof type and game-day roof status not verified.';
   if (isIndoor) {
-    forecastContext = {game:selected,data:{roof:'indoor'}};
+    forecastContext = {game:selected,data:{roof:'indoor',kickoff:selected.kickoff},settled:true};
     conditions.textContent = 'Outside wind and precipitation do not directly affect play inside this enclosed stadium.';
   }
 
@@ -440,6 +450,15 @@ function showTeamContext(data, game) {
         : 'Later-game formula comparison awaits enough eligible predictions beyond warm-up.';
       details.append(comparison);
       const caveat=document.createElement('p');caveat.textContent=check.explanation;details.append(caveat);
+    }
+    if(validation.ratingPriorComparison){
+      const rows=validation.ratingPriorComparison;
+      const table=document.createElement('table');
+      const head=document.createElement('tr');
+      for(const label of ['Smoothing games','Replay games','Score error','Margin error','Total error','Total bias']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+      for(const row of rows){const tr=document.createElement('tr');for(const v of [row.priorGames,row.games,...['scoreMAE','marginMAE','totalMAE','totalBias'].map(k=>Number.isFinite(row[k])?row[k].toFixed(2):'—')]){const td=document.createElement('td');td.textContent=String(v);tr.append(td);}table.append(tr);}
+      details.append(table);
+      const help=document.createElement('p');help.textContent='Less smoothing can widen projected margins. These fixed alternatives use the same later games and pregame histories. Lower error is better; live smoothing remains four games until a separate validation supports a change.';details.append(help);
     }
     if(validation.offenseDiagnostics){
       const diagnostics=validation.offenseDiagnostics;
@@ -805,7 +824,7 @@ function sim() {
   const prediction = Unit501TeamModel.project(data, selected, options);
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
-    return;
+    return false;
   }
   const result = Unit501TeamModel.simulate(prediction,spread,total);
   const percent = value => (value*100).toFixed(1) + '%';
@@ -837,6 +856,7 @@ function sim() {
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent+=` Simulated 21+ point margins: ${selected.a} ${percent(result.blowout.away)}, ${selected.h} ${percent(result.blowout.home)}. These are raw simulation frequencies, not calibrated blowout probabilities.`;
   $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
     if(automatic&&!automatic.ready){
@@ -849,6 +869,7 @@ function sim() {
       $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
     }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
   }
+  return true;
 }
 
 function fillGamePickPrice(){

@@ -17,11 +17,14 @@
  const status=document.createElement('p');status.id='auto-prep-status';status.setAttribute('role','status');
  const help=document.createElement('p');help.textContent='FanDuel lines, team context, injury reports and weather already refresh on game selection. Prep also starts player projections and runs Game Lab once current lines, scoring and both teams’ injury coverage are ready. If feeds are missing it waits rather than inventing inputs. No picks are selected or bets placed.';
  panel.append(heading,autoLabel,ratingsLabel,start,status,help);matchup.after(panel);
- let token=0,prepared=null,simulated=null,ratingStarted=null;
+ let token=0,prepared=null,simulated=null,ratingStarted=null,edited=false;
+ function preserveEdits(event){if(event.target===automatic||event.target===ratings)return;edited=true;status.textContent='Inputs changed. Run Game Lab when ready, or choose Prepare selected game now.';}
+ lab.addEventListener('input',preserveEdits);
+ lab.addEventListener('change',preserveEdits);
  const current=()=>typeof selected!=='undefined'?selected:null;
  function maybeSim(){
   const game=current();
-  if(!game||game!==prepared||simulated===game)return;
+  if(!game||game!==prepared||simulated===game||edited)return;
   const scoring=typeof scoringContext!=='undefined'&&scoringContext?.game===game;
   const odds=typeof gameQuotes!=='undefined'&&gameQuotes?.game===game;
   const spread=document.getElementById('spread').value,total=document.getElementById('total').value;
@@ -31,21 +34,26 @@
    return;
   }
   const auto=document.getElementById('autoInjuries');
-  if(game.league==='1'&&auto?.checked){
-   const review=window.Unit501AutoInjury?.evaluate(window.Unit501Availability?.snapshot(),game,window.Unit501Lineups?.evaluate());
+  if(['1','2'].includes(game.league)&&auto?.checked){
+   const review=window.Unit501AutoInjury?.evaluate(window.Unit501Availability?.snapshot(),game,window.Unit501Lineups?.evaluate(),Date.now(),scoringContext.data);
    if(!review?.ready){
-    status.textContent='Preparing: waiting for fresh, matching NFL roster, depth and official reports for both teams. No automatic injury points or frozen forecast yet.';
+    status.textContent='Preparing: waiting for fresh, matching '+(game.league==='1'?'NFL':'college')+' roster, player roles and official reports for both teams.';
     return;
    }
   }
+  if(document.getElementById('weatherEnabled')?.checked &&
+     (typeof forecastContext==='undefined'||forecastContext?.game!==game||!forecastContext.settled)){
+   status.textContent='Preparing: waiting for the stadium weather check.';return;
+  }
   // Never overwrite a simulation after the user began editing/choosing other scenarios.
-  simulated=game;
-  sim();
-  status.textContent='Game prep ready: simulation completed with current inputs. Check injury exclusions and player-prop data support before using a line.';
+  if(sim()===true){
+   simulated=game;
+   status.textContent='Game prep ready: simulation completed. Weather and injury coverage are shown with the result.';
+  }else status.textContent='Game prep is waiting for usable model inputs. See the Game Lab message.';
  }
  function prepare(game,includeRatings){
   if(!game||current()!==game)return;
-  prepared=game;simulated=null;
+  prepared=game;simulated=null;edited=false;
   status.textContent='Preparing player projections and existing live feeds…';
   const predict=document.getElementById('predict');
   if(predict&&!predict.disabled)predict.dispatchEvent(new Event('click'));
@@ -62,7 +70,7 @@
   setTimeout(()=>{if(ticket===token&&current()===game&&automatic.checked)prepare(game,ratings.checked);},0);
  }
  document.addEventListener('unit501:selection-changed',delayedPrepare);
- for(const event of ['unit501:team-context-updated','unit501:availability-updated','unit501:odds-updated'])
+ for(const event of ['unit501:team-context-updated','unit501:availability-updated','unit501:odds-updated','unit501:weather-updated'])
   document.addEventListener(event,maybeSim);
  start.addEventListener('click',()=>{const game=current();if(!game){status.textContent='Select a game first.';return;}prepare(game,ratings.checked);});
  automatic.addEventListener('change',()=>{

@@ -133,7 +133,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
     const note = document.createElement('p');
-    note.textContent = 'Selected game only. Open Report details to inspect sources and data gaps. No injury listed does not confirm game-day participation. Checks and data support are not a confidence score, ranked picks or win probabilities. Data support counts recorded games and highlights gaps; it does not verify participation or value. Players reported unavailable are withheld. Other projections assume participation; workload scenarios are your inputs. Recorded workload does not establish starting status or future touches. Recheck current FanDuel lines.';
+    note.textContent = 'Selected game • Our projection, FanDuel line and difference. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     const rows = [];
