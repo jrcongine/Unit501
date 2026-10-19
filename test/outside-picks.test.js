@@ -46,6 +46,8 @@ test('Boyds sport pages require author, matchup, exact pick, release and a futur
  assert.equal(picks[0].pick,'Commanders +8 -115 at betus');
  assert.equal(picks[0].matchup,'Commanders vs 49ers');
  assert.equal(picks[0].eventDate,'2026-10-19');
+ const encoded=boyds.parseSport(boydsSport.replace('Commanders +8 -115 at betus','Commanders +7&frac12; -110 at Buckeye'),'nfl',time);
+ assert.equal(encoded[0].pick,'Commanders +7.5 -110 at Buckeye');
  assert.match(picks[0].publishedLabel,/Oct 18 at 09:03 am/);
  assert.equal(boyds.parseSport(boydsSport,'mlb',time).length,0);
  assert.equal(boyds.parseSport(boydsSport,'nfl',Date.parse('2026-10-20T15:00:00Z')).length,0);
