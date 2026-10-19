@@ -225,3 +225,10 @@ a{color:#97e3fc}
 #refresh-splits{min-height:32px;padding:6px 10px;font-size:12px}
 #betting-splits-panel>label{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-left:8px}
 #use-betting-splits{min-height:16px;width:16px}
+
+/* Keep both teams' injury summaries together on wider screens. */
+.injury-team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:16px 0;align-items:start}
+.injury-team-summary{min-width:0;overflow-wrap:anywhere}
+.injury-team-summary h3{margin-top:0}
+.injury-team-summary ul{margin-bottom:0;padding-left:22px}
+@media(max-width:700px){.injury-team-grid{grid-template-columns:1fr;gap:20px}}

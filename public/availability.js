@@ -143,7 +143,9 @@
     const full=node('details','');
     full.append(node('summary','Full roster & report details'));
     while(panel.children.length>2)full.append(panel.children[2]);
+    const teamGrid=node('div','');teamGrid.className='injury-team-grid';
     for(const t of data.teams){
+      const teamCard=node('section','');teamCard.className='injury-team-summary';
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
       const concerns=new Map();
       const add=(name,status)=>{
@@ -160,13 +162,14 @@
       if(fresh)for(const p of official.unresolved||[]){
         if(/^(out\b|inactive\b|questionable\b|doubtful\b|probable\b|game time decision\b|suspended\b)/i.test(p.status||''))add(p.name,p.status+' · roster match pending');
       }
-      panel.append(node('h3',t.id===game.awayId?game.a:game.h));
+      teamCard.append(node('h3',t.id===game.awayId?game.a:game.h));
       const rows=[...concerns.values()];
       if(rows.length){
-        const list=node('ul','');for(const p of rows)list.append(node('li',p.name+' — '+p.status));panel.append(list);
-      }else panel.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
+        const list=node('ul','');for(const p of rows)list.append(node('li',p.name+' — '+p.status));teamCard.append(list);
+      }else teamCard.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
+      teamGrid.append(teamCard);
     }
-    panel.append(full);
+    panel.append(teamGrid,full);
   }
   async function load(background=false) {
     if(background===true && loading)return;
