@@ -253,3 +253,13 @@ test('official-name fallback rejects stale, ambiguous, conflicting and unsupport
  for(const change of changes){const d=build(),t=missingPlayer(d);change(t);const r=evaluate(d,game,null,now);assert.equal(r.applied.length,0,String(change));}
  const d=build();missingPlayer(d);assert.equal(evaluate(d,{...game,league:'2'},null,now).applied.length,0);
 });
+
+test('sided defensive line depth labels match their position family only',()=>{
+ for(const [provider,chart,points] of [['DE','RDE',.5],['DE','LDE',.5],['DT','RDT',.3],['DT','LDT',.3]]){
+  const d=build();add(d,'2',{id:'1013',name:'Defensive starter',position:provider});
+  d.teams[1].depth.rows[0].position=chart;
+  assert.equal(evaluate(d,game,null,now).injury.homeDefense,points);
+  d.teams[1].depth.rows[0].position=provider==='DE'?'RDT':'RDE';
+  assert.equal(evaluate(d,game,null,now).injury.homeDefense,0);
+ }
+});

@@ -15,6 +15,7 @@ function invalidateSimulation(message) {
   $('forecast-archive-status').textContent='';
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
+  document.dispatchEvent(new Event('unit501:simulation-invalidated'));
 }
 for (const id of ['spread','total','awayRating','homeRating',
   'awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) {
@@ -872,6 +873,7 @@ function sim() {
       $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
     }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
   }
+  document.dispatchEvent(new Event('unit501:simulation-completed'));
   return true;
 }
 

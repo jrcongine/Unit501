@@ -70,6 +70,16 @@
   setTimeout(()=>{if(ticket===token&&current()===game&&automatic.checked)prepare(game,ratings.checked);},0);
  }
  document.addEventListener('unit501:selection-changed',delayedPrepare);
+ document.addEventListener('unit501:simulation-invalidated',()=>{
+  if(current()&&current()===prepared)
+   status.textContent='Simulation needs rerunning. Inputs or supporting data changed; see the Game Lab message.';
+ });
+ document.addEventListener('unit501:simulation-completed',()=>{
+  if(current()&&current()===prepared){
+   simulated=current();
+   status.textContent='Game prep ready: simulation completed. Weather and injury coverage are shown with the result.';
+  }
+ });
  for(const event of ['unit501:team-context-updated','unit501:availability-updated','unit501:odds-updated','unit501:weather-updated'])
   document.addEventListener(event,maybeSim);
  start.addEventListener('click',()=>{const game=current();if(!game){status.textContent='Select a game first.';return;}prepare(game,ratings.checked);});

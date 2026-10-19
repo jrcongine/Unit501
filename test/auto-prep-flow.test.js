@@ -20,3 +20,15 @@ test('failed model preparation can retry; user edits are preserved',()=>{
  h.context.valid=true;h.fire('unit501:team-context-updated');assert.equal(h.context.calls,2);
  const next=harness();next.start();next.nodes.get('lab').dispatchEvent({type:'input'});next.context.ready=true;next.context.forecastContext.settled=true;next.fire('unit501:weather-updated');assert.equal(next.context.calls,0);next.start();assert.equal(next.context.calls,1);
 });
+
+test('invalidated results clear completion banner and manual completion restores it',()=>{
+ const h=harness();h.context.ready=true;h.context.forecastContext.settled=true;h.start();
+ assert.match(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
+ h.fire('unit501:simulation-invalidated');
+ assert.match(h.nodes.get('auto-prep-status').textContent,/needs rerunning/);
+ h.fire('unit501:availability-updated');
+ assert.equal(h.context.calls,1);
+ assert.doesNotMatch(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
+ h.fire('unit501:simulation-completed');
+ assert.match(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
+});
