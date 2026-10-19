@@ -40,8 +40,8 @@ test('NBA API adapter uses separate NBA endpoint and shares cached requests with
  assert.equal(calls,1);
  assert.deepEqual(a,b);
  assert.equal(a.games.length,2);
- assert.equal(a.games[0].status,'Scheduled');
- assert.equal(a.games[1].status,'Final');
+ assert.equal(a.games.find(game=>game.id===1001).status,'Scheduled');
+ assert.equal(a.games.find(game=>game.id===1002).status,'Final');
  clock+=60000;await get('2026-10-20');assert.equal(calls,1);
  clock+=300000;await get('2026-10-20');assert.equal(calls,2);
 });
