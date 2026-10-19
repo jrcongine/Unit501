@@ -4,6 +4,8 @@
   if(!room || !list)return;
   let request=0,loaded=false,loadedAt=0,lastAttempt=0,loading=false,timer=null;
   function el(tag,value,className){const node=document.createElement(tag);if(value)node.textContent=value;if(className)node.className=className;return node;}
+  // Handle raw fraction entities in old cached or upstream pick text. textContent remains safe.
+  function bettingText(value){return String(value||'').replace(/(\d)(?:&frac12;|½)/gi,'$1.5').replace(/(\d)(?:&frac14;|¼)/gi,'$1.25').replace(/(\d)(?:&frac34;|¾)/gi,'$1.75');}
   async function load(){
     // User-initiated refresh or league switch may supersede an in-flight request.
     loading=true;lastAttempt=Date.now();
@@ -21,7 +23,7 @@
         if(!source.picks.length)section.append(el('p',source.status==='available'?'No upcoming dated selections remain in this source response.':'No picks loaded.','war-muted'));
         for(const pick of source.picks){
           count++;const card=el('article',null,'war-record');
-          card.append(el('strong',pick.pick),el('p',pick.matchup),el('p',pick.author+' • '+pick.eventLabel,'war-muted'));
+          card.append(el('strong',bettingText(pick.pick)),el('p',pick.matchup),el('p',pick.author+' • '+pick.eventLabel,'war-muted'));
           if(pick.publishedLabel)card.append(el('p','Source release: '+pick.publishedLabel+' (as of check time)','war-muted'));
           const link=el('a','View original pick ↗');link.href=pick.url;link.target='_blank';link.rel='noopener noreferrer';card.append(link);
           section.append(card);
