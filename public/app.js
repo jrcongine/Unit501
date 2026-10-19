@@ -682,46 +682,12 @@ async function load() {
     games.innerHTML = '';
 
     slate.forEach(game => {
-      const card = document.createElement('div');
-      card.className = 'card game';
-
-      const matchup = document.createElement('b');
-      matchup.textContent = `${game.a} @ ${game.h}`;
-
-      const details = document.createElement('p');
-      const hasScore =
-        game.awayScore != null && game.homeScore != null;
-
-      details.textContent =
-        `${game.time} | ${game.status}` +
-        (hasScore
-          ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}`
-          : '');
-
-      const action = document.createElement('span');
-      action.className = 'open-game';
-      action.textContent = 'Open Game Lab →';
-      action.setAttribute('aria-hidden', 'true');
-      card.append(matchup, details, action);
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-pressed', 'false');
-      card.setAttribute('aria-label', 'Open Game Lab for ' + game.a + ' at ' + game.h);
-      const activate = () => {
-        for (const other of games.querySelectorAll('.game')) {
-          other.classList.remove('selected');
-          other.setAttribute('aria-pressed', 'false');
-        }
-        card.classList.add('selected');
-        card.setAttribute('aria-pressed', 'true');
-        choose(game);
-      };
-      card.addEventListener('click', activate);
-      card.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          activate();
-        }
+      const hasScore=game.awayScore!=null && game.homeScore!=null;
+      const detailText=`${game.time} | ${game.status}`+
+        (hasScore ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}` : '');
+      const card=window.Unit501SharedUI.gameCard({
+        away:game.a,home:game.h,detailText,container:games,
+        onSelect:()=>choose(game)
       });
       games.appendChild(card);
     });
