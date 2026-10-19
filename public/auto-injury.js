@@ -16,6 +16,29 @@
  const matchGame=(r,game)=>r&&String(r.gameId)===String(game.id)&&r.kickoff===game.kickoff&&
    (!r.league||String(r.league)===String(game.league))&&(!r.season||String(r.season)===String(game.season));
  const status=v=>String(v||'').trim().toLowerCase();
+ // Exact full-name agreement only: do not fabricate a provider player ID or
+ // broaden nickname/suffix matching when the provider roster is incomplete.
+ const nameKey=v=>String(v||'').trim().toLowerCase().replace(/[.’']/g,'').replace(/\s+/g,' ');
+ function missingRosterRole(t,player,game,now){
+  const key=nameKey(player.name),pos=position(player.position);
+  if(!key||String(game.league)!=='1'||!weights[pos]||!fresh(t.depth,3600000,now)||!matchGame(t.depth,game))return null;
+  const same=r=>nameKey(r.name)===key;
+  const collisionKey=v=>nameKey(v).replace(/\s+(jr|sr|ii|iii|iv|v)$/,'').replace(/[^a-z0-9]/g,'');
+  const collision=r=>collisionKey(r.name)===collisionKey(player.name);
+  // Any existing provider identity or resolved report must use the normal path.
+  if((t.roster.rows||[]).some(collision)||(t.official.rows||[]).some(collision)||(t.injuries?.rows||[]).some(collision))return null;
+  const reports=(t.official.unresolved||[]).filter(same);
+  if(reports.some(r=>status(r.status)!=='out'||position(r.position)!==pos))return null;
+  const rows=[...(t.depth.rows||[]),...(t.depth.unresolved||[])];
+  if(rows.some(r=>collision(r)&&!same(r)))return null;
+  const matches=rows.filter(same);
+  if(matches.length!==1)return null;
+  const row=matches[0];
+  if(row.id||row.unresolved||row.names||row.reason!=='No matching player identity in the provider roster.'||!roleMatches(row.position,pos))return null;
+  if(!row.slot||rows.some(r=>r!==row&&r.slot===row.slot&&r.rank===row.rank))return null;
+  if(row.rank!==1&&!(pos==='RB'&&row.rank===2))return null;
+  return {pos,reserve:row.rank===2};
+ }
  function evaluate(data,game,lineup,now=Date.now(),context=null){
   const injury=empty(),applied=[],withheld=[];
   const quarterback={away:0,home:0};
@@ -119,9 +142,21 @@
     applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,status:'Out',
       evidence:t.official.url||null});
    }
-   for(const p of t.official.unresolved||[])if(status(p.status)==='out')withheld.push(label+': '+p.name+' (OUT) — provider roster identity missing; impact not estimated.');
-   if(t.official.unmatched||t.official.unresolved?.length)withheld.push(label+': unmatched official reports need review; no inferred player IDs.');
-   if(!outs.length)withheld.push(label+': no confirmed matched top-depth Out entries; this does not establish full health.');
+   const handledNames=new Set();
+   for(const p of t.official.unresolved||[])if(status(p.status)==='out'){
+    const key=nameKey(p.name);if(handledNames.has(key))continue;handledNames.add(key);
+    const role=missingRosterRole(t,p,game,now);
+    if(!role){withheld.push(label+': '+p.name+' (OUT) — provider roster identity missing; impact not estimated.');continue;}
+    const [category,weight]=weights[role.pos],field=side+(category==='offense'?'Offense':'Defense');
+    const points=Math.round(Math.min(role.reserve?0.10:weight,Math.max(0,2-injury[field]))*100)/100;
+    if(points<=0){withheld.push(label+': positional sensitivity capped at 2 points for '+category+'.');continue;}
+    injury[field]+=points;
+    applied.push({teamId,side,playerId:null,name:p.name,position:role.pos,category,points,status:'Out',
+     role:(role.reserve?'listed RB2; 0.10-point depth assumption':'listed first-string')+'; official name match, provider ID unavailable',
+     identitySource:'official-report-and-team-depth',evidence:t.official.url||null,depthEvidence:t.depth.url||null});
+   }
+   if(t.official.unmatched||t.official.unresolved?.length)withheld.push(label+': provider identities remain unresolved; supported official-name depth matches are shown separately without inferred player IDs.');
+   if(!applied.some(p=>p.teamId===teamId))withheld.push(label+': no supported Out adjustment; this does not establish full health.');
   }
   state.ready=true;
   state.message='Experimental positional injury sensitivity: only fresh, matched official Out reports with starter, RB2 depth, or recent offensive workload evidence; capped at 2 points per team and side. '+

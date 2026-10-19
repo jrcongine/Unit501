@@ -209,3 +209,47 @@ test('NFL unique RB2 Out uses smaller depth sensitivity, with workload taking pr
  d.teams[0].official.rows[0].status='Out';d.teams[0].depth.gameId='other';
  assert.equal(evaluate(d,game,null,now).injury.awayOffense,0);
 });
+
+function missingPlayer(d,teamIndex=0,name='Missing Defender',position='LB',rank=1){
+ const t=d.teams[teamIndex];
+ t.official.unresolved=[{name,position,status:'Out'}];t.official.unmatched=1;
+ t.depth.unresolved=[{name,position,rank,slot:position+':0',reason:'No matching player identity in the provider roster.'}];
+ t.depth.url='https://team.example/team/depth-chart';
+ return t;
+}
+test('missing provider identity can use unique official Out and team depth evidence across teams',()=>{
+ const d=build();missingPlayer(d);missingPlayer(d,1,'Missing Runner','RB',2);
+ const r=evaluate(d,game,null,now);
+ assert.equal(r.injury.awayDefense,.35);assert.equal(r.injury.homeOffense,.10);
+ assert.equal(r.applied.length,2);
+ for(const p of r.applied){assert.equal(p.playerId,null);assert.equal(p.identitySource,'official-report-and-team-depth');assert.ok(p.depthEvidence);assert.match(p.role,/provider ID unavailable/);}
+ assert.equal(d.teams[0].roster.rows.length,0);
+});
+test('official-name fallback does not count duplicate reports or bypass team caps',()=>{
+ const d=build(),t=missingPlayer(d);
+ t.official.unresolved.push({...t.official.unresolved[0]});
+ assert.equal(evaluate(d,game,null,now).injury.awayDefense,.35);
+ for(let i=0;i<4;i++)add(d,'1',{id:String(i+1),name:'Corner '+i,position:'CB'});
+ assert.equal(evaluate(d,game,null,now).injury.awayDefense,2);
+});
+test('official-name fallback rejects stale, ambiguous, conflicting and unsupported evidence',()=>{
+ const changes=[
+  t=>t.depth.checkedAt=now-3600001,
+  t=>t.depth.gameId='other',
+  t=>t.depth.unresolved.push({...t.depth.unresolved[0]}),
+  t=>t.depth.unresolved[0].unresolved=true,
+  t=>t.depth.unresolved[0].reason='Position or identity conflict',
+  t=>t.depth.unresolved[0].rank=2,
+  t=>t.depth.unresolved[0].position='CB',
+  t=>t.depth.unresolved[0].slot=null,
+  t=>t.depth.rows.push({name:'Other',id:'9',rank:1,slot:'LB:0'}),
+  t=>t.official.unresolved.push({name:'Missing Defender',position:'LB',status:'Active'}),
+  t=>t.roster.rows.push({name:'Missing Defender Jr.',id:'9',position:'LB'}),
+  t=>t.injuries.rows.push({name:'Missing Defender',status:'Active'}),
+  t=>t.official.rows.push({name:'Missing Defender',id:'9',status:'Out'}),
+  t=>{t.official.unresolved[0].position='QB';t.depth.unresolved[0].position='QB';},
+  t=>t.depth.unresolved[0].name='Missing D. Defender'
+ ];
+ for(const change of changes){const d=build(),t=missingPlayer(d);change(t);const r=evaluate(d,game,null,now);assert.equal(r.applied.length,0,String(change));}
+ const d=build();missingPlayer(d);assert.equal(evaluate(d,{...game,league:'2'},null,now).applied.length,0);
+});
