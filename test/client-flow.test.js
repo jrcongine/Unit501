@@ -649,6 +649,23 @@ test('Game Lab automatically scores a confirmed defender absence and cleanly swi
  h.run('sim()');
  assert.equal(h.nodes.get('homeDefenseLoss').value,'0.5');
  assert.match(h.nodes.get('auto-injury-status').textContent,/Starting CB.*OUT — factored in/);
+ const score=h.nodes.get('score').textContent,forecast=h.run('latestForecast');
+ for(let i=0;i<3;i++)await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.equal(h.nodes.get('score').textContent,score);
+ assert.equal(h.run('latestForecast'),forecast);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/OUT — factored in/);
+ for(const t of data.teams)for(const k of ['roster','injuries','official','depth'])t[k].checkedAt=Date.now();
+ await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.equal(h.run('latestForecast'),forecast); // Timestamp-only refresh preserves the result.
+ data.teams[1].official.rows[0].status='Questionable';
+ await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.equal(h.nodes.get('score').textContent,'—');
+ assert.equal(h.run('latestForecast'),null);
+ data.teams[1].official.rows[0].status='Out';h.run('sim()');
+ data.teams[1].official.checkedAt=Date.now()-900001;
+ await h.run("document.dispatchEvent(new Event('unit501:availability-updated'))");
+ assert.equal(h.nodes.get('score').textContent,'—');
+ data.teams[1].official.checkedAt=Date.now();h.run('sim()');
  h.run("invalidateSimulation('Changed')");
  assert.match(h.nodes.get('auto-injury-status').textContent,/ready for next simulation/);
  h.run('sim()');

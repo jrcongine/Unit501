@@ -6,7 +6,16 @@ let scoringContext = null;
 let forecastContext = null;
 let latestForecast = null;
 let gameQuotes = null;
+let simulatedAvailability = null;
+function availabilitySignature(automatic,lineup,now=Date.now()) {
+  const data=window.Unit501Availability?.snapshot();
+  const coverage=window.Unit501InjuryModel?.impactReview(data,selected,lineup,now);
+  // Fetch timestamps can change without changing evidence. Evaluated eligibility
+  // and coverage still capture expiry, ownership conflicts and lost role evidence.
+  return JSON.stringify({data,automatic,lineup,coverage},(key,value)=>key==='checkedAt'?undefined:value);
+}
 function invalidateSimulation(message) {
+  simulatedAvailability=null;
   latestForecast=null;
   window.Unit501Availability?.scoring?.(null);
   previewAutomaticInjuries();
@@ -873,6 +882,7 @@ function sim() {
       $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
     }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
   }
+  if(automatic?.ready)simulatedAvailability={game:selected,key:availabilitySignature(automatic,lineup,forecastAt)};
   document.dispatchEvent(new Event('unit501:simulation-completed'));
   return true;
 }
@@ -908,6 +918,13 @@ load();
 
 document.addEventListener('unit501:availability-updated',()=>{
   if($('autoInjuries').checked&&selected){
+    const lineup=window.Unit501Lineups?.evaluate();
+    const automatic=window.Unit501AutoInjury?.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,Date.now(),scoringContext?.game===selected?scoringContext.data:null);
+    if(automatic?.ready&&simulatedAvailability?.game===selected&&
+       simulatedAvailability.key===availabilitySignature(automatic,lineup)){
+      renderAutomaticInjuries(automatic,true);
+      return;
+    }
     previewAutomaticInjuries();
     invalidateSimulation('Injury evidence updated. Run the simulation again.');
   }else if($('availability-score-status').textContent){
