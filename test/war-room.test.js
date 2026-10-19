@@ -23,6 +23,8 @@ test('normalizes handwritten source opinions and rejects incomplete candidates',
   const row = core.normalize(example);
   assert.equal(row.sources.covers,'Kennesaw -3');
   assert.equal(row.sources.juicereel,'');
+  assert.equal(row.sources.sbr,'');
+  assert.equal(core.normalize({...example,sources:{juicereel:'previous note'}}).sources.juicereel,'previous note');
   assert.equal(core.normalize({...example,matchup:'  '}),null);
   assert.equal(core.normalize({...example,pick:''}),null);
   assert.equal(core.normalize({...example,date:'tomorrow'}),null);
@@ -47,10 +49,12 @@ test('local archive survives malformed data and calculates only board-approved W
 });
 test('index exposes the War Room and source links without claiming auto verified picks', () => {
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
-  for(const id of ['war-room','war-form','war-list','war-matchup','war-pick','war-source-covers','war-source-ev','war-vote-jr','war-vote-aria','war-vote-unit501','war-export','war-import'])assert.match(html,new RegExp('id="'+id+'"'));
+  for(const id of ['war-room','war-form','war-list','war-matchup','war-pick','war-source-covers','war-source-sbr','war-source-ev','war-vote-jr','war-vote-aria','war-vote-unit501','war-export','war-import'])assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(html,/war-room-core\.js/);
   assert.match(html,/war-room\.js/);
-  assert.match(html,/public selections appear here automatically/);
+  assert.match(html,/free public selections are checked automatically/);
+  assert.doesNotMatch(html,/id="war-source-juicereel"/);
+  assert.match(html,/pickdawgz\.com\/free-picks/);
 });
 test('real UI saves and grades a board-approved candidate on browser-local storage', async () => {
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
