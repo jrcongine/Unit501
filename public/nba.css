@@ -17,3 +17,11 @@
 .nba-game.selected{border-color:#f4c979}
 @media(max-width:600px){.nba-lab-grid{grid-template-columns:1fr}}
 @media(max-width:650px){header{flex-direction:column}.nba-home{align-self:flex-start}}
+
+.nba-context{margin:18px 0;border-top:1px solid #354057;padding-top:16px}
+.nba-context h3{margin:0 0 8px}
+.nba-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.nba-team-history{border:1px solid #354057;background:#0d1928;border-radius:12px;padding:12px;min-width:0}
+.nba-team-history h4{margin:0 0 8px;color:#ffd78c}
+.nba-team-history p{margin:8px 0;font-size:14px;line-height:1.5}
+@media(max-width:650px){.nba-comparison{grid-template-columns:1fr}}
