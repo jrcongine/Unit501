@@ -31,6 +31,20 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - 50,000-run Monte Carlo game simulator
 - Mobile/iPhone-friendly UI
 
+See [SPORT-ADAPTERS.md](SPORT-ADAPTERS.md) for the shared Football/NBA user journey, reusable UI helpers, feature gates, and the separate basketball ratings/calibration roadmap.
+
+## NBA beta (schedule and scores only)
+
+The NBA beta is intentionally separate from the NFL/NCAA simulator. Open `/nba.html` from the navigation to choose a date and retrieve the published NBA schedule and scores. No basketball predictions, odds, props or wagers are generated yet.
+
+Selecting an NBA matchup now opens the same-style Game Lab layout and, when real team IDs/stage and provider access are available, calls a separate protected `/api/nba/context?date=YYYY-MM-DD&game=ID` endpoint. That endpoint loads each team's NBA games for the season, deduplicates the game IDs, excludes the selected matchup and **all later, still-live, or too-recent finished games**, and only compares games in the same stage. It displays available season/last-10/last-5 scoring averages and sample-size labels, **not** projected points, cover probabilities or prop picks. A new season may have no qualified games yet; don't fill that gap with preseason results or assumed values.
+
+The server uses **API-NBA v2** (`https://v2.nba.api-sports.io/games?league=standard&season=2026&date=YYYY-MM-DD`). It requires valid access to API-NBA via `NBA_API_SPORTS_KEY` (preferred) or the existing `API_SPORTS_KEY` if entitled. Never expose these secrets in a browser. The system has not yet verified the Railway key's NBA subscription: if access is missing, the beta shows an unavailable state instead of fictitious games.
+
+NBA daily slates are cached for 15 minutes and team-season histories for one hour, with concurrent requests shared between visitors. No automatic polling consumes provider quota. The free NBA plan shown in the account dashboard allows 100 requests/day; each distinct team-history lookup requires a separate request, so avoid repeated exploratory date changes. NBA years use the season's starting calendar year (e.g., January 2027 belongs to season 2026). Game statuses and null scores come directly from API-NBA. Provider failures and invalid payloads fail closed.
+
+Next phases **after live data and model checks**: NBA team performance splits, pace and strength adjustment, historical score backtests, and only then player minutes / points-rebounds-assists props. College basketball is not included.
+
 ## Current football extensions
 FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
