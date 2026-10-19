@@ -45,6 +45,16 @@ NBA daily slates are cached for 15 minutes and team-season histories for one hou
 
 Next phases **after live data and model checks**: NBA team performance splits, pace and strength adjustment, historical score backtests, and only then player minutes / points-rebounds-assists props. College basketball is not included.
 
+## Football API usage protection (October 2026)
+
+Unit 501 now protects the paid **American-football** API subscription separately from free API-NBA access. GitHub code changes and test jobs do not use the owner's API-NFL key. Railway deploys can restart the backend and clear temporary caches; opening a single matchup may cause many live HTTP requests from box scores, rosters and availability reports.
+
+- Automatic server-startup roster sweeps are **off** by default. To opt in, set `UNIT501_ENABLE_ROSTER_SWEEPS=1` in Railway; sweeps then run on a **24-hour** interval starting after startup, never immediately on deployment. Opening a game still fetches the reports it needs.
+- Game Lab downloads **up to 16 detailed team box scores per season comparison**, starting with selected teams. Completed-game scoring and national scoring averages still use the schedule. Rushing/passing totals and national yardage ranks may be incomplete. The internal ranking adapter accepts `boxLimit:Infinity` for exhaustive test fixtures, not for production browsing.
+- Outbound NFL/college football API attempts are counted by endpoint category. A conservative default **1,500 requests per UTC day per Railway process** budget stops further requests once reached. Owner may set `UNIT501_FOOTBALL_DAILY_BUDGET` from 1 to 7,500 to adjust. The app shows an explicit failure rather than silently continuing expensive requests.
+- Open **Football API usage** below the slate controls to see the process-only request count, categories, failures and blocked attempts. The protected `/api/provider-usage` endpoint returns the same numbers. **Counters reset whenever Railway restarts** and may miss traffic from other instances, deployments or API consumers. The API-Sports dashboard is the only authoritative account-level usage total. This counter is not a historical audit of earlier requests.
+- These savings mean detailed rushing/passing rankings usually will **not** become fully populated from a single game load. Do not interpret missing ranks as zero, and do not change score projections to compensate for missing yardage box scores. The automatic player-ratings bulk build remains user-initiated with its checkbox off by default; the daily budget applies if someone runs it.
+
 ## Current football extensions
 FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
@@ -55,7 +65,7 @@ The 2026 FBS membership snapshot in `fbs-2026.json` is sourced from ESPN's seaso
 
 College comparisons load the league schedule and completed team box scores before the selected kickoff. Selected teams load first; their averages stay visible while national data loads. Each category receives ranks only when all 138 verified programs have games and complete data for that category. Ties use competition ranking (1, 1, 3). FCS teams retain averages but never enter the FBS ranking pool. Unknown seasons keep team averages without assuming 2026 membership.
 
-The first college load needs one schedule request plus one box-score request per relevant completed game (potentially several hundred). Requests are paced at one second plus provider latency. Box scores are reused across matchups for 24 hours in memory and the existing temporary-disk cache; redeployments may clear disk. This uses the existing API-Sports quota. The screen reports progress and category coverage; incomplete provider data withholds the affected ranks. Future seasons need a new verified membership snapshot. Team-name mismatches are reported rather than guessed. Scoring averages now drive the game simulation; rushing and passing ranks remain context only.
+The first college scoring comparison needs a schedule request; by default only up to 16 detailed team box-score requests are made, prioritizing the selected teams. Requests are paced at one second plus provider latency. Box scores are reused across matchups for 24 hours in memory and the existing temporary-disk cache; redeployments may clear disk. This uses the existing API-Sports quota. The screen reports progress and category coverage; incomplete provider data withholds the affected ranks. Future seasons need a new verified membership snapshot. Team-name mismatches are reported rather than guessed. Scoring averages now drive the game simulation; rushing and passing ranks remain context only.
 
 Validation: `node test/rankings.test.js` covers FBS/FCS separation, aliases, missing data, ties, cutoff/season rules, NFL regression, full-league fetching, and cache reuse. Live API-Sports national coverage must be checked after deployment; no production API key is needed for these fixture tests.
 
