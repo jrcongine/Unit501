@@ -1,10 +1,8 @@
 'use strict';
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
-const articlePicks=require('./article-picks');
 const SOURCES = {
-  sbd:{name:'Sports Betting Dime',urls:{nfl:'https://www.sportsbettingdime.com/news/nfl/',ncaaf:'https://www.sportsbettingdime.com/news/college-football/'}},
-  covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf'}},
-  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football'}}
+  covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb'}},
+  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb'}}
 };
 function text(html) {
   return String(html || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ')
@@ -69,9 +67,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
       let value;
       try {
         const html=await fetchPage(SOURCES[key].urls[league],fetcher);
-        const picks=key==='sbd'?(await Promise.all(articlePicks.links(html,league).map(async url=>{
-          try{return articlePicks.parse(await fetchPage(url,fetcher),league,url,now());}catch{return [];}
-        }))).flat().slice(0,60):(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
+        const picks=(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
         value={source:key,name:SOURCES[key].name,status:picks.length?'available':'empty',checkedAt:new Date(now()).toISOString(),picks,
           message:picks.length?'Public selections; source prices may have changed.':'No readable public selections returned. Check the source; its page format may have changed.'};
       }catch{value={source:key,name:SOURCES[key].name,status:'unavailable',checkedAt:new Date(now()).toISOString(),picks:[],message:'Source could not be retrieved. Try again later or open the source.'};}
@@ -80,8 +76,8 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
     pending.set(id,work);try{return await work;}finally{pending.delete(id);}
   }
   return async league=>{
-    if(!['nfl','ncaaf'].includes(league))throw Error('Unsupported league');
-    const sources=await Promise.all(['covers','wagertalk','sbd'].map(key=>source(key,league)));
+    if(!['nfl','ncaaf','mlb'].includes(league))throw Error('Unsupported league');
+    const sources=await Promise.all(['covers','wagertalk'].map(key=>source(key,league)));
     return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())})),
       manual:[{name:'EV / Guy Boston Sports',message:'Video picks are not automatically transcribed. Use the video desk and record the exact selection below.'}]};
   };
