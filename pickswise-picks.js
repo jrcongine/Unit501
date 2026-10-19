@@ -22,13 +22,15 @@ const eastDate=now=>{
   const part=x=>p.find(t=>t.type===x).value;return [Number(part('year')),Number(part('month')),Number(part('day'))];
 };
 function pickCards(html){
-  const text=plain(html);
-  const re=/([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){1,3}(?:\s+\([^)]+\))?)\s+(?:Best Bet\s*)?(?:Point Spread Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g;
-  const found=[...text.matchAll(re)];
-  return found.slice(0,80).map((m,i)=>({
-    author:m[1],body:text.slice(m.index,found[i+1]?.index??text.length),
-    preface:text.slice(Math.max(0,m.index-145),m.index)
-  }));
+  const readable=plain(html),marks=[...readable.matchAll(/\b(?:Point Spread Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g)];
+  const ignored=/\b(?:College Football|National Football|Major League|Read More|Money Line|Point Spread|Game Totals|Best Bet)\b/i;
+  return marks.slice(0,80).map((mark,i)=>{
+    const preface=readable.slice(Math.max(0,mark.index-190),mark.index);
+    const names=[...preface.matchAll(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}(?:\s+\([^)]+\))?)/g)]
+      .map(m=>m[1]).filter(name=>!ignored.test(name));
+    const author=names.at(-1)||'';
+    return {author,body:readable.slice(mark.index,marks[i+1]?.index??readable.length),preface};
+  }).filter(card=>card.author);
 }
 function scheduled(preface,now){
   const dates=[...preface.matchAll(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{1,2})/gi)];
