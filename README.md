@@ -31,6 +31,16 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - 50,000-run Monte Carlo game simulator
 - Mobile/iPhone-friendly UI
 
+## NBA beta (schedule and scores only)
+
+The NBA beta is intentionally separate from the NFL/NCAA simulator. Open `/nba.html` from the navigation to choose a date and retrieve the published NBA schedule and scores. No basketball predictions, odds, props or wagers are generated yet.
+
+The server uses **API-NBA v2** (`https://v2.nba.api-sports.io/games?league=standard&season=2026&date=YYYY-MM-DD`). It requires valid access to API-NBA via `NBA_API_SPORTS_KEY` (preferred) or the existing `API_SPORTS_KEY` if entitled. Never expose these secrets in a browser. The system has not yet verified the Railway key's NBA subscription: if access is missing, the beta shows an unavailable state instead of fictitious games.
+
+Responses are cached for 5 minutes and share concurrent requests; no automatic polling consumes provider quota. NBA years use the season's starting calendar year (e.g., January 2027 belongs to season 2026). Game statuses and null scores come directly from API-NBA. Provider failures and invalid payloads fail closed.
+
+Next phases **after live data and model checks**: NBA team performance splits, pace and strength adjustment, historical score backtests, and only then player minutes / points-rebounds-assists props. College basketball is not included.
+
 ## Current football extensions
 FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
