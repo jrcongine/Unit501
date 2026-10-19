@@ -38,7 +38,7 @@ function pickCards(html){
   });
 }
 function scheduled(preface,now){
-  const dates=[...preface.matchAll(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{1,2})/gi)];
+  const dates=[...preface.matchAll(/(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{1,2})/gi)];
   const match=dates.at(-1);if(!match)return null;
   const month=MONTH[match[1].toLowerCase().slice(0,3)],day=Number(match[2]);
   if(!month||day<1||day>31)return null;
