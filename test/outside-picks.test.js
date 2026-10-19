@@ -118,7 +118,11 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
   pending[0]({ok:true,json:async()=>payload('Old league')});await new Promise(r=>setImmediate(r));
   assert.match(nodes.get('war-feed').textContent,/New league/);assert.doesNotMatch(nodes.get('war-feed').textContent,/Old league/);
   assert.match(nodes.get('war-feed').textContent,/<img onerror=bad>/);
-  const third=nodes.get('war-feed-refresh').listeners.click();pending[2]({ok:false});await third;
+  const stale=nodes.get('war-feed-refresh').listeners.click();
+  pending[2]({ok:true,json:async()=>({sources:[{name:'Boyd\'s Bets',status:'available',message:'Public picks',checkedAt:'2026-10-19T19:00:00Z',picks:[{pick:'Commanders +7&frac12; -110',matchup:'WAS at SF',author:'Test handicapper',eventLabel:'Oct 19',url:'https://www.boydsbets.com/free-sports-picks/'}]}]})});await stale;
+  assert.match(nodes.get('war-feed').textContent,/Commanders \+7\.5 -110/);
+  assert.doesNotMatch(nodes.get('war-feed').textContent,/&frac12;/);
+  const third=nodes.get('war-feed-refresh').listeners.click();pending[3]({ok:false});await third;
   assert.match(nodes.get('war-feed-status').textContent,/Could not load/);assert.equal(nodes.get('war-feed').children.length,0);
 });
 
