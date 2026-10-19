@@ -3,6 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const {parseCovers,parseWagerTalk,createFeed}=require('../outside-picks');
+const boyds=require('../boyds-picks');
 const covers=`<div id="pick-1" data-pick data-pick-teams="Test" data-tab="active-tabs">
 <div class="w-100 fw-bold small"><a><span> </span></a>Player o21.5 Receiving Yards (&#x2B;110)</div>
 <a href="https://www.covers.com/writers/test">Test Analyst</a>
@@ -12,6 +13,21 @@ const wt=`<section class="free-sports-main what-pros-say-section"><h2><a>Test An
 <div class="content-event">AAA at BBB: Total</div><div class="content-date">October 18, 2026 4:25 PM EDT</div>
 <div class="content-play">Total Under 42.5 (-112)</div><p class="r-date">Released/revised 5 hour(s) ago</p>
 <div>Other Picks/Packages: PREMIUM SUPER PLAY</div></section>`;
+const boydsSport=`<h3><a href="/jimmy-boyd/">Jimmy Boyd</a></h3>
+<div>Game Details</div><p>Oct 19 '26, 8:15 PM in 8h</p>
+<div>NFL | Commanders vs 49ers</div><div>Play on: Commanders +8 -115 at betus</div>
+<h4>Game Analysis</h4><p>Free analysis, not a second pick. Upgrade to a premium package!</p>
+<p>Pick Released on Oct 18 at 09:03 am</p>
+<h3><a href="/black-widow/">Black Widow</a></h3>
+<div>Game Details</div><p>Oct 19 '26, 8:15 PM in 8h</p>
+<div>NFL | Commanders vs 49ers</div><div>Play on: Commanders +7½ -110 at Buckeye</div>
+<h4>Game Analysis</h4><p>Free wiseguy pick</p>
+<p>Pick Released on Oct 19 at 06:33 am</p>`;
+const boydsSummary=`<h1>Free Sports Picks Today</h1><p>Last updated: October 19, 2026 12:28 pm</p>
+<table><thead><tr><th>Service</th><th>Sport</th><th>Pick</th><th>Analysis</th></tr></thead>
+<tbody><tr><td><a>Brandon Lee</a></td><td>MLB</td><td>Rays -140</td><td>Show: Free MLB</td></tr>
+<tr><td>Hunter Price</td><td>NFL</td><td>49ers under 52 -104</td><td>Show</td></tr>
+<tr><td>Paid Offers</td><td>MLB</td><td>Members only</td><td>BUY NOW</td></tr></tbody></table>`;
 test('extracts only explicit public selections and preserves source attribution and prices',()=>{
   const c=parseCovers(covers,'nfl');assert.equal(c.length,1);assert.equal(c[0].pick,'Player o21.5 Receiving Yards (+110)');
   assert.equal(c[0].matchup,'AAA vs BBB');assert.equal(c[0].author,'Test Analyst');assert.equal(c[0].publishedLabel,'2 hours ago');
@@ -21,12 +37,59 @@ test('extracts only explicit public selections and preserves source attribution 
   assert.deepEqual(parseWagerTalk(wt.replace('October 18, 2026 4:25 PM EDT','unknown'),'nfl'),[]);
   assert.deepEqual(parseCovers('<h1>Free picks today</h1>','nfl'),[]);
 });
+
+test('Boyds sport pages require author, matchup, exact pick, release and a future game date',()=>{
+ const time=Date.parse('2026-10-19T15:00:00Z');
+ const picks=boyds.parseSport(boydsSport,'nfl',time);
+ assert.equal(picks.length,2);
+ assert.equal(picks[0].author,'Jimmy Boyd');
+ assert.equal(picks[0].pick,'Commanders +8 -115 at betus');
+ assert.equal(picks[0].matchup,'Commanders vs 49ers');
+ assert.equal(picks[0].eventDate,'2026-10-19');
+ assert.match(picks[0].publishedLabel,/Oct 18 at 09:03 am/);
+ assert.equal(boyds.parseSport(boydsSport,'mlb',time).length,0);
+ assert.equal(boyds.parseSport(boydsSport,'nfl',Date.parse('2026-10-20T15:00:00Z')).length,0);
+ assert.deepEqual(boyds.parseSport(boydsSport.replaceAll('Pick Released on','Released: '),'nfl',time),[]);
+ assert.deepEqual(boyds.parseSport('<h3>Premium</h3><p>BUY NOW Commanders +8 -115</p>','nfl',time),[]);
+});
+test('Boyds daily summary provides dated source-only entries and never infers an event time',()=>{
+ const time=Date.parse('2026-10-19T15:00:00Z');
+ const picks=boyds.parseSummary(boydsSummary,'mlb',time);
+ assert.equal(picks.length,1);
+ assert.equal(picks[0].author,'Brandon Lee');
+ assert.equal(picks[0].pick,'Rays -140');
+ assert.match(picks[0].eventLabel,/verify matchup/);
+ assert.equal(picks[0].eventAt,undefined);
+ assert.equal(boyds.parseSummary(boydsSummary,'ncaaf',time).length,0);
+ assert.deepEqual(boyds.parseSummary(boydsSummary,'mlb',Date.parse('2026-10-20T15:00:00Z')),[]);
+ assert.deepEqual(boyds.parseSummary(boydsSummary.replaceAll('Last updated:', 'Archive:'),'mlb',time),[]);
+});
+test('Boyds integration yields three distinct source feeds and falls back for MLB when dedicated page is empty',async()=>{
+ const time=Date.parse('2026-10-19T15:00:00Z'),urls=[];
+ const feed=createFeed({now:()=>time,fetcher:async url=>{
+   urls.push(url);
+   return new Response(url.includes('boydsbets.com/free-nfl-picks/')?boydsSport:
+     url.includes('boydsbets.com/free-sports-picks/')?boydsSummary:
+     url.includes('boydsbets.com/free-baseball-picks/')?'<h1>No free MLB picks are currently available.</h1>':
+     url.includes('covers.com')?covers:wt);
+ }});
+ const nfl=await feed('nfl');
+ assert.deepEqual(nfl.sources.map(s=>s.source),['covers','wagertalk','boyds']);
+ assert.equal(nfl.sources[2].picks.length,2);
+ assert.ok(!urls.includes(boyds.SUMMARY),'no unnecessary summary request when sport page has selections');
+ const mlb=await feed('mlb');
+ assert.equal(mlb.sources[2].status,'available');
+ assert.equal(mlb.sources[2].picks[0].author,'Brandon Lee');
+ assert.match(mlb.sources[2].message,/matchup, kickoff and release time not verified/);
+ assert.ok(urls.includes(boyds.SUMMARY));
+});
+
 test('feed caches and shares requests, isolates failures and expires old selections',async()=>{
   let clock=Date.parse('2026-10-14T20:00Z'),calls=0,fail=false;
-  const feed=createFeed({now:()=>clock,fetcher:async url=>{calls++;if(fail&&url.includes('covers'))throw Error('offline');return new Response(url.includes('covers')?covers:wt);}});
-  const [a,b]=await Promise.all([feed('nfl'),feed('nfl')]);assert.equal(calls,2);assert.equal(a.sources[0].picks.length,1);assert.deepEqual(a,b);
+  const feed=createFeed({now:()=>clock,fetcher:async url=>{calls++;if(fail&&url.includes('covers'))throw Error('offline');return new Response(url.includes('boydsbets.com/free-nfl-picks/')?boydsSport:url.includes('covers')?covers:wt);}});
+  const [a,b]=await Promise.all([feed('nfl'),feed('nfl')]);assert.equal(calls,3);assert.equal(a.sources[0].picks.length,1);assert.deepEqual(a,b);
   assert.equal(Object.hasOwn(a,'manual'),false);
-  clock+=60000;await feed('nfl');assert.equal(calls,2);
+  clock+=60000;await feed('nfl');assert.equal(calls,3);
   clock+=300000;fail=true;const partial=await feed('nfl');assert.equal(partial.sources[0].status,'unavailable');assert.deepEqual(partial.sources[0].picks,[]);assert.equal(partial.sources[1].picks.length,1);
   clock=Date.parse('2026-10-19T00:00Z');const past=await feed('nfl');assert.deepEqual(past.sources[1].picks,[]);
   await assert.rejects(feed('https://evil.test'));
@@ -60,5 +123,5 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
 test('readable public picks survive a three-megabyte source page',async()=>{
  const feed=createFeed({fetcher:async url=>new Response(url.includes('covers')?' '.repeat(3000000)+covers:wt)});
  const result=await feed('nfl');assert.equal(result.sources[0].status,'available');assert.equal(result.sources[0].picks[0].author,'Test Analyst');
- const mlb=await feed('mlb');assert.equal(mlb.sources.length,2);assert.equal(mlb.league,'mlb');
+ const mlb=await feed('mlb');assert.equal(mlb.sources.length,3);assert.equal(mlb.league,'mlb');
 });

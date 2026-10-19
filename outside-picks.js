@@ -1,8 +1,10 @@
 'use strict';
+const boyds=require('./boyds-picks');
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
 const SOURCES = {
   covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb'}},
-  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb'}}
+  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb'}},
+  boyds: {name:"Boyd's Bets",urls:boyds.URLS}
 };
 function text(html) {
   return String(html || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ')
@@ -66,10 +68,22 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
     const work=(async()=>{
       let value;
       try {
-        const html=await fetchPage(SOURCES[key].urls[league],fetcher);
-        const picks=(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
+        let picks=[],fromSummary=false;
+        if(key==='boyds'){
+          let primaryFailed=false;
+          try {picks=boyds.parseSport(await fetchPage(boyds.URLS[league],fetcher),league,now());}
+          catch {primaryFailed=true;}
+          if(!picks.length){
+            try {picks=boyds.parseSummary(await fetchPage(boyds.SUMMARY,fetcher),league,now());fromSummary=picks.length>0;}
+            catch {if(primaryFailed)throw Error('Boyds pages unavailable');}
+          }
+        } else {
+          const html=await fetchPage(SOURCES[key].urls[league],fetcher);
+          picks=(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
+        }
         value={source:key,name:SOURCES[key].name,status:picks.length?'available':'empty',checkedAt:new Date(now()).toISOString(),picks,
-          message:picks.length?'Public selections; source prices may have changed.':'No readable public selections returned. Check the source; its page format may have changed.'};
+          message:fromSummary?'Daily summary picks only: matchup, kickoff and release time not verified. Open the source before using a pick.':
+            picks.length?'Public selections; source prices may have changed.':'No readable public selections returned. Check the source; its page format may have changed.'};
       }catch{value={source:key,name:SOURCES[key].name,status:'unavailable',checkedAt:new Date(now()).toISOString(),picks:[],message:'Source could not be retrieved. Try again later or open the source.'};}
       cache.set(id,{saved:now(),value});return value;
     })();
@@ -77,7 +91,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
   }
   return async league=>{
     if(!['nfl','ncaaf','mlb'].includes(league))throw Error('Unsupported league');
-    const sources=await Promise.all(['covers','wagertalk'].map(key=>source(key,league)));
+    const sources=await Promise.all(['covers','wagertalk','boyds'].map(key=>source(key,league)));
     return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}))};
   };
 }
