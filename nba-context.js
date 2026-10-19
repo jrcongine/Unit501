@@ -9,12 +9,15 @@ function summarize(raw,teamId,selectedGame){
  if(!isId(Number(teamId))||!isId(Number(selectedGame?.id))||!Number.isFinite(Date.parse(selectedGame?.tipoff)))
   throw Error('Invalid NBA team/game identity');
  const cutoff=Date.parse(selectedGame.tipoff);
+ const noEndBuffer=5*60*60*1000; // A game that tipped off shortly before this one may not yet have been final.
  const stage=selectedGame.stage;
  if(!isId(Number(stage)))return {available:false,reason:'Selected NBA stage is unavailable; regular-season history cannot be verified.',sample:0};
  const entries=new Map();
  for(const game of raw){
   const g=normalizeGame(game);
   if(!g||g.statusCode!==3||g.stage!==stage||g.id===selectedGame.id||Date.parse(g.tipoff)>=cutoff||g.awayScore===null||g.homeScore===null)continue;
+  // Historical responses are fetched later; never leak a late-finishing game into an earlier pregame review.
+  if(g.endedAt ? Date.parse(g.endedAt)>=cutoff : Date.parse(g.tipoff)+noEndBuffer>=cutoff)continue;
   const asVisitor=g.awayId===Number(teamId),asHome=g.homeId===Number(teamId);
   if(!asVisitor&&!asHome)continue;
   const own=asVisitor?g.awayScore:g.homeScore,opp=asVisitor?g.homeScore:g.awayScore;
@@ -40,7 +43,7 @@ function createNBAContext({fetcher=fetch,key=()=>process.env.NBA_API_SPORTS_KEY|
   if(!isId(id)||!Number.isInteger(season)||season<2000||season>2100)throw Error('Invalid NBA team season');
   const ck=season+':'+id;
   const cached=cache.get(ck);
-  if(cached&&now()-cached.at<300000)return cached.games;
+  if(cached&&now()-cached.at<3600000)return cached.games;
   if(pending.has(ck))return pending.get(ck);
   const task=(async()=>{
     const apiKey=key();
