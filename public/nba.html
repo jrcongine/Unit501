@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NBA Beta — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"></head>
+<body><main>
+<header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
+<section class="card nba-intro"><h2>Basketball data lab</h2>
+<p>Phase 1: real NBA schedule and scores. This is <strong>not</strong> a betting simulator yet. No projected spreads, totals or player props are generated.</p>
+<p>NBA data uses its own API-Sports NBA connection. Missing or unavailable data will be reported, not estimated.</p></section>
+<section class="card nba-controls"><label for="nba-date">NBA game date</label>
+<div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
+<p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p></section>
+<section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
+<p class="war-muted">Data: API-NBA by API-Sports. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
+</main><script src="nba.js"></script></body></html>
