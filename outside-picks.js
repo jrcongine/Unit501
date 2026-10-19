@@ -78,8 +78,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
   return async league=>{
     if(!['nfl','ncaaf','mlb'].includes(league))throw Error('Unsupported league');
     const sources=await Promise.all(['covers','wagertalk'].map(key=>source(key,league)));
-    return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())})),
-      manual:[{name:'EV / Guy Boston Sports',message:'Video picks are not automatically transcribed. Use the video desk and record the exact selection below.'}]};
+    return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}))};
   };
 }
 module.exports={parseCovers,parseWagerTalk,createFeed,text};
