@@ -6,11 +6,7 @@
  const lab=byId('nba-lab'),players=byId('nba-player-lab');
  if(!dateInput||!games||!status||!load||!shared||!lab||!players)return;
  let request=0;
- function clearSelection(){
-   lab.classList.add('hidden');players.classList.add('hidden');
-   shared.selection(games,null); // Selection handled below: do not mutate archived picks.
- }
- function choose(game){
+function choose(game){
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
