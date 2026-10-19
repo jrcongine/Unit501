@@ -20,3 +20,8 @@ jobs:
           node-version: '20'
       - name: Run regression tests
         run: npm test
+      - name: Check public War Room feeds (informational)
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 2
+        run: node scripts/smoke-war-room.js
