@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
+const nbaGames = require('./nba-feed').createNBAFeed();
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
@@ -76,6 +77,12 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/nba/games'){
+      const date=u.searchParams.get('date');
+      if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid NBA date (YYYY-MM-DD) required.'});
+      try{return send(res,200,await nbaGames(date));}
+      catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:'NBA schedule unavailable. Verify NBA provider access and try again.'});}
     }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
