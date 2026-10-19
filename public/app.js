@@ -8,6 +8,8 @@ let latestForecast = null;
 let gameQuotes = null;
 function invalidateSimulation(message) {
   latestForecast=null;
+  window.Unit501Availability?.scoring?.(null);
+  previewAutomaticInjuries();
   $('game-pick-price').value='';
   $('availability-score-status').textContent='';
   $('forecast-archive-status').textContent='';
@@ -40,10 +42,11 @@ function injuryModeChanged(){
 }
 function renderAutomaticInjuries(result,applied=false){
   if(!result)return;
+  window.Unit501Availability?.scoring?.(result,applied);
   for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']]){
     $(id).value=result.ready?String(result.injury[key]):'';$(id).placeholder=result.ready?'0':'Pending';
   }
-  const who=result.applied.map(p=>p.category==='quarterback'?`${p.name} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — OUT (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`);
+  const who=result.applied.map(p=>p.category==='quarterback'?`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`);
   const hasOut=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out'));
   $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment.';
   const list=$('injury-adjustment-reasons');list.replaceChildren();
