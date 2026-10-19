@@ -24,6 +24,7 @@ function normalizeGame(game){
  const awayId=Number(visitors?.id),homeId=Number(home?.id);
  const stage=Number(game.stage);
  const start=game.date?.start;
+ const endedAt=typeof game.date?.end==='string'&&Number.isFinite(Date.parse(game.date.end))?game.date.end:null;
  const status=Number(game.status?.short);
  if(!Number.isSafeInteger(id)||id<=0||
     !visitors||!home||
@@ -36,7 +37,7 @@ function normalizeGame(game){
   awayId:Number.isSafeInteger(awayId)&&awayId>0?awayId:null,
   homeId:Number.isSafeInteger(homeId)&&homeId>0?homeId:null,
   stage:game.stage!=null&&Number.isSafeInteger(stage)&&stage>0?stage:null,
-  tipoff:start,status:STATES[status],statusCode:status,
+  tipoff:start,endedAt,status:STATES[status],statusCode:status,
   awayScore:status===2||status===3?numberOrNull(game.scores?.visitors?.points):null,
   homeScore:status===2||status===3?numberOrNull(game.scores?.home?.points):null,
   arena:typeof game.arena?.name==='string'?game.arena.name.slice(0,100):null
@@ -48,7 +49,7 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
   if(!validDate(date))throw Error('Invalid NBA date');
   const season=inferSeason(date);
   const id=season+':'+date;
-  if(cache.has(id)&&now()-cache.get(id).at<300000)return cache.get(id).result;
+  if(cache.has(id)&&now()-cache.get(id).at<900000)return cache.get(id).result;
   if(pending.has(id))return pending.get(id);
   const work=(async()=>{
    const apiKey=key();
