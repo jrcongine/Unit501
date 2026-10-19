@@ -1,0 +1,12 @@
+.nba-home{color:#9ce4f5;text-decoration:none;font-weight:800;align-self:center}
+.nba-intro h2{margin:0 0 6px}
+.nba-intro p{color:#c4d2e2;line-height:1.6}
+.nba-inputs{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px}
+.nba-inputs input{min-width:160px;flex:1}
+.nba-inputs button{background:#26445b}
+.nba-games{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:14px 0}
+.nba-game{background:#151e2c;border:1px solid #38485f;border-radius:12px;padding:16px}
+.nba-game h3{font-size:17px;margin:0 0 12px}
+.nba-game p{font-size:14px;margin:8px 0;color:#d1dce9}
+.nba-score{font-weight:800;color:#fbe0ab}
+@media(max-width:650px){header{flex-direction:column}.nba-home{align-self:flex-start}}
