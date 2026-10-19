@@ -79,7 +79,7 @@ const server = http.createServer(async (req, res) => {
     }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
-      if(!['nfl','ncaaf'].includes(league))return send(res,400,{error:'Choose NFL or college football.'});
+      if(!['nfl','ncaaf','mlb'].includes(league))return send(res,400,{error:'Choose NFL, college football or MLB.'});
       return send(res,200,await outsidePicks(league));
     }
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
