@@ -7,11 +7,11 @@ function dom(){
  const children=[];
  class Element{
   constructor(tag){this.tag=tag;this.children=[];this.attrs={};this.handlers={};this.className='';this.textContent='';
-   const active=new Set();
+   const tokens=()=>new Set(this.className.split(/\s+/).filter(Boolean));
    this.classList={
-    add:n=>{active.add(n);this.syncClass(active);},
-    remove:n=>{active.delete(n);this.syncClass(active);},
-    contains:n=>active.has(n)
+    add:n=>{const names=tokens();names.add(n);this.syncClass(names);},
+    remove:n=>{const names=tokens();names.delete(n);this.syncClass(names);},
+    contains:n=>tokens().has(n)
    };
   }
   syncClass(set){this.className=[...set].join(' ');}
