@@ -22,15 +22,20 @@ const eastDate=now=>{
   const part=x=>p.find(t=>t.type===x).value;return [Number(part('year')),Number(part('month')),Number(part('day'))];
 };
 function pickCards(html){
-  const readable=plain(html),marks=[...readable.matchAll(/\b(?:Point Spread Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g)];
-  const ignored=/\b(?:College Football|National Football|Major League|Read More|Money Line|Point Spread|Game Totals|Best Bet)\b/i;
-  return marks.slice(0,80).map((mark,i)=>{
-    const preface=readable.slice(Math.max(0,mark.index-190),mark.index);
-    const names=[...preface.matchAll(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}(?:\s+\([^)]+\))?)/g)]
-      .map(m=>m[1]).filter(name=>!ignored.test(name));
-    const author=names.at(-1)||'';
-    return {author,body:readable.slice(mark.index,marks[i+1]?.index??readable.length),preface};
-  }).filter(card=>card.author);
+  const markers=[...String(html||'').matchAll(/\b(?:Point Spread Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g)];
+  const person=/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}(?:\s+\([^)]+\))?$/;
+  return markers.slice(0,80).map((marker,i)=>{
+    const before=html.slice(Math.max(0,marker.index-1800),marker.index);
+    const links=[...before.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a\s*>/gi)]
+      .map(match=>plain(match[1])).filter(name=>person.test(name));
+    const imageAlts=[...before.matchAll(/<img\b[^>]*\balt=["']([^"']+)["'][^>]*>/gi)]
+      .map(match=>plain(match[1])).filter(name=>person.test(name));
+    // A complete name in a distinct author link or avatar is better evidence
+    // than guessing from nearby matchup text (e.g. "Aaron Taylor Missouri State").
+    const author=links.at(-1)||imageAlts.at(-1)||'';
+    return {author,body:plain(html.slice(marker.index,markers[i+1]?.index??html.length)),
+      preface:plain(before.slice(-550))};
+  });
 }
 function scheduled(preface,now){
   const dates=[...preface.matchAll(/\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*(\d{1,2})/gi)];
@@ -47,6 +52,10 @@ function scheduled(preface,now){
 }
 function parse(html,league,now=Date.now()){
   if(!URLS[league])return [];
+  const pageTitle=plain(String(html||'').match(/<h1\b[^>]*>([\s\S]*?)<\/h1\s*>/i)?.[1]||'').toLowerCase();
+  if((pageTitle.includes('college football picks')&&league!=='ncaaf') ||
+     (pageTitle.includes('nfl picks')&&league!=='nfl') ||
+     (pageTitle.includes('mlb picks')&&league!=='mlb'))return [];
   const tables=[...String(html||'').matchAll(/<table\b[^>]*>([\s\S]*?)<\/table\s*>/gi)];
   if(!tables.length)return [];
   const firstTable=tables[0].index;
@@ -69,11 +78,11 @@ function parse(html,league,now=Date.now()){
       const card=matching.length===1?matching[0]:null;
       const sched=card?scheduled(card.preface,now):null;
       if(sched?.past)continue;
-      const author=card?card.author:'Pickswise (analyst unverified)';
+      const author=card?.author||'Pickswise (analyst unverified)';
       const id='pickswise:'+league+':'+(sched?.date||'undated')+':'+norm(matchup)+':'+norm(bet);
       if(seen.has(id))continue;seen.add(id);
       const stars=rating>=0?Number(cells[rating].match(/[1-5]/)?.[0]):null;
-      picks.push({id,source:'pickswise',author,authorVerified:Boolean(card),league,
+      picks.push({id,source:'pickswise',author,authorVerified:Boolean(card?.author),league,
         pick:bet+' ('+odds+' best available on source)',matchup,
         eventLabel:sched?.label||'Event date and kickoff unverified — check source',
         eventDate:sched?.date,publishedLabel:'Listing checked; original release time unverified',
