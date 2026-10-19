@@ -558,12 +558,7 @@ function clearSelection() {
   document.dispatchEvent(new Event('unit501:selection-changed'));
 }
 
-const today = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Chicago',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-}).format(new Date());
+const today = window.Unit501SharedUI.dateCentral();
 
 $('date').value = today;
 
@@ -712,7 +707,7 @@ async function choose(game) {
     const link = $(id);
     if (link) { link.classList.remove('is-unavailable'); link.setAttribute('aria-disabled','false'); link.tabIndex = 0; link.textContent = label; }
   }
-  $('matchup').textContent = `${game.a} @ ${game.h}`;
+  $('matchup').textContent = window.Unit501SharedUI.matchup(game.a, game.h);
 
   // Do not invent a betting line when current odds are unavailable.
   $('spread').value = '';
