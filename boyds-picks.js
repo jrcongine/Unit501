@@ -13,7 +13,8 @@ function plain(html){
  return String(html||'').replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi,'')
   .replace(/<[^>]*>/g,' ')
   .replace(/&#(x[0-9a-f]+|\d+);/gi,(_,code)=>{const n=code[0].toLowerCase()==='x'?parseInt(code.slice(1),16):Number(code);return Number.isInteger(n)&&n>=0&&n<=0x10ffff?String.fromCodePoint(n):'';})
-  .replace(/&(amp|quot|apos|lt|gt|nbsp|#0*39);/gi,(_,code)=>({amp:'&',quot:'"',apos:"'",lt:'<',gt:'>',nbsp:' ','#039':"'",'#39':"'"}[code.toLowerCase()]||''))
+  .replace(/&(amp|quot|apos|lt|gt|nbsp|frac12|frac14|frac34|#0*39);/gi,(_,code)=>({amp:'&',quot:'"',apos:"'",lt:'<',gt:'>',nbsp:' ','frac12':'½','frac14':'¼','frac34':'¾','#039':"'",'#39':"'"}[code.toLowerCase()]||''))
+  .replace(/(\d)½/g,'$1.5').replace(/(\d)¼/g,'$1.25').replace(/(\d)¾/g,'$1.75')
   .replace(/\s+/g,' ').trim();
 }
 function today(now){
