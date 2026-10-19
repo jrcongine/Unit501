@@ -14,6 +14,7 @@ NBA should have the same familiar user journey as football: select league and da
 | Capability | Football now | NBA beta now | NBA implementation gate |
 | --- | --- | --- | --- |
 | Schedule/game IDs/results | Live football provider | Separate API-NBA adapter and schedule | Confirm Railway NBA API plan and live game shapes |
+| Team scoring history | Existing football ranks | Pregame same-stage season/last-10/last-5 scoring, no projection | Confirm provider history completeness and current team IDs |
 | Score projections | Football team scoring engine | **Disabled** | Per-possession ratings, pace, rest, schedule and defense |
 | Spread/total odds | Existing football FanDuel matching | **Disabled** | Verified NBA market mapping and timestamps |
 | Availability | Football injury/lineup scoring | **Disabled** | Confirmed NBA starters, minutes restrictions, rotations |
