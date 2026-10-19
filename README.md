@@ -31,6 +31,8 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - 50,000-run Monte Carlo game simulator
 - Mobile/iPhone-friendly UI
 
+See [SPORT-ADAPTERS.md](SPORT-ADAPTERS.md) for the shared Football/NBA user journey, reusable UI helpers, feature gates, and the separate basketball ratings/calibration roadmap.
+
 ## NBA beta (schedule and scores only)
 
 The NBA beta is intentionally separate from the NFL/NCAA simulator. Open `/nba.html` from the navigation to choose a date and retrieve the published NBA schedule and scores. No basketball predictions, odds, props or wagers are generated yet.
