@@ -4,7 +4,7 @@
   panel.className='card hidden';
   document.getElementById('player-lab').before(panel);
   const reportDownload=document.createElement('div');
-  document.getElementById('auto-injury-status').after(reportDownload);
+  let concernLabels=[];
   let version=0, data=null, game=null, timer, loading=false, lastAttempt=0;
   const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
   const timestamp=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT':'unknown';
@@ -15,6 +15,15 @@
     return 'report date '+date;
   }
   window.Unit501Availability={
+    scoring(result,applied=false){
+      for(const entry of concernLabels){
+        const matches=(result?.applied||[]).filter(p=>String(p.teamId)===String(entry.teamId)&&
+          (entry.id?String(p.playerId)===String(entry.id):p.name===entry.name));
+        const label=matches.length===1?(applied?'OUT — factored in':'OUT — ready for next simulation'):
+          entry.out?'OUT — impact unresolved':entry.status;
+        entry.node.textContent=entry.name+' — '+label;
+      }
+    },
     snapshot(){return game===selected?data:null;},
     assess(teamId,playerId) {
       return Unit501InjuryModel.assess(game === selected ? data : null, selected, teamId, playerId, Date.now(), true);
@@ -60,6 +69,7 @@
     }
   };
   function render(message,loading=false) {
+    concernLabels=[];
     reportDownload.replaceChildren();
     panel.replaceChildren(node('h2','Injury watch'));
     const refresh=node('button','Refresh injuries');refresh.id='refresh-availability';refresh.type='button';refresh.disabled=loading;
@@ -142,30 +152,36 @@
     // Keep the complete source reports accessible without filling the main screen.
     const full=node('details','');
     full.append(node('summary','Full roster & report details'));
+    full.append(reportDownload);
     while(panel.children.length>2)full.append(panel.children[2]);
     const teamGrid=node('div','');teamGrid.className='injury-team-grid';
     for(const t of data.teams){
       const teamCard=node('section','');teamCard.className='injury-team-summary';
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
       const concerns=new Map();
-      const add=(name,status)=>{
+      const add=(name,status,id=null,out=false)=>{
         const key=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-        if(key&&!concerns.has(key))concerns.set(key,{name,status});
+        if(key&&!concerns.has(key))concerns.set(key,{name,status,id,out});
       };
       for(const p of [...summary.unavailable,...summary.conditional,...(summary.conflicts||[]),...(summary.nonstarters||[])]){
         const assessment=Unit501InjuryModel.assess(data,game,t.id,p.id);
-        add(p.name,Unit501InjuryModel.statusLabel(assessment));
+        const official=t.official;
+        const fresh=official?.available&&String(official.gameId)===String(game.id)&&official.kickoff===game.kickoff&&
+          Number.isFinite(official.checkedAt)&&official.checkedAt<=Date.now()&&Date.now()-official.checkedAt<=900000;
+        const reports=fresh?(official.rows||[]).filter(r=>String(r.id)===String(p.id)):[];
+        const out=reports.length>0&&reports.every(r=>String(r.status).toLowerCase()==='out')&&assessment.state!=='conflict';
+        add(p.name,Unit501InjuryModel.statusLabel(assessment),p.id,out);
       }
       const official=t.official;
       const fresh=official?.available && String(official.gameId)===String(game.id) && official.kickoff===game.kickoff &&
         Number.isFinite(official.checkedAt) && official.checkedAt<=Date.now() && Date.now()-official.checkedAt<=900000;
       if(fresh)for(const p of official.unresolved||[]){
-        if(/^(out\b|inactive\b|questionable\b|doubtful\b|probable\b|game time decision\b|suspended\b)/i.test(p.status||''))add(p.name,p.status+' · roster match pending');
+        if(/^(out\b|inactive\b|questionable\b|doubtful\b|probable\b|game time decision\b|suspended\b)/i.test(p.status||''))add(p.name,p.status+' · roster match pending',null,String(p.status).toLowerCase()==='out');
       }
       teamCard.append(node('h3',t.id===game.awayId?game.a:game.h));
       const rows=[...concerns.values()];
       if(rows.length){
-        const list=node('ul','');for(const p of rows)list.append(node('li',p.name+' — '+p.status));teamCard.append(list);
+        const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
       }else teamCard.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
       teamGrid.append(teamCard);
     }

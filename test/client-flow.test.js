@@ -648,7 +648,10 @@ test('Game Lab automatically scores a confirmed defender absence and cleanly swi
  assert.equal(h.nodes.get('homeDefenseLoss').disabled,true);
  h.run('sim()');
  assert.equal(h.nodes.get('homeDefenseLoss').value,'0.5');
- assert.match(h.nodes.get('auto-injury-status').textContent,/Starting CB/);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/Starting CB.*OUT — factored in/);
+ h.run("invalidateSimulation('Changed')");
+ assert.match(h.nodes.get('auto-injury-status').textContent,/ready for next simulation/);
+ h.run('sim()');
  assert.match(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
  assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0.5);
  box.checked=false;await box.dispatchEvent({type:'change'});
