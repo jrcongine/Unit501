@@ -40,7 +40,8 @@
 .war-youtube-grid>a small{margin-top:auto;color:#8fe1d3;letter-spacing:normal;font-weight:700}
 @media(max-width:500px){.war-youtube-grid{grid-template-columns:1fr 1fr;gap:8px}.war-youtube-grid>a{padding:10px;min-height:118px}}
 
-.war-feed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.war-feed-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:700px){.war-feed-grid{grid-template-columns:minmax(0,1fr)}}
 .war-feed-source{min-width:0;max-height:640px;overflow:auto;padding-right:6px}
 .war-feed-source a{color:#9ce4f5;font-size:14px}
 .war-feed-source h4{position:sticky;top:0;background:#121620;padding:8px 0;margin-top:0}
