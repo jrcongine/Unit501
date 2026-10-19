@@ -116,6 +116,11 @@ function createRankings(api, options = {}) {
   let queue = Promise.resolve();
   const disk = options.cacheDir || path.join(os.tmpdir(), 'unit501-team-boxes-v1');
   const delay = options.delayMs ?? 1000;
+  // Score rankings come from completed schedules. Detailed yardage box scores
+  // are capped per build so one game selection cannot download an entire season.
+  const boxLimit = options.boxLimit ?? 16;
+  if(!(boxLimit===Infinity || (Number.isSafeInteger(boxLimit)&&boxLimit>=0&&boxLimit<=500)))
+    throw Error('Invalid detailed box-score limit');
   async function request(endpoint) {
     const work = queue.then(async () => {
       const data = await api(endpoint);
@@ -169,7 +174,10 @@ function createRankings(api, options = {}) {
         .map(g => [String(g.game?.id), g])).values()];
       const selectedGame = g => [g.teams?.away || g.teams?.visitors, g.teams?.home].some(team => [query.away,query.home].includes(String(team?.id)));
       past.sort((a,b) => Number(selectedGame(b)) - Number(selectedGame(a)));
-      const selectedCount = past.filter(selectedGame).length;
+      const boxGames=boxLimit===Infinity?past:past.slice(0,boxLimit);
+      const selectedCount=boxGames.filter(selectedGame).length;
+      const detailCoverage={requested:boxGames.length,eligible:past.length,
+        limited:boxGames.length<past.length};
       // Fetch full scoring schedules for selected teams' non-FBS opponents.
       // Keep these teams outside the national ranking pool and avoid extra box-score requests.
       const supplemental = new Map();
@@ -197,6 +205,7 @@ function createRankings(api, options = {}) {
       const scoringGames = [...new Map([...supplemental.values(),...past].map(g => [String(g.game?.id),g])).values()];
       function summary(boxes) {
         const data = summarize(scoringGames,boxes,query,[...roster.values()]);
+        data.detailCoverage=detailCoverage;
         for (const t of data.teams) if (reports.has(t.id)) {
           t.opponentScheduleVerified = reports.get(t.id);
           t.scoringOnly = true;
@@ -215,8 +224,8 @@ function createRankings(api, options = {}) {
         return data;
       });
       const validation=job.data.validation;
-      job.total = past.length;
-      for (const g of past) {
+      job.total = boxGames.length;
+      for (const g of boxGames) {
         const id = String(g.game?.id);
         if (!/^\d+$/.test(id)) continue;
         boxes.set(id, await box(id));

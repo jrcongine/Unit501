@@ -59,8 +59,19 @@ function createRosterMaintenance(api, availability, now=Date.now) {
     })();
     return pending;
   }
-  function start(){if(timer)return;void run();timer=setInterval(()=>void run(),6*3600000);timer.unref?.();}
+  // Never spend dozens of provider calls just because Railway restarted.
+  // Optional sweeps are no more frequent than daily and start after the first interval.
+  function start(){
+    if(timer)return;
+    state={...state,message:'Automatic roster sweep scheduled daily (opt-in); first run after 24 hours. Selecting a matchup still loads its own injury reports.'};
+    timer=setInterval(()=>void run(),24*3600000);
+    timer.unref?.();
+  }
   function stop(){clearInterval(timer);timer=null;}
-  return {run,status,start,stop};
+  function pause(){
+    stop();
+    state={...state,message:'Background roster sweeps paused to conserve football API requests. Selecting a matchup still fetches its current reports.'};
+  }
+  return {run,status,start,stop,pause};
 }
 module.exports={createRosterMaintenance};

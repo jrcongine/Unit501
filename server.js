@@ -9,6 +9,7 @@ const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
 const nbaGames = require('./nba-feed').createNBAFeed();
 const nbaContext = require('./nba-context').createNBAContext();
+const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||1500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
@@ -51,20 +52,14 @@ async function providerAPI(endpoint) {
 
   }
 
-  const r = await fetch(API + endpoint, {
-    signal: AbortSignal.timeout(15000),
-
-    headers: {
-
-      'x-apisports-key': process.env.API_SPORTS_KEY
-
-    }
-
+  return footballMeter.track(endpoint,async()=>{
+    const r = await fetch(API + endpoint, {
+      signal: AbortSignal.timeout(15000),
+      headers: {'x-apisports-key': process.env.API_SPORTS_KEY}
+    });
+    if (!r.ok) throw new Error('Football provider HTTP ' + r.status);
+    return r.json();
   });
-
-  if (!r.ok) throw new Error('API error ' + r.status);
-
-  return r.json();
 
 }
 
@@ -104,6 +99,7 @@ const server = http.createServer(async (req, res) => {
       if(!['nfl','ncaaf','mlb'].includes(league))return send(res,400,{error:'Choose NFL, college football or MLB.'});
       return send(res,200,await outsidePicks(league));
     }
+    if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
     if (u.pathname === '/api/player-ratings') {
       const q={league:u.searchParams.get('league')||'1',season:u.searchParams.get('season'),before:Number(u.searchParams.get('before'))};
@@ -419,6 +415,8 @@ if (u.pathname === '/api/team-games') {
 server.listen(PORT, () => {
 
   console.log('UNIT 501 running on port ' + PORT);
-  if(process.env.API_SPORTS_KEY)rosterMaintenance.start();
+  // Heavy full-league roster sweeps are opt-in, and never run on startup.
+  if(process.env.API_SPORTS_KEY && process.env.UNIT501_ENABLE_ROSTER_SWEEPS==='1')rosterMaintenance.start();
+  else rosterMaintenance.pause();
 
 });

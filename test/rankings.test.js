@@ -84,7 +84,7 @@ test('build fetches whole league, prioritizes selected games, shares cached boxe
     return {response:boxes.get(endpoint.split('=')[1])};
   };
   try {
-    const get=createRankings(api,{delayMs:0,cacheDir});
+    const get=createRankings(api,{delayMs:0,cacheDir,boxLimit:Infinity});
     const job=get(query);
     const deadline=Date.now()+10000;
     while(job.state==='loading' && Date.now()<deadline) await new Promise(r=>setTimeout(r,5));
@@ -132,7 +132,7 @@ test('supplemental failures preserve rankings and never mark an opponent schedul
   return {response:boxes.get(endpoint.split('=')[1])};
  };
  try {
-  const job=createRankings(api,{delayMs:0,cacheDir})(query);
+  const job=createRankings(api,{delayMs:0,cacheDir,boxLimit:Infinity})(query);
   const deadline=Date.now()+10000;
   while(job.state==='loading' && Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
   assert.equal(job.state,'ready');
@@ -159,7 +159,7 @@ test('complete scoring is published before the first yardage box finishes',async
  const cacheDir=await fs.mkdtemp(path.join(os.tmpdir(),'unit501-scoring-'));
  try {
   const q={...query,league:'1'};
-  const job=createRankings(api,{delayMs:0,cacheDir})(q);
+  const job=createRankings(api,{delayMs:0,cacheDir,boxLimit:Infinity})(q);
   await waiting;
   assert.equal(job.state,'loading');assert.equal(job.completed,0);
   assert.equal(job.data.coverage.pointsFor.ranked,true);
@@ -168,4 +168,29 @@ test('complete scoring is published before the first yardage box finishes',async
   while(job.state==='loading'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
   assert.equal(job.state,'ready');
  }finally{release();await fs.rm(cacheDir,{recursive:true,force:true});}
+});
+
+test('default Game Lab limits outbound detailed boxes while preserving national scoring',async()=>{
+ const {games,boxes}=fixture();
+ const calls=[];
+ const api=async endpoint=>{
+   calls.push(endpoint);
+   if(endpoint.startsWith('/games?team='))return {response:games};
+   if(endpoint.startsWith('/games?'))return {response:games};
+   return {response:boxes.get(endpoint.split('=')[1])};
+ };
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'unit501-saver-'));
+ try{
+   const get=createRankings(api,{delayMs:0,cacheDir:folder});
+   const job=get(query);
+   const deadline=Date.now()+10000;
+   while(job.state==='loading'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
+   assert.equal(job.state,'ready');
+   assert.equal(job.data.coverage.pointsFor.ranked,true);
+   assert.equal(job.data.detailCoverage.limited,true);
+   assert.equal(job.data.detailCoverage.requested,16);
+   assert.equal(job.data.detailCoverage.eligible,138);
+   assert.equal(job.completed,16);
+   assert.equal(calls.filter(x=>x.startsWith('/games/statistics/teams')).length,16);
+ }finally{await fs.rm(folder,{recursive:true,force:true});}
 });

@@ -58,6 +58,13 @@
 <button id="load">Load Slate</button>
 
 </section>
+<details id="api-usage-panel" class="card">
+<summary><strong>Football API usage</strong> <span class="war-muted">Requests made by this app server</span></summary>
+<p id="api-usage-message" role="status">Open this panel to see app-side request counts.</p>
+<button id="api-usage-refresh" type="button">Refresh usage counter</button>
+<div id="api-usage-details"></div>
+<p class="war-muted">These counts are for this Railway process only and reset on restart. The API-Sports dashboard is the source of truth for your account-wide limit, including any other apps or previous deployments.</p>
+</details>
 
 <details id="war-room" class="card war-room">
 <summary><strong>⚔ 501 WAR ROOM</strong> <span class="war-muted">Outside picks • sources • scouting</span></summary>
@@ -251,6 +258,7 @@
 <script src="war-room.js"></script>
 <script src="outside-picks.js"></script>
 <script src="auto-prep.js"></script>
+<script src="api-usage.js"></script>
 
 </body>
 
