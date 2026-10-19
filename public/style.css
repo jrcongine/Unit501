@@ -19,23 +19,16 @@
 .war-muted{color:#aab6ca;font-size:13px;line-height:1.5}
 .war-sources{display:flex;gap:8px;flex-wrap:wrap}
 .war-sources a,.war-sources span{display:inline-flex;align-items:center;border:1px solid #354057;background:#0e1420;border-radius:9px;padding:9px 12px;color:#c8e9f9;text-decoration:none;font-size:14px}
-.war-room form{display:grid;gap:10px}
 .war-room label{display:grid;gap:6px;color:#d6dfef;font-size:14px}
-.war-room textarea{width:100%;min-height:72px;border-radius:11px;border:1px solid #354057;background:#0c1018;color:#fff;padding:10px;font:inherit;resize:vertical}
-.war-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .war-secondary{background:#1b2532;border-color:#4c5870}
 .war-room button:focus-visible,.war-room a:focus-visible,.war-room input:focus-visible,.war-room select:focus-visible{outline:2px solid #8fe6d2;outline-offset:2px}
 .war-record{padding:12px;margin:12px 0;background:#0b101a;border:1px solid #364254;border-radius:12px;overflow-wrap:anywhere}
 .war-record-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .war-record p{margin:9px 0}
-.war-status{font-weight:800;font-size:14px}.war-status.approved{color:#8ee0bc}.war-status.rejected{color:#ffc1b4}.war-status.undecided{color:#e5cb87}
-.war-source-note{font-size:14px;color:#d1d8e5}
 .war-record-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0}
 .war-record-actions label{display:flex;align-items:center;gap:8px}
 .war-record-actions select{min-width:150px}
-.war-remove{background:#311d22;border-color:#75424f}
-.war-import input{max-width:220px;min-height:38px;font-size:13px}
-@media(max-width:600px){.war-record-actions label{align-items:flex-start;flex-wrap:wrap}.war-fields{grid-template-columns:1fr}}
+@media(max-width:600px){.war-record-actions label{align-items:flex-start;flex-wrap:wrap}}
 
 /* 501 War Room video channel quick links */
 .war-youtube-desk{margin:18px 0 22px;border:1px solid #354057;border-radius:12px;background:#0c1220;padding:12px}
@@ -232,3 +225,6 @@ a{color:#97e3fc}
 .injury-team-summary h3{margin-top:0}
 .injury-team-summary ul{margin-bottom:0;padding-left:22px}
 @media(max-width:700px){.injury-team-grid{grid-template-columns:1fr;gap:20px}}
+
+.war-archive{margin-top:14px;border-top:1px solid #354057;padding-top:12px}
+.war-archive>summary{cursor:pointer;font-size:14px;color:#b9cad8}
