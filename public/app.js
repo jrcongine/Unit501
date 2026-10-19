@@ -423,7 +423,7 @@ function showTeamContext(data, game) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
+  note.textContent = (data.detailCoverage?.limited ? `API conservation: detailed rushing/passing stats sampled from ${data.detailCoverage.requested} of ${data.detailCoverage.eligible} eligible games; national yardage ranks may remain unavailable. Scoring rankings and score forecasts use completed-game scores. ` : '') + data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
   for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
     const team=data.teams.find(t=>t.id===id),pace=team?.pace;
@@ -501,7 +501,7 @@ function loadTeamContext(game) {
     before:game.kickoff,away:game.awayId,home:game.homeId});
   let polls = 0;
   let lastProgress = '', lastChanged = Date.now();
-  contextMessage('Loading season stats… The first load gathers completed game box scores and may take a few minutes.');
+  contextMessage('Loading pregame scoring stats… Detailed box-score downloads are capped to save API requests.');
   async function poll() {
     try {
       const response = await fetch('/api/rankings?' + params, {signal:AbortSignal.timeout(20000)});
@@ -934,7 +934,7 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
     const response=await fetch('/api/roster-maintenance');
     if(!response.ok)throw Error();
     const report=await response.json();
-    $('maintenance-status').textContent=report.message+' '+(report.lastCompleted?'Last completed: '+new Date(report.lastCompleted).toLocaleString()+'. ':'')+report.gamesChecked+' games checked. Runs every six hours while the server is running; status resets on restart.';
+    $('maintenance-status').textContent=report.message+' '+(report.lastCompleted?'Last completed: '+new Date(report.lastCompleted).toLocaleString()+'. ':'')+report.gamesChecked+' games checked. Status is local to this server and resets on restart.';
     $('maintenance-issues').replaceChildren();
     const groups=new Map();
     const reviewIssues=[...(report.issues||[])].sort((a,b)=>(a.priority||2)-(b.priority||2));
