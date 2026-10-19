@@ -17,8 +17,10 @@ const current=game(899,tipoff,5,6,140,99);
 const preseason=game(114,'2026-10-18T23:00:00.000Z',5,6,120,80,{stage:1});
 const live=game(115,'2026-10-23T22:00:00.000Z',5,7,80,82,{status:2});
 const missing=game(116,'2026-10-20T22:00:00.000Z',5,7,null,110);
+const lateFinish={...game(117,'2026-10-24T19:00:00.000Z',5,7,125,120),date:{start:'2026-10-24T19:00:00.000Z',end:'2026-10-24T23:50:00.000Z'}};
+const safelyFinished={...game(118,'2026-10-23T17:00:00.000Z',5,7,115,110),date:{start:'2026-10-23T17:00:00.000Z',end:'2026-10-23T20:00:00.000Z'}};
 test('NBA history strictly excludes future, current, live, preseason, unknown-score and duplicate games',()=>{
- const s=summarize([old2,old1,old1,future,current,preseason,live,missing],5,selected);
+ const s=summarize([old2,old1,old1,future,current,preseason,live,missing,lateFinish],5,selected);
  assert.equal(s.available,true);
  assert.equal(s.sample,2);
  assert.equal(s.season.pointsFor,103);
@@ -28,6 +30,11 @@ test('NBA history strictly excludes future, current, live, preseason, unknown-sc
  assert.equal(s.recent5.games,2);
  assert.equal(s.lastPlayedAt,'2026-10-23T22:00:00.000Z');
  assert.equal(s.sampleLabel,'Thin sample — early season');
+});
+test('NBA history excludes games that finished after the matchup tipped off',()=>{
+ const context=summarize([lateFinish,safelyFinished,old1],5,selected);
+ assert.equal(context.sample,2);
+ assert.equal(context.season.pointsFor,110);
 });
 test('NBA history fails closed with no earlier qualified games or no stage',()=>{
  const empty=summarize([future,current,preseason,live],5,selected);
@@ -60,7 +67,7 @@ test('NBA context fetches separate team history once and does not infer basketba
  assert.equal(Object.hasOwn(a,'projectedSpread'),false);
  assert.equal(Object.hasOwn(a,'winProbability'),false);
  clock+=1000;await get(selected,2026);assert.equal(urls.length,2);
- clock+=301000;await get(selected,2026);assert.equal(urls.length,4);
+ clock+=3601000;await get(selected,2026);assert.equal(urls.length,4);
 });
 test('NBA context refuses wrong or missing team identifiers, unavailable stage and incomplete provider history',async()=>{
  const inactive=createNBAContext({key:()=> 'dummy',fetcher:async()=>{throw Error('should not fetch')}});
