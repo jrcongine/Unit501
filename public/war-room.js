@@ -50,7 +50,7 @@
         people[member] + ': ' + (record.votes[member] === 'for' ? 'For' : record.votes[member] === 'against' ? 'Against' : 'Not cast')
       ).join(' • '), 'war-muted');
       card.append(votes);
-      for (const [name, key] of [['Covers', 'covers'], ['WagerTalk', 'wagertalk'], ['Juice Reel', 'juicereel'], ['EV', 'ev']]) {
+      for (const [name, key] of [['Covers', 'covers'], ['WagerTalk', 'wagertalk'], ['Sportsbook Review', 'sbr'], ['EV', 'ev'], ['Juice Reel (archived)', 'juicereel']]) {
         if (record.sources[key]) card.append(element('p', name + ': ' + record.sources[key], 'war-source-note'));
       }
       if (record.notes) card.append(element('p', 'Board notes: ' + record.notes, 'war-source-note'));
