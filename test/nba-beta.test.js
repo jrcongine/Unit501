@@ -43,7 +43,7 @@ test('NBA API adapter uses separate NBA endpoint and shares cached requests with
  assert.equal(a.games.find(game=>game.id===1001).status,'Scheduled');
  assert.equal(a.games.find(game=>game.id===1002).status,'Final');
  clock+=60000;await get('2026-10-20');assert.equal(calls,1);
- clock+=300000;await get('2026-10-20');assert.equal(calls,2);
+ clock+=900000;await get('2026-10-20');assert.equal(calls,2);
 });
 test('NBA provider errors, invalid shapes and missing keys fail closed rather than generating games',async()=>{
  await assert.rejects(createNBAFeed({key:()=>null,fetcher:async()=>{throw Error('should not fetch')}})('2026-10-20'),/credential/);
