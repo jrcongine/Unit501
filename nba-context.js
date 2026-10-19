@@ -3,7 +3,6 @@
 // No football formulas, no odds, no predictions, and no postgame backfilling.
 const {normalizeGame}=require('./nba-feed');
 const HOST='https://v2.nba.api-sports.io';
-const LIMIT=100000000;
 const isId=n=>Number.isSafeInteger(n)&&n>0;
 const round=n=>Math.round(n*10)/10;
 function summarize(raw,teamId,selectedGame){
