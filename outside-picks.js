@@ -1,10 +1,12 @@
 'use strict';
 const boyds=require('./boyds-picks');
+const pickswise=require('./pickswise-picks');
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
 const SOURCES = {
   covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb'}},
   wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb'}},
-  boyds: {name:"Boyd's Bets",urls:boyds.URLS}
+  boyds: {name:"Boyd's Bets",urls:boyds.URLS},
+  pickswise: {name:'Pickswise',urls:pickswise.URLS}
 };
 function text(html) {
   return String(html || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ')
@@ -79,7 +81,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
           }
         } else {
           const html=await fetchPage(SOURCES[key].urls[league],fetcher);
-          picks=(key==='covers'?parseCovers:parseWagerTalk)(html,league).slice(0,60);
+          picks=(key==='covers'?parseCovers:key==='wagertalk'?parseWagerTalk:(markup,sport)=>pickswise.parse(markup,sport,now()))(html,league).slice(0,60);
         }
         value={source:key,name:SOURCES[key].name,status:picks.length?'available':'empty',checkedAt:new Date(now()).toISOString(),picks,
           message:fromSummary?'Daily summary picks only: matchup, kickoff and release time not verified. Open the source before using a pick.':
@@ -91,7 +93,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
   }
   return async league=>{
     if(!['nfl','ncaaf','mlb'].includes(league))throw Error('Unsupported league');
-    const sources=await Promise.all(['covers','wagertalk','boyds'].map(key=>source(key,league)));
+    const sources=await Promise.all(['covers','wagertalk','boyds','pickswise'].map(key=>source(key,league)));
     return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}))};
   };
 }
