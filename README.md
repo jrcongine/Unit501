@@ -37,6 +37,8 @@ See [SPORT-ADAPTERS.md](SPORT-ADAPTERS.md) for the shared Football/NBA user jour
 
 The NBA beta is intentionally separate from the NFL/NCAA simulator. Open `/nba.html` from the navigation to choose a date and retrieve the published NBA schedule and scores. No basketball predictions, odds, props or wagers are generated yet.
 
+Selecting an NBA matchup now opens the same-style Game Lab layout and, when real team IDs/stage and provider access are available, calls a separate protected `/api/nba/context?date=YYYY-MM-DD&game=ID` endpoint. That endpoint loads each team's NBA games for the season, deduplicates the game IDs, excludes the selected matchup and **all later or non-final games**, and only compares games in the same stage. It displays available season/last-10/last-5 scoring averages and sample-size labels, **not** projected points, cover probabilities or prop picks. A new season may have no qualified games yet; don't fill that gap with preseason results or assumed values.
+
 The server uses **API-NBA v2** (`https://v2.nba.api-sports.io/games?league=standard&season=2026&date=YYYY-MM-DD`). It requires valid access to API-NBA via `NBA_API_SPORTS_KEY` (preferred) or the existing `API_SPORTS_KEY` if entitled. Never expose these secrets in a browser. The system has not yet verified the Railway key's NBA subscription: if access is missing, the beta shows an unavailable state instead of fictitious games.
 
 Responses are cached for 5 minutes and share concurrent requests; no automatic polling consumes provider quota. NBA years use the season's starting calendar year (e.g., January 2027 belongs to season 2026). Game statuses and null scores come directly from API-NBA. Provider failures and invalid payloads fail closed.
