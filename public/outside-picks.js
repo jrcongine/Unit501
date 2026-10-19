@@ -28,7 +28,6 @@
         }
         list.append(section);
       }
-      for(const entry of data.manual || []){const section=el('section',null,'war-feed-source');section.append(el('h4',entry.name),el('p',entry.message,'war-muted'));list.append(section);}
       loadedAt=Date.now();
       byId('war-feed-status').textContent=count+' public selections loaded. Check the displayed game date and price before using a pick.';
     }catch(error){if(version!==request)return;loaded=false;list.replaceChildren();byId('war-feed-status').textContent='Could not load public picks. Try Refresh picks or use the source links below.';}
