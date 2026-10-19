@@ -3,7 +3,7 @@
   'use strict';
   const KEY = 'unit501:war-room:v1';
   const MEMBERS = ['jr', 'aria', 'unit501'];
-  const ADVISERS = ['covers', 'wagertalk', 'sbr', 'ev'];
+  const ADVISERS = ['covers', 'wagertalk', 'sbr'];
   const VALID_VOTES = ['for', 'against', 'pending'];
   const VALID_RESULTS = ['pending', 'won', 'lost', 'push', 'void'];
   function decision(votes) {
@@ -18,7 +18,7 @@
     const votes = {};
     for (const m of MEMBERS) votes[m] = VALID_VOTES.includes(raw.votes && raw.votes[m]) ? raw.votes[m] : 'pending';
     const sources = {};
-    for (const s of [...ADVISERS, 'juicereel']) sources[s] = cleanText(raw.sources && raw.sources[s], 400); // Preserve archived notes but accept no new Juice Reel entries.
+    for (const s of [...ADVISERS, 'juicereel', 'ev']) sources[s] = cleanText(raw.sources && raw.sources[s], 400); // Preserve archived notes; do not accept new Juice Reel or EV entries.
     const result = VALID_RESULTS.includes(raw.result) ? raw.result : 'pending';
     const matchup = cleanText(raw.matchup, 140);
     const pick = cleanText(raw.pick, 180);

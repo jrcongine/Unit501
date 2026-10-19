@@ -9,13 +9,15 @@ const core = require('../public/war-room-core');
 const example = {
   id:'id1',date:'2026-10-14',matchup:'Kennesaw @ Missouri State',
   pick:'Kennesaw -3 (-110)',votes:{jr:'for',aria:'for',unit501:'against'},
-  sources:{covers:'Kennesaw -3',wagertalk:'no posted pick',juicereel:'Old tracked record'},
+  sources:{covers:'Kennesaw -3',wagertalk:'no posted pick',juicereel:'Old tracked record',ev:'Past EV note'},
   notes:'Check line',createdAt:'2026-10-14T14:00:00Z',result:'won'
 };
 test('legacy Big 12 decisions remain readable even though manual entry is gone', () => {
   const approved=core.normalize(example);
   assert.equal(core.decision(approved.votes).status,'approved');
   assert.equal(approved.sources.juicereel,'Old tracked record');
+  assert.equal(approved.sources.ev,'Past EV note');
+  assert.equal(core.ADVISERS.includes('ev'),false);
   const map = new Map();
   const storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)};
   assert.equal(core.save(storage,[approved]),true);
@@ -31,6 +33,7 @@ test('War Room is focused on public picks; no manual board vote form or decision
   assert.match(html,/id="war-youtube-desk"/);
   assert.match(html,/id="war-archive"/);
   assert.match(html,/Big 12 Board stays in our chat/);
+  assert.doesNotMatch(html,/GuyBostonSports|Ev Singleton|EV \/ Guy Boston/);
   for (const gone of ['war-form','war-list','war-matchup','war-pick','war-source-juicereel','war-vote-jr','war-vote-aria','war-vote-unit501','war-import']) {
     assert.doesNotMatch(html,new RegExp('id="'+gone+'"'),gone+' removed');
   }
@@ -63,6 +66,6 @@ test('YouTube scouting links remain supplemental, collapsed, and do not cast vot
   assert.ok(section);
   assert.doesNotMatch(section[0],/<details[^>]*\bopen>/);
   const links=[...section[0].matchAll(/href="(https:\/\/www\.youtube\.com\/[^"]+)"/g)].map(x=>x[1]);
-  assert.equal(links.length,6);
-  assert.match(section[0],/EV and Guy Boston Sports are the same source/);
+  assert.equal(links.length,5);
+  assert.doesNotMatch(section[0],/GuyBostonSports|Ev Singleton/);
 });
