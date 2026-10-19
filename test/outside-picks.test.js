@@ -74,7 +74,7 @@ test('Boyds integration yields three distinct source feeds and falls back for ML
      url.includes('covers.com')?covers:wt);
  }});
  const nfl=await feed('nfl');
- assert.deepEqual(nfl.sources.map(s=>s.source),['covers','wagertalk','boyds']);
+ assert.deepEqual(nfl.sources.map(s=>s.source),['covers','wagertalk','boyds','pickswise']);
  assert.equal(nfl.sources[2].picks.length,2);
  assert.ok(!urls.includes(boyds.SUMMARY),'no unnecessary summary request when sport page has selections');
  const mlb=await feed('mlb');
@@ -87,9 +87,9 @@ test('Boyds integration yields three distinct source feeds and falls back for ML
 test('feed caches and shares requests, isolates failures and expires old selections',async()=>{
   let clock=Date.parse('2026-10-14T20:00Z'),calls=0,fail=false;
   const feed=createFeed({now:()=>clock,fetcher:async url=>{calls++;if(fail&&url.includes('covers'))throw Error('offline');return new Response(url.includes('boydsbets.com/free-nfl-picks/')?boydsSport:url.includes('covers')?covers:wt);}});
-  const [a,b]=await Promise.all([feed('nfl'),feed('nfl')]);assert.equal(calls,3);assert.equal(a.sources[0].picks.length,1);assert.deepEqual(a,b);
+  const [a,b]=await Promise.all([feed('nfl'),feed('nfl')]);assert.equal(calls,4);assert.equal(a.sources[0].picks.length,1);assert.deepEqual(a,b);
   assert.equal(Object.hasOwn(a,'manual'),false);
-  clock+=60000;await feed('nfl');assert.equal(calls,3);
+  clock+=60000;await feed('nfl');assert.equal(calls,4);
   clock+=300000;fail=true;const partial=await feed('nfl');assert.equal(partial.sources[0].status,'unavailable');assert.deepEqual(partial.sources[0].picks,[]);assert.equal(partial.sources[1].picks.length,1);
   clock=Date.parse('2026-10-19T00:00Z');const past=await feed('nfl');assert.deepEqual(past.sources[1].picks,[]);
   await assert.rejects(feed('https://evil.test'));
@@ -123,5 +123,5 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
 test('readable public picks survive a three-megabyte source page',async()=>{
  const feed=createFeed({fetcher:async url=>new Response(url.includes('covers')?' '.repeat(3000000)+covers:wt)});
  const result=await feed('nfl');assert.equal(result.sources[0].status,'available');assert.equal(result.sources[0].picks[0].author,'Test Analyst');
- const mlb=await feed('mlb');assert.equal(mlb.sources.length,3);assert.equal(mlb.league,'mlb');
+ const mlb=await feed('mlb');assert.equal(mlb.sources.length,4);assert.equal(mlb.league,'mlb');
 });
