@@ -21,6 +21,8 @@ function normalizeGame(game){
  const id=Number(game.id);
  const visitors=game.teams?.visitors;
  const home=game.teams?.home;
+ const awayId=Number(visitors?.id),homeId=Number(home?.id);
+ const stage=Number(game.stage);
  const start=game.date?.start;
  const status=Number(game.status?.short);
  if(!Number.isSafeInteger(id)||id<=0||
@@ -31,6 +33,9 @@ function normalizeGame(game){
  if(!Object.hasOwn(STATES,status))return null;
  return {
   id,away:visitors.name.trim().slice(0,100),home:home.name.trim().slice(0,100),
+  awayId:Number.isSafeInteger(awayId)&&awayId>0?awayId:null,
+  homeId:Number.isSafeInteger(homeId)&&homeId>0?homeId:null,
+  stage:game.stage!=null&&Number.isSafeInteger(stage)&&stage>0?stage:null,
   tipoff:start,status:STATES[status],statusCode:status,
   awayScore:status===2||status===3?numberOrNull(game.scores?.visitors?.points):null,
   homeScore:status===2||status===3?numberOrNull(game.scores?.home?.points):null,
