@@ -8,6 +8,7 @@ const path = require('path');
 const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
 const nbaGames = require('./nba-feed').createNBAFeed();
+const nbaContext = require('./nba-context').createNBAContext();
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
@@ -83,6 +84,20 @@ const server = http.createServer(async (req, res) => {
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid NBA date (YYYY-MM-DD) required.'});
       try{return send(res,200,await nbaGames(date));}
       catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:'NBA schedule unavailable. Verify NBA provider access and try again.'});}
+    }
+    if(u.pathname==='/api/nba/context'){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))
+        return send(res,400,{error:'Valid NBA date and game ID required.'});
+      try{
+        const slate=await nbaGames(date);
+        const game=slate.games.find(g=>String(g.id)===id);
+        if(!game)return send(res,404,{error:'Selected game not found on this NBA slate.'});
+        return send(res,200,await nbaContext(game,slate.season));
+      }catch(e){
+        console.error('NBA team context:',e.message);
+        return send(res,503,{error:'NBA matchup history unavailable. Check NBA data access or try again.'});
+      }
     }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
