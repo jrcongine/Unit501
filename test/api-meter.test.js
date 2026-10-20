@@ -95,8 +95,55 @@ test('remaining provider quota is reserved while requests are in flight',async()
  const meter=createMeter();let finish;
  meter.observeHeaders(new Headers({'x-ratelimit-requests-remaining':'1'}));
  const task=meter.track('/games',()=>new Promise(resolve=>{finish=resolve;}));
- await assert.rejects(meter.track('/games',async()=>{}),/reserved/);
- finish();await task;
- await meter.track('/games',async observe=>observe(new Headers({'x-ratelimit-requests-remaining':'0'})));
  await assert.rejects(meter.track('/games',async()=>{}),/exhausted/);
+ finish();await task;
+ await assert.rejects(meter.track('/games',async()=>{}),/exhausted/);
+ await assert.rejects(meter.track('/games',async()=>{}),/exhausted/);
+});
+
+test('missing headers and failed calls never refund observed provider allowance',async()=>{
+ const meter=createMeter();
+ meter.observeHeaders(new Headers({'x-ratelimit-requests-remaining':'2'}));
+ await meter.track('/games',async()=>{});
+ await assert.rejects(meter.track('/games',async()=>{throw Error('timeout');}),/timeout/);
+ meter.observeHeaders(new Headers({'x-ratelimit-requests-remaining':'2'}));
+ await assert.rejects(meter.track('/games',async()=>assert.fail('must not call provider')),/exhausted/);
+ assert.equal(meter.snapshot().outboundAttempts,2);
+ assert.equal(meter.snapshot().providerQuota.dailyRemaining,2);
+ assert.equal(meter.snapshot().providerAllowance,0);
+});
+test('429 Retry-After blocks all endpoints without spending requests then recovers',async()=>{
+ let clock=Date.parse('2026-10-20T14:00:00Z');
+ const meter=createMeter({now:()=>clock});
+ await assert.rejects(meter.track('/games',async (headers,response)=>{
+  response(429,new Headers({'retry-after':'120'}));throw Error('429');
+ }),/429/);
+ clock+=60000;
+ await assert.rejects(meter.track('/players',async()=>assert.fail()),/cooldown/);
+ assert.equal(meter.snapshot().outboundAttempts,1);
+ clock+=60001;await meter.track('/games',async()=>{});
+ assert.equal(meter.snapshot().outboundAttempts,2);
+});
+test('HTTP 200 API errors and zero minute balance pause requests without claiming daily exhaustion',async()=>{
+ for(const mode of ['body','headers']){
+  let clock=Date.parse('2026-10-20T14:00:00Z');
+  const meter=createMeter({now:()=>clock});
+  await meter.track('/games',async(observe,response)=>{
+   if(mode==='body')response(200,new Headers(),{errors:{requests:'rate limited'}});
+   else observe(new Headers({'x-ratelimit-remaining':'0'}));
+  });
+  await assert.rejects(meter.track('/games',async()=>assert.fail()),/cooldown/);
+  assert.notEqual(meter.snapshot().providerAllowance,0);
+  clock+=60001;await meter.track('/games',async()=>{});
+ }
+});
+test('late previous-day errors do not start a new-day cooldown',async()=>{
+ let clock=Date.parse('2026-10-20T23:59:59Z'),finish;
+ const meter=createMeter({now:()=>clock});
+ const task=meter.track('/games',async(_,response)=>{
+  await new Promise(resolve=>finish=resolve);response(429,new Headers());
+ });
+ clock+=2000;finish();await task;
+ await meter.track('/games',async()=>{});
+ assert.equal(meter.snapshot().cooldownUntil,null);
 });
