@@ -41,3 +41,38 @@ test('sweep scheduling never runs on startup and paused sweeps use zero provider
   assert.match(worker.status().message,/daily/);
  }finally{global.setInterval=set;}
 });
+
+test('provider headers show account-wide quota and block calls once exhausted',async()=>{
+ let clock=Date.parse('2026-10-19T22:00:00Z'),calls=0;
+ const meter=createMeter({now:()=>clock,budget:1500});
+ const headers=n=>new Headers({
+   'x-ratelimit-requests-limit':'7500',
+   'x-ratelimit-requests-remaining':String(n),
+   'x-ratelimit-limit':'300',
+   'x-ratelimit-remaining':'280'
+ });
+ meter.observeHeaders(headers(20));
+ let quota=meter.snapshot().providerQuota;
+ assert.equal(quota.dailyLimit,7500);
+ assert.equal(quota.dailyRemaining,20);
+ assert.equal(quota.minuteLimit,300);
+ // Concurrent calls can finish out of order: older replies cannot inflate remaining.
+ meter.observeHeaders(headers(0));
+ meter.observeHeaders(headers(5));
+ quota=meter.snapshot().providerQuota;
+ assert.equal(quota.dailyRemaining,0);
+ await assert.rejects(meter.track('/games?league=1',async()=>{calls++;}),/provider daily quota exhausted/);
+ assert.equal(calls,0);
+ assert.equal(meter.snapshot().blockedByProviderQuota,1);
+ assert.equal(meter.snapshot().outboundAttempts,0);
+ clock+=24*3600000;
+ assert.equal(meter.snapshot().providerQuota,null);
+ await meter.track('/games?league=1',async()=>{calls++;return {};});
+ assert.equal(calls,1);
+});
+test('bad or missing quota headers do not invent a provider limit',()=>{
+ const meter=createMeter({budget:3});
+ meter.observeHeaders(null);
+ meter.observeHeaders(new Headers({'x-ratelimit-requests-limit':'unknown'}));
+ assert.equal(meter.snapshot().providerQuota,null);
+});
