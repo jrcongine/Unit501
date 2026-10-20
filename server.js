@@ -57,6 +57,7 @@ async function providerAPI(endpoint) {
       signal: AbortSignal.timeout(15000),
       headers: {'x-apisports-key': process.env.API_SPORTS_KEY}
     });
+    footballMeter.observeHeaders(r.headers);
     if (!r.ok) throw new Error('Football provider HTTP ' + r.status);
     return r.json();
   });
