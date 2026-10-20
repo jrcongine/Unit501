@@ -38,6 +38,7 @@
   <a href="#slate-section" class="nav-slate"><span aria-hidden="true">🏈</span> Game slate</a>
   <a href="#war-room" class="nav-war"><span aria-hidden="true">⚔</span> 501 War Room</a>
   <a href="nba.html" class="nav-war"><span aria-hidden="true">🏀</span> NBA · Beta</a>
+  <a href="#power-ratings" id="quick-power" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1">🏆 Power ratings · select game</a>
   <a href="#lab" id="quick-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">🎯</span> Game Lab · select game</a>
   <a href="#player-lab" id="quick-player" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">📊</span> Player props · select game</a>
 </nav>
@@ -108,6 +109,17 @@
 
 <div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
 <section id="games" class="grid" aria-label="Available matchups"></section>
+
+<section id="power-ratings" class="card hidden" aria-label="501 Power Ratings">
+  <span class="section-kicker">TEAM INTELLIGENCE</span>
+  <h2>🏆 501 Power Ratings</h2>
+  <p id="power-status" role="status">Select a matchup to calculate the pregame leaderboard.</p>
+  <div id="power-matchup"></div>
+  <h3>League power rankings</h3>
+  <p class="power-muted">Power = estimated points above/below the league-average team on a neutral field. These are descriptive pregame ratings, not a separate scoring boost, sportsbook edge, or proven forecast. Overall and 1–10 category grades measure relative league standing, not absolute talent. Higher defense grades mean fewer points or yards allowed. Grades require complete league coverage; unavailable categories show — rather than invented values.</p>
+  <div id="power-leaderboard" class="power-scroll"></div>
+  <div id="power-detail" aria-live="polite"></div>
+</section>
 
 <section id="lab" class="card hidden">
 
@@ -235,6 +247,8 @@
 <script src="betting-splits-model.js"></script>
 <script src="spotlight-model.js"></script>
 <script src="team-model.js"></script>
+<script src="power-ratings.js"></script>
+<script src="power-ratings-ui.js"></script>
 <script src="forecast-archive.js"></script>
 <script src="forecast-results.js"></script>
 <script src="score-audit.js"></script>
