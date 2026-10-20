@@ -376,7 +376,7 @@ function showTeamContext(data, game) {
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
   }
   scoringContext = {game,data,signature:nextSignature};
-  document.dispatchEvent(new Event('unit501:team-context-updated'));
+  document.dispatchEvent(new CustomEvent('unit501:team-context-updated',{detail:{data,game}}));
   contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
