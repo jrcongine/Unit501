@@ -40,17 +40,25 @@
   }
   return {snapshot:out,matched};
  }
+ function automaticDue(s,now){
+  if(!Number.isFinite(s.game?.kickoff)||s.game.kickoff>=now||
+     !(s.records||[]).some(r=>!Number.isFinite(r.actual)))return false;
+  const last=s.resultRefreshAttemptAt;
+  // Persist retry spacing with the archive so reloading the tab cannot reset it.
+  return !Number.isFinite(last)||last>now||now-last>=3600000;
+ }
  function autoRefreshDue(archive,lastAttempt,now=Date.now()){
   if(!Number.isFinite(now)||now-lastAttempt<300000)return false;
-  return (archive.snapshots||[]).some(s=>Number.isFinite(s.game?.kickoff)&&s.game.kickoff<now&&
-    (s.records||[]).some(r=>!Number.isFinite(r.actual)));
+  return (archive.snapshots||[]).some(s=>automaticDue(s,now));
  }
- async function refresh(storage,request,now=Date.now){
+ async function refresh(storage,request,now=Date.now,{automatic=false}={}){
   const archiver=typeof module!=='undefined'&&module.exports?require('./forecast-archive'):root.Unit501ForecastArchive;
   const archive=archiver.read(storage);
   const cachedGames=new Map(),cachedBoxes=new Map();let matched=0,failed=0;
   for(let i=0;i<archive.snapshots.length;i++){
    const s=archive.snapshots[i];if(!Number.isFinite(s.game?.kickoff)||s.game.kickoff>=now())continue;
+   if(automatic&&!automaticDue(s,now()))continue;
+   s.resultRefreshAttemptAt=now();
    try{
     const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(s.game.kickoff).map(p=>[p.type,p.value]));
     const query=new URLSearchParams({date:`${parts.year}-${parts.month}-${parts.day}`,league:s.game.league,season:s.game.season});
@@ -60,13 +68,18 @@
     if(!validPayload(games))throw Error('Invalid final-game response');
     let boxes=null;
     const finals=validPayload(games)?games.response.filter(g=>String(g.game?.id)===String(s.game.id)&&['FT','AOT','FINAL'].includes(g.game?.status?.short)):[];
-    if((s.records||[]).some(r=>r.kind==='prop')&&finals.length===1){
+    if((s.records||[]).some(r=>r.kind==='prop'&&(!automatic||!Number.isFinite(r.actual)))&&finals.length===1){
      const boxUrl='/api/player-stats?game='+encodeURIComponent(s.game.id);
      if(!cachedBoxes.has(boxUrl))cachedBoxes.set(boxUrl,request(boxUrl));
      boxes=await cachedBoxes.get(boxUrl);
      if(!validPayload(boxes))throw Error('Invalid box-score response');
     }
-    const result=match(s,games,boxes,now());archive.snapshots[i]=result.snapshot;matched+=result.matched;
+    const result=match(s,games,boxes,now());if(automatic){
+     // Keep settled records and their original evidence when another record is missing.
+     result.snapshot.records=result.snapshot.records.map((r,index)=>Number.isFinite(s.records[index].actual)?s.records[index]:r);
+     result.matched=result.snapshot.records.filter((r,index)=>!Number.isFinite(s.records[index].actual)&&Number.isFinite(r.actual)).length;
+    }
+    archive.snapshots[i]=result.snapshot;matched+=result.matched;
    }catch{failed++;}
   }
   // Re-read after network awaits so forecasts saved during refresh survive.

@@ -891,23 +891,23 @@ $('download-forecast-archive').onclick=()=>{
 };
 
 let forecastRefreshAt=0;
-async function refreshForecastResults(){
+async function refreshForecastResults(automatic=false){
  const button=$('refresh-forecast-results');if(button.disabled)return;button.disabled=true;forecastRefreshAt=Date.now();
  $('forecast-archive-status').textContent='Checking saved forecasts against confirmed final games…';
  try{
   const result=await Unit501ForecastResults.refresh(localStorage,async url=>{
    const response=await fetch(url,{signal:AbortSignal.timeout(15000)});const data=await response.json();
    if(!response.ok||data.error)throw Error('Result request failed');return data;
-  });
+  },Date.now,{automatic:automatic===true});
   $('forecast-archive-status').textContent=`${result.matched} score/prop outcomes matched to confirmed finals. ${result.failed} archive requests failed. Missing player stats remain unknown; open Saved forecast accuracy to compare errors.`;
  }catch{$('forecast-archive-status').textContent='Final results could not be saved. Existing archive retained.';}
  finally{button.disabled=false;}
 };
 
-$('refresh-forecast-results').onclick=refreshForecastResults;
+$('refresh-forecast-results').onclick=()=>refreshForecastResults();
 function autoRefreshForecastResults(){
  if(document.hidden)return;
- try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults();}catch{}
+ try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults(true);}catch{}
 }
 // Browser-local archives can only be checked while this app is open.
 setTimeout(autoRefreshForecastResults,0);
@@ -917,7 +917,7 @@ document.addEventListener('unit501:archive-updated',autoRefreshForecastResults);
 
 $('forecast-review').addEventListener('toggle',()=>{
  if($('forecast-review').open&&Date.now()-forecastRefreshAt>=300000){
-  try{if(Unit501ForecastArchive.read(localStorage).snapshots.some(s=>s.game.kickoff<Date.now()))refreshForecastResults();}catch{}
+  try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults(true);}catch{}
  }
 });
 $('import-forecast-archive').addEventListener('change',async()=>{

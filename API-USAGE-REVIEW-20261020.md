@@ -38,3 +38,15 @@ Deploy only after review of the draft's other bundled changes. Record provider
 meter and local usage; open one slate and Game Lab, repeat immediately, then
 compare category deltas and account headers. Keep bulk sweeps off. Never spend
 through the quota to test exhaustion: those checks use fixtures.
+
+## Idle-tab follow-up
+Owner observed 28 / 7,500 at 09:38 Central and again at 09:53 after closing
+the app around 09:40. This points toward browser-triggered activity, not proof
+of the source of every request. Code inspection found automatic archive checks
+every five minutes could revisit all past snapshots when any result was missing.
+
+Automatic result refresh now skips settled snapshots, preserves settled records
+in partially graded snapshots, avoids boxes for settled props, and persists an
+hourly retry interval for missing or failed results. Manual refresh can still
+recheck all past results. Injury refresh remains unchanged. Full suite: 420 passed.
+This change has not been deployed or verified against live provider usage.

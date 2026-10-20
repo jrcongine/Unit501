@@ -71,3 +71,37 @@ test('automatic result checks wait for kickoff, throttle retries, and skip fully
  snapshot.records[0].actual=null;assert.equal(autoRefreshDue(data,0,now),true);
  assert.equal(autoRefreshDue({snapshots:[]},0,now),false);
 });
+
+function savedStorage(snapshots){
+ const data=new Map([[archive.key,JSON.stringify({schema:1,snapshots})]]);
+ return {getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+}
+test('automatic grading skips settled games and persists hourly retries for missing results',async()=>{
+ const {snapshot}=fixture(),settled=structuredClone(snapshot);
+ settled.game={...settled.game,id:'10',kickoff:1};settled.records[0].actual=0;
+ const storage=savedStorage([settled,snapshot]);let calls=0,clock=1000000;
+ const request=async()=>{calls++;return {response:[]}};
+ await refresh(storage,request,()=>clock,{automatic:true});assert.equal(calls,1);
+ assert.deepEqual(archive.read(storage).snapshots[0],settled);
+ // A new refresh invocation uses persisted state, including after page reload.
+ clock+=300000;await refresh(storage,request,()=>clock,{automatic:true});assert.equal(calls,1);
+ assert.equal(require('../public/forecast-results').autoRefreshDue(archive.read(storage),0,clock),false);
+ clock+=3300000;await refresh(storage,request,()=>clock,{automatic:true});assert.equal(calls,2);
+});
+test('failed automatic requests back off but manual result refresh remains available',async()=>{
+ const {snapshot,games}=fixture(),storage=savedStorage([snapshot]);let calls=0;
+ const request=async()=>{calls++;throw Error('unavailable')};
+ await refresh(storage,request,()=>1000000,{automatic:true});
+ await refresh(storage,request,()=>1300000,{automatic:true});assert.equal(calls,1);
+ await refresh(storage,async()=>{calls++;return games},()=>1300001);
+ assert.equal(calls,2);assert.equal(archive.read(storage).snapshots[0].records[0].actual,19);
+});
+test('automatic partial grading retains settled prop evidence without requesting its box score',async()=>{
+ const {snapshot,games}=fixture();
+ snapshot.records.push({...snapshot.records[0],kind:'prop',market:'rec',playerId:'7',actual:3,resultKnownAt:150000,resultStat:{value:3}});
+ const known=structuredClone(snapshot.records[1]),storage=savedStorage([snapshot]),urls=[];
+ await refresh(storage,async url=>{urls.push(url);return games},()=>1000000,{automatic:true});
+ assert.equal(urls.length,1);assert.match(urls[0],/^\/api\/games\?/);
+ assert.deepEqual(archive.read(storage).snapshots[0].records[1],known);
+ assert.equal(archive.read(storage).snapshots[0].records[0].actual,19);
+});

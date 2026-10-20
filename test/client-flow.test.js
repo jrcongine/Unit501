@@ -283,7 +283,7 @@ test('pending-only prop markets display separately from score results',async()=>
 test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
  const h=harness();await h.settle();let calls=0;
  const kickoff=Date.now()-100000;
- const archive={schema:1,snapshots:[{schema:1,game:{id:'9',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},forecastAt:kickoff-1000,records:[]}]};
+ const archive={schema:1,snapshots:[{schema:1,game:{id:'9',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},forecastAt:kickoff-1000,records:[{kind:'score',market:'points',actual:null}]}]};
  h.storage.set('unit501-score-archive-v1',JSON.stringify(archive));
  h.context.fetch=async()=>{calls++;return {ok:true,json:async()=>({response:[]})};};
  h.nodes.get('forecast-review').open=true;
