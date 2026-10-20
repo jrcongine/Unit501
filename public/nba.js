@@ -38,6 +38,24 @@
     card.append(node('p',summaryLine('Season',side.season)));
     card.append(node('p',summaryLine('Last 10',side.recent10)));
     card.append(node('p',summaryLine('Last 5',side.recent5)));
+    card.append(node('p',summaryLine('At home',side.home)));
+    card.append(node('p',summaryLine('On the road',side.away)));
+    const schedule=side.schedule;
+    if(schedule&&schedule.hoursSincePreviousTipoff!==null){
+     card.append(node('p',(schedule.backToBack?'Back-to-back · ':'' )+schedule.daysOff+
+       ' calendar day(s) off · '+schedule.hoursSincePreviousTipoff+' hours between tipoffs · '+
+       schedule.gamesInPrevious7Days+' completed games in previous 7 days'));
+     card.append(node('p',schedule.basis,'war-muted'));
+    }
+    if(side.recentResults?.length){
+     const details=node('details',''),list=node('ol','');
+     details.append(node('summary','Recent results ('+side.recentResults.length+')'));
+     for(const result of side.recentResults){
+      list.append(node('li',shared.timeCentral(result.tipoff)+' · '+result.venue+' vs '+result.opponent+
+       ' · '+(result.margin>0?'W':result.margin<0?'L':'T')+' '+result.for+'–'+result.against));
+     }
+     details.append(list);card.append(details);
+    }
     if(side.lastPlayedAt)card.append(node('p','Previous tipoff: '+shared.timeCentral(side.lastPlayedAt),'war-muted'));
     comparison.append(card);
    }

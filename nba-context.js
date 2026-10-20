@@ -21,7 +21,7 @@ function summarize(raw,teamId,selectedGame){
   const asVisitor=g.awayId===Number(teamId),asHome=g.homeId===Number(teamId);
   if(!asVisitor&&!asHome)continue;
   const own=asVisitor?g.awayScore:g.homeScore,opp=asVisitor?g.homeScore:g.awayScore;
-  entries.set(g.id,{id:g.id,tipoff:g.tipoff,for:own,against:opp,margin:own-opp,venue:asVisitor?'away':'home'});
+  entries.set(g.id,{id:g.id,tipoff:g.tipoff,for:own,against:opp,margin:own-opp,venue:asVisitor?'away':'home',opponent:asVisitor?g.home:g.away});
  }
  const prior=[...entries.values()].sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff));
  const summary=(items)=>{
@@ -30,7 +30,19 @@ function summarize(raw,teamId,selectedGame){
   return {games:items.length,pointsFor:mean('for'),pointsAgainst:mean('against'),net:mean('margin'),
     wins:items.filter(g=>g.margin>0).length,losses:items.filter(g=>g.margin<0).length};
  };
+ const last=prior.at(-1);
+ // Calendar-day gaps use the NBA schedule’s US Central display convention,
+ // not elapsed 24-hour blocks (late tipoffs and DST would mislabel back-to-backs).
+ const day=value=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+  const get=t=>parts.find(p=>p.type===t).value;return Date.UTC(Number(get('year')),Number(get('month'))-1,Number(get('day')));};
+ const gap=last?Math.round((day(cutoff)-day(last.tipoff))/86400000):null;
  return {available:prior.length>0,sample:prior.length,season:summary(prior),
+   home:summary(prior.filter(g=>g.venue==='home')),away:summary(prior.filter(g=>g.venue==='away')),
+   recentResults:prior.slice(-10).reverse(),
+   schedule: {hoursSincePreviousTipoff:last?round((cutoff-Date.parse(last.tipoff))/3600000):null,
+     daysOff:gap===null?null:Math.max(0,gap-1),backToBack:gap===null?null:gap===1,
+     gamesInPrevious7Days:prior.filter(g=>Date.parse(g.tipoff)>=cutoff-7*86400000).length,
+     basis:'Completed same-stage games returned by provider; not verified physical recovery or complete schedule coverage.'},
    recent5:summary(prior.slice(-5)),recent10:summary(prior.slice(-10)),
    lastPlayedAt:prior.at(-1)?.tipoff||null,
    sampleLabel:prior.length===0?'No completed same-stage games before tipoff':
@@ -58,6 +70,7 @@ function createNBAContext({fetcher=fetch,key=()=>process.env.NBA_API_SPORTS_KEY|
       Number(result.paging?.total||1)>1)throw Error('NBA history incomplete');
     if(result.response.length>200)throw Error('NBA history response too large');
     cache.set(ck,{at:now(),games:result.response});
+    if(cache.size>200)cache.delete(cache.keys().next().value);
     return result.response;
   })();
   pending.set(ck,task);

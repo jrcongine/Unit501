@@ -17,6 +17,7 @@ function createMeter({now=Date.now,budget=1500}={}){
   if(!Number.isSafeInteger(cap)||cap<1||cap>7500)throw Error('Invalid football daily soft budget');
   const startedAt=new Date(now()).toISOString();
   let date='',attempts=0,failures=0,blocked=0,blockedByProviderQuota=0,byCategory={},providerQuota=null;
+  const inFlight=new Map();
   const refresh=()=>{
     const current=new Date(now()).toISOString().slice(0,10);
     if(current!==date){date=current;attempts=0;failures=0;blocked=0;blockedByProviderQuota=0;byCategory={};providerQuota=null;}
@@ -37,8 +38,13 @@ function createMeter({now=Date.now,budget=1500}={}){
     const value=Number(raw);
     return Number.isSafeInteger(value)?value:null;
   }
-  function observeHeaders(headers){
+  function observeHeaders(headers,requestDate){
     refresh();
+    // A response started yesterday cannot exhaust today’s quota.
+    const responseDate=headers?.get?.('date');
+    const timestamp=responseDate?Date.parse(responseDate):NaN;
+    const observedDate=Number.isFinite(timestamp)?new Date(timestamp).toISOString().slice(0,10):requestDate;
+    if(observedDate && observedDate!==date)return;
     const dailyLimit=headerCount(headers,'x-ratelimit-requests-limit');
     const dailyRemaining=headerCount(headers,'x-ratelimit-requests-remaining');
     const minuteLimit=headerCount(headers,'x-ratelimit-limit');
@@ -62,6 +68,10 @@ function createMeter({now=Date.now,budget=1500}={}){
       blockedByProviderQuota++;
       throw Error('Football provider daily quota exhausted. No additional API calls will be made until the next UTC day.');
     }
+    if(providerQuota?.dailyRemaining!=null && (inFlight.get(date)||0)>=providerQuota.dailyRemaining){
+      blockedByProviderQuota++;
+      throw Error('Football provider remaining quota reserved by pending requests. Try again after they finish.');
+    }
     if(attempts>=cap){
       blocked++;
       throw Error('Unit 501 football API safety budget reached for this instance today. Try after the next UTC day or adjust the owner-set budget.');
@@ -69,8 +79,11 @@ function createMeter({now=Date.now,budget=1500}={}){
     attempts++;
     const group=category(endpoint);
     byCategory[group]=(byCategory[group]||0)+1;
-    try{return await perform();}
-    catch(error){failures++;throw error;}
+    const requestDate=date;
+    inFlight.set(requestDate,(inFlight.get(requestDate)||0)+1);
+    try{return await perform(headers=>observeHeaders(headers,requestDate));}
+    catch(error){refresh();if(date===requestDate)failures++;throw error;}
+    finally{const left=inFlight.get(requestDate)-1;if(left)inFlight.set(requestDate,left);else inFlight.delete(requestDate);}
   }
   return {track,snapshot,observeHeaders};
 }

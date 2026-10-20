@@ -58,7 +58,7 @@ test('NBA beta is a distinct schedule-only view and football league selector rem
  const html=fs.readFileSync(path.join(__dirname,'../public/nba.html'),'utf8');
  const base=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
  const server=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
- assert.match(html,/Phase 1: real NBA schedule and scores/);
+ assert.match(html,/NBA research beta: real schedules/);
  assert.match(html,/nba-date/);
  assert.doesNotMatch(html,/Run simulation|Projected score:/i);
  assert.match(base,/href="nba.html"/);

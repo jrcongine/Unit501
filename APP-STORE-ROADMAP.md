@@ -1,6 +1,6 @@
 # Unit 501 Pro: App Store launch roadmap
 
-Status: **planning and safeguards**, not yet a public or paid app. Target price **$5.99 USD / month**, subject to App Store pricing and taxes. No subscription processing or public accounts have been implemented.
+Status: **planning and safeguards**, not yet a public or paid app. Target price **$5.99 USD / month**, subject to App Store pricing and taxes. Disabled subscription verification and StoreKit controller scaffolds are prepared; no live subscription processing or public accounts have been implemented. See [subscriptions/README.md](subscriptions/README.md) for integration requirements.
 
 ## Product proposition
 A mobile-first sports research and prediction product:
@@ -18,7 +18,7 @@ A mobile-first sports research and prediction product:
 ## Technical milestones
 ### 0. API cost and reliability (before inviting anyone)
 - Track local outbound football API attempts and provider-reported account-wide remaining daily quota; distinguish the two.
-- Preserve quota limits through redeploys by observing upstream headers, and avoid startup bulk crawls.
+- TODO: persist shared quota reservations through redeploys. Header observations alone do not provide persistence; avoid startup bulk crawls.
 - Reduce repeated historical lookups; use shared caching, pagination bounds and deduplicated requests.
 - Keep provider credentials on server, never in the client or public repository.
 - Confirm one real production deployment is used and costs fit the subscription price.

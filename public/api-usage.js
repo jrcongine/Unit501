@@ -40,7 +40,7 @@ async function load(){
   foot.className='war-muted';
   foot.textContent='Failed outgoing requests: '+format.format(d.failedResponses)+
     '. Calls blocked by app safety cap: '+format.format(d.blockedByGuard)+
-    '. Calls blocked because the provider reported no quota remaining: '+format.format(d.blockedByProviderQuota||0)+
+    '. Calls blocked by provider quota or pending reservations: '+format.format(d.blockedByProviderQuota||0)+
     '. This process started '+new Date(d.startedAt).toLocaleString()+'.';
   details.append(foot);
  }catch{

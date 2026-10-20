@@ -76,3 +76,27 @@ test('bad or missing quota headers do not invent a provider limit',()=>{
  meter.observeHeaders(new Headers({'x-ratelimit-requests-limit':'unknown'}));
  assert.equal(meter.snapshot().providerQuota,null);
 });
+
+test('late responses from yesterday do not poison the next UTC day',async()=>{
+ let clock=Date.parse('2026-10-19T23:59:59Z'),finish;
+ const meter=createMeter({now:()=>clock});
+ const task=meter.track('/games',async observe=>{
+  await new Promise(resolve=>{finish=resolve;});
+  observe(new Headers({'x-ratelimit-requests-remaining':'0'}));
+  throw Error('late error');
+ });
+ clock+=2000;finish();await assert.rejects(task,/late error/);
+ assert.equal(meter.snapshot().providerQuota,null);
+ assert.equal(meter.snapshot().failedResponses,0);
+ await meter.track('/games',async()=>{});
+ assert.equal(meter.snapshot().outboundAttempts,1);
+});
+test('remaining provider quota is reserved while requests are in flight',async()=>{
+ const meter=createMeter();let finish;
+ meter.observeHeaders(new Headers({'x-ratelimit-requests-remaining':'1'}));
+ const task=meter.track('/games',()=>new Promise(resolve=>{finish=resolve;}));
+ await assert.rejects(meter.track('/games',async()=>{}),/reserved/);
+ finish();await task;
+ await meter.track('/games',async observe=>observe(new Headers({'x-ratelimit-requests-remaining':'0'})));
+ await assert.rejects(meter.track('/games',async()=>{}),/exhausted/);
+});

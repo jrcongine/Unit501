@@ -17,3 +17,13 @@ test('provider failures, empty data and incomplete pagination are never cached',
   let calls=0;const get=createCachedAPI(async()=>{if(++calls===1)throw Error('network');return {response:[1]};});
   await assert.rejects(get('/games?team=1'));await get('/games?team=1');assert.equal(calls,2);
 });
+test('query order and slow requests share one call, TTL begins at completion',async()=>{
+ let calls=0,clock=0,finish;
+ const get=createCachedAPI(()=>{calls++;return new Promise(resolve=>{finish=resolve;});},()=>clock);
+ const first=get('/games?team=1&season=2026');
+ await Promise.resolve();clock=90000;
+ const second=get('/games?season=2026&team=1');
+ assert.equal(calls,1);finish({response:[1]});
+ await Promise.all([first,second]);clock=100000;
+ await get('/games?team=1&season=2026');assert.equal(calls,1);
+});

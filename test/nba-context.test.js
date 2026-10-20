@@ -91,3 +91,20 @@ test('NBA comparison renders its own context without changing football scoring c
  assert.match(html,/not predictions/i);
  assert.doesNotMatch(client,/Unit501TeamModel|forecastArchive|Monte Carlo/i);
 });
+test('NBA venue splits, recent results and schedule load use only qualified history',()=>{
+ const s=summarize([old1,old2,future,current,preseason,lateFinish],5,selected);
+ assert.equal(s.home.games,1);assert.equal(s.home.pointsFor,101);
+ assert.equal(s.away.games,1);assert.equal(s.away.pointsFor,105);
+ assert.equal(s.schedule.backToBack,true);assert.equal(s.schedule.daysOff,0);
+ assert.equal(s.schedule.hoursSincePreviousTipoff,25);
+ assert.equal(s.schedule.gamesInPrevious7Days,2);
+ assert.deepEqual(s.recentResults.map(g=>g.id),[112,111]);
+ const empty=summarize([],5,selected);
+ assert.equal(empty.schedule.backToBack,null);assert.equal(empty.home,null);
+});
+test('back-to-back follows Central calendar dates across daylight saving',()=>{
+ const history=game(950,'2026-10-31T23:00:00Z',5,6,100,90);
+ const s=summarize([history],5,{...selected,tipoff:'2026-11-02T01:00:00Z'});
+ assert.equal(s.schedule.hoursSincePreviousTipoff,26);
+ assert.equal(s.schedule.backToBack,true);
+});
