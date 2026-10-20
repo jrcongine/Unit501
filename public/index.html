@@ -178,6 +178,9 @@
 </details>
 <label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
 <p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
+<label><input id="primeTimeEnabled" type="checkbox"> Prime-Time Boost (experimental)</label>
+<label><input id="sundayUpsetEnabled" type="checkbox"> Sunday Upset (experimental)</label>
+<p>Star candidates: latest 3 games average 28+ pass attempts, 14+ carries or 7+ targets (usage proxy, not confirmed position/starter status; override in Player Lab). Sunday/Monday 7pm+ Eastern: QB +20 pass yards, receiver +12.5 receiving yards, RB +17.5 rush yards. Sunday noon–4pm Eastern: half those amounts deducted; favorite score margins reduced 15%, capped at 2 points. No Thursday or late-Sunday adjustment. Assumptions, not validated trends.</p>
 <button id="sim">Run 50,000 Sims</button>
 
 <div class="results">
@@ -230,6 +233,7 @@
 <script src="probability-calibration.js"></script>
 <script src="pace-model.js"></script>
 <script src="betting-splits-model.js"></script>
+<script src="spotlight-model.js"></script>
 <script src="team-model.js"></script>
 <script src="forecast-archive.js"></script>
 <script src="forecast-results.js"></script>

@@ -86,6 +86,7 @@ async function loadHomeField(game){
     $('home-field-rankings').append(table);
   }catch{if(selected===game)$('home-field-status').textContent='Historical home-field estimate unavailable for this matchup. Standard venue assumption remains available.';}
 }
+for(const id of ['primeTimeEnabled','sundayUpsetEnabled'])$(id).addEventListener('change',()=>{invalidateSimulation('Spotlight scenario changed. Run the simulation again.');document.dispatchEvent(new Event('unit501:spotlight-changed'));});
 $('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
 let slateSequence = 0;
 let oddsSequence = 0;
@@ -773,7 +774,7 @@ function sim() {
   const automatic=['1','2'].includes(selected.league)&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt,data):null;
   if(automatic)renderAutomaticInjuries(automatic,true);
-  const options = {now:forecastAt,
+  const options = {now:forecastAt,primeTimeEnabled:$('primeTimeEnabled').checked,sundayUpsetEnabled:$('sundayUpsetEnabled').checked,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
@@ -799,6 +800,7 @@ function sim() {
   $('over').textContent = percent(result.calibrated.over??result.over);
   $('win').textContent = percent(result.calibrated.win??result.win);
   const strength = prediction.schedule;
+  const spotlightNote=prediction.spotlight?.applied?` Early Sunday Upset Alert: favorite margin reduced ${prediction.spotlight.marginReduction.toFixed(2)} points; total preserved. Experimental scenario, not calibrated.`:'';
   const scheduleNote = strength.applied
     ? prediction.pace?.applied ? 'Schedule strength corrections are included in scoring per drive, using opponents’ other pre-kickoff games with conservative limits. Cross-division strength remains experimental.'
     : `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
@@ -822,6 +824,7 @@ function sim() {
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
   $('note').textContent+=` Simulated 21+ point margins: ${selected.a} ${percent(result.blowout.away)}, ${selected.h} ${percent(result.blowout.home)}. These are raw simulation frequencies, not calibrated blowout probabilities.`;
+  $('note').textContent+=spotlightNote;
   $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
     if(automatic&&!automatic.ready){

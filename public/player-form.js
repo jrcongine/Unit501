@@ -105,6 +105,7 @@
   }
   function reviewChecks(model,entry,availability,now=Date.now()) {
     const reasons=[];
+    if(model.spotlight?.applied)reasons.push('Unvalidated Spotlight timing scenario');
     if(availability?.state!=='available')reasons.push(availability?.state==='conditional' ? 'Conditional availability: verify participation' : 'Verify participation');
     if(model.values.length<5) reasons.push('Fewer than 5 recorded games');
     if(model.form.coverage.missing>0) reasons.push('Missing game statistics');

@@ -21,6 +21,8 @@
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
+  const starRoles = new Map();
+  document.addEventListener('unit501:spotlight-changed',()=>{if(loadedFor)showPlayer();});
   const shortlisted = new Set();
   let lineScope = '';
   let sequence = 0;
@@ -367,7 +369,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), `${row.values.length} ${row.values.length === 1 ? 'game' : 'games'}`, projection.toFixed(1), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), `${row.values.length} ${row.values.length === 1 ? 'game' : 'games'}`, projection.toFixed(1)+(row.spotlight?.applied?` (Spotlight ${row.spotlight.delta>=0?'+':''}${row.spotlight.delta.toFixed(1)}; base ${row.spotlight.baseline.toFixed(1)})`:''), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text];
@@ -380,7 +382,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       fields.push(movement);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices} | ${movement}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload)${row.spotlight?.applied?' | Experimental Spotlight delta '+row.spotlight.delta.toFixed(1)+'; baseline '+row.spotlight.baseline.toFixed(1):''} | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices} | ${movement}`);
       report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
@@ -553,12 +555,15 @@ cell.append(details);
     const weather=window.Unit501WeatherModel?.effect(selected,typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,def.key,el('weatherEnabled')?.checked!==false) || {factor:1,reason:'Weather unavailable.'};
     const preWeather=adjusted;
     adjusted*=weather.factor;
-    return {weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    const starRole=starRoles.has(record.id)?starRoles.get(record.id):window.Unit501Spotlight.role(history);
+    const spotlight=window.Unit501Spotlight.player({game:selected,market:def.key,value:adjusted,starRole,enabled:window.Unit501Spotlight.windowFor(selected)==='spotlight'?el('primeTimeEnabled')?.checked===true:el('sundayUpsetEnabled')?.checked===true,workload,weatherFactor:weather.factor,blocked:window.Unit501Availability?.assess(record.teamId,record.playerId)?.blocked});
+    adjusted=spotlight.value;
+    return {spotlight,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function propSnapshot(record,def,model){
     const entry=readLine(lineKey(record,def));
     return Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
-      inputs:{weather:model.weather,preWeather:model.preWeather,weatherForecast:typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
+      inputs:{spotlight:model.spotlight,weather:model.weather,preWeather:model.preWeather,weatherForecast:typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
         quote:{line:n(entry.value),over:Number.isFinite(entry.over)?entry.over:null,under:Number.isFinite(entry.under)?entry.under:null,source:entry.source||'manual',updatedAt:entry.savedAt},
         availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
   }
@@ -588,9 +593,15 @@ cell.append(details);
       results.appendChild(withheld);
       return;
     }
+    const starLabel=document.createElement('label');starLabel.textContent='Spotlight star role: ';
+    const starSelect=document.createElement('select');starSelect.id='spotlight-star-role';
+    for(const [value,label] of [['auto','Auto — high-volume usage proxy'],['none','No star adjustment'],['QB','Star QB'],['WR','Star WR / receiver'],['RB','Star RB']]){const option=document.createElement('option');option.value=value;option.textContent=label;starSelect.append(option);}
+    starSelect.value=starRoles.get(record.id)||'auto';starSelect.onchange=()=>{if(starSelect.value==='auto')starRoles.delete(record.id);else starRoles.set(record.id,starSelect.value);showPlayer();};
+    starLabel.append(starSelect);results.append(starLabel);
     const scenarioLabel = document.createElement('label');
     scenarioLabel.textContent = 'Expected workload scenario (% of normal): ';
     const scenario = document.createElement('select');
+    scenario.id='expected-workload-scenario';
     scenario.setAttribute('aria-label', 'Expected workload scenario');
     for (const percent of [100, 75, 50, 25, 0]) {
       const option = document.createElement('option');
@@ -650,6 +661,7 @@ results.appendChild(workload);
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
       card.append(supportInfo);
+      if(model.spotlight?.applied){const note=document.createElement('p');note.textContent=`Spotlight scenario (${model.spotlight.starRole}): ${model.spotlight.baseline.toFixed(1)} baseline → ${model.adjusted.toFixed(1)} yards (${model.spotlight.delta>=0?'+':''}${model.spotlight.delta.toFixed(1)}). Timing assumption; not backtested.`;card.append(note);}
       if (model.workloadWarning) {
         const warning = document.createElement('p');
         warning.style.cssText = 'color:#e8b95b;margin:8px 0;';
@@ -746,6 +758,7 @@ results.appendChild(workload);
     matchupTeams = [];
     enteredLines.clear();
     workloadScenarios.clear();
+    starRoles.clear();
     lineScope = '';
     board.replaceChildren();
     picker.disabled = true;

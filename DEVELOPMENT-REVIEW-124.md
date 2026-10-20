@@ -46,3 +46,26 @@ and provider-error cooldowns are required before multi-user paid release.
 5. App Store integration requires identifiers, customer auth/database, server
    reconciliation, an Xcode app target and sandbox/TestFlight validation described
    in subscriptions/README.md. Current code does not enable customer charges.
+
+## Optional timing experiment
+
+Two independent, default-off controls: Prime-Time Boost and Sunday Upset. NFL only.
+Sunday/Monday kickoffs at 19:00 or later Eastern qualify for prime time. Sunday
+12:00–15:59 Eastern qualifies for early games; London morning, late afternoon,
+Thursday and college games are excluded. DST handled by America/New_York.
+
+Prime-time assumptions: QB +20 passing yards, WR/receiver +12.5 receiving yards,
+RB +17.5 rushing yards. Sunday option subtracts half these amounts from qualifying
+star projections and compresses an agreeing market-favorite score margin by 15%,
+capped at 2 points, preserving total. Simulation then recalculates percentages;
+there is no manually added percentage-point win bonus.
+
+Auto candidate roles use the latest three complete workload records (28 pass
+attempts / 14 carries / 7 targets average), not verified star or position labels.
+Player Lab offers explicit QB, receiver, RB and none overrides. Workload/weather
+scale yardage effects; missing/withheld and zero-workload projections stay protected.
+No additional provider calls. Scenario assumptions and model version are captured
+in forecast records; existing first-forecast policy remains unchanged. Adjusted team
+scenarios do not reuse baseline calibration. No empirical validation claimed.
+
+403 Node tests pass, including actual client toggle flow and football regressions.
