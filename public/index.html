@@ -38,6 +38,7 @@
   <a href="#slate-section" class="nav-slate"><span aria-hidden="true">🏈</span> Game slate</a>
   <a href="#war-room" class="nav-war"><span aria-hidden="true">⚔</span> 501 War Room</a>
   <a href="nba.html" class="nav-war"><span aria-hidden="true">🏀</span> NBA · Beta</a>
+  <a href="#power-ratings" id="quick-power" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1">🏆 Power ratings · select game</a>
   <a href="#lab" id="quick-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">🎯</span> Game Lab · select game</a>
   <a href="#player-lab" id="quick-player" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">📊</span> Player props · select game</a>
 </nav>
@@ -109,6 +110,17 @@
 <div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
 <section id="games" class="grid" aria-label="Available matchups"></section>
 
+<section id="power-ratings" class="card hidden" aria-label="501 Power Ratings">
+  <span class="section-kicker">TEAM INTELLIGENCE</span>
+  <h2>🏆 501 Power Ratings</h2>
+  <p id="power-status" role="status">Select a matchup to calculate the pregame leaderboard.</p>
+  <div id="power-matchup"></div>
+  <h3>League power rankings</h3>
+  <p class="power-muted">Power = estimated points above/below the league-average team on a neutral field. These are descriptive pregame ratings, not a separate scoring boost, sportsbook edge, or proven forecast. Overall and 1–10 category grades measure relative league standing, not absolute talent. Higher defense grades mean fewer points or yards allowed. Grades require complete league coverage; unavailable categories show — rather than invented values.</p>
+  <div id="power-leaderboard" class="power-scroll"></div>
+  <div id="power-detail" aria-live="polite"></div>
+</section>
+
 <section id="lab" class="card hidden">
 
 <span class="section-kicker">02 / RUN THE NUMBERS</span>
@@ -178,6 +190,9 @@
 </details>
 <label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
 <p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
+<label><input id="primeTimeEnabled" type="checkbox"> Prime-Time Boost (experimental)</label>
+<label><input id="sundayUpsetEnabled" type="checkbox"> Sunday Upset (experimental)</label>
+<p>Star candidates: latest 3 games average 28+ pass attempts, 14+ carries or 7+ targets (usage proxy, not confirmed position/starter status; override in Player Lab). Sunday/Monday 7pm+ Eastern: QB +20 pass yards, receiver +12.5 receiving yards, RB +17.5 rush yards. Sunday noon–4pm Eastern: half those amounts deducted; favorite score margins reduced 15%, capped at 2 points. No Thursday or late-Sunday adjustment. Assumptions, not validated trends.</p>
 <button id="sim">Run 50,000 Sims</button>
 
 <div class="results">
@@ -200,6 +215,7 @@
 <button id="save-game-pick" type="button">Save selected pick</button>
 <p>Run the simulation first. Picks freeze the displayed spread or total. Prices left blank stay unknown. Saved forecasts and picks are local to this browser; download a backup to transfer them.</p>
 <button id="refresh-forecast-results" type="button">Match saved forecasts with final results</button>
+<p class="war-muted">Automatic checks skip settled forecasts and retry missing results at most hourly while this page is visible. Use this button to check again sooner or refresh settled results.</p>
 <button id="download-forecast-archive" type="button">Download saved forecasts</button>
 <label>Restore forecast archive <input id="import-forecast-archive" type="file" accept=".json,application/json"></label>
 <details id="forecast-review"><summary>Saved forecast accuracy</summary><div id="forecast-review-results" aria-live="polite"></div></details>
@@ -230,7 +246,10 @@
 <script src="probability-calibration.js"></script>
 <script src="pace-model.js"></script>
 <script src="betting-splits-model.js"></script>
+<script src="spotlight-model.js"></script>
 <script src="team-model.js"></script>
+<script src="power-ratings.js"></script>
+<script src="power-ratings-ui.js"></script>
 <script src="forecast-archive.js"></script>
 <script src="forecast-results.js"></script>
 <script src="score-audit.js"></script>

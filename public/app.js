@@ -86,6 +86,7 @@ async function loadHomeField(game){
     $('home-field-rankings').append(table);
   }catch{if(selected===game)$('home-field-status').textContent='Historical home-field estimate unavailable for this matchup. Standard venue assumption remains available.';}
 }
+for(const id of ['primeTimeEnabled','sundayUpsetEnabled'])$(id).addEventListener('change',()=>{invalidateSimulation('Spotlight scenario changed. Run the simulation again.');document.dispatchEvent(new Event('unit501:spotlight-changed'));});
 $('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
 let slateSequence = 0;
 let oddsSequence = 0;
@@ -375,7 +376,7 @@ function showTeamContext(data, game) {
     invalidateSimulation('Scoring stats updated. Run the simulation to use them.');
   }
   scoringContext = {game,data,signature:nextSignature};
-  document.dispatchEvent(new Event('unit501:team-context-updated'));
+  document.dispatchEvent(new CustomEvent('unit501:team-context-updated',{detail:{data,game}}));
   contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
@@ -773,7 +774,7 @@ function sim() {
   const automatic=['1','2'].includes(selected.league)&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt,data):null;
   if(automatic)renderAutomaticInjuries(automatic,true);
-  const options = {now:forecastAt,
+  const options = {now:forecastAt,primeTimeEnabled:$('primeTimeEnabled').checked,sundayUpsetEnabled:$('sundayUpsetEnabled').checked,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
@@ -799,6 +800,7 @@ function sim() {
   $('over').textContent = percent(result.calibrated.over??result.over);
   $('win').textContent = percent(result.calibrated.win??result.win);
   const strength = prediction.schedule;
+  const spotlightNote=prediction.spotlight?.applied?` Early Sunday Upset Alert: favorite margin reduced ${prediction.spotlight.marginReduction.toFixed(2)} points; total preserved. Experimental scenario, not calibrated.`:'';
   const scheduleNote = strength.applied
     ? prediction.pace?.applied ? 'Schedule strength corrections are included in scoring per drive, using opponents’ other pre-kickoff games with conservative limits. Cross-division strength remains experimental.'
     : `Schedule strength applied automatically: baseline ${prediction.unadjustedAway.toFixed(1)}–${prediction.unadjustedHome.toFixed(1)} → adjusted ${prediction.preInjuryAway.toFixed(1)}–${prediction.preInjuryHome.toFixed(1)} points (before injuries and home field; same manual point adjustments). Uses opponents’ other pre-kickoff games with conservative limits for small samples. Experimental, not calibrated.${strength.away.supplemental + strength.home.supplemental ? " Includes separately fetched non-FBS opponent scoring; cross-division strength is not calibrated." : ""}`
@@ -822,6 +824,7 @@ function sim() {
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
   $('note').textContent+=` Simulated 21+ point margins: ${selected.a} ${percent(result.blowout.away)}, ${selected.h} ${percent(result.blowout.home)}. These are raw simulation frequencies, not calibrated blowout probabilities.`;
+  $('note').textContent+=spotlightNote;
   $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
     if(automatic&&!automatic.ready){
@@ -888,23 +891,23 @@ $('download-forecast-archive').onclick=()=>{
 };
 
 let forecastRefreshAt=0;
-async function refreshForecastResults(){
+async function refreshForecastResults(automatic=false){
  const button=$('refresh-forecast-results');if(button.disabled)return;button.disabled=true;forecastRefreshAt=Date.now();
  $('forecast-archive-status').textContent='Checking saved forecasts against confirmed final games…';
  try{
   const result=await Unit501ForecastResults.refresh(localStorage,async url=>{
    const response=await fetch(url,{signal:AbortSignal.timeout(15000)});const data=await response.json();
    if(!response.ok||data.error)throw Error('Result request failed');return data;
-  });
+  },Date.now,{automatic:automatic===true});
   $('forecast-archive-status').textContent=`${result.matched} score/prop outcomes matched to confirmed finals. ${result.failed} archive requests failed. Missing player stats remain unknown; open Saved forecast accuracy to compare errors.`;
  }catch{$('forecast-archive-status').textContent='Final results could not be saved. Existing archive retained.';}
  finally{button.disabled=false;}
 };
 
-$('refresh-forecast-results').onclick=refreshForecastResults;
+$('refresh-forecast-results').onclick=()=>refreshForecastResults();
 function autoRefreshForecastResults(){
  if(document.hidden)return;
- try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults();}catch{}
+ try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults(true);}catch{}
 }
 // Browser-local archives can only be checked while this app is open.
 setTimeout(autoRefreshForecastResults,0);
@@ -914,7 +917,7 @@ document.addEventListener('unit501:archive-updated',autoRefreshForecastResults);
 
 $('forecast-review').addEventListener('toggle',()=>{
  if($('forecast-review').open&&Date.now()-forecastRefreshAt>=300000){
-  try{if(Unit501ForecastArchive.read(localStorage).snapshots.some(s=>s.game.kickoff<Date.now()))refreshForecastResults();}catch{}
+  try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults(true);}catch{}
  }
 });
 $('import-forecast-archive').addEventListener('change',async()=>{

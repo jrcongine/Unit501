@@ -52,13 +52,18 @@ async function providerAPI(endpoint) {
 
   }
 
-  return footballMeter.track(endpoint,async()=>{
+  return footballMeter.track(endpoint,async (observeHeaders,observeResponse)=>{
     const r = await fetch(API + endpoint, {
       signal: AbortSignal.timeout(15000),
       headers: {'x-apisports-key': process.env.API_SPORTS_KEY}
     });
+    observeHeaders(r.headers);
+    observeResponse(r.status,r.headers);
     if (!r.ok) throw new Error('Football provider HTTP ' + r.status);
-    return r.json();
+    const data=await r.json();
+    observeResponse(r.status,r.headers,data);
+    if(data?.errors&&Object.keys(data.errors).length)throw new Error('Football provider returned an API error; retries paused briefly.');
+    return data;
   });
 
 }

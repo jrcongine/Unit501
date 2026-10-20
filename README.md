@@ -31,7 +31,7 @@ Without a key the UI loads in demo mode. With a key, the server proxies API-NFL/
 - 50,000-run Monte Carlo game simulator
 - Mobile/iPhone-friendly UI
 
-See [SPORT-ADAPTERS.md](SPORT-ADAPTERS.md) for the shared Football/NBA user journey, reusable UI helpers, feature gates, and the separate basketball ratings/calibration roadmap.
+See [SPORT-ADAPTERS.md](SPORT-ADAPTERS.md) for the shared Football/NBA user journey, reusable UI helpers, feature gates, and the separate basketball ratings/calibration roadmap. See [APP-STORE-ROADMAP.md](APP-STORE-ROADMAP.md) for the proposed $5.99/month App Store launch and commercial-readiness gates.
 
 ## NBA beta (schedule and scores only)
 
@@ -52,7 +52,7 @@ Unit 501 now protects the paid **American-football** API subscription separately
 - Automatic server-startup roster sweeps are **off** by default. To opt in, set `UNIT501_ENABLE_ROSTER_SWEEPS=1` in Railway; sweeps then run on a **24-hour** interval starting after startup, never immediately on deployment. Opening a game still fetches the reports it needs.
 - Game Lab downloads **up to 16 detailed team box scores per season comparison**, starting with selected teams. Completed-game scoring and national scoring averages still use the schedule. Rushing/passing totals and national yardage ranks may be incomplete. The internal ranking adapter accepts `boxLimit:Infinity` for exhaustive test fixtures, not for production browsing.
 - Outbound NFL/college football API attempts are counted by endpoint category. A conservative default **1,500 requests per UTC day per Railway process** budget stops further requests once reached. Owner may set `UNIT501_FOOTBALL_DAILY_BUDGET` from 1 to 7,500 to adjust. The app shows an explicit failure rather than silently continuing expensive requests.
-- Open **Football API usage** below the slate controls to see the process-only request count, categories, failures and blocked attempts. The protected `/api/provider-usage` endpoint returns the same numbers. **Counters reset whenever Railway restarts** and may miss traffic from other instances, deployments or API consumers. The API-Sports dashboard is the only authoritative account-level usage total. This counter is not a historical audit of earlier requests.
+- Open **Football API usage** below the slate controls to see the process-only request count, categories, failures and blocked attempts. When a live football API response includes provider quota headers, the panel also shows the provider-reported daily limit and remaining calls; this does not cost an extra API request. A reported zero remaining blocks further requests on that server until the next UTC day. The protected `/api/provider-usage` endpoint returns the same numbers. **Counters reset whenever Railway restarts** and may miss traffic from other instances, deployments or API consumers. The API-Sports dashboard is the only authoritative account-level usage total. This counter is not a historical audit of earlier requests.
 - These savings mean detailed rushing/passing rankings usually will **not** become fully populated from a single game load. Do not interpret missing ranks as zero, and do not change score projections to compensate for missing yardage box scores. The automatic player-ratings bulk build remains user-initiated with its checkbox off by default; the daily budget applies if someone runs it.
 
 ## Current football extensions

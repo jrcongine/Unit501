@@ -229,3 +229,33 @@ a{color:#97e3fc}
 
 .war-archive{margin-top:14px;border-top:1px solid #354057;padding-top:12px}
 .war-archive>summary{cursor:pointer;font-size:14px;color:#b9cad8}
+
+
+/* 501 Power Ratings — descriptive scouting, never an extra simulation boost. */
+#power-ratings{scroll-margin-top:16px;border-left:4px solid #c4a76a}
+#power-ratings>h2{color:#f7e2aa;margin-top:8px}
+.power-muted{color:#aeb9c9;font-size:13px;line-height:1.55}
+.power-matchup{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:12px;margin:12px 0 20px}
+.power-team-card{padding:14px;background:#0c1420;border:1px solid #34465c;border-radius:13px;min-width:0}
+.power-team-card h4{margin:2px 0 10px;font-size:17px}
+.power-team-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.power-team-head strong{font-size:24px;color:#99dfc6}
+.power-grades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px;padding:10px 0}
+.power-grade{display:flex;justify-content:space-between;gap:5px;font-size:12px;padding:6px 0;border-bottom:1px solid #253144}
+.power-grade strong{white-space:nowrap;font-size:13px}
+.power-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.power-side{border:1px solid #304356;border-radius:10px;padding:9px;background:#101d2c;min-width:0}
+.power-side h5{font-size:13px;margin:0 0 6px;color:#d6e2f0}
+.power-side-list{padding-left:18px;margin:0}
+.power-side-list li{font-size:12px;line-height:1.5;margin:4px 0}
+.power-scroll{overflow:auto;max-height:540px;border:1px solid #344357;border-radius:12px}
+.power-table{width:100%;border-collapse:collapse;min-width:460px;font-size:13px}
+.power-table th{position:sticky;top:0;background:#1b3043;color:#c7dce7;text-align:left;padding:10px 8px;white-space:nowrap;z-index:1}
+.power-table td{padding:6px 8px;border-top:1px solid #293445;white-space:nowrap}
+.power-table tr.power-current{background:#1e3641}
+.power-table .power-number{font-weight:800;color:#b3dfc8}
+.power-team-button{min-height:32px;border:none;background:none;text-align:left;padding:4px;color:#d2eaff;font-size:13px}
+.power-team-button:hover,.power-team-button[aria-pressed="true"]{text-decoration:underline;color:#96f6e5}
+.power-team-button:focus-visible{outline:2px solid #a5e3de}
+#power-detail{margin-top:18px}
+@media(max-width:420px){.power-notes{grid-template-columns:1fr}}

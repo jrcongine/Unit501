@@ -58,13 +58,14 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
    const response=await fetcher(url,{headers:{'x-apisports-key':apiKey,Accept:'application/json'},signal:AbortSignal.timeout(12000)});
    if(!response.ok)throw Error('NBA provider returned HTTP '+response.status);
    const data=await response.json();
-   if(!data||!Array.isArray(data.response)||
+   if(!data||!Array.isArray(data.response)||Number(data.paging?.total||1)>1||
       (data.errors&&(Array.isArray(data.errors)?data.errors.length:Object.keys(data.errors).length)))throw Error('NBA provider response unavailable');
    // A schedule can genuinely be empty. Missing/invalid records must not become invented games.
    const games=data.response.map(normalizeGame).filter(Boolean).sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff));
    if(data.response.length&&games.length===0)throw Error('NBA provider format unrecognized');
    const result={league:'nba',season,date,checkedAt:new Date(now()).toISOString(),games,experimental:true};
    cache.set(id,{result,at:now()});
+   if(cache.size>120)cache.delete(cache.keys().next().value);
    return result;
   })();
   pending.set(id,work);
