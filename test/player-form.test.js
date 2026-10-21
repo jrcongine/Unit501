@@ -171,3 +171,50 @@ test('consistent receiving production is not suppressed by spike safeguard',()=>
  assert.equal(model.outlierAdjustment,null);
  assert.equal(model.baseline,model.weighted);
 });
+
+test('Belin-style role change uses consecutive recent workload without rewriting backup results',()=>{
+ const {project}=require('../public/player-form');
+ const history=[{attempts:39,passYds:300},{attempts:14,passYds:148},{attempts:15,passYds:127},{attempts:1,passYds:2},{attempts:4,passYds:36}].map((g,i)=>({...g,gameDate:10-i}));
+ const result=project(history,'passYds');
+ assert.equal(result.roleAdjustment.kind,'recent-workload');
+ assert.equal(result.usage.workload,26.5);assert.equal(result.usage.games,2);
+ assert.ok(result.baseline>200&&result.baseline<300);
+ assert.deepEqual(result.values,[300,148,127,2,36]);assert.equal(result.average,122.6);
+ const explicit=project(history,'passYds',35);
+ assert.equal(explicit.usage.workload,35);assert.equal(explicit.roleAdjustment.kind,'user-scenario');
+ assert.equal(explicit.baseline,35*explicit.usage.efficiency);
+});
+test('workload shift requires two consecutive consistent changes and never jumps over a stat gap',()=>{
+ const {workloadShift,project}=require('../public/player-form');
+ const rows=values=>values.map((carries,i)=>({gameDate:10-i,carries,rushYds:Number.isFinite(carries)?carries*5:null}));
+ assert.equal(workloadShift(rows([20,2,3,3]),'carries'),null);
+ assert.equal(workloadShift(rows([20,null,20,3,3]),'carries'),null);
+ const lower=project(rows([2,3,20,20]),'rushYds');
+ assert.equal(lower.usage.workload,2.5);assert.equal(lower.baseline,12.5);
+ assert.equal(project(rows([20,20,3,3]),'carries').baseline,20);
+ assert.equal(project(rows([20,20,20,20]),'rushYds').roleAdjustment,null);
+});
+test('absolute opportunity scenarios handle zero, reject invalid inputs and retain coverage guards',()=>{
+ const {project}=require('../public/player-form');
+ const rows=[{gameDate:2,carries:20,rushYds:100},{gameDate:1,carries:20,rushYds:100}];
+ assert.equal(project(rows,'rushYds',30).baseline,150);
+ assert.equal(project(rows,'rushYds',0).baseline,0);
+ for(const invalid of [-1,61,Infinity,NaN,'30'])assert.equal(project(rows,'rushYds',invalid).baseline,100);
+ assert.equal(project([{gameDate:4},{gameDate:3},...rows],'rushYds',30).withheld,true);
+});
+test('explicit receiving zeros count as misses while missing games stay visible in the denominator',()=>{
+ const {project,coverageText}=require('../public/player-form');
+ const rows=[64,67,168,0,0,null].map((recYds,i)=>({gameDate:10-i,recYds}));
+ const result=project(rows,'recYds');
+ assert.equal(result.values.filter(v=>v>50.5).length,3);
+ assert.equal(result.values.filter(v=>v<50.5).length,2);
+ assert.equal(result.average,59.8);
+ assert.equal(coverageText(result.coverage),'5/6 team games recorded; 1 unknown');
+});
+
+test('two explicit zero-workload zero-yard games can lower the recent estimate to zero',()=>{
+ const {project}=require('../public/player-form');
+ const history=[0,0,20,20].map((carries,i)=>({gameDate:10-i,carries,rushYds:carries*5}));
+ const result=project(history,'rushYds');assert.equal(result.baseline,0);
+ assert.equal(result.roleAdjustment.kind,'recent-workload');assert.equal(result.values.length,4);
+});

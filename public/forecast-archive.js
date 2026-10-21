@@ -47,7 +47,7 @@
      ![baseline,adjusted].every(Number.isFinite)||(!market.endsWith('Yds')&&[baseline,adjusted].some(v=>v<0)))return null;
   return JSON.parse(JSON.stringify({schema:1,kind:'prop',forecastAt:now,game,inputs,records:[{
    league:String(game.league),season:String(game.season),gameId:String(game.id),teamId:String(teamId),playerId:String(playerId),kind:'prop',market,
-   modelVersion:'player-form-v2-lineup-v2-archive-v1'+(inputs?.spotlight?.applied?'-spotlight-v1':''),forecastAt:now,inputAsOf:now,kickoff:game.kickoff,
+   modelVersion:'player-form-v3-role-lineup-v2-archive-v1'+(inputs?.spotlight?.applied?'-spotlight-v1':''),forecastAt:now,inputAsOf:now,kickoff:game.kickoff,
    evidenceUrl:'https://unit501-production-0bd5.up.railway.app/',evidenceType:'forecast-application-with-captured-inputs',
    baseline,adjusted,actual:null,resultKnownAt:null
   }]}));

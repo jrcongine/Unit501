@@ -764,3 +764,15 @@ test('independent timing switches change only eligible scenarios and can restore
  h.nodes.get('sundayUpsetEnabled').checked=false;await h.nodes.get('sundayUpsetEnabled').dispatchEvent({type:'change'});h.run('sim()');
  assert.doesNotMatch(h.nodes.get('note').textContent,/Early Sunday Upset Alert/);
 });
+
+test('expected opportunities change rendered prop and clearing restores baseline with coverage shown',async()=>{
+ const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 100.0 projected/);
+ const carries=h.nodes.get('expected-carries');carries.value='30';await carries.dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 150.0 projected/);
+ assert.match(h.nodes.get('predict-results').textContent,/Your expected workload scenario: 30.0 carries/);
+ assert.match(h.nodes.get('comparison-1:7-recYds').textContent,/2\/2 team games recorded; 0 unknown/);
+ h.nodes.get('expected-carries').value='';await h.nodes.get('expected-carries').dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 100.0 projected/);
+});

@@ -4,12 +4,12 @@
   const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const number=v=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&/^-?\d+(?:\.\d+)?$/.test(v.trim())?Number(v):null;
   const definitions=[
-    {key:'passYds',title:'Passing yards',group:'passing',keys:['yards']},
+    {key:'passYds',title:'Passing yards',group:'passing',keys:['yards','passing yards']},
     {key:'passTD',title:'Passing TDs',group:'passing',keys:['passing touch downs','passing touchdowns']},
     {key:'carries',title:'Rushing attempts',group:'rushing',keys:['total rushes','rushing attempts','rush attempts','attempts','carries']},
-    {key:'rushYds',title:'Rushing yards',group:'rushing',keys:['yards']},
+    {key:'rushYds',title:'Rushing yards',group:'rushing',keys:['yards','rushing yards']},
     {key:'rushTD',title:'Rushing TDs',group:'rushing',keys:['rushing touch downs','rushing touchdowns']},
-    {key:'recYds',title:'Receiving yards',group:'receiving',keys:['yards']},
+    {key:'recYds',title:'Receiving yards',group:'receiving',keys:['yards','receiving yards']},
     {key:'rec',title:'Receptions',group:'receiving',keys:['receptions','total receptions']},
     {key:'recTD',title:'Receiving TDs',group:'receiving',keys:['receiving touch downs','receiving touchdowns']}
   ];
