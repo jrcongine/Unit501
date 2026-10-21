@@ -671,6 +671,8 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  assert.notEqual(h.nodes.get('score').textContent,'—');
  assert.equal(h.run('latestForecast'),null);
  assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded|incomplete/i);
+ assert.equal(h.nodes.get('awayOffenseLoss').placeholder,'Unavailable');
+ assert.match(h.nodes.get('auto-injury-status').textContent,/manual points/);
  assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
 });
 

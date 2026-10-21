@@ -1,9 +1,10 @@
 'use strict';
 const {fbsName}=require('./team-identity');
 const {matchPlayer}=require('./player-name-match');
-const sources={SEC:'https://www.secsports.com/fbreports',ACC:'https://theacc.com/sports/2025/8/28/availability-reporting-football.aspx',B10:'https://bigten.org/sports/2026/9/10/FB_Availability_Reports.aspx'};
-const reportSchool=(name,season)=>fbsName({name},season)||fbsName({name:String(name||'').replace(/\bSt\.$/,'State')},season);
-const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const {sources:registry,sourceFor}=require('./college-injury-sources');
+const sources=Object.fromEntries(Object.entries(registry).filter(([,s])=>s.provider).map(([key,s])=>[key,s.url]));
+const reportAliases={'Western Mich.':'Western Michigan','Central Mich.':'Central Michigan','Eastern Mich.':'Eastern Michigan','Army West Point':'Army','Fla. Atlantic':'Florida Atlantic'};
+const reportSchool=(name,season)=>fbsName({name:reportAliases[name]||name},season)||fbsName({name:String(name||'').replace(/\bSt\.$/,'State')},season);
 function localEpoch(date,time,zone){
  const tz={CT:'America/Chicago',ET:'America/New_York'}[zone];
  if(!tz||!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||!/^\d{1,2}:\d{2}:\d{2}$/.test(time||''))return NaN;
@@ -24,7 +25,7 @@ function matchReports(payload,g,season,now){
   const gameTime=localEpoch(r?.footer?.date,r?.footer?.time,r?.conferenceTimeZone);
   const publishedAt=localEpoch(r?.publishDate,r?.postedTime,r?.conferenceTimeZone);
   const names=(r?.games||[]).map(t=>reportSchool(t.teamName,season));
-  return gameTime===kickoff && Number.isFinite(publishedAt) && publishedAt<=now && publishedAt<=kickoff && kickoff-publishedAt<=7*86400000 &&
+  return !/pending/i.test(r?.ReportType||'') && gameTime===kickoff && Number.isFinite(publishedAt) && publishedAt<=now && publishedAt<=kickoff && kickoff-publishedAt<=7*86400000 &&
    names.length===2 && wanted.every(n=>names.includes(n)) && r.games.every(t=>Array.isArray(t.rows));
  }).map(r=>({...r,publishedAt:localEpoch(r.publishDate,r.postedTime,r.conferenceTimeZone)}));
 }
@@ -33,22 +34,38 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
  if(!response.ok)throw Error('Official college report unavailable.');return response.json();
 }){
  const cache=new Map();
- async function read(conf){let item=cache.get(conf);if(!item||now()-item.at>=900000){item={at:now(),pending:readPublic(conf).then(data=>({data,checkedAt:now()}))};cache.set(conf,item);item.pending.catch(()=>cache.delete(conf));}return item.pending;}
+ async function read(conf){let item=cache.get(conf);if(!item||now()-item.at>=900000){item={at:now(),pending:readPublic(registry[conf].provider).then(data=>({data,checkedAt:now()}))};cache.set(conf,item);item.pending.catch(()=>cache.delete(conf));}return item.pending;}
  return async(q,teams)=>{
   if(q.league!=='2')return;
-  const unavailable=()=>({available:false,rows:[],message:'Official SEC/ACC/Big Ten report not verified for this exact matchup. Other conference coverage is unsupported; availability remains unknown.'});
+  const unavailable=()=>({available:false,coverage:'unavailable',rows:[],message:'Official report not verified for this exact matchup. Availability remains unknown; turn off Auto injuries to enter manual points.'});
   for(const team of teams)team.official=unavailable();
   if(!/^\d{1,6}$/.test(q.game||''))return;
   try{
    const response=await api(`/games?id=${q.game}`),g=response.response?.length===1?response.response[0]:null,kickoff=Number(g?.game?.date?.timestamp)*1000;
    if(response.errors&&Object.keys(response.errors).length)throw Error();
    if(String(g?.league?.id)!==q.league||String(g?.league?.season)!==q.season||String(g?.teams?.away?.id)!==q.away||String(g?.teams?.home?.id)!==q.home||!Number.isFinite(kickoff)||kickoff<=now()||kickoff>now()+7*86400000)throw Error();
-   const results=await Promise.allSettled(Object.keys(sources).map(async conf=>{const report=await read(conf);return {conf,...report,matches:matchReports(report.data,g,q.season,now())};}));
+   const teamSources=new Map();
+   for(const team of teams){
+    const source=sourceFor(String(team.id)===q.away?g.teams.away:g.teams.home,q.season);
+    if(!source)continue;
+    teamSources.set(String(team.id),source);
+    team.official={...unavailable(),source:source.code,publisher:source.label,url:source.url,
+      coverage:source.provider?'incomplete':'unsupported',gameId:String(q.game),kickoff,season:q.season,
+      message:source.provider?source.label+': no published report verified for this matchup yet. Nonconference games may not be covered. Availability remains unknown; use manual points if needed.':
+        source.label+' automatic availability import is not connected. Review the official '+(source.kind==='school'?'school updates':'conference report')+', then turn off Auto injuries to enter manual points. Missing coverage does not mean no injuries.'};
+   }
+   // An independent or nonconference opponent can be covered by a matched report
+   // from the other team's conference. Do not require both teams to be members.
+   const requested=[...new Set([...teamSources.values()].filter(s=>s.provider).map(s=>s.code))];
+   const results=await Promise.allSettled(requested.map(async conf=>{const report=await read(conf);return {conf,...report,matches:matchReports(report.data,g,q.season,now())};}));
+   for(let i=0;i<results.length;i++)if(results[i].status==='rejected')for(const team of teams){
+    if(teamSources.get(String(team.id))?.code===requested[i])team.official={...team.official,coverage:'unavailable',message:registry[requested[i]].label+' report source could not be read. Availability remains unknown; use manual points if needed.'};
+   }
    const candidates=results.filter(r=>r.status==='fulfilled').flatMap(r=>r.value.matches.map(m=>({report:m,conf:r.value.conf,checkedAt:r.value.checkedAt})));
    if(!candidates.length)return;
    const latest=Math.max(...candidates.map(c=>c.report.publishedAt)),current=candidates.filter(c=>c.report.publishedAt===latest);
    // Multiple published snapshots at the same time are ambiguous, even across sources.
-   if(current.length!==1)return;
+   if(current.length!==1){for(const team of teams)team.official={...team.official,coverage:'conflict',message:'Conflicting official reports for this matchup. No automatic injury points; review reports or enter manual points.'};return;}
    const {report,conf,checkedAt}=current[0];
    for(const team of teams){
     const identity=fbsName(String(team.id)===q.away?g.teams.away:g.teams.home,q.season);
@@ -60,7 +77,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
      if(!player){unmatched++;unresolved.push({name:match[2],position:match[1],status:r.status});continue;}
      rows.push({id:player.id,teamId:String(team.id),name:match[2],position:match[1],status:r.status,description:'Conference availability report',date:new Date(report.publishedAt).toISOString()});
     }
-    team.official={available:true,source:conf,publisher:conf==='B10'?'Big Ten':conf,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,unresolved,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
+    team.official={available:true,coverage:unmatched?'incomplete':'verified',source:conf,publisher:registry[conf].label,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,unresolved,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
    }
   }catch{}
  };

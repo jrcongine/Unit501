@@ -119,6 +119,8 @@
       }
       if(t.official) {
         panel.append(node('p',t.official.available ? `${t.official.publisher || `Official NFL Week ${t.official.week}`}  cross-check: checked ${timestamp(t.official.checkedAt)}${t.official.publishedAt?'; published '+timestamp(t.official.publishedAt):''}. ${t.official.unmatched} entries could not be matched to a unique roster player. Starting roles remain unverified.` : t.official.message));
+        if(t.official.coverage)panel.append(node('p','Official report coverage: '+t.official.coverage+'.'));
+        if(!t.official.available&&/^https:\/\//.test(t.official.url||'')){const link=node('a','Review official '+(t.official.publisher||'team')+' reports / updates');link.href=t.official.url;link.target='_blank';link.rel='noopener';panel.append(link);}
         if(t.official.available) {
           if(t.official.unresolved?.length) {
             const warning=node('div','');
