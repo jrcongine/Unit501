@@ -70,7 +70,9 @@
     const categories=original.role==='QB'?['passing']:['RB','FB'].includes(original.role)?['rushing','receiving']:['WR','TE'].includes(original.role)?['receiving']:[];
     if(!categories.length)return unknown('This position lacks a supported workload model.');
     const scoped=r=>String(r?.gameId)===String(game.id)&&r.kickoff===game.kickoff;
-    const starters=team.starters,announced=scoped(starters)&&Number.isFinite(starters.checkedAt)&&starters.checkedAt<=now&&now-starters.checkedAt<=900000?
+    const starter=original.role==='QB'?(typeof module!=='undefined'&&module.exports?require('./injury-model'):root.Unit501InjuryModel).starterStatus(data,game,original.teamId,now):null;
+    if(starter&&['conflict','unresolved'].includes(starter.state))return unknown(starter.reason);
+    const starters=team.starters,announced=starter?starter.rows.filter(r=>String(r.id)!==String(original.id)):scoped(starters)&&Number.isFinite(starters.checkedAt)&&starters.checkedAt<=now&&now-starters.checkedAt<=900000?
       (starters.rows||[]).filter(r=>r.position===original.position&&String(r.id)!==String(original.id)&&Number.isFinite(Date.parse(r.publishedAt))&&Date.parse(r.publishedAt)<=now&&now-Date.parse(r.publishedAt)<=7*86400000):[];
     const depth=fresh(team.depth,3600000)&&scoped(team.depth)?team.depth.rows||[]:[];
     const slots=depth.filter(r=>String(r.id)===String(original.id)&&r.position===original.position);

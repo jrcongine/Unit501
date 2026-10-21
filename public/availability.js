@@ -53,8 +53,10 @@
         const reports=t.official.rows.filter(p=>p.id===String(playerId));
         for(const r of reports)lines.push(`${t.official.publisher || `Official NFL Week ${t.official.week}`} : ${r.status || 'no game status'}; ${r.description}${r.practice?'; '+r.practice:''}.`);
       }
-      if(t.starters?.rows?.length){
-        for(const r of t.starters.rows)if(r.id===String(playerId))lines.push(`${r.publisher} announced starting ${r.position}: ${r.name}. Announcement can change; workload is not confirmed.`);
+      if(t.starters){
+        const starter=Unit501InjuryModel.starterStatus(data,game,teamId);
+        if(starter.state!=='confirmed')lines.push(starter.reason);
+        for(const r of starter.rows)if(String(r.id)===String(playerId))lines.push(`${r.publisher} announced starting ${r.position}: ${r.name}. Announcement can change; workload is not confirmed.`);
       }
       if(t.depth?.available) {
         const roles=t.depth.rows.filter(p=>p.id===String(playerId));
@@ -95,8 +97,10 @@
       if(summary.unavailable.length) panel.append(node('p','Reported unavailable: '+summary.unavailable.map(p=>p.name).join(', ')+'. Review their roles before entering an injury impact scenario above.'));
       if(t.starters){
         panel.append(node('p',t.starters.message));
+        const starter=Unit501InjuryModel.starterStatus(data,game,t.id);
+        panel.append(node('p',starter.reason));
         if(t.starters.unverified)panel.append(node('p',`${t.starters.unverified} reviewed announcement(s) could not be reverified or uniquely matched to the roster; starter confirmation withheld.`));
-        for(const r of t.starters.rows){const link=node('a',`${r.publisher} announced starting ${r.position}: ${r.name} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';panel.append(node('p',r.evidence),link);}
+        for(const r of starter.rows){const link=node('a',`${r.publisher} announced starting ${r.position}: ${r.name} (${r.publishedAt.slice(0,10)})`);link.href=r.url;link.target='_blank';link.rel='noopener';panel.append(node('p',r.evidence),link);}
       }
       if(t.starterCandidates){
         panel.append(node('p',t.starterCandidates.message));

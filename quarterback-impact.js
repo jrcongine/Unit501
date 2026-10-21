@@ -1,6 +1,6 @@
 'use strict';
 const {accumulate}=require('./public/player-stats');
-const {assess}=require('./public/injury-model');
+const {assess,starterStatus}=require('./public/injury-model');
 const fresh=(r,age,now)=>r?.available&&Number.isFinite(r.checkedAt)&&r.checkedAt<=now&&now-r.checkedAt<=age;
 const scoped=(r,q)=>String(r?.gameId)===String(q.game)&&r.kickoff===q.kickoff;
 // Passing-only estimate. Backups are shrunk toward the team's passing average,
@@ -31,7 +31,7 @@ function createQuarterbackImpact(api,now=Date.now){
   if(!fresh(report,900000,now())||String(report.gameId)!==String(q.game)||!fresh(t.roster,3600000,now())||report.kickoff<=now()||report.kickoff>now()+7*86400000)return;
   const game={id:String(q.game),league:q.league,season:q.season,kickoff:report.kickoff},data={current:true,teams,rosterOwnership};
   const qbs=t.roster.rows.filter(p=>p.position==='QB');
-  const outs=qbs.filter(p=>report.rows.some(r=>String(r.id)===String(p.id)&&String(r.status).toLowerCase()==='out')&&assess(data,game,t.id,p.id,now(),true).state==='unavailable');
+  const outs=qbs.filter(p=>report.rows.some(r=>String(r.id)===String(p.id)&&String(r.status).toLowerCase()==='out')&&['unavailable','nonstarter'].includes(assess(data,game,t.id,p.id,now(),true).state));
   if(!outs.length){t.quarterback={...scope,available:true,checkedAt:now(),rows:[]};return;}
   try{
    const all=await read(`/games?team=${t.id}&season=${q.season}`);
@@ -43,7 +43,9 @@ function createQuarterbackImpact(api,now=Date.now){
    const eligible=p=>{const s=assess(data,game,t.id,p.id,now(),true);return !s.blocked&&!['conditional','conflict'].includes(s.state)&&!report.rows.some(r=>String(r.id)===String(p.id)&&String(r.status).toLowerCase()==='exempt');};
    const rows=[];
    for(const original of outs){
-    const announced=scoped(t.starters,{...q,kickoff:report.kickoff})&&now()-t.starters.checkedAt>=0&&now()-t.starters.checkedAt<=900000?(t.starters.rows||[]).filter(r=>r.position==='QB'&&String(r.id)!==String(original.id)):[];
+    const starter=starterStatus(data,game,t.id,now());
+    if(['conflict','unresolved'].includes(starter.state))continue;
+    const announced=starter.rows.filter(r=>String(r.id)!==String(original.id));
     let candidates=[],role='estimated';
     if(announced.length===1){candidates=qbs.filter(p=>String(p.id)===String(announced[0].id)&&eligible(p));role='announced';}
     else if(announced.length>1)continue;
