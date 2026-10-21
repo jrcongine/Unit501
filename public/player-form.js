@@ -43,6 +43,8 @@
       return `Workload unverified: latest completed team game has no recorded ${label}. Older appearances do not confirm the current role; missing statistics are not zeros.`;
     const values=games.map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);
     if(values.length<2)return `Workload unverified: fewer than two games with recorded ${label}. Confirm the expected role; this projection does not establish starting status.`;
+    if(games.length>1 && (!Number.isFinite(games[1][metric]) || games[1][metric]<0))
+      return `Workload unverified: the previous completed team game has no recorded ${label}. The latest two team games cannot be compared as a consecutive workload trend; missing statistics are not zeros.`;
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
     const recent=mean(values.slice(0,2)),older=values.slice(2);
     if(older.length>=2 && (recent>=2*Math.max(mean(older),1)||recent<=mean(older)/2))
