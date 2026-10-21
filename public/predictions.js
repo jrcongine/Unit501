@@ -679,6 +679,11 @@ results.appendChild(workload);
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
       card.append(supportInfo);
+      const recoveredGames=gameDetails.filter(g=>g.recoveredReceiving?.fields.includes(def.key));
+      if(recoveredGames.length){
+        const note=document.createElement('p');note.textContent=`${recoveredGames.length} game(s) recovered from official receiving box scores. `;
+        const link=document.createElement('a');link.href=recoveredGames[0].recoveredReceiving.source;link.textContent='Official source';link.target='_blank';link.rel='noopener noreferrer';note.append(link);card.append(note);
+      }
       if(model.spotlight?.applied){const note=document.createElement('p');note.textContent=`Spotlight scenario (${model.spotlight.starRole}): ${model.spotlight.baseline.toFixed(1)} baseline → ${model.adjusted.toFixed(1)} yards (${model.spotlight.delta>=0?'+':''}${model.spotlight.delta.toFixed(1)}). Timing assumption; not backtested.`;card.append(note);}
       if (model.workloadWarning) {
         const warning = document.createElement('p');
@@ -871,6 +876,24 @@ if (league === '1' && stage !== 'regular season') return false;
         }
       }
       completeCalendar(map,past);
+      // Only this school source is verified so far. Fetch gaps, not every player.
+      for(const team of teams.filter(t=>league==='2'&&/^South Alabama(?: Jaguars)?$/i.test(t.name||''))){
+        const teamId=String(team.id);
+        for(const [id,pastGame]of past){
+          const opponent=pastGame.teams.get(teamId);if(!opponent)continue;
+          const needsRecovery=[...map.values()].some(p=>p.teamId===teamId&&[...p.games.values()].some(g=>Number.isFinite(g.recYds))&&!Number.isFinite(p.games.get(id)?.recYds));
+          if(!needsRecovery)continue;
+          if(task!==sequence)return;
+          status.textContent='Checking official box scores for missing receiving games…';
+          const gameDate=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(pastGame.date*1000));
+          try{
+            const query=new URLSearchParams({season,date:gameDate,team:team.name,opponent:opponent.name});
+            const response=await fetch('/api/official-player-history?'+query,{signal:AbortSignal.timeout(20000)});
+            const data=await response.json();if(task!==sequence)return;
+            if(response.ok&&data.date===gameDate)Unit501PlayerStats.recoverReceiving(map,teamId,id,data);
+          }catch{/* Preserve unknown records when the official source is unavailable. */}
+        }
+      }
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));

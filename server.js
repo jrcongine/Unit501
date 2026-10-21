@@ -29,6 +29,7 @@ const getRankings = require('./rankings').createRankings(api);
 const getBettingSplits=require('./betting-splits').createSplits();
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
+const recoverPlayerHistory = require('./official-player-history').createRecovery();
 
 const rosterMaintenance=require('./roster-maintenance').createRosterMaintenance(api,getAvailability);
 
@@ -74,6 +75,12 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/official-player-history'){
+      const q=Object.fromEntries(u.searchParams);
+      if(!/^\d{4}$/.test(q.season||'')||!/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')||!q.team||q.team.length>100||!q.opponent||q.opponent.length>100)
+        return send(res,400,{error:'Valid season, date, team and opponent required.'});
+      return send(res,200,await recoverPlayerHistory(q));
+    }
     if(u.pathname==='/api/betting-splits'){
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});

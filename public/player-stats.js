@@ -58,7 +58,27 @@
         record.games.set(gameId,{gameDate:past.date,opponent:opponent.name});
     }
   }
-  const api={definitions,extract,teamYards,accumulate,completeCalendar};
+  function recoverReceiving(records,teamId,gameId,data) {
+    if(data?.status!=='verified'||!Array.isArray(data.rows)||!/^https:\/\/usajaguars\.com\//.test(data.source||''))return 0;
+    const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const team=[...records.values()].filter(p=>p.teamId===String(teamId));
+    let recovered=0;
+    for(const row of data.rows){
+      const candidates=team.filter(p=>nameKey(p.name)===nameKey(row.name));
+      if(candidates.length!==1||data.rows.filter(r=>nameKey(r.name)===nameKey(row.name)).length!==1)continue;
+      const game=candidates[0].games.get(gameId);if(!game)continue;
+      const keys=['rec','recYds','recTD'];
+      if(keys.some(k=>!Number.isFinite(row[k])||(!k.endsWith('Yds')&&row[k]<0)))continue;
+      // A conflicting known value means identity/stat reconciliation needs review.
+      if(keys.some(k=>Number.isFinite(game[k])&&game[k]!==row[k]))continue;
+      const missing=keys.filter(k=>!Number.isFinite(game[k]));
+      if(!missing.length)continue;
+      for(const k of missing)game[k]=row[k];
+      game.recoveredReceiving={source:data.source,fields:missing};recovered++;
+    }
+    return recovered;
+  }
+  const api={definitions,extract,teamYards,accumulate,completeCalendar,recoverReceiving};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -776,3 +776,31 @@ test('expected opportunities change rendered prop and clearing restores baseline
  h.nodes.get('expected-carries').value='';await h.nodes.get('expected-carries').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 100.0 projected/);
 });
+
+test('actual college client recovers an explicit official receiving zero and shows its source',async()=>{
+ const h=harness();await h.settle();
+ h.game.league.id=2;h.game.teams.away.name='South Alabama';h.game.teams.home.name='Arkansas State';
+ h.nodes.get('league').value='2';
+ const original=h.context.fetch;let recoveryCalls=0;
+ h.context.fetch=async url=>{
+  const u=new URL(url,'http://localhost');
+  if(u.pathname==='/api/official-player-history'){
+   recoveryCalls++;assert.equal(u.searchParams.get('team'),'South Alabama');assert.equal(u.searchParams.get('opponent'),'Arkansas State');
+   return {ok:true,json:async()=>({status:'verified',date:u.searchParams.get('date'),source:'https://usajaguars.com/boxscore.aspx?id=11381&path=football',rows:[{name:'Anthony Eager',rec:0,recYds:0,recTD:0}]})};
+  }
+  const r=await original(url);
+  if(u.pathname==='/api/player-stats'){
+   const data=await r.json();
+   data.response[0].team.name='South Alabama';
+   for(const group of data.response[0].groups)group.players[0].player.name='Anthony Eager';
+   if(u.searchParams.get('game')==='1')data.response[0].groups=data.response[0].groups.filter(g=>g.name!=='Receiving');
+   return {ok:true,json:async()=>data};
+  }
+  return r;
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(recoveryCalls,1);
+ assert.match(h.nodes.get('predict-results').textContent,/1 game\(s\) recovered from official receiving box scores/);
+ assert.match(h.nodes.get('predict-results').textContent,/Official source/);
+});
