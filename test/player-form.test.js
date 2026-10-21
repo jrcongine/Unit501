@@ -45,6 +45,29 @@ test('workload review uses targets for receiving and ignores invalid usage',()=>
  assert.match(workloadWarning([{gameDate:1,targets:1},{gameDate:2,targets:2}],'rec'),/Limited recorded workload/);
  assert.match(workloadWarning([{gameDate:1,attempts:-1},{gameDate:2,attempts:NaN}],'passTD'),/Workload unverified/);
 });
+test('first changed workload is flagged without promoting a player to starter or changing history',()=>{
+ const {workloadWarning,project}=require('../public/player-form');
+ const rows=attempts=>attempts.map((attempts,i)=>({gameDate:i+1,attempts,passYds:attempts*7}));
+ const first=rows([3,3,3,30]);
+ assert.match(workloadWarning(first,'passYds'),/Possible role change.*One game does not confirm/);
+ assert.equal(project(first,'passYds').roleAdjustment,null);
+ assert.deepEqual(project(first,'passYds').values,[210,21,21,21]);
+ const scenario=project(first,'passYds',30);
+ assert.equal(scenario.baseline,210);
+ assert.equal(scenario.roleAdjustment.kind,'user-scenario');
+ assert.match(workloadWarning(rows([30,30,30,0]),'passYds'),/Possible role change/);
+ assert.match(workloadWarning(rows([3,3,30,30]),'passYds'),/Workload change/);
+ assert.equal(workloadWarning(rows([30,29,31,30]),'passYds'),null);
+});
+test('first-game workload review cannot bridge gaps or invalid records',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ for(const value of [undefined,null,NaN,-1]) {
+  const rows=[{gameDate:4,attempts:30},{gameDate:3,attempts:3},{gameDate:2,attempts:value},{gameDate:1,attempts:3}];
+  assert.doesNotMatch(workloadWarning(rows,'passYds')||'',/Possible role change/);
+ }
+ const targets=[{gameDate:3,targets:10},{gameDate:2,targets:1},{gameDate:1,targets:1}];
+ assert.match(workloadWarning(targets,'recYds'),/Possible role change.*targets/);
+});
 test('workload warning never bridges a missing previous team game',()=>{
  const {workloadWarning,workloadShift}=require('../public/player-form');
  for(const missing of [null,undefined,NaN,-1]) {

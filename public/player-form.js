@@ -46,6 +46,16 @@
     if(games.length>1 && (!Number.isFinite(games[1][metric]) || games[1][metric]<0))
       return `Workload unverified: the previous completed team game has no recorded ${label}. The latest two team games cannot be compared as a consecutive workload trend; missing statistics are not zeros.`;
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+    // A single changed game can be a first start, an injury, or game script.
+    // Surface it immediately without calling the mixed pair a sustained role.
+    const previous=games.slice(1,3).map(g=>g[metric]);
+    if(previous.length===2 && previous.every(v=>Number.isFinite(v)&&v>=0)) {
+      const before=mean(previous),latest=games[0][metric];
+      const changed=latest>=2*Math.max(before,1) || (before>0 && latest<=before/2);
+      const stablePrevious=previous.every(v=>Math.abs(v-before)<=Math.max(before*.5,1));
+      if(changed && stablePrevious && !workloadShift(games,metric))
+        return `Possible role change: latest game recorded ${latest} ${label}, versus ${before.toFixed(1)} across the previous two team games. One game does not confirm a new starting role. Verify the current role and set an expected workload scenario if appropriate; the historical blend may not reflect it.`;
+    }
     const recent=mean(values.slice(0,2)),older=values.slice(2);
     if(older.length>=2 && (recent>=2*Math.max(mean(older),1)||recent<=mean(older)/2))
       return `Workload change: latest two games average ${recent.toFixed(1)} ${label}, versus ${mean(older).toFixed(1)} earlier. Verify the current role before using the season/form estimate.`;
