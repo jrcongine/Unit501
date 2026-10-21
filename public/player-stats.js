@@ -19,8 +19,10 @@
     return row?number(row.value):null;
   }
   function teamYards(team,category) {
+    const yardage=definitions.find(def=>def.group===category&&def.key.endsWith('Yds'));
+    if(!yardage)return null;
     const values=(team?.groups||[]).filter(g=>normalize(g.name)===category)
-      .flatMap(g=>(g.players||[]).map(p=>extract(p.statistics,category,['yards']))).filter(v=>v!==null);
+      .flatMap(g=>(g.players||[]).map(p=>extract(p.statistics,category,yardage.keys))).filter(v=>v!==null);
     return values.length?values.reduce((s,v)=>s+v,0):null;
   }
   function accumulate(map,teamEntry,gameId,gameDate,opponent) {

@@ -3,6 +3,22 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {accumulate,definitions}=require('../public/player-stats');
 const {project,summarize}=require('../public/player-form');
+test('opponent yardage accepts the same qualified labels as player history',()=>{
+ const {teamYards}=require('../public/player-stats');
+ for(const category of ['passing','rushing','receiving']) {
+  const team={groups:[{name:category,players:[
+   {statistics:[{name:category+' yards',value:'40'}]},
+   {statistics:[{name:'Yards',value:'-3'}]},
+   {statistics:[{name:category+' yards',value:'0'}]},
+   {statistics:[{name:category+' yards',value:'--'}]}
+  ]},{name:'unrelated',players:[{statistics:[{name:'Yards',value:999}]}]}]};
+  assert.equal(teamYards(team,category),37);
+  assert.equal(teamYards({groups:[{name:category,players:[{statistics:[{name:category+' yards',value:0}]}]}]},category),0);
+  assert.equal(teamYards({groups:[{name:category,players:[{statistics:[{name:category+' yards',value:'--'}]}]}]},category),null);
+ }
+ assert.equal(teamYards(null,'receiving'),null);
+ assert.equal(teamYards(null,'unsupported'),null);
+});
 test('rush attempts and running-back receiving markets use recorded stats, without position filtering',()=>{
   const map=new Map();
   const box={team:{id:1,name:'Team A'},groups:[
