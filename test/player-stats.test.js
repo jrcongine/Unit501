@@ -3,6 +3,22 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {accumulate,definitions}=require('../public/player-stats');
 const {project,summarize}=require('../public/player-form');
+test('opponent yardage accepts the same qualified labels as player history',()=>{
+ const {teamYards}=require('../public/player-stats');
+ for(const category of ['passing','rushing','receiving']) {
+  const team={groups:[{name:category,players:[
+   {statistics:[{name:category+' yards',value:'40'}]},
+   {statistics:[{name:'Yards',value:'-3'}]},
+   {statistics:[{name:category+' yards',value:'0'}]},
+   {statistics:[{name:category+' yards',value:'--'}]}
+  ]},{name:'unrelated',players:[{statistics:[{name:'Yards',value:999}]}]}]};
+  assert.equal(teamYards(team,category),37);
+  assert.equal(teamYards({groups:[{name:category,players:[{statistics:[{name:category+' yards',value:0}]}]}]},category),0);
+  assert.equal(teamYards({groups:[{name:category,players:[{statistics:[{name:category+' yards',value:'--'}]}]}]},category),null);
+ }
+ assert.equal(teamYards(null,'receiving'),null);
+ assert.equal(teamYards(null,'unsupported'),null);
+});
 test('rush attempts and running-back receiving markets use recorded stats, without position filtering',()=>{
   const map=new Map();
   const box={team:{id:1,name:'Team A'},groups:[
@@ -46,4 +62,19 @@ test('missing team-game calendar entries stay unknown and a sparse recent market
  // A single missing latest record does not discard a much fuller history.
  const full=project([{gameDate:6},...Array.from({length:5},(_,i)=>({gameDate:i+1,rec:4,recYds:40}))],'recYds');
  assert.equal(full.withheld,undefined);assert.equal(full.coverage.latestMissing,true);
+});
+
+test('explicit zero yardage survives parsing and calendar completion; absent players never become zeros',()=>{
+ const {completeCalendar}=require('../public/player-stats');
+ const map=new Map();
+ const box=(stats)=>({team:{id:1,name:'Team'},groups:[{name:'Receiving',players:[{player:{id:7,name:'Receiver'},statistics:stats}]}]});
+ accumulate(map,box([{name:'Receiving Yards',value:'0'},{name:'Receptions',value:'0'},{name:'Targets',value:'1'}]),'1',1,'A');
+ accumulate(map,box([{name:'Yards',value:'60'},{name:'Receptions',value:'3'}]),'2',2,'B');
+ accumulate(map,box([{name:'Yards',value:'--'},{name:'Targets',value:'1'}]),'3',3,'C');
+ completeCalendar(map,new Map([['4',{date:4,teams:new Map([['1',{name:'D'}]])}]]));
+ const history=[...map.get('1:7').games.values()];
+ assert.equal(history[0].recYds,0);assert.equal(history[0].targets,1);
+ assert.equal(history[2].recYds,undefined);assert.equal(history[3].recYds,undefined);
+ const result=summarize(history,'recYds');assert.deepEqual(result.values,[60,0]);
+ assert.equal(result.average,30);assert.equal(result.coverage.missing,2);
 });

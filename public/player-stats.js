@@ -4,12 +4,12 @@
   const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const number=v=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&/^-?\d+(?:\.\d+)?$/.test(v.trim())?Number(v):null;
   const definitions=[
-    {key:'passYds',title:'Passing yards',group:'passing',keys:['yards']},
+    {key:'passYds',title:'Passing yards',group:'passing',keys:['yards','passing yards']},
     {key:'passTD',title:'Passing TDs',group:'passing',keys:['passing touch downs','passing touchdowns']},
     {key:'carries',title:'Rushing attempts',group:'rushing',keys:['total rushes','rushing attempts','rush attempts','attempts','carries']},
-    {key:'rushYds',title:'Rushing yards',group:'rushing',keys:['yards']},
+    {key:'rushYds',title:'Rushing yards',group:'rushing',keys:['yards','rushing yards']},
     {key:'rushTD',title:'Rushing TDs',group:'rushing',keys:['rushing touch downs','rushing touchdowns']},
-    {key:'recYds',title:'Receiving yards',group:'receiving',keys:['yards']},
+    {key:'recYds',title:'Receiving yards',group:'receiving',keys:['yards','receiving yards']},
     {key:'rec',title:'Receptions',group:'receiving',keys:['receptions','total receptions']},
     {key:'recTD',title:'Receiving TDs',group:'receiving',keys:['receiving touch downs','receiving touchdowns']}
   ];
@@ -19,8 +19,10 @@
     return row?number(row.value):null;
   }
   function teamYards(team,category) {
+    const yardage=definitions.find(def=>def.group===category&&def.key.endsWith('Yds'));
+    if(!yardage)return null;
     const values=(team?.groups||[]).filter(g=>normalize(g.name)===category)
-      .flatMap(g=>(g.players||[]).map(p=>extract(p.statistics,category,['yards']))).filter(v=>v!==null);
+      .flatMap(g=>(g.players||[]).map(p=>extract(p.statistics,category,yardage.keys))).filter(v=>v!==null);
     return values.length?values.reduce((s,v)=>s+v,0):null;
   }
   function accumulate(map,teamEntry,gameId,gameDate,opponent) {
@@ -56,7 +58,27 @@
         record.games.set(gameId,{gameDate:past.date,opponent:opponent.name});
     }
   }
-  const api={definitions,extract,teamYards,accumulate,completeCalendar};
+  function recoverReceiving(records,teamId,gameId,data) {
+    if(data?.status!=='verified'||!Array.isArray(data.rows)||!/^https:\/\/usajaguars\.com\//.test(data.source||''))return 0;
+    const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const team=[...records.values()].filter(p=>p.teamId===String(teamId));
+    let recovered=0;
+    for(const row of data.rows){
+      const candidates=team.filter(p=>nameKey(p.name)===nameKey(row.name));
+      if(candidates.length!==1||data.rows.filter(r=>nameKey(r.name)===nameKey(row.name)).length!==1)continue;
+      const game=candidates[0].games.get(gameId);if(!game)continue;
+      const keys=['rec','recYds','recTD'];
+      if(keys.some(k=>!Number.isFinite(row[k])||(!k.endsWith('Yds')&&row[k]<0)))continue;
+      // A conflicting known value means identity/stat reconciliation needs review.
+      if(keys.some(k=>Number.isFinite(game[k])&&game[k]!==row[k]))continue;
+      const missing=keys.filter(k=>!Number.isFinite(game[k]));
+      if(!missing.length)continue;
+      for(const k of missing)game[k]=row[k];
+      game.recoveredReceiving={source:data.source,fields:missing};recovered++;
+    }
+    return recovered;
+  }
+  const api={definitions,extract,teamYards,accumulate,completeCalendar,recoverReceiving};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

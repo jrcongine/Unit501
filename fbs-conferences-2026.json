@@ -1,0 +1,211 @@
+{
+  "season": "2026",
+  "verifiedOn": "2026-10-20",
+  "source": "https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?region=us&lang=en&contentorigin=espn&season=2026&type=0&level=2",
+  "conferences": [
+    {
+      "code": "AAC",
+      "name": "American Conference",
+      "teams": [
+        "Army",
+        "Charlotte",
+        "East Carolina",
+        "Florida Atlantic",
+        "Memphis",
+        "Navy",
+        "North Texas",
+        "Rice",
+        "South Florida",
+        "Temple",
+        "Tulane",
+        "Tulsa",
+        "UAB",
+        "UTSA"
+      ]
+    },
+    {
+      "code": "ACC",
+      "name": "Atlantic Coast Conference",
+      "teams": [
+        "Boston College",
+        "California",
+        "Clemson",
+        "Duke",
+        "Florida State",
+        "Georgia Tech",
+        "Louisville",
+        "Miami",
+        "NC State",
+        "North Carolina",
+        "Pittsburgh",
+        "SMU",
+        "Stanford",
+        "Syracuse",
+        "Virginia",
+        "Virginia Tech",
+        "Wake Forest"
+      ]
+    },
+    {
+      "code": "B12",
+      "name": "Big 12 Conference",
+      "teams": [
+        "Arizona",
+        "Arizona State",
+        "BYU",
+        "Baylor",
+        "Cincinnati",
+        "Colorado",
+        "Houston",
+        "Iowa State",
+        "Kansas",
+        "Kansas State",
+        "Oklahoma State",
+        "TCU",
+        "Texas Tech",
+        "UCF",
+        "Utah",
+        "West Virginia"
+      ]
+    },
+    {
+      "code": "B10",
+      "name": "Big Ten Conference",
+      "teams": [
+        "Illinois",
+        "Indiana",
+        "Iowa",
+        "Maryland",
+        "Michigan",
+        "Michigan State",
+        "Minnesota",
+        "Nebraska",
+        "Northwestern",
+        "Ohio State",
+        "Oregon",
+        "Penn State",
+        "Purdue",
+        "Rutgers",
+        "UCLA",
+        "USC",
+        "Washington",
+        "Wisconsin"
+      ]
+    },
+    {
+      "code": "CUSA",
+      "name": "Conference USA",
+      "teams": [
+        "Delaware",
+        "Florida International",
+        "Jacksonville State",
+        "Kennesaw State",
+        "Liberty",
+        "Middle Tennessee",
+        "Missouri State",
+        "New Mexico State",
+        "Sam Houston",
+        "Western Kentucky"
+      ]
+    },
+    {
+      "code": "IND",
+      "name": "FBS Independents",
+      "teams": [
+        "Notre Dame",
+        "UConn"
+      ]
+    },
+    {
+      "code": "MAC",
+      "name": "Mid-American Conference",
+      "teams": [
+        "Akron",
+        "Ball State",
+        "Bowling Green",
+        "Buffalo",
+        "Central Michigan",
+        "Eastern Michigan",
+        "Kent State",
+        "Massachusetts",
+        "Miami (OH)",
+        "Ohio",
+        "Sacramento State",
+        "Toledo",
+        "Western Michigan"
+      ]
+    },
+    {
+      "code": "MW",
+      "name": "Mountain West Conference",
+      "teams": [
+        "Air Force",
+        "Hawai'i",
+        "Nevada",
+        "New Mexico",
+        "North Dakota State",
+        "Northern Illinois",
+        "San José State",
+        "UNLV",
+        "UTEP",
+        "Wyoming"
+      ]
+    },
+    {
+      "code": "PAC12",
+      "name": "Pac-12 Conference",
+      "teams": [
+        "Boise State",
+        "Colorado State",
+        "Fresno State",
+        "Oregon State",
+        "San Diego State",
+        "Texas State",
+        "Utah State",
+        "Washington State"
+      ]
+    },
+    {
+      "code": "SEC",
+      "name": "Southeastern Conference",
+      "teams": [
+        "Alabama",
+        "Arkansas",
+        "Auburn",
+        "Florida",
+        "Georgia",
+        "Kentucky",
+        "LSU",
+        "Mississippi State",
+        "Missouri",
+        "Oklahoma",
+        "Ole Miss",
+        "South Carolina",
+        "Tennessee",
+        "Texas",
+        "Texas A&M",
+        "Vanderbilt"
+      ]
+    },
+    {
+      "code": "SBC",
+      "name": "Sun Belt Conference",
+      "teams": [
+        "App State",
+        "Arkansas State",
+        "Coastal Carolina",
+        "Georgia Southern",
+        "Georgia State",
+        "James Madison",
+        "Louisiana",
+        "Louisiana Tech",
+        "Marshall",
+        "Old Dominion",
+        "South Alabama",
+        "Southern Miss",
+        "Troy",
+        "UL Monroe"
+      ]
+    }
+  ]
+}

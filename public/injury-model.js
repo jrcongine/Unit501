@@ -3,6 +3,29 @@
   'use strict';
   const day = 86400000;
   const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  // One interpretation of starter evidence for prop gates and replacement models.
+  function starterStatus(data,game,teamId,now=Date.now()) {
+    const unknown=reason=>({state:'unknown',rows:[],reason});
+    const fresh=(time,age)=>Number.isFinite(time)&&time<=now&&now-time<=age;
+    if(!data?.current||!Number.isFinite(game?.kickoff)||game.kickoff<=now||game.kickoff>now+7*day)
+      return unknown('Starter confirmation needs a current upcoming matchup within seven days.');
+    const team=data.teams?.find(t=>String(t.id)===String(teamId)),report=team?.starters;
+    if(!team?.roster?.available||!fresh(team.roster.checkedAt,3600000)||
+       String(report?.gameId)!==String(game.id)||report.kickoff!==game.kickoff||!fresh(report.checkedAt,900000)||
+       ['league','season'].some(k=>report[k]!=null&&game[k]!=null&&String(report[k])!==String(game[k])))
+      return unknown('Starter report or roster is missing, expired, or belongs to another matchup.');
+    const rows=(report.rows||[]).filter(r=>r.position==='QB'&&fresh(Date.parse(r.publishedAt),7*day));
+    if(!rows.length)return unknown('No current verified quarterback announcement.');
+    if(report.unverified>0||rows.some(r=>!r.id||(r.teamId!=null&&String(r.teamId)!==String(teamId))||
+       (r.sourceCheckedAt!=null&&!fresh(r.sourceCheckedAt,900000))||
+       team.roster.rows.filter(p=>String(p.id)===String(r.id)&&p.position==='QB').length!==1))
+      return {state:'unresolved',rows:[],reason:'Starter evidence could not be reverified or uniquely matched to the current quarterback roster.'};
+    const ids=new Set(rows.map(r=>String(r.id)));
+    if(ids.size!==1)return {state:'conflict',rows:[],reason:'Official announcements name different starting quarterbacks for this matchup. Resolve the reports before using QB props or replacement estimates.'};
+    // Repeated corroborating articles for the same player are one starter.
+    const row=[...rows].sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt))[0];
+    return {state:'confirmed',rows:[row],reason:'Official starter announcement verified; workload and playing status require separate checks.'};
+  }
   function refreshDue(data, game, now = Date.now()) {
     if (!Number.isFinite(game?.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day) return false;
     if (!data?.current || !data.teams?.length) return true;
@@ -45,11 +68,10 @@
       const rows=(inactive.rows||[]).filter(p=>String(p.id)===String(playerId)&&String(p.teamId)===String(teamId)&&p.status==='Inactive');
       if(rows.length===1)return {blocked:true,state:'unavailable',reason:rows[0].emergency?'Official NFL emergency third quarterback: restricted game-day eligibility. Normal full-game projection and line comparison withheld.':'Official NFL final game-day inactive list: projection and line comparison withheld; not treated as a zero-yard under.',source:inactive.url};
     }
-    const starters=team.starters;
-    if(roster?.position==='QB' && team.roster?.available && fresh(team.roster.checkedAt,3600000) &&
-       String(starters?.gameId)===String(game.id) && starters?.kickoff===game.kickoff && fresh(starters.checkedAt,900000)) {
-      const named=starters.rows.filter(r=>r.position==='QB' && fresh(Date.parse(r.publishedAt),7*day));
-      if(named.length===1 && String(named[0].id)!==String(playerId))
+    if(roster?.position==='QB') {
+      const starter=starterStatus(data,game,teamId,now),named=starter.rows;
+      if(starter.state==='conflict')return {blocked:true,state:'conflict',reason:starter.reason};
+      if(starter.state==='confirmed' && String(named[0].id)!==String(playerId))
         return {blocked:true,state:'nonstarter',reason:`${named[0].publisher} announced ${named[0].name} as starting QB for this matchup. Normal full-game props for another QB are withheld; this does not mean the player is injured or inactive.`};
     }
     if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
@@ -152,7 +174,7 @@
     }
     return {teams,reason:'Only reported entries are reviewed. Missing reports do not establish health. Applied score scenarios use confirmed role and workload assumptions; previous games may already reflect an absence.'};
   }
-  const api = {statusLabel,assess, workloadProjection,teamSummary,refreshDue,impactReview};
+  const api = {starterStatus,statusLabel,assess, workloadProjection,teamSummary,refreshDue,impactReview};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Unit501InjuryModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -20,3 +20,21 @@ test('college unique experienced backup is estimated automatically, ambiguity an
  await enrich(q,[t]);assert.equal(t.quarterback.rows.length,1);assert.equal(t.quarterback.rows[0].role,'recent backup estimate');
  t.official.rows[1].status='Questionable';await enrich(q,[t]);assert.equal(t.quarterback.rows.length,0);
 });
+
+test('verified replacement announcement does not erase an official QB absence',async()=>{
+ const now=Date.parse('2026-10-21T19:00:00Z'),scope={gameId:'9',kickoff:now+86400000,season:'2026',checkedAt:now,available:true};
+ const t={id:'1',roster:{...scope,rows:roster},official:{...scope,rows:[{id:'10',teamId:'1',status:'Out'},{id:'11',teamId:'1',status:'Available'}]},
+  starters:{...scope,rows:[{id:'11',name:'Backup',position:'QB',publishedAt:new Date(now-1000).toISOString(),url:'https://example.com/official'}]}};
+ const api=async path=>({response:path.startsWith('/games?')?games:boxes().get(path.split('=').at(-1))});
+ const enrich=createQuarterbackImpact(api,()=>now),q={game:'9',league:'2',season:'2026'};
+ await enrich(q,[t]);assert.equal(t.quarterback.rows.length,1);assert.equal(t.quarterback.rows[0].role,'announced');
+ assert.equal(t.quarterback.rows[0].source,'https://example.com/official');
+ // Corroboration for one QB is not a conflicting second starter.
+ t.starters.rows.push({...t.starters.rows[0],url:'https://example.com/second'});
+ await enrich(q,[t]);assert.equal(t.quarterback.rows.length,1);
+ for(const row of t.starters.rows)row.publishedAt=new Date(now-8*86400000).toISOString();
+ await enrich(q,[t]);assert.equal(t.quarterback.rows[0].role,'recent backup estimate');
+ // An unmatched current announcement cannot silently become a depth/usage guess.
+ t.starters.rows=[{id:'missing',position:'QB',publishedAt:new Date(now).toISOString()}];
+ await enrich(q,[t]);assert.equal(t.quarterback.rows.length,0);
+});

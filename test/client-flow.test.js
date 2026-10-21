@@ -671,6 +671,8 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  assert.notEqual(h.nodes.get('score').textContent,'—');
  assert.equal(h.run('latestForecast'),null);
  assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded|incomplete/i);
+ assert.equal(h.nodes.get('awayOffenseLoss').placeholder,'Unavailable');
+ assert.match(h.nodes.get('auto-injury-status').textContent,/manual points/);
  assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
 });
 
@@ -761,4 +763,44 @@ test('independent timing switches change only eligible scenarios and can restore
  assert.match(h.nodes.get('note').textContent,/Early Sunday Upset Alert/);
  h.nodes.get('sundayUpsetEnabled').checked=false;await h.nodes.get('sundayUpsetEnabled').dispatchEvent({type:'change'});h.run('sim()');
  assert.doesNotMatch(h.nodes.get('note').textContent,/Early Sunday Upset Alert/);
+});
+
+test('expected opportunities change rendered prop and clearing restores baseline with coverage shown',async()=>{
+ const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 100.0 projected/);
+ const carries=h.nodes.get('expected-carries');carries.value='30';await carries.dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 150.0 projected/);
+ assert.match(h.nodes.get('predict-results').textContent,/Your expected workload scenario: 30.0 carries/);
+ assert.match(h.nodes.get('comparison-1:7-recYds').textContent,/2\/2 team games recorded; 0 unknown/);
+ h.nodes.get('expected-carries').value='';await h.nodes.get('expected-carries').dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Rushing yards: 100.0 projected/);
+});
+
+test('actual college client recovers an explicit official receiving zero and shows its source',async()=>{
+ const h=harness();await h.settle();
+ h.game.league.id=2;h.game.teams.away.name='South Alabama';h.game.teams.home.name='Arkansas State';
+ h.nodes.get('league').value='2';
+ const original=h.context.fetch;let recoveryCalls=0;
+ h.context.fetch=async url=>{
+  const u=new URL(url,'http://localhost');
+  if(u.pathname==='/api/official-player-history'){
+   recoveryCalls++;assert.equal(u.searchParams.get('team'),'South Alabama');assert.equal(u.searchParams.get('opponent'),'Arkansas State');
+   return {ok:true,json:async()=>({status:'verified',date:u.searchParams.get('date'),source:'https://usajaguars.com/boxscore.aspx?id=11381&path=football',rows:[{name:'Anthony Eager',rec:0,recYds:0,recTD:0}]})};
+  }
+  const r=await original(url);
+  if(u.pathname==='/api/player-stats'){
+   const data=await r.json();
+   data.response[0].team.name='South Alabama';
+   for(const group of data.response[0].groups)group.players[0].player.name='Anthony Eager';
+   if(u.searchParams.get('game')==='1')data.response[0].groups=data.response[0].groups.filter(g=>g.name!=='Receiving');
+   return {ok:true,json:async()=>data};
+  }
+  return r;
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(recoveryCalls,1);
+ assert.match(h.nodes.get('predict-results').textContent,/1 game\(s\) recovered from official receiving box scores/);
+ assert.match(h.nodes.get('predict-results').textContent,/Official source/);
 });

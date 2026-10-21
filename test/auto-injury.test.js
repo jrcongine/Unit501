@@ -263,3 +263,13 @@ test('sided defensive line depth labels match their position family only',()=>{
   assert.equal(evaluate(d,game,null,now).injury.homeDefense,0);
  }
 });
+
+test('missing conference coverage explains the source limitation and keeps points withheld',()=>{
+ const d=build();
+ d.teams[0].official={available:false,rows:[],message:'CUSA automatic availability import is not connected. Use manual points.'};
+ const result=evaluate(d,game,null,now);
+ assert.equal(result.ready,false);
+ assert.equal(result.applied.length,0);
+ assert.match(result.withheld.join(' '),/Seattle: CUSA automatic availability import is not connected/);
+ assert.deepEqual(result.injury,{awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0});
+});

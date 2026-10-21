@@ -43,7 +43,19 @@
       return `Workload unverified: latest completed team game has no recorded ${label}. Older appearances do not confirm the current role; missing statistics are not zeros.`;
     const values=games.map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);
     if(values.length<2)return `Workload unverified: fewer than two games with recorded ${label}. Confirm the expected role; this projection does not establish starting status.`;
+    if(games.length>1 && (!Number.isFinite(games[1][metric]) || games[1][metric]<0))
+      return `Workload unverified: the previous completed team game has no recorded ${label}. The latest two team games cannot be compared as a consecutive workload trend; missing statistics are not zeros.`;
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+    // A single changed game can be a first start, an injury, or game script.
+    // Surface it immediately without calling the mixed pair a sustained role.
+    const previous=games.slice(1,3).map(g=>g[metric]);
+    if(previous.length===2 && previous.every(v=>Number.isFinite(v)&&v>=0)) {
+      const before=mean(previous),latest=games[0][metric];
+      const changed=latest>=2*Math.max(before,1) || (before>0 && latest<=before/2);
+      const stablePrevious=previous.every(v=>Math.abs(v-before)<=Math.max(before*.5,1));
+      if(changed && stablePrevious && !workloadShift(games,metric))
+        return `Possible role change: latest game recorded ${latest} ${label}, versus ${before.toFixed(1)} across the previous two team games. One game does not confirm a new starting role. Verify the current role and set an expected workload scenario if appropriate; the historical blend may not reflect it.`;
+    }
     const recent=mean(values.slice(0,2)),older=values.slice(2);
     if(older.length>=2 && (recent>=2*Math.max(mean(older),1)||recent<=mean(older)/2))
       return `Workload change: latest two games average ${recent.toFixed(1)} ${label}, versus ${mean(older).toFixed(1)} earlier. Verify the current role before using the season/form estimate.`;
@@ -77,12 +89,27 @@
     const guarded=summarize(history.map(game=>Number.isFinite(game[key])&&game[key]>cap?{...game,[key]:cap}:game),key);
     return {baseline:guarded.weighted,outlierAdjustment:{count,cap,originalBaseline:form.weighted,adjustedBaseline:guarded.weighted}};
   }
-  function project(history,key) {
+  // Two consecutive changed workloads are evidence of usage, not proof of a starting role.
+  function workloadShift(history,usageKey) {
+    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    if(games.length<4 || games.slice(0,2).some(g=>!Number.isFinite(g[usageKey])||g[usageKey]<0))return null;
+    const recent=games.slice(0,2),older=games.slice(2).filter(g=>Number.isFinite(g[usageKey])&&g[usageKey]>=0);
+    if(older.length<2)return null;
+    const mean=rows=>rows.reduce((n,g)=>n+g[usageKey],0)/rows.length;
+    const before=mean(older),after=mean(recent);
+    const up=after>=2*Math.max(before,1)&&recent.every(g=>g[usageKey]>=1.5*Math.max(before,1));
+    const down=before>0&&after<=before/2&&recent.every(g=>g[usageKey]<=before*2/3);
+    return up||down?{key:usageKey,previous:before,workload:after,games:2,history:recent}:null;
+  }
+  function coverageText(coverage) {
+    return `${coverage.recorded}/${coverage.total} team games recorded; ${coverage.missing} unknown`;
+  }
+  function project(history,key,expectedUsage=null) {
     const form=summarize(history,key);
     if(!form)return null;
     if(form.coverage.latestConsecutiveMissing>=2 || (form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total))
       return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
-    const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
+    const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts',carries:'carries',rec:'rec'}[key];
     const pairs=usageKey?history.filter(g=>Number.isFinite(g.gameDate)&&Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
     let baseline=form.weighted,usage=null,usageUnavailable=null,outlierAdjustment=null;
     if(pairs.length>=2) {
@@ -101,10 +128,29 @@
       baseline=guarded.baseline;
       outlierAdjustment=guarded.outlierAdjustment;
     }
-    return {...form,baseline,usage,usageUnavailable,outlierAdjustment};
+    let roleAdjustment=null;
+    const shift=usageKey?workloadShift(history,usageKey):null;
+    const limit={attempts:80,carries:60,rec:40}[usageKey];
+    const explicit=Number.isFinite(expectedUsage)&&expectedUsage>=0&&expectedUsage<=limit;
+    if(usageKey && (explicit || shift)) {
+      const relevant=explicit?pairs:shift.history.filter(g=>Number.isFinite(g[key])&&g[usageKey]>0);
+      const countStat=key===usageKey;
+      const recentZeros=!explicit&&shift.workload===0&&shift.history.every(g=>g[key]===0);
+      if(countStat || relevant.length>=2 || recentZeros) {
+        const workload=explicit?expectedUsage:shift.workload;
+        const estimate=countStat||recentZeros?{efficiency:countStat?1:0,dampened:0,cap:null}:efficiencySummary(relevant,key,usageKey);
+        roleAdjustment={kind:explicit?'user-scenario':'recent-workload',key:usageKey,workload,
+          previousBaseline:baseline,previousWorkload:shift?.previous??null,games:countStat||recentZeros?2:relevant.length};
+        baseline=workload*estimate.efficiency;
+        usage={key:usageKey,workload,efficiency:estimate.efficiency,games:roleAdjustment.games,dampened:estimate.dampened,efficiencyCap:estimate.cap};
+        outlierAdjustment=null;
+      }
+    }
+    return {...form,baseline,usage,usageUnavailable,outlierAdjustment,roleAdjustment};
   }
   function reviewChecks(model,entry,availability,now=Date.now()) {
     const reasons=[];
+    if(model.form.roleAdjustment)reasons.push('Review changed workload estimate');
     if(model.spotlight?.applied)reasons.push('Unvalidated Spotlight timing scenario');
     if(availability?.state!=='available')reasons.push(availability?.state==='conditional' ? 'Conditional availability: verify participation' : 'Verify participation');
     if(model.values.length<5) reasons.push('Fewer than 5 recorded games');
@@ -120,6 +166,7 @@
     const count=Array.isArray(model?.values)?model.values.length:0;
     const sample=count<5?'Thin sample':count<9?'Developing sample':'Larger sample';
     const flags=[];
+    if(model?.form?.roleAdjustment)flags.push('changed workload estimate');
     if(model?.form?.coverage?.missing>0)flags.push('stat gaps');
     if(model?.form?.coverage?.latestMissing)flags.push('latest stat missing');
     if(model?.form?.outlierAdjustment?.count)flags.push('yardage spike dampened');
@@ -131,7 +178,7 @@
     return {sample,count,flags,needsReview,
       label:`${sample} (${count} recorded games)${flags.length?' • Review: '+flags.join(', '):' • No additional data flags'}`};
   }
-  const api={efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
+  const api={workloadShift,coverageText,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

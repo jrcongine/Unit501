@@ -52,6 +52,7 @@
    team:data.teams.find(t=>String(t.id)===teamId)
   }));
   for(const {label,team:t} of teams){
+   if(t?.official?.available===false&&t.official.message)withheld.push(label+': '+t.official.message);
    if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
     withheld.push(label+': current matched roster and official game report required; no point estimate.');
    if(!t||(!(fresh(t.depth,3600000,now)&&matchGame(t.depth,game)||fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game))&&!(fresh(t.quarterback,3600000,now)&&matchGame(t.quarterback,game)&&t.quarterback.rows?.length>0)))

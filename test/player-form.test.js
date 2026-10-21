@@ -45,6 +45,41 @@ test('workload review uses targets for receiving and ignores invalid usage',()=>
  assert.match(workloadWarning([{gameDate:1,targets:1},{gameDate:2,targets:2}],'rec'),/Limited recorded workload/);
  assert.match(workloadWarning([{gameDate:1,attempts:-1},{gameDate:2,attempts:NaN}],'passTD'),/Workload unverified/);
 });
+test('first changed workload is flagged without promoting a player to starter or changing history',()=>{
+ const {workloadWarning,project}=require('../public/player-form');
+ const rows=attempts=>attempts.map((attempts,i)=>({gameDate:i+1,attempts,passYds:attempts*7}));
+ const first=rows([3,3,3,30]);
+ assert.match(workloadWarning(first,'passYds'),/Possible role change.*One game does not confirm/);
+ assert.equal(project(first,'passYds').roleAdjustment,null);
+ assert.deepEqual(project(first,'passYds').values,[210,21,21,21]);
+ const scenario=project(first,'passYds',30);
+ assert.equal(scenario.baseline,210);
+ assert.equal(scenario.roleAdjustment.kind,'user-scenario');
+ assert.match(workloadWarning(rows([30,30,30,0]),'passYds'),/Possible role change/);
+ assert.match(workloadWarning(rows([3,3,30,30]),'passYds'),/Workload change/);
+ assert.equal(workloadWarning(rows([30,29,31,30]),'passYds'),null);
+});
+test('first-game workload review cannot bridge gaps or invalid records',()=>{
+ const {workloadWarning}=require('../public/player-form');
+ for(const value of [undefined,null,NaN,-1]) {
+  const rows=[{gameDate:4,attempts:30},{gameDate:3,attempts:3},{gameDate:2,attempts:value},{gameDate:1,attempts:3}];
+  assert.doesNotMatch(workloadWarning(rows,'passYds')||'',/Possible role change/);
+ }
+ const targets=[{gameDate:3,targets:10},{gameDate:2,targets:1},{gameDate:1,targets:1}];
+ assert.match(workloadWarning(targets,'recYds'),/Possible role change.*targets/);
+});
+test('workload warning never bridges a missing previous team game',()=>{
+ const {workloadWarning,workloadShift}=require('../public/player-form');
+ for(const missing of [null,undefined,NaN,-1]) {
+  const rows=[{gameDate:5,attempts:39},{gameDate:4,attempts:missing},
+   {gameDate:3,attempts:35},{gameDate:2,attempts:4},{gameDate:1,attempts:1}];
+  assert.match(workloadWarning(rows,'passYds'),/previous completed team game/);
+  assert.equal(workloadShift(rows,'attempts'),null);
+ }
+ const recordedZero=[{gameDate:4,carries:0},{gameDate:3,carries:0},
+  {gameDate:2,carries:20},{gameDate:1,carries:20}];
+ assert.match(workloadWarning(recordedZero,'rushYds'),/Workload change/);
+});
 test('undated records cannot contaminate paired yardage efficiency',()=>{
  const {project}=require('../public/player-form');
  const valid=[{gameDate:1,rec:4,recYds:40},{gameDate:2,rec:4,recYds:40}];
@@ -170,4 +205,51 @@ test('consistent receiving production is not suppressed by spike safeguard',()=>
  const model=project(history,'recYds');
  assert.equal(model.outlierAdjustment,null);
  assert.equal(model.baseline,model.weighted);
+});
+
+test('Belin-style role change uses consecutive recent workload without rewriting backup results',()=>{
+ const {project}=require('../public/player-form');
+ const history=[{attempts:39,passYds:300},{attempts:14,passYds:148},{attempts:15,passYds:127},{attempts:1,passYds:2},{attempts:4,passYds:36}].map((g,i)=>({...g,gameDate:10-i}));
+ const result=project(history,'passYds');
+ assert.equal(result.roleAdjustment.kind,'recent-workload');
+ assert.equal(result.usage.workload,26.5);assert.equal(result.usage.games,2);
+ assert.ok(result.baseline>200&&result.baseline<300);
+ assert.deepEqual(result.values,[300,148,127,2,36]);assert.equal(result.average,122.6);
+ const explicit=project(history,'passYds',35);
+ assert.equal(explicit.usage.workload,35);assert.equal(explicit.roleAdjustment.kind,'user-scenario');
+ assert.equal(explicit.baseline,35*explicit.usage.efficiency);
+});
+test('workload shift requires two consecutive consistent changes and never jumps over a stat gap',()=>{
+ const {workloadShift,project}=require('../public/player-form');
+ const rows=values=>values.map((carries,i)=>({gameDate:10-i,carries,rushYds:Number.isFinite(carries)?carries*5:null}));
+ assert.equal(workloadShift(rows([20,2,3,3]),'carries'),null);
+ assert.equal(workloadShift(rows([20,null,20,3,3]),'carries'),null);
+ const lower=project(rows([2,3,20,20]),'rushYds');
+ assert.equal(lower.usage.workload,2.5);assert.equal(lower.baseline,12.5);
+ assert.equal(project(rows([20,20,3,3]),'carries').baseline,20);
+ assert.equal(project(rows([20,20,20,20]),'rushYds').roleAdjustment,null);
+});
+test('absolute opportunity scenarios handle zero, reject invalid inputs and retain coverage guards',()=>{
+ const {project}=require('../public/player-form');
+ const rows=[{gameDate:2,carries:20,rushYds:100},{gameDate:1,carries:20,rushYds:100}];
+ assert.equal(project(rows,'rushYds',30).baseline,150);
+ assert.equal(project(rows,'rushYds',0).baseline,0);
+ for(const invalid of [-1,61,Infinity,NaN,'30'])assert.equal(project(rows,'rushYds',invalid).baseline,100);
+ assert.equal(project([{gameDate:4},{gameDate:3},...rows],'rushYds',30).withheld,true);
+});
+test('explicit receiving zeros count as misses while missing games stay visible in the denominator',()=>{
+ const {project,coverageText}=require('../public/player-form');
+ const rows=[64,67,168,0,0,null].map((recYds,i)=>({gameDate:10-i,recYds}));
+ const result=project(rows,'recYds');
+ assert.equal(result.values.filter(v=>v>50.5).length,3);
+ assert.equal(result.values.filter(v=>v<50.5).length,2);
+ assert.equal(result.average,59.8);
+ assert.equal(coverageText(result.coverage),'5/6 team games recorded; 1 unknown');
+});
+
+test('two explicit zero-workload zero-yard games can lower the recent estimate to zero',()=>{
+ const {project}=require('../public/player-form');
+ const history=[0,0,20,20].map((carries,i)=>({gameDate:10-i,carries,rushYds:carries*5}));
+ const result=project(history,'rushYds');assert.equal(result.baseline,0);
+ assert.equal(result.roleAdjustment.kind,'recent-workload');assert.equal(result.values.length,4);
 });

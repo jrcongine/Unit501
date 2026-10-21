@@ -21,6 +21,7 @@
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
+  const expectedUsageScenarios = new Map();
   const starRoles = new Map();
   document.addEventListener('unit501:spotlight-changed',()=>{if(loadedFor)showPlayer();});
   const shortlisted = new Set();
@@ -344,7 +345,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Prices / break-even', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recorded above / below / equal', 'Recorded workload', 'Prices / break-even', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -369,9 +370,9 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), `${row.values.length} ${row.values.length === 1 ? 'game' : 'games'}`, projection.toFixed(1)+(row.spotlight?.applied?` (Spotlight ${row.spotlight.delta>=0?'+':''}${row.spotlight.delta.toFixed(1)}; base ${row.spotlight.baseline.toFixed(1)})`:''), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), Unit501PlayerForm.coverageText(row.form.coverage), projection.toFixed(1)+(row.spotlight?.applied?` (Spotlight ${row.spotlight.delta>=0?'+':''}${row.spotlight.delta.toFixed(1)}; base ${row.spotlight.baseline.toFixed(1)})`:''), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
-        `${above} / ${below} / ${equal} (${row.values.length} games)`,
+        `${above} / ${below} / ${equal} (${Unit501PlayerForm.coverageText(row.form.coverage)})`,
         row.workloadHistory.text];
       const prices = priceSummary(row.entry);
       fields.push(prices);
@@ -502,7 +503,7 @@ cell.append(details);
       const summary = difference === 0
         ? 'Projection equals the line.'
         : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
-      comparison.textContent = `${summary} Recorded season games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
+      comparison.textContent = `${summary} Recorded season games: ${above} above, ${below} below, ${equal} equal (${Unit501PlayerForm.coverageText(Unit501PlayerForm.summarize(Array.from(record.games.values()),def.key).coverage)}). Historical comparison only; not a win probability.`;
     }
     const direction=document.createElement('select');direction.id=`pick-direction-${record.id}-${def.key}`;
     for(const side of ['over','under']){const option=document.createElement('option');option.value=side;option.textContent=side;direction.append(option);}
@@ -527,7 +528,7 @@ cell.append(details);
     const history = Array.from(record.games.values()).sort((a, b) => b.gameDate - a.gameDate);
     const opponent = matchupTeams.find(team => team.id !== record.teamId);
     const opponentStats = opponentDefense.get(opponent?.id);
-    const form = Unit501PlayerForm.project(history,def.key);
+    const form = Unit501PlayerForm.project(history,def.key,expectedUsageScenarios.get(record.id)?.[{passYds:'attempts',rushYds:'carries',carries:'carries',recYds:'rec',rec:'rec'}[def.key]]);
     if (!form || form.withheld) return null;
     const {values,gameDetails,average,weighted} = form;
     let adjusted = form.baseline;
@@ -547,8 +548,8 @@ cell.append(details);
         }
       }
     const lineup=window.Unit501Lineups?.evaluate();
-    const lineupChange=lineup?.props?.[record.teamId+':'+record.playerId];
-    if(window.Unit501LineupModel)adjusted=Unit501LineupModel.adjustProp(adjusted,def.key,lineupChange);
+    const lineupChange=form.roleAdjustment?null:lineup?.props?.[record.teamId+':'+record.playerId];
+    if(window.Unit501LineupModel && !form.roleAdjustment)adjusted=Unit501LineupModel.adjustProp(adjusted,def.key,lineupChange);
     if(adjustment!==null)adjusted*=1+adjustment;
     const workload = workloadScenarios.get(record.id) ?? 100;
     adjusted = Unit501InjuryModel.workloadProjection(adjusted, workload);
@@ -598,6 +599,23 @@ cell.append(details);
     for(const [value,label] of [['auto','Auto — high-volume usage proxy'],['none','No star adjustment'],['QB','Star QB'],['WR','Star WR / receiver'],['RB','Star RB']]){const option=document.createElement('option');option.value=value;option.textContent=label;starSelect.append(option);}
     starSelect.value=starRoles.get(record.id)||'auto';starSelect.onchange=()=>{if(starSelect.value==='auto')starRoles.delete(record.id);else starRoles.set(record.id,starSelect.value);showPlayer();};
     starLabel.append(starSelect);results.append(starLabel);
+    const expectedLabel=document.createElement('p');
+    expectedLabel.textContent='Known role change? Enter expected opportunities below. Blank uses recorded history. These are your assumptions, not confirmed starter workloads. Changed-workload estimates replace transferred-workload estimates for that market to avoid adding the same opportunities twice.';
+    results.append(expectedLabel);
+    for(const [metric,title,max] of [['attempts','Expected pass attempts',80],['carries','Expected carries',60],['rec','Expected receptions',40]]) {
+      const label=document.createElement('label');label.textContent=title+' ';
+      const input=document.createElement('input');input.type='number';input.min='0';input.max=String(max);input.step='0.5';input.id='expected-'+metric;
+      input.value=expectedUsageScenarios.get(record.id)?.[metric]??'';
+      input.placeholder='Auto';
+      input.addEventListener('change',()=>{
+        const value=input.value.trim()===''?null:Number(input.value);
+        if(value!==null&&(!Number.isFinite(value)||value<0||value>max)){input.value=expectedUsageScenarios.get(record.id)?.[metric]??'';return;}
+        const scenario=expectedUsageScenarios.get(record.id)||{};
+        if(value===null)delete scenario[metric];else scenario[metric]=value;
+        expectedUsageScenarios.set(record.id,scenario);showPlayer();
+      });
+      label.append(input);results.append(label);
+    }
     const scenarioLabel = document.createElement('label');
     scenarioLabel.textContent = 'Expected workload scenario (% of normal): ';
     const scenario = document.createElement('select');
@@ -639,7 +657,7 @@ workload.textContent = workloadParts.length
 results.appendChild(workload);
     let shown = 0;
     for (const def of definitions) {
-      const coverageReview=Unit501PlayerForm.project(history,def.key);
+      const coverageReview=Unit501PlayerForm.project(history,def.key,expectedUsageScenarios.get(record.id)?.[{passYds:'attempts',rushYds:'carries',carries:'carries',recYds:'rec',rec:'rec'}[def.key]]);
       if(coverageReview?.withheld) {
         const explanation=document.createElement('p');
         explanation.style.color='#e8b95b';
@@ -661,12 +679,22 @@ results.appendChild(workload);
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
       card.append(supportInfo);
+      const recoveredGames=gameDetails.filter(g=>g.recoveredReceiving?.fields.includes(def.key));
+      if(recoveredGames.length){
+        const note=document.createElement('p');note.textContent=`${recoveredGames.length} game(s) recovered from official receiving box scores. `;
+        const link=document.createElement('a');link.href=recoveredGames[0].recoveredReceiving.source;link.textContent='Official source';link.target='_blank';link.rel='noopener noreferrer';note.append(link);card.append(note);
+      }
       if(model.spotlight?.applied){const note=document.createElement('p');note.textContent=`Spotlight scenario (${model.spotlight.starRole}): ${model.spotlight.baseline.toFixed(1)} baseline → ${model.adjusted.toFixed(1)} yards (${model.spotlight.delta>=0?'+':''}${model.spotlight.delta.toFixed(1)}). Timing assumption; not backtested.`;card.append(note);}
       if (model.workloadWarning) {
         const warning = document.createElement('p');
         warning.style.cssText = 'color:#e8b95b;margin:8px 0;';
         warning.textContent = model.workloadWarning;
         card.appendChild(warning);
+      }
+      if(model.form.roleAdjustment){
+        const role=model.form.roleAdjustment,note=document.createElement('p');
+        note.textContent=`${role.kind==='user-scenario'?'Your expected workload scenario':'Recent workload shift (last two consecutive games)'}: ${role.workload.toFixed(1)} ${role.key}. Baseline changes from ${role.previousBaseline.toFixed(1)} to ${model.form.baseline.toFixed(1)} before matchup/weather adjustments. Starting status is not inferred. Historical results still include all recorded games. This assumption has not been calibrated.`;
+        card.append(note);
       }
       if(model.form.usageUnavailable){const warning=document.createElement('p');warning.textContent=model.form.usageUnavailable;card.append(warning);}
       if(model.form.outlierAdjustment?.count){
@@ -744,7 +772,7 @@ results.appendChild(workload);
     }
     const note = document.createElement('p');
     note.style.opacity = '.8';
-    note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses a conservative season/form yardage fallback that dampens extreme single-game spikes when at least four recorded games exist. Missing statistics remain unknown, never automatically treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
+    note.textContent = 'Workload normally blends season and recent form; sustained two-game usage shifts use recent opportunities and paired efficiency, and explicit opportunity scenarios override that estimate; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses a conservative season/form yardage fallback that dampens extreme single-game spikes when at least four recorded games exist. Missing statistics remain unknown, never automatically treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
     results.appendChild(note);
   }
   function reset() {
@@ -758,6 +786,7 @@ results.appendChild(workload);
     matchupTeams = [];
     enteredLines.clear();
     workloadScenarios.clear();
+    expectedUsageScenarios.clear();
     starRoles.clear();
     lineScope = '';
     board.replaceChildren();
@@ -847,6 +876,24 @@ if (league === '1' && stage !== 'regular season') return false;
         }
       }
       completeCalendar(map,past);
+      // Only this school source is verified so far. Fetch gaps, not every player.
+      for(const team of teams.filter(t=>league==='2'&&/^South Alabama(?: Jaguars)?$/i.test(t.name||''))){
+        const teamId=String(team.id);
+        for(const [id,pastGame]of past){
+          const opponent=pastGame.teams.get(teamId);if(!opponent)continue;
+          const needsRecovery=[...map.values()].some(p=>p.teamId===teamId&&[...p.games.values()].some(g=>Number.isFinite(g.recYds))&&!Number.isFinite(p.games.get(id)?.recYds));
+          if(!needsRecovery)continue;
+          if(task!==sequence)return;
+          status.textContent='Checking official box scores for missing receiving games…';
+          const gameDate=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(pastGame.date*1000));
+          try{
+            const query=new URLSearchParams({season,date:gameDate,team:team.name,opponent:opponent.name});
+            const response=await fetch('/api/official-player-history?'+query,{signal:AbortSignal.timeout(20000)});
+            const data=await response.json();if(task!==sequence)return;
+            if(response.ok&&data.date===gameDate)Unit501PlayerStats.recoverReceiving(map,teamId,id,data);
+          }catch{/* Preserve unknown records when the official source is unavailable. */}
+        }
+      }
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
