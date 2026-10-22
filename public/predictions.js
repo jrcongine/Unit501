@@ -619,7 +619,7 @@ cell.append(details);
     const scenarioNote = document.createElement('p');
     scenarioNote.textContent = 'Your scenario scales this player’s stats linearly, not their chance of playing. It does not redistribute touches or adjust team scores. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
     results.appendChild(scenarioNote);
-    // Mario-style switches affect this selected player's props only, not team scores.
+    // Manual player scenario switches affect only the selected player's props, not team scores.
     const powerPanel=document.createElement('div');
     powerPanel.style.cssText='border:1px solid #55c8ec;border-radius:12px;background:#122c40;padding:12px;margin:12px 0';
     const powerHeading=document.createElement('strong');
@@ -628,8 +628,8 @@ cell.append(details);
     const powerButtons=document.createElement('div');
     powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
     const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal'],['boost','🍄 Prime-time Enhance +10%'],
-      ['dud','🥶 Rivalry Dud −10%'],['fatigue','😴 Short-week Fatigue −5%']]) {
+    for (const [mode,label] of [['off','Normal'],['boost','⚡ Prime-time Enhance +10%'],
+      ['dud','🥊 Rivalry Dud −10%'],['fatigue','🪫 Short-week Fatigue −5%']]) {
       const control=document.createElement('button');
       control.type='button';control.textContent=label;
       control.setAttribute('aria-pressed',String(activeMode===mode));
