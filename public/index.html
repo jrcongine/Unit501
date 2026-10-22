@@ -142,6 +142,18 @@
 
 </div>
 
+<section id="market-pulse" class="market-pulse" aria-labelledby="market-pulse-title">
+  <div class="market-pulse-heading">
+    <h3 id="market-pulse-title">📈 Market Pulse — Spreads &amp; Totals</h3>
+    <button id="refresh-market-pulse" type="button">Refresh market data</button>
+  </div>
+  <p>FanDuel line movement is observed by this browser, not a verified opening line. Reported bets and money come from a separate sportsbook sample, when available.</p>
+  <div id="market-movement" class="market-pulse-grid" aria-live="polite"></div>
+  <h4>Where reported bets and money are</h4>
+  <div id="market-bets" class="market-pulse-grid" aria-live="polite"></div>
+  <p id="market-pulse-status" class="market-pulse-status">Select a game to inspect movement and betting percentages.</p>
+</section>
+
 <details>
 <summary>Injury scoring — automatic or manual</summary>
 <label><input id="autoInjuries" type="checkbox" checked> Auto injuries — NFL & college</label>
@@ -244,6 +256,7 @@
 <script src="venue-weather.js"></script>
 <script src="auto-injury.js"></script>
 <script src="line-watch.js"></script>
+<script src="market-pulse.js"></script>
 <script src="weather-model.js"></script>
 <script src="unit501-shared-ui.js"></script>
 <script src="app.js"></script>
