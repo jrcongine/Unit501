@@ -139,7 +139,7 @@
     board.append(title, note);
     if (starScenarios.size) {
       const flag=document.createElement('p');
-      flag.textContent='🎮 Manual game-day scenarios active for '+starScenarios.size+' player(s). Experimental ±5%, not calibrated; automatic research queue excludes altered projections.';
+      flag.textContent='🎮 Manual game-day scenarios active for '+starScenarios.size+' player(s). Experimental +10% Star Power / −10% Rivalry Dud / −5% Short-week Fatigue, not calibrated; automatic research queue excludes altered projections.';
       flag.style.cssText='color:#b0eaff;font-weight:600';
       board.append(flag);
     }
@@ -628,8 +628,8 @@ cell.append(details);
     const powerButtons=document.createElement('div');
     powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
     const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal'],['boost','🍄 Prime-time Enhance +5%'],
-      ['dud','🥶 Rivalry Dud −5%'],['fatigue','😴 Short-week Fatigue −5%']]) {
+    for (const [mode,label] of [['off','Normal'],['boost','🍄 Prime-time Enhance +10%'],
+      ['dud','🥶 Rivalry Dud −10%'],['fatigue','😴 Short-week Fatigue −5%']]) {
       const control=document.createElement('button');
       control.type='button';control.textContent=label;
       control.setAttribute('aria-pressed',String(activeMode===mode));
