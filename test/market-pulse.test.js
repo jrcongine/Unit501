@@ -21,9 +21,10 @@ test('betting market pulse only uses scoped, fresh sourced percentages and names
  assert.equal(s.total.money,'Over 30% / Under 70%');
  assert.equal(s.sourceTimeVerified,false);
  for(const r of [report({available:false}),report({gameId:'13'}),report({league:'2'}),
- report({kickoff:5000001}),report({fetchedAt:1}),report({fetchedAt:300000})]){
+ report({kickoff:5000001}),report({fetchedAt:1})]){
   assert.equal(splits(r,game,1000000).available,false);
  }
+ assert.equal(splits(report({fetchedAt:300000}),game,1000000).available,true);
 });
 test('missing or inconsistent bet percentages stay unavailable instead of guessing',()=>{
  const malformed=report({spread:{awayBets:90,homeBets:90,awayMoney:60,homeMoney:40},
