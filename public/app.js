@@ -112,6 +112,69 @@ async function loadHomeField(game){
   }catch{if(selected===game)$('home-field-status').textContent='Historical home-field estimate unavailable for this matchup. Standard venue assumption remains available.';}
 }
 $('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
+// Spread/total market data: bookmaker quote movement and sampled bet shares stay separate.
+let pulseObservations=null,pulseSplits=null,pulseSplitsSequence=0,pulseManual=false;
+function pulseCard(parent,label,headline,detail,tone='flat'){
+  const card=document.createElement('div');
+  card.className='market-pulse-card market-pulse-'+tone;
+  const heading=document.createElement('div');heading.className='market-pulse-label';heading.textContent=label;
+  const value=document.createElement('div');value.className='market-pulse-value';value.textContent=headline;
+  const foot=document.createElement('div');foot.className='market-pulse-detail';foot.textContent=detail;
+  card.append(heading,value,foot);parent.append(card);
+}
+function renderMarketPulse(){
+  if(!selected)return;
+  const movement=$('market-movement'),bets=$('market-bets'),status=$('market-pulse-status');
+  movement.replaceChildren();bets.replaceChildren();
+  const game=selected;
+  for(const [kind,label] of [['spread',game.a+' spread'],['total','Game total']]){
+    const observed=pulseObservations?.game===game?pulseObservations[kind]:null;
+    const display=window.Unit501MarketPulse?.movement(kind,observed,game.a,game.h);
+    pulseCard(movement,label,
+      pulseManual?'Manual line entered — movement paused':display?.text||'No observed FanDuel line yet.',
+      'First verified quote seen on this browser, not necessarily sportsbook opening line.',
+      pulseManual?'flat':display?.tone||'flat');
+  }
+  const snapshot=window.Unit501MarketPulse?.splits(pulseSplits?.game===game?pulseSplits.data:null,game);
+  for(const [kind,title] of [['spread','Spread: teams'],['total','Total: Over / Under']]){
+    const side=snapshot?.available?snapshot[kind]:null;
+    pulseCard(bets,title,side?'Bets: '+side.bets:'Bet shares unavailable',
+      side?'Money: '+side.money+' · More reported bets: '+side.leader:
+      'No valid, game-matched bet percentages. Cannot infer public or sharp betting from the line.',
+      side?'flat':'unknown');
+  }
+  if(snapshot?.available){
+    status.textContent='Sample: '+snapshot.source+
+      ' · '+(snapshot.sourceTimeVerified?'source timestamp verified':'source update time unverified')+
+      '. FanDuel movement and sampled bets are different books. Money % is not proof of sharp action.';
+  }else{
+    status.textContent=(pulseSplits?.game===game&&pulseSplits.message)||'Checking independently sourced betting percentages…';
+  }
+}
+async function loadMarketSplits(){
+  if(!selected)return;
+  const game=selected,task=++pulseSplitsSequence;
+  pulseSplits=null;renderMarketPulse();
+  try{
+    const params=new URLSearchParams({game:String(game.id),league:game.league,season:game.season,
+      kickoff:String(game.kickoff),away:game.a,home:game.h});
+    const response=await fetch('/api/betting-splits?'+params,{signal:AbortSignal.timeout(12000)});
+    if(!response.ok)throw Error('Bet-share feed unavailable');
+    const data=await response.json();
+    if(task!==pulseSplitsSequence||selected!==game)return;
+    pulseSplits={game,data,message:data?.message||'No matching betting percentages available.'};
+  }catch{
+    if(task!==pulseSplitsSequence||selected!==game)return;
+    pulseSplits={game,data:null,message:'Betting splits unavailable — FanDuel line tracking still works.'};
+  }
+  renderMarketPulse();
+}
+$('refresh-market-pulse').addEventListener('click',()=>{
+  if(!selected)return;
+  loadFanDuel();
+  loadMarketSplits();
+});
+
 let slateSequence = 0;
 let oddsSequence = 0;
 let lineEdits = 0;
@@ -125,6 +188,8 @@ for (const id of ['spread', 'total']) $(id).addEventListener('input', () => {
   lineEdits++;
   gameQuotes=null;
   oddsStatus.textContent = 'Manual lines — refresh FanDuel lines to replace them.';
+  pulseManual=true;
+  renderMarketPulse();
 });
 async function loadFanDuel() {
   if (!selected) return;
@@ -144,6 +209,8 @@ async function loadFanDuel() {
     if (!response.ok || data.error) throw new Error(data.error || 'FanDuel feed unavailable.');
     if (!data.available) { oddsStatus.textContent = data.message; return; }
     gameQuotes={game,data};
+    pulseManual=false;
+    pulseObservations={game,spread:null,total:null};
     const messages = [];
     for (const [id, key, stamp] of [['spread', 'awaySpread', 'spreadUpdated'], ['total', 'total', 'totalUpdated']]) {
       if (Number.isFinite(data[key])) {
@@ -151,6 +218,7 @@ async function loadFanDuel() {
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
         const observed=window.Unit501LineWatch?.observe(localStorage,
           [game.league,game.season,game.id,'game',key].join(':'),data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
+        if(pulseObservations?.game===game)pulseObservations[id]=observed;
         const movement=observed?.changed?` • since first observed ${observed.firstLine} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:'';
         messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)${movement}`);
       } else {
@@ -159,6 +227,7 @@ async function loadFanDuel() {
       }
     }
     oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
+    renderMarketPulse();
     $('note').textContent = 'Review the lines and ratings, then run the simulation.';
     document.dispatchEvent(new Event('unit501:odds-updated'));
   } catch (error) {
@@ -573,6 +642,8 @@ function clearSelection() {
   clearTimeout(contextTimer);
   teamContext.replaceChildren();
   oddsSequence++;
+  pulseSplitsSequence++;
+  pulseSplits=null;pulseObservations=null;pulseManual=false;
   selected = null;
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
@@ -748,6 +819,9 @@ async function choose(game) {
   $('homeFieldReason').disabled=true;
   $('homeFieldReason').value='';
   describeMatchup(game);
+  pulseObservations=null;pulseSplits=null;pulseManual=false;
+  renderMarketPulse();
+  loadMarketSplits();
   updateUpsetAlert(game);
   homeFieldProfiles=null;
   loadHomeField(game);
