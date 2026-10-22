@@ -1,12 +1,13 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {adjust}=require('../public/star-power');
-test('mushroom and rivalry modifiers are opt-in, bounded player-only scenarios',()=>{
+test('game-day and rivalry modifiers are opt-in, bounded player-only scenarios',()=>{
  const game={kickoff:Date.parse('2026-10-22T20:15:00-04:00')};
  const normal=adjust(80,'off',game),boost=adjust(80,'boost',game);
  const dud=adjust(80,'dud',game),fatigue=adjust(80,'fatigue',game);
  assert.equal(normal.adjusted,80);assert.equal(normal.applied,false);
  assert.equal(boost.adjusted,88);assert.equal(boost.applied,true);
+ assert.match(boost.label,/⚡/);assert.match(dud.label,/🥊/);assert.match(fatigue.label,/🪫/);
  assert.equal(dud.adjusted,72);assert.equal(fatigue.adjusted,76);
  assert.equal(boost.weekday,'Thursday');
  assert.match(boost.warning,/short week/i);
