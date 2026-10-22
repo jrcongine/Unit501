@@ -561,7 +561,8 @@ cell.append(details);
     const preWeather=adjusted;
     adjusted*=weather.factor;
     const beforeScenario=adjusted;
-    const starPower=window.Unit501StarPower.adjust(adjusted,starScenarios.get(record.id) || 'off',selected);
+    const starPower=window.Unit501StarPower?.adjust(adjusted,starScenarios.get(record.id) || 'off',selected) ||
+      {adjusted,applied:false,label:'Standard projection',factor:1,warning:'Modifier unavailable.'};
     adjusted=starPower.adjusted;
     return {starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
@@ -642,7 +643,8 @@ cell.append(details);
     }
     powerPanel.append(powerButtons);
     const powerNote=document.createElement('p');
-    const preview=window.Unit501StarPower.adjust(100,activeMode,selected);
+    const preview=window.Unit501StarPower?.adjust(100,activeMode,selected) ||
+      {applied:false,label:'Standard projection',factor:1,warning:'Game-day modifiers unavailable.'};
     powerNote.textContent=(preview.applied?preview.label+' changes only this player’s projected stats by '+
       Math.round((preview.factor-1)*100)+'%. ':'Standard projections active. ')+preview.warning+
       ' Experimental scenario only; not a validated betting edge or automatic player boost. Changes do not affect team totals.';
