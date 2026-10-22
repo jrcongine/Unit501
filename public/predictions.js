@@ -21,6 +21,7 @@
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
+  const starScenarios = new Map(); // Manually selected per player; default OFF.
   const shortlisted = new Set();
   let lineScope = '';
   let sequence = 0;
@@ -136,6 +137,12 @@
     note.textContent = 'Selected game • Our projection, FanDuel line and difference. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
+    if (starScenarios.size) {
+      const flag=document.createElement('p');
+      flag.textContent='🎮 Manual game-day scenarios active for '+starScenarios.size+' player(s). Experimental ±5%, not calibrated; automatic research queue excludes altered projections.';
+      flag.style.cssText='color:#b0eaff;font-weight:600';
+      board.append(flag);
+    }
     const rows = [];
     for (const record of choices) {
       if (window.Unit501Availability?.assess(record.teamId, record.playerId).blocked) continue;
@@ -145,7 +152,7 @@
         if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) continue;
         const model = projectionFor(record, def);
         if (!model) continue;
-        if(window.Unit501ForecastArchive)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
+        if(window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
         const checks = Unit501PlayerForm.reviewChecks(model, entry, availability);
         const support = Unit501PlayerForm.dataSupport(model, availability);
@@ -263,7 +270,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
         !['over','under'].some(side=>Number.isInteger(rows[i].entry[side])&&Math.abs(rows[i].entry[side])>=100)||
         rows[i].support.count<5||rows[i].support.needsReview||rows[i].checks.length>0||
         rows[i].form.usageUnavailable||rows[i].workloadWarning||rows[i].workloadHistory.missing>0||
-        rows[i].workload!==100||rows[i].lineupChange||
+        rows[i].workload!==100||rows[i].lineupChange||rows[i].starPower.applied||
         Number(rows[i].adjusted.toFixed(1))===rows[i].line)) ||
       (board.dataset.stat && rows[i].def.key !== board.dataset.stat) ||
       (board.dataset.review === 'workload' && (rows[i].values.length < 5 || rows[i].workloadWarning || rows[i].form.usageUnavailable || rows[i].workloadHistory.missing > 0 || rows[i].form.coverage.missing > 0 || rows[i].workload !== 100 || rows[i].lineupChange)) ||
@@ -553,12 +560,16 @@ cell.append(details);
     const weather=window.Unit501WeatherModel?.effect(selected,typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,def.key,el('weatherEnabled')?.checked!==false) || {factor:1,reason:'Weather unavailable.'};
     const preWeather=adjusted;
     adjusted*=weather.factor;
-    return {weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    const beforeScenario=adjusted;
+    const starPower=window.Unit501StarPower?.adjust(adjusted,starScenarios.get(record.id) || 'off',selected) ||
+      {adjusted,applied:false,label:'Standard projection',factor:1,warning:'Modifier unavailable.'};
+    adjusted=starPower.adjusted;
+    return {starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function propSnapshot(record,def,model){
     const entry=readLine(lineKey(record,def));
     return Unit501ForecastArchive.captureProp({game:selected,teamId:record.teamId,playerId:record.playerId,market:def.key,baseline:model.baseline,adjusted:model.adjusted,
-      inputs:{weather:model.weather,preWeather:model.preWeather,weatherForecast:typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,
+      inputs:{weather:model.weather,preWeather:model.preWeather,weatherForecast:typeof forecastContext!=='undefined'&&forecastContext?.game===selected?forecastContext.data:null,playerName:record.name,team:record.team,history:Array.from(record.games.values()),form:model.form,matchupDefense:model.matchupDefense,matchupAdjustment:model.adjustment,workload:model.workload,lineupChange:model.lineupChange,starPower:model.starPower,
         quote:{line:n(entry.value),over:Number.isFinite(entry.over)?entry.over:null,under:Number.isFinite(entry.under)?entry.under:null,source:entry.source||'manual',updatedAt:entry.savedAt},
         availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
   }
@@ -608,6 +619,38 @@ cell.append(details);
     const scenarioNote = document.createElement('p');
     scenarioNote.textContent = 'Your scenario scales this player’s stats linearly, not their chance of playing. It does not redistribute touches or adjust team scores. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
     results.appendChild(scenarioNote);
+    // Mario-style switches affect this selected player's props only, not team scores.
+    const powerPanel=document.createElement('div');
+    powerPanel.style.cssText='border:1px solid #55c8ec;border-radius:12px;background:#122c40;padding:12px;margin:12px 0';
+    const powerHeading=document.createElement('strong');
+    powerHeading.textContent='🎮 Game-day player modifiers';
+    powerPanel.append(powerHeading);
+    const powerButtons=document.createElement('div');
+    powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
+    const activeMode=starScenarios.get(record.id) || 'off';
+    for (const [mode,label] of [['off','Normal'],['boost','🍄 Prime-time Enhance +5%'],
+      ['dud','🥶 Rivalry Dud −5%'],['fatigue','😴 Short-week Fatigue −5%']]) {
+      const control=document.createElement('button');
+      control.type='button';control.textContent=label;
+      control.setAttribute('aria-pressed',String(activeMode===mode));
+      control.style.cssText='padding:8px 10px;border-radius:9px;border:1px solid #55c8ec;cursor:pointer;'+
+        (activeMode===mode?'background:#087b70;color:white;font-weight:bold':'background:#19384a;color:#e2f5ff');
+      control.addEventListener('click',()=>{
+        if(mode==='off')starScenarios.delete(record.id);else starScenarios.set(record.id,mode);
+        showPlayer();
+      });
+      powerButtons.append(control);
+    }
+    powerPanel.append(powerButtons);
+    const powerNote=document.createElement('p');
+    const preview=window.Unit501StarPower?.adjust(100,activeMode,selected) ||
+      {applied:false,label:'Standard projection',factor:1,warning:'Game-day modifiers unavailable.'};
+    powerNote.textContent=(preview.applied?preview.label+' changes only this player’s projected stats by '+
+      Math.round((preview.factor-1)*100)+'%. ':'Standard projections active. ')+preview.warning+
+      ' Experimental scenario only; not a validated betting edge or automatic player boost. Changes do not affect team totals.';
+    powerNote.style.cssText='font-size:.9em;color:#c8dbe6;margin:0';
+    powerPanel.append(powerNote);
+    results.append(powerPanel);
     const workload = document.createElement('p');
 const history = Array.from(record.games.values())
   .sort((a, b) => b.gameDate - a.gameDate);
@@ -639,7 +682,7 @@ results.appendChild(workload);
       const model = projectionFor(record, def);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
-      if(window.Unit501ForecastArchive){
+      if(window.Unit501ForecastArchive && !model.starPower.applied){
         const saved=Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
       }
@@ -650,6 +693,12 @@ results.appendChild(workload);
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
       card.append(supportInfo);
+      if(model.starPower.applied){
+        const effect=document.createElement('p');
+        effect.style.cssText='background:#1a3b50;color:#b8f2ff;padding:8px;border-radius:6px;font-weight:bold';
+        effect.textContent=model.starPower.label+': standard '+model.beforeScenario.toFixed(1)+' → scenario '+adjusted.toFixed(1)+'. '+model.starPower.warning+' Not archived as a standard prediction.';
+        card.append(effect);
+      }
       if (model.workloadWarning) {
         const warning = document.createElement('p');
         warning.style.cssText = 'color:#e8b95b;margin:8px 0;';
@@ -723,7 +772,7 @@ results.appendChild(workload);
     : `Usage/form baseline: ${model.form.baseline.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
   card.appendChild(explanation);
 }
-      const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${adjusted.toFixed(1)}.`;card.append(weatherNote);
+      const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${model.beforeScenario.toFixed(1)} (before manual game-day scenario).`;card.append(weatherNote);
       addLineComparison(card, record, def, adjusted, values);
       shown++;
     }
@@ -746,6 +795,7 @@ results.appendChild(workload);
     matchupTeams = [];
     enteredLines.clear();
     workloadScenarios.clear();
+    starScenarios.clear();
     lineScope = '';
     board.replaceChildren();
     picker.disabled = true;

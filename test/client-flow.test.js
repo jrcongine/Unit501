@@ -49,7 +49,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','line-watch.js','unit501-shared-ui.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','line-watch.js','unit501-shared-ui.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
