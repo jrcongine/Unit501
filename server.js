@@ -8,6 +8,7 @@ const path = require('path');
 const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
 const nbaGames = require('./nba-feed').createNBAFeed();
+const nbaComebackWatch = require('./nba-comeback-watch').createWatch();
 const nbaContext = require('./nba-context').createNBAContext();
 const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
@@ -73,6 +74,11 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/nba/comeback-watch'){
+      // One shared, rate-limited NBA live scoreboard request per cache window, independent of browser count.
+      try{return send(res,200,await nbaComebackWatch());}
+      catch(e){console.error('NBA comeback watch:',e.message);return send(res,503,{available:false,checkedAt:new Date().toISOString(),alerts:[],message:'Live NBA scores unavailable; no comeback alerts issued.'});}
     }
     if(u.pathname==='/api/nba/games'){
       const date=u.searchParams.get('date');
