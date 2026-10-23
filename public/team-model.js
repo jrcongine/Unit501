@@ -9,6 +9,37 @@
     return {...result,reduction:Number((1-result.factor).toFixed(6))};
   }
 
+  // Pure, opt-in what-if adjustment. Never infer an automatic upset probability from kickoff or venue.
+  function underdogEffect(game, awayScore, homeScore, settings = {}) {
+    const mode=settings.upsetMode||'off';
+    const unchanged=reason=>({valid:true,applied:false,away:awayScore,home:homeScore,points:0,reason});
+    if(mode==='off')return unchanged('Upset scenario OFF: baseline score retained.');
+    if(!['sunday','neutral','manual'].includes(mode))return {valid:false,reason:'Choose a supported upset scenario or Off.'};
+    const points=settings.upsetPoints;
+    if(!Number.isInteger(points)||points<1||points>3)return {valid:false,reason:'Choose a 1, 2 or 3-point underdog scenario.'};
+    if(mode==='sunday'){
+      if(!Number.isFinite(game?.kickoff))return unchanged('Sunday scenario not applied: matchup kickoff is missing.');
+      const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'long',hour:'numeric',hourCycle:'h23'}).formatToParts(new Date(game.kickoff));
+      const weekday=parts.find(p=>p.type==='weekday')?.value;
+      const hour=Number(parts.find(p=>p.type==='hour')?.value);
+      if(weekday!=='Sunday'||hour<11||hour>=18)return unchanged('Sunday scenario not applied: this is not a Sunday daytime matchup.');
+    }
+    if(mode==='neutral'&&settings.venueMode!=='neutral')return unchanged('Neutral-site scenario not applied: set Game location to Neutral site first.');
+    const spread=settings.awaySpread;
+    if(!Number.isFinite(spread))return unchanged('Upset scenario not applied: a valid FanDuel away spread is required to identify the underdog.');
+    if(spread===0)return unchanged('Upset scenario not applied: the game is a pick’em with no identified market underdog.');
+    const awayUnderdog=spread>0;
+    const favoriteScore=awayUnderdog?homeScore:awayScore;
+    if(!Number.isFinite(favoriteScore)||favoriteScore<0||!Number.isFinite(awayScore)||!Number.isFinite(homeScore))
+      return {valid:false,reason:'Projected scores must be nonnegative numbers.'};
+    const transfer=Math.min(points/2,favoriteScore);
+    const effective=transfer*2;
+    const label=awayUnderdog?game.a:game.h;
+    return {valid:true,applied:effective>0,away:awayScore+(awayUnderdog?transfer:-transfer),
+      home:homeScore+(awayUnderdog?-transfer:transfer),points:effective,team:label,
+      reason:(mode==='manual'?'Manual':mode==='sunday'?'Sunday daytime':'Neutral-site')+
+        ' underdog scenario: '+label+' gains '+effective.toFixed(1)+' point(s) of projected margin; total preserved. User-selected, experimental and not calibrated.'};
+  }
   function venueEffect(game, home, away, mode = 'auto', settings = {}) {
     if (!['auto','home','neutral'].includes(mode)) return {valid:false};
     let context=settings.homeContext??0;
@@ -149,15 +180,17 @@
     const weatherAway=preWeatherAway*(1-weather.reduction),weatherHome=preWeatherHome*(1-weather.reduction);
     const marketTransfer=Math.max(-weatherHome,Math.min(weatherAway,market.margin/2));
     market.appliedMargin=marketTransfer*2;
-    return {available:true,away:weatherAway-marketTransfer,home:weatherHome+marketTransfer,market,
+    const upset=underdogEffect(game,weatherAway-marketTransfer,weatherHome+marketTransfer,adjustments);
+    if(!upset.valid)return {available:false,reason:upset.reason};
+    return {available:true,away:upset.away,home:upset.home,market,upset,
       weather,preWeatherAway,preWeatherHome,
       quarterback,injury,lineup:{applied:lineupValid,awayChange:lineupAway,homeChange:lineupHome},preInjuryAway,preInjuryHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),ratingPriorGames,calibration:ratingPriorGames!==4||market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
-      probabilityCalibration:ratingPriorGames===4&&!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':'')+(upset.applied?'-upset-scenario-v1':''),ratingPriorGames,calibration:ratingPriorGames!==4||market.applied||qbApplied||venue.variable||venue.context||upset.applied?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:ratingPriorGames===4&&!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!upset.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {
@@ -210,7 +243,7 @@
     return {blowout:{threshold:21,away:awayBlowouts/runs,home:homeBlowouts/runs,any:(awayBlowouts+homeBlowouts)/runs},calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
       varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
-  const model={project,simulate,venueEffect,weatherEffect};
+  const model={project,simulate,venueEffect,weatherEffect,underdogEffect};
   if (typeof module !== 'undefined' && module.exports) module.exports=model;
   else root.Unit501TeamModel=model;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
