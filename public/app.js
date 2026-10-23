@@ -44,10 +44,11 @@ $('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override
 const injuryFields=['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'];
 function injuryModeChanged(){
   const automatic=$('autoInjuries').checked;
+  $('manual-injury-inputs').hidden=automatic;
   for(const id of injuryFields){$(id).disabled=automatic;$(id).value='0';}
   $('auto-injury-status').textContent=automatic?
-    'Auto injuries ON — applied when you run the prediction.':
-    'Manual mode — enter injury points below.';
+    'Automatic mode enabled — checking verified Out reports and role data; no points applied without support.':
+    'Manual mode — enter your own injury-point estimates below. They are not verified injury values.';
   previewAutomaticInjuries();
   invalidateSimulation('Injury scoring mode changed. Run the simulation again.');
 }
@@ -654,6 +655,8 @@ function clearSelection() {
   selected = null;
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
+  $('maintenance-panel').hidden=true;
+  $('maintenance-panel').open=false;
   for (const [id, label] of [['quick-lab','🎯 Game Lab · select game'],['quick-player','📊 Player props · select game']]) {
     const link = $(id);
     if (link) { link.classList.add('is-unavailable'); link.setAttribute('aria-disabled','true'); link.tabIndex = -1; link.textContent = label; }
@@ -802,6 +805,9 @@ async function choose(game) {
   game.season = $('date').value.slice(0,4);
   const priorLeague=selected?.league;
   selected = game;
+  // NFL-only background roster sweep should not appear in a college matchup.
+  $('maintenance-panel').hidden=game.league!=='1';
+  if(game.league!=='1')$('maintenance-panel').open=false;
   $('autoInjuries').checked=true;injuryModeChanged();
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
