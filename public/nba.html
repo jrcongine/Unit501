@@ -20,6 +20,14 @@
 </div>
 <p id="nba-comeback-status" role="status" aria-live="polite">Comeback Watch OFF. No live-score checks.</p>
 <div id="nba-comeback-alerts" aria-live="polite" aria-label="Recent comeback alerts"></div>
+<section id="nba-comeback-history" aria-labelledby="nba-comeback-history-title">
+<h3 id="nba-comeback-history-title">20-point deficit results tracker</h3>
+<p id="nba-comeback-summary">No observed NBA comeback opportunities recorded yet.</p>
+<button id="nba-comeback-grade" type="button">Update final game results</button>
+<p id="nba-comeback-grade-status" role="status" aria-live="polite"></p>
+<div id="nba-comeback-records" aria-label="Observed NBA comeback outcomes"></div>
+<p class="war-muted">Tracks games detected while this browser is monitoring. This is not a full-league backtest. You may manually record a live moneyline within 10 minutes of the first alert; any $5 return shown is a hypothetical paper result, not a placed or verified wager. No odds means no profitability calculation.</p>
+</section>
 <p class="war-muted">Checks about every 2 minutes only around scheduled games, subject to the NBA data quota. Browser notifications and on-page alerts work <strong>only while this NBA page remains open</strong>; notifications after closing the app require a future push-notification service. The app never places bets.</p>
 </section>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
@@ -45,4 +53,4 @@
 <p>Points, rebounds, assists, and threes will appear once player minutes, rosters and model checks are available. No unsupported prop estimates will be shown.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="unit501-shared-ui.js"></script><script src="nba.js"></script><script src="nba-comeback-alerts.js"></script></body></html>
+</main><script src="unit501-shared-ui.js"></script><script src="nba.js"></script><script src="nba-comeback-history.js"></script><script src="nba-comeback-alerts.js"></script></body></html>
