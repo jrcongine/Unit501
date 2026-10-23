@@ -8,6 +8,7 @@ test('fires for a 20+ point deficit in Q1 or Q2, with the losing team correctly 
   assert.equal(a.trailing,'Philadelphia 76ers');
   assert.equal(a.deficit,29);assert.equal(a.leading,'Cleveland Cavaliers');assert.equal(a.period,2);
   const q1=sample();q1.periods.current=1;q1.scores.home.points=60;assert.equal(pickAlert(q1).deficit,20);
+  q1.periods.endOfPeriod=true;assert.equal(pickAlert(q1).deficit,20,'end of first quarter is still before halftime');
   const homeBehind=sample();homeBehind.scores.home.points=15;assert.equal(pickAlert(homeBehind).trailing,'Cleveland Cavaliers');
 });
 test('no alert if lead is smaller, at halftime, in second half, or game not live',()=>{
