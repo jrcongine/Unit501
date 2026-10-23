@@ -263,3 +263,9 @@ a{color:#97e3fc}
 .scenario-comparison strong{font-size:26px;font-variant-numeric:tabular-nums}
 .upset-alert-panel{border:1px solid #c39b46;border-radius:12px;padding:14px;margin:16px 0;background:#302919}
 .upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
+
+/* Separately labeled public betting reference, never presented as a connected feed. */
+.market-pulse-sources{margin-top:12px;padding:10px 12px;border-top:1px solid #354c5e;font-size:13px;line-height:1.5}
+.market-pulse-sources p{margin:4px 0 8px}
+.market-pulse-sources a{display:inline-block;margin:2px 0 6px;font-weight:700}
+.market-pulse-sources strong{color:#d9e9f5}
