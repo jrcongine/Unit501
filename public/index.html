@@ -179,9 +179,22 @@
 <p id="home-field-status">Historical home-field estimates load with the matchup. These are performance estimates, not crowd-noise ratings.</p>
 <details><summary>NFL historical home-field rankings</summary><div id="home-field-rankings"></div></details>
 <p id="matchup-context-status"></p>
-<section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert</h3>
-<label><input id="upsetAlertEnabled" type="checkbox" checked> Sunday / neutral-site alerts</label>
-<p id="upset-alert-status" role="status">Context alerts only — no automatic odds or points adjustment.</p>
+<section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert — optional scenario</h3>
+<label for="upsetScenarioMode">Choose an upset scenario (none is selected by default)</label>
+<select id="upsetScenarioMode">
+<option value="off" selected>Off — normal model, no upset adjustment</option>
+<option value="sunday">Sunday daytime — underdog scenario</option>
+<option value="neutral">Neutral site — underdog scenario</option>
+<option value="manual">Manual underdog scenario — any game</option>
+</select>
+<label for="upsetScenarioPoints">Shift projected margin toward the underdog</label>
+<select id="upsetScenarioPoints" disabled>
+<option value="1">1 point (experimental)</option>
+<option value="2" selected>2 points (experimental)</option>
+<option value="3">3 points (experimental)</option>
+</select>
+<p id="upset-alert-status" role="status" aria-live="polite">Off — baseline projection unchanged.</p>
+<p class="upset-alert-explanation">Optional, uncalibrated manual scenario: transfers half the selected margin adjustment from the market favorite to the underdog, preserving the projected total. Sunday mode works only for Sunday daytime games; neutral mode only when Game location is set to Neutral site. Choose Manual to test any matchup. No automatic upset probability or additional points are applied. Rerun 50,000 Sims after a change.</p>
 </section>
 <label for="homeFieldMode">Home advantage</label>
 <select id="homeFieldMode"><option value="auto">Automatic — standard venue adjustment</option><option value="manual">Manual scenario — set total points</option></select>
