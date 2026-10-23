@@ -12,6 +12,7 @@
  const SEEN='unit501:nba-comeback-alerts:v1';
  const INTERVAL=120000;
  let timer=null,enabled=false,epoch=0,windows=[];
+ const seenInMemory=new Set();
  const node=(tag,value)=>{const x=document.createElement(tag);x.textContent=String(value);return x;};
  const getFlag=()=>{try{return localStorage.getItem(KEY)==='on';}catch{return false;}};
  const saveFlag=value=>{try{localStorage.setItem(KEY,value?'on':'off');}catch{}};
@@ -36,7 +37,8 @@
  }
  function notify(a){
   const seen=readSeen(),id=String(a.id);
-  if(seen[id])return;
+  if(seen[id]||seenInMemory.has(id))return;
+  seenInMemory.add(id);
   const text=a.trailing+' trails '+a.leading+' by '+a.deficit+
    ' ('+a.away+' '+a.awayScore+' – '+a.home+' '+a.homeScore+', Q'+a.period+
    (a.clock?' '+a.clock:'')+'). Check the live moneyline; this is not a bet recommendation.';
