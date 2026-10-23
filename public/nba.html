@@ -10,6 +10,18 @@
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
 <p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p></section>
+<section id="nba-comeback-watch" class="card nba-comeback-watch" aria-labelledby="nba-comeback-title">
+<h2 id="nba-comeback-title">NBA Comeback Watch · 20-point first-half leads</h2>
+<p>Get an alert when an NBA team trails by <strong>20+ points during Q1 or Q2</strong>. One alert per game; check the live moneyline yourself. A large deficit does not establish positive betting value.</p>
+<label class="nba-comeback-toggle"><input type="checkbox" id="nba-comeback-enabled"> Watch tonight's first-half games (opt in)</label>
+<div class="nba-comeback-actions">
+<button type="button" id="nba-comeback-permission">Allow browser notifications</button>
+<button type="button" id="nba-comeback-check" disabled>Check live scores now</button>
+</div>
+<p id="nba-comeback-status" role="status" aria-live="polite">Comeback Watch OFF. No live-score checks.</p>
+<div id="nba-comeback-alerts" aria-live="polite" aria-label="Recent comeback alerts"></div>
+<p class="war-muted">Checks about every 2 minutes only around scheduled games, subject to the NBA data quota. Browser notifications and on-page alerts work <strong>only while this NBA page remains open</strong>; notifications after closing the app require a future push-notification service. The app never places bets.</p>
+</section>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / NBA GAME LAB</span><h2 id="nba-matchup">Select an NBA matchup</h2>
@@ -33,4 +45,4 @@
 <p>Points, rebounds, assists, and threes will appear once player minutes, rosters and model checks are available. No unsupported prop estimates will be shown.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="unit501-shared-ui.js"></script><script src="nba.js"></script></body></html>
+</main><script src="unit501-shared-ui.js"></script><script src="nba.js"></script><script src="nba-comeback-alerts.js"></script></body></html>
