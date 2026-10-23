@@ -36,3 +36,15 @@
 #nba-comeback-status{margin:12px 0;font-weight:700}
 #nba-comeback-alerts{display:grid;gap:8px}
 .nba-comeback-entry{margin:0;padding:10px 12px;border-left:3px solid #e1aa53;border-radius:6px;background:#293446;color:#f4e7cd;font-weight:700}
+
+/* Observed (not simulated) 20-point deficit history. */
+#nba-comeback-history{border-top:1px solid #354057;margin-top:16px;padding-top:14px}
+#nba-comeback-history h3{font-size:16px;margin:3px 0 10px}
+#nba-comeback-summary{font-weight:700}
+#nba-comeback-grade-status{min-height:20px;font-size:13px}
+#nba-comeback-records{display:grid;gap:9px}
+.nba-comeback-record{border:1px solid #354057;background:#131f30;border-radius:9px;padding:12px;font-size:13px}
+.nba-comeback-record p{margin:7px 0}
+.nba-comeback-price-input{display:flex;gap:7px;flex-wrap:wrap}
+.nba-comeback-price-input input{flex:1 1 145px;min-width:100px}
+.nba-comeback-price-input button{flex:0 1 auto}
