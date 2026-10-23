@@ -59,7 +59,9 @@ function renderAutomaticInjuries(result,applied=false){
   }
   const who=result.applied.map(p=>p.category==='quarterback'?`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`);
   const hasOut=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out'));
-  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment.';
+  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):
+    !result.ready?'No automatic injury points: '+result.message:
+    hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment; verify report coverage before assuming availability.';
   const list=$('injury-adjustment-reasons');list.replaceChildren();
   for(const reason of result.withheld){const row=document.createElement('li');row.textContent=reason;list.append(row);}
   $('injury-adjustment-details').hidden=!result.withheld.length;
