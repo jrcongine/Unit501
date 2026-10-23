@@ -624,7 +624,7 @@ cell.append(details);
     const powerButtons=document.createElement('div');
     powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
     const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal 0%'],['boost','🍄 Star Power +10%'],
+    for (const [mode,label] of [['off','Normal 0%'],['boost','Star Power +10%'],
       ['dud','🥶 Rivalry Dud −10%'],['fatigue','😴 Fatigue −5%']]) {
       const control=document.createElement('button');
       control.type='button';control.textContent=label;
