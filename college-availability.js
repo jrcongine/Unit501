@@ -1,7 +1,7 @@
 'use strict';
 const {fbsName}=require('./team-identity');
 const {matchPlayer}=require('./player-name-match');
-const sources={SEC:'https://www.secsports.com/fbreports',ACC:'https://theacc.com/sports/2025/8/28/availability-reporting-football.aspx',B10:'https://bigten.org/sports/2026/9/10/FB_Availability_Reports.aspx'};
+const sources={SEC:'https://www.secsports.com/fbreports',ACC:'https://theacc.com/sports/2025/8/28/availability-reporting-football.aspx',B10:'https://bigten.org/sports/2026/9/10/FB_Availability_Reports.aspx',American:'https://theamerican.org/sports/2026/8/6/football_player_availability.aspx'};
 const reportSchool=(name,season)=>fbsName({name},season)||fbsName({name:String(name||'').replace(/\bSt\.$/,'State')},season);
 const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function localEpoch(date,time,zone){
@@ -36,7 +36,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
  async function read(conf){let item=cache.get(conf);if(!item||now()-item.at>=900000){item={at:now(),pending:readPublic(conf).then(data=>({data,checkedAt:now()}))};cache.set(conf,item);item.pending.catch(()=>cache.delete(conf));}return item.pending;}
  return async(q,teams)=>{
   if(q.league!=='2')return;
-  const unavailable=()=>({available:false,rows:[],message:'Official SEC/ACC/Big Ten report not verified for this exact matchup. Other conference coverage is unsupported; availability remains unknown.'});
+  const unavailable=()=>({available:false,rows:[],message:'No exact-game SEC, ACC, Big Ten, or American Conference report verified. Report may be unpublished, stale, unmatched, or unavailable. Other conference coverage is unsupported; availability remains unknown.'});
   for(const team of teams)team.official=unavailable();
   if(!/^\d{1,6}$/.test(q.game||''))return;
   try{
