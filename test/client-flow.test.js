@@ -74,6 +74,31 @@ test('player ratings start compact, with both rosters and replacement controls a
   assert.ok(h.nodes.get('replacement-1:7'));
   assert.match(h.nodes.get('lineup-status').textContent,/No confirmed replacement scenario/);
 });
+test('opt-in upset selector updates the score only after a selected scenario and rerun, and resets for another game',async()=>{
+ const h=harness();await h.settle();h.run('$("league").value="1"');
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('upsetScenarioMode').value,'off');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,true);
+ h.run('sim()');
+ const baseline=h.nodes.get('score').textContent;
+ h.nodes.get('upsetScenarioMode').value='manual';
+ await h.nodes.get('upsetScenarioMode').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('score').textContent,'—');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,false);
+ assert.match(h.nodes.get('upset-alert-status').textContent,/Manual underdog scenario/);
+ h.nodes.get('upsetScenarioPoints').value='3';
+ await h.nodes.get('upsetScenarioPoints').dispatchEvent({type:'change'});
+ h.run('sim()');
+ assert.notEqual(h.nodes.get('score').textContent,baseline);
+ assert.match(h.nodes.get('note').textContent,/User-selected, experimental and not calibrated/);
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('upsetScenarioMode').value,'off');
+ assert.equal(h.nodes.get('upsetScenarioPoints').value,'2');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,true);
+ h.run('sim()');
+ assert.equal(h.nodes.get('score').textContent,baseline);
+});
+
 test('actual client home-context control changes margin and resets on game selection',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="home"; sim()');const first=h.nodes.get('score').textContent;
