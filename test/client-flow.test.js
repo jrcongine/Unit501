@@ -656,6 +656,28 @@ test('saved accuracy UI shows market reliability without counting selected picks
   assert.match(reliability.textContent,/not statistical significance/);
 });
 
+test('automatic injury mode hides inactive manual boxes; NFL roster sweep only appears in NFL matchups',async()=>{
+ const h=harness();await h.settle();
+ h.nodes.get('league').value='2';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('autoInjuries').checked,true);
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
+ assert.equal(h.nodes.get('maintenance-panel').hidden,true);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/no points|incomplete|unavailable|not loaded/i);
+ h.nodes.get('autoInjuries').checked=false;
+ await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,false);
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/Manual mode/i);
+ h.nodes.get('autoInjuries').checked=true;
+ await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
+ h.nodes.get('league').value='1';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('maintenance-panel').hidden,false);
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
+});
+
 test('Game Lab automatically scores a confirmed defender absence and cleanly switches back to manual',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  const game=h.run('selected'),now=Date.now();
