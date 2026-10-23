@@ -8,6 +8,24 @@
   let version=0, data=null, game=null, timer, loading=false, lastAttempt=0;
   const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
   const timestamp=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT':'unknown';
+  // Explain known conference source gaps; never treat absent data as a healthy roster.
+  const americanTeams=new Set(['army','army black knights','tulsa','tulsa golden hurricane',
+    'navy','navy midshipmen','memphis','memphis tigers','rice','rice owls','temple','temple owls',
+    'charlotte','charlotte 49ers','uab','uab blazers','tulane','tulane green wave',
+    'florida atlantic','florida atlantic owls','fau','north texas','north texas mean green',
+    'south florida','south florida bulls','usf','utsa','utsa roadrunners',
+    'east carolina','east carolina pirates','ecu']);
+  const americanKey=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  function americanReportGap(game,teams){
+    return String(game?.league)==='2' &&
+      americanTeams.has(americanKey(game.a))&&americanTeams.has(americanKey(game.h))&&
+      teams?.every(t=>t.official?.available!==true);
+  }
+  const americanGapMessage='American Conference official game-day availability reports are not imported by Unit 501. '+
+    'The conference has published a two-hours-before-kickoff reporting policy for conference games; '+
+    'verify the current-season report on the conference website near kickoff. Refresh here checks connected feeds only. '+
+    'No official report here means unknown availability, not a healthy roster.';
+  const americanWebsite='https://theamerican.org/';
   function reportAge(date) {
     const time=Date.parse(date);
     if(!Number.isFinite(time)) return 'report date unknown';
@@ -86,6 +104,15 @@
     reportDownload.append(download);
 
     panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour. Expired reports refresh automatically while this tab is visible for an upcoming matchup within seven days.'));
+    const americanGap=americanReportGap(game,data.teams);
+    if(americanGap){
+      const warning=node('p','⚠ '+americanGapMessage);
+      warning.className='availability-coverage-warning';
+      panel.append(warning);
+      const link=node('a','Open American Conference official website to check game-day reports');
+      link.href=americanWebsite;link.target='_blank';link.rel='noopener noreferrer';
+      panel.append(link);
+    }
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
@@ -182,7 +209,9 @@
       const rows=[...concerns.values()];
       if(rows.length){
         const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
-      }else teamCard.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
+      }else teamCard.append(node('p',fresh?'No injury concerns listed in a verified game report.':
+        americanGap?'Official American Conference report not connected — availability unknown.':
+        'No verified current injury report — availability unknown.'));
       teamGrid.append(teamCard);
     }
     panel.append(teamGrid,full);
