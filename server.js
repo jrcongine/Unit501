@@ -9,7 +9,7 @@ const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
 const nbaGames = require('./nba-feed').createNBAFeed();
 const nbaContext = require('./nba-context').createNBAContext();
-const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||1500)});
+const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
