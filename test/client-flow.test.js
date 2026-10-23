@@ -74,6 +74,31 @@ test('player ratings start compact, with both rosters and replacement controls a
   assert.ok(h.nodes.get('replacement-1:7'));
   assert.match(h.nodes.get('lineup-status').textContent,/No confirmed replacement scenario/);
 });
+test('opt-in upset selector updates the score only after a selected scenario and rerun, and resets for another game',async()=>{
+ const h=harness();await h.settle();h.run('$("league").value="1"');
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('upsetScenarioMode').value,'off');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,true);
+ h.run('sim()');
+ const baseline=h.nodes.get('score').textContent;
+ h.nodes.get('upsetScenarioMode').value='manual';
+ await h.nodes.get('upsetScenarioMode').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('score').textContent,'—');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,false);
+ assert.match(h.nodes.get('upset-alert-status').textContent,/Manual underdog scenario/);
+ h.nodes.get('upsetScenarioPoints').value='3';
+ await h.nodes.get('upsetScenarioPoints').dispatchEvent({type:'change'});
+ h.run('sim()');
+ assert.notEqual(h.nodes.get('score').textContent,baseline);
+ assert.match(h.nodes.get('note').textContent,/User-selected, experimental and not calibrated/);
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('upsetScenarioMode').value,'off');
+ assert.equal(h.nodes.get('upsetScenarioPoints').value,'2');
+ assert.equal(h.nodes.get('upsetScenarioPoints').disabled,true);
+ h.run('sim()');
+ assert.equal(h.nodes.get('score').textContent,baseline);
+});
+
 test('actual client home-context control changes margin and resets on game selection',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="home"; sim()');const first=h.nodes.get('score').textContent;
@@ -629,6 +654,28 @@ test('saved accuracy UI shows market reliability without counting selected picks
   assert.match(reliability.textContent,/1 games \/ 1 targets/);
   assert.match(reliability.textContent,/Not enough games to review/);
   assert.match(reliability.textContent,/not statistical significance/);
+});
+
+test('automatic injury mode hides inactive manual boxes; NFL roster sweep only appears in NFL matchups',async()=>{
+ const h=harness();await h.settle();
+ h.nodes.get('league').value='2';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('autoInjuries').checked,true);
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
+ assert.equal(h.nodes.get('maintenance-panel').hidden,true);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/no points|incomplete|unavailable|not loaded/i);
+ h.nodes.get('autoInjuries').checked=false;
+ await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,false);
+ assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/Manual mode/i);
+ h.nodes.get('autoInjuries').checked=true;
+ await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
+ h.nodes.get('league').value='1';
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('maintenance-panel').hidden,false);
+ assert.equal(h.nodes.get('manual-injury-inputs').hidden,true);
 });
 
 test('Game Lab automatically scores a confirmed defender absence and cleanly switches back to manual',async()=>{

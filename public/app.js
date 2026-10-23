@@ -25,7 +25,13 @@ $('venueMode').addEventListener('change', () => {
   invalidateSimulation('Game location changed. Run the simulation again.');
   updateUpsetAlert(selected);
 });
-$('upsetAlertEnabled').addEventListener('change',()=>updateUpsetAlert(selected));
+for (const id of ['upsetScenarioMode','upsetScenarioPoints']) {
+  $(id).addEventListener('change',()=>{
+    invalidateSimulation('Upset scenario changed. Run 50,000 Sims to update the results.');
+    updateUpsetAlert(selected);
+  });
+}
+$('spread').addEventListener('input',()=>updateUpsetAlert(selected));
 $('variableHomeField').addEventListener('change',()=>invalidateSimulation('Home-field estimate setting changed. Run the simulation again.'));
 $('homeContext').addEventListener('input',()=>invalidateSimulation('Matchup-context assumption changed. Run the simulation again.'));
 $('homeFieldMode').addEventListener('change',()=>{
@@ -38,10 +44,11 @@ $('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override
 const injuryFields=['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'];
 function injuryModeChanged(){
   const automatic=$('autoInjuries').checked;
+  $('manual-injury-inputs').hidden=automatic;
   for(const id of injuryFields){$(id).disabled=automatic;$(id).value='0';}
   $('auto-injury-status').textContent=automatic?
-    'Auto injuries ON — applied when you run the prediction.':
-    'Manual mode — enter injury points below.';
+    'Automatic mode enabled — checking verified Out reports and role data; no points applied without support.':
+    'Manual mode — enter your own injury-point estimates below. They are not verified injury values.';
   previewAutomaticInjuries();
   invalidateSimulation('Injury scoring mode changed. Run the simulation again.');
 }
@@ -53,7 +60,9 @@ function renderAutomaticInjuries(result,applied=false){
   }
   const who=result.applied.map(p=>p.category==='quarterback'?`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — OUT — ${applied?'factored in':'ready for next simulation'} (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`);
   const hasOut=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out'));
-  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment.';
+  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):
+    !result.ready?'No automatic injury points: '+result.message:
+    hasOut?'Out players listed; no supported point change.':'No confirmed Out adjustment; verify report coverage before assuming availability.';
   const list=$('injury-adjustment-reasons');list.replaceChildren();
   for(const reason of result.withheld){const row=document.createElement('li');row.textContent=reason;list.append(row);}
   $('injury-adjustment-details').hidden=!result.withheld.length;
@@ -64,26 +73,25 @@ function previewAutomaticInjuries(){
 }
 $('autoInjuries').addEventListener('change',injuryModeChanged);
 injuryModeChanged();
-// Context flag only. A Sunday kickoff or neutral site does not establish an upset probability.
+// Opt-in underdog scenarios are separate from neutral-site home field and never selected automatically.
+function upsetSettings(){
+  return {upsetMode:$('upsetScenarioMode').value,upsetPoints:Number($('upsetScenarioPoints').value),
+    venueMode:$('venueMode').value,awaySpread:$('spread').value===''?NaN:Number($('spread').value)};
+}
 function updateUpsetAlert(game) {
+  const mode=$('upsetScenarioMode').value;
+  $('upsetScenarioPoints').disabled=!mode||mode==='off';
   const target=$('upset-alert-status');
-  if (!$('upsetAlertEnabled').checked) {
-    target.textContent='Upset review alerts OFF. No effect on simulations.';
+  if (!mode||mode==='off') {
+    target.textContent='Off — baseline projection unchanged. No upset boost is applied automatically.';
     return;
   }
-  if (!game || !Number.isFinite(game.kickoff)) {
-    target.textContent='Select a matchup to check Sunday and neutral-site context.';
+  if (!game) {
+    target.textContent='Scenario selected; choose a matchup to preview its eligibility.';
     return;
   }
-  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'long',hour:'numeric',hourCycle:'h23'}).formatToParts(new Date(game.kickoff));
-  const weekday=parts.find(part=>part.type==='weekday')?.value;
-  const hour=Number(parts.find(part=>part.type==='hour')?.value);
-  const daytimeSunday=weekday==='Sunday' && hour>=11 && hour<18;
-  const neutral=$('venueMode').value==='neutral';
-  const flags=[daytimeSunday?'Sunday daytime matchup — check favorites carefully.':'',
-    neutral?'Neutral site — standard home-field advantage removed.':''].filter(Boolean);
-  target.textContent=flags.length?'⚠ Upset review: '+flags.join(' ')+' No automatic score or upset-probability change.':
-    'No Sunday daytime or selected neutral-site flags. No automatic score adjustment.';
+  const preview=Unit501TeamModel.underdogEffect(game,21,21,upsetSettings());
+  target.textContent=preview.reason+(preview.applied?' Run 50,000 Sims to see updated scores and probabilities.':' Baseline score retained.');
 }
 function describeMatchup(game){
   const divisions=[
@@ -647,6 +655,8 @@ function clearSelection() {
   selected = null;
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
+  $('maintenance-panel').hidden=true;
+  $('maintenance-panel').open=false;
   for (const [id, label] of [['quick-lab','🎯 Game Lab · select game'],['quick-player','📊 Player props · select game']]) {
     const link = $(id);
     if (link) { link.classList.add('is-unavailable'); link.setAttribute('aria-disabled','true'); link.tabIndex = -1; link.textContent = label; }
@@ -795,6 +805,9 @@ async function choose(game) {
   game.season = $('date').value.slice(0,4);
   const priorLeague=selected?.league;
   selected = game;
+  // NFL-only background roster sweep should not appear in a college matchup.
+  $('maintenance-panel').hidden=game.league!=='1';
+  if(game.league!=='1')$('maintenance-panel').open=false;
   $('autoInjuries').checked=true;injuryModeChanged();
   document.dispatchEvent(new Event('unit501:selection-changed'));
   $('lab').classList.remove('hidden');
@@ -812,6 +825,8 @@ async function choose(game) {
   $('homeRating').value = 0;
   for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
   $('venueMode').value = 'home';
+  $('upsetScenarioMode').value = 'off';
+  $('upsetScenarioPoints').value = '2';
   $('variableHomeField').checked=false;
   $('homeContext').value=game.league==='1'?2:3;
   $('homeFieldMode').value='auto';
@@ -881,11 +896,13 @@ function sim() {
       awayOffense:Number($('awayOffenseLoss').value),awayDefense:Number($('awayDefenseLoss').value),
       homeOffense:Number($('homeOffenseLoss').value),homeDefense:Number($('homeDefenseLoss').value)},
     awaySpread:spread,splitsEnabled:false,
+    upsetMode:$('upsetScenarioMode').value,upsetPoints:Number($('upsetScenarioPoints').value),
     quarterback:automatic?{...automatic.quarterback}:null,
     automaticInjury:automatic?{applied:automatic.applied,withheld:automatic.withheld,message:automatic.message}:null,
     lineup,
     weatherEnabled:$('weatherEnabled').checked
   };
+  updateUpsetAlert(selected);
   const prediction = Unit501TeamModel.project(data, selected, options);
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
@@ -920,7 +937,7 @@ function sim() {
   const weatherNote = prediction.weather.reason + (prediction.weather.applied
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
-  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} ${prediction.upset.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
   $('note').textContent+=` Simulated 21+ point margins: ${selected.a} ${percent(result.blowout.away)}, ${selected.h} ${percent(result.blowout.home)}. These are raw simulation frequencies, not calibrated blowout probabilities.`;
   $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
