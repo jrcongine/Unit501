@@ -265,3 +265,6 @@ a{color:#97e3fc}
 .upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
 
 .availability-coverage-warning{border-left:4px solid #e2b453;padding:10px 12px;background:#2b271b;color:#ffe1a0;line-height:1.5}
+
+/* Hide manual injury inputs in automatic mode; never show inactive Pending fields. */
+#manual-injury-inputs[hidden],#maintenance-panel[hidden]{display:none!important}
