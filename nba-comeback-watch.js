@@ -21,7 +21,7 @@ function pickAlert(game){
   if(lead<THRESHOLD)return null;
   const trailing=awayScore<homeScore?away:home;
   const leading=awayScore>homeScore?away:home;
-  return {id,away:away.trim().slice(0,100),home:home.trim().slice(0,100),awayScore,homeScore,period,clock:typeof rawClock==='string'?rawClock.slice(0,16):null,deficit:lead,trailing:trailing.trim().slice(0,100),leading:leading.trim().slice(0,100)};
+  return {id,away:away.trim().slice(0,100),home:home.trim().slice(0,100),awayScore,homeScore,period,clock:typeof rawClock==='string'?rawClock.slice(0,16):null,tipoff:typeof game.date?.start==='string'&&Number.isFinite(Date.parse(game.date.start))?game.date.start:null,deficit:lead,trailing:trailing.trim().slice(0,100),leading:leading.trim().slice(0,100)};
 }
 function createWatch({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_SPORTS_KEY||process.env.API_SPORTS_KEY,maxRequests=MAX_REQUESTS_PER_DAY,ttl=110000}={}){
   let cache=null,pending=null,day=null,used=0;
