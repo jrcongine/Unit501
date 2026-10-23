@@ -25,3 +25,14 @@
 .nba-team-history h4{margin:0 0 8px;color:#ffd78c}
 .nba-team-history p{margin:8px 0;font-size:14px;line-height:1.5}
 @media(max-width:650px){.nba-comparison{grid-template-columns:1fr}}
+
+/* Opt-in live NBA comeback observation; separate from forecasts and betting signals. */
+.nba-comeback-watch{margin:18px 0}
+.nba-comeback-watch p{line-height:1.5}
+.nba-comeback-toggle{display:flex;align-items:center;gap:10px;font-weight:800;margin:14px 0}
+.nba-comeback-toggle input{width:20px;height:20px;flex-shrink:0}
+.nba-comeback-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.nba-comeback-actions button{flex:0 1 auto}
+#nba-comeback-status{margin:12px 0;font-weight:700}
+#nba-comeback-alerts{display:grid;gap:8px}
+.nba-comeback-entry{margin:0;padding:10px 12px;border-left:3px solid #e1aa53;border-radius:6px;background:#293446;color:#f4e7cd;font-weight:700}
