@@ -43,6 +43,13 @@
 </nav>
 <p class="quick-help">Start with a date and league, load the slate, then tap a game card. Colored headers and highlighted rows open more tools.</p>
 
+<section id="public-betting-sources" class="card market-pulse-sources" aria-label="Multi-sport public betting source">
+<h2>Public betting · all sports research</h2>
+<p>BetMGM publishes public bet percentages for NFL, NBA, MLB, NHL, and additional sports where available. Choose the sport on BetMGM's page to see its matchups.</p>
+<a id="market-betmgm-source" href="https://sports.betmgm.com/en/blog/betting-tools/sportsbook-public-betting/" target="_blank" rel="noopener noreferrer">BetMGM — multi-sport public bet percentages ↗</a>
+<p><strong>Not automatically imported:</strong> use the official page for manual research. Bet % means the share of bets, not the share of dollars wagered or verified sharp action. Compare the same sport, market, teams, line and kickoff; no imported values are assumed when a sport or game is missing.</p>
+</section>
+
 <section class="card controls">
 
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">   <input     id="date"     type="date"     aria-label="Game date"     style="color-scheme:dark;min-width:0;flex:1;"   >   <button     type="button"     onclick="const field = document.getElementById('date'); try { field.showPicker(); } catch { field.focus(); }"   >     Choose date ▾   </button> </div>
@@ -152,11 +159,7 @@
   <h4>Where reported bets and money are</h4>
   <div id="market-bets" class="market-pulse-grid" aria-live="polite"></div>
   <p id="market-pulse-status" class="market-pulse-status">Select a game to inspect movement and betting percentages.</p>
-  <div class="market-pulse-sources" aria-label="Public betting data sources">
-    <p><strong>Check sportsbook public betting</strong> (separate from the automatically retrieved VSiN/DraftKings sample):</p>
-    <a id="market-betmgm-source" href="https://sports.betmgm.com/en/blog/betting-tools/sportsbook-public-betting/" target="_blank" rel="noopener noreferrer">BetMGM — public bet percentages ↗</a>
-    <p>BetMGM describes percentages of bets placed on spreads, totals, and moneylines. <strong>Not automatically imported:</strong> its live matchup data cannot yet be verified by Unit 501. Do not interpret ticket share as money percentage or confirmed sharp action. A missing or inaccessible page means no data, not 50/50.</p>
-  </div>
+
 </section>
 
 <details>
