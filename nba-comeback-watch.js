@@ -2,7 +2,7 @@
 // NBA first-half deficit watcher. These are informational score triggers, NOT betting signals.
 const HOST='https://v2.nba.api-sports.io';
 const THRESHOLD=20;
-const MAX_REQUESTS_PER_DAY=150;
+const MAX_REQUESTS_PER_DAY=180;
 function positiveScore(value){
   if(typeof value==='boolean'||value==null||value==='')return null;
   const n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:null;
@@ -23,7 +23,7 @@ function pickAlert(game){
   const leading=awayScore>homeScore?away:home;
   return {id,away:away.trim().slice(0,100),home:home.trim().slice(0,100),awayScore,homeScore,period,clock:typeof rawClock==='string'?rawClock.slice(0,16):null,deficit:lead,trailing:trailing.trim().slice(0,100),leading:leading.trim().slice(0,100)};
 }
-function createWatch({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_SPORTS_KEY||process.env.API_SPORTS_KEY,maxRequests=MAX_REQUESTS_PER_DAY,ttl=85000}={}){
+function createWatch({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_SPORTS_KEY||process.env.API_SPORTS_KEY,maxRequests=MAX_REQUESTS_PER_DAY,ttl=110000}={}){
   let cache=null,pending=null,day=null,used=0;
   return async function watch(){
     const current=now(),today=new Date(current).toISOString().slice(0,10);
