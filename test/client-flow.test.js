@@ -560,7 +560,7 @@ test('failed FanDuel props refresh keeps fresh automatic quotes and table lines'
  assert.match(h.nodes.get('prop-feed-status').textContent,/401 \(INVALID_KEY\)/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/Existing fresh quotes were kept/);
 });
-test('prop board shows and copies fresh prices, handles malformed odds and clears prices on manual line edit',async()=>{
+test('prop board omits price clutter while manual line edits still clear pick prices',async()=>{
  const h=harness();await h.settle();
  const original=h.context.fetch;
  h.context.fetch=async url=>{
@@ -574,16 +574,14 @@ test('prop board shows and copies fresh prices, handles malformed odds and clear
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.match(copied,/over -136 \(57\.6% break-even\)/);
- assert.match(copied,/under \+120 \(45\.5% break-even\)/);
- assert.match(copied,/over: price unavailable/);
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/57\.6% break-even/);
- assert.match(copied,/pushes excluded/);
+ assert.doesNotMatch(copied,/break-even|price unavailable|over -136/);
+ assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/Prices|break-even/);
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const input=h.nodes.get('line-1:7-carries');input.value='20.5';await input.dispatchEvent({type:'input'});
  const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.match(copied,/Line 20\.5/);assert.match(copied,/over: price unavailable/);
+ assert.match(copied,/Line 20\.5/);
+ assert.equal(h.nodes.get('pick-price-1:7-carries').value,'');
  assert.doesNotMatch(copied,/57\.6% break-even/);
 });
 
@@ -743,4 +741,28 @@ test('injury report download exports the selected report without another API req
  button.onclick();assert.equal(downloaded,true);
  const payload=JSON.parse(await captured.text());assert.equal(String(payload.game.id),'999');assert.equal(payload.availability.current,true);
  assert.equal(payload.availability.teams[0].roster.rows[0].id,'7');
+});
+
+test('prop history uses numeric game counts and manual enhance can be switched on and off',async()=>{
+ const h=harness();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const walk=n=>[n,...(n.children||[]).filter(c=>typeof c==='object').flatMap(walk)];
+ const board=walk(h.nodes.get('saved-line-comparisons'));
+ const table=board.find(n=>n.tag==='table');
+ const rows=walk(table).filter(n=>n.tag==='tr').slice(1);
+ assert.ok(rows.length>0);
+ assert.ok(rows.every(r=>/^\d+$/.test(r.children[3].textContent)));
+ const history=board.filter(n=>n.className==='prop-recent');
+ assert.ok(history.length>0);
+ assert.ok(history.every(n=>n.children.length===3));
+ assert.match(history[0].children[0].className,/is-leading/);
+ h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ const values=()=>walk(h.nodes.get('predict-results')).find(n=>n.className==='scenario-comparison').children.map(n=>Number(n.children[1].textContent));
+ const baseline=values();assert.equal(baseline[0],baseline[1]);
+ let toggle=h.nodes.get('prime-time-enhance');assert.equal(toggle.checked,false);
+ toggle.checked=true;await toggle.dispatchEvent({type:'change'});
+ const boosted=values();assert.equal(boosted[0],baseline[0]);assert.equal(boosted[1],Number((baseline[0]*1.1).toFixed(1)));
+ toggle=h.nodes.get('prime-time-enhance');toggle.checked=false;await toggle.dispatchEvent({type:'change'});
+ assert.deepEqual(values(),baseline);
 });

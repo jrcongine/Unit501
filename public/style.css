@@ -246,3 +246,20 @@ a{color:#97e3fc}
 
 .war-archive{margin-top:14px;border-top:1px solid #354057;padding-top:12px}
 .war-archive>summary{cursor:pointer;font-size:14px;color:#b9cad8}
+
+/* Readable prop history and manual scenario comparisons. */
+.prop-recent{display:flex;gap:8px;min-width:230px}
+.prop-recent-item{display:flex;flex:1;flex-direction:column;align-items:center;gap:4px;padding:10px 8px;border:1px solid #536176;border-radius:9px;background:#172332;color:#dce6f1;font-size:13px}
+.prop-recent-item strong{font-size:24px;line-height:1.15;font-variant-numeric:tabular-nums}
+.prop-recent-item.is-leading{border-width:2px;font-weight:800}
+.prop-recent-above.is-leading{background:#123c32;border-color:#63dfaf;color:#b7ffde}
+.prop-recent-below.is-leading{background:#173953;border-color:#75c9ff;color:#c4e9ff}
+.prop-recent-equal.is-leading{background:#463918;border-color:#eac96c;color:#ffecb6}
+.prime-time-toggle{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:18px;font-weight:750}
+.prime-time-toggle input{width:22px;height:22px;accent-color:#46cfa3}
+.scenario-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.scenario-comparison>div{display:flex;flex-direction:column;gap:6px;padding:14px;background:#172c40;border:1px solid #52718a;border-radius:10px}
+.scenario-comparison span{font-size:14px;color:#cfdae5}
+.scenario-comparison strong{font-size:26px;font-variant-numeric:tabular-nums}
+.upset-alert-panel{border:1px solid #c39b46;border-radius:12px;padding:14px;margin:16px 0;background:#302919}
+.upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
