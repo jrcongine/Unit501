@@ -10,7 +10,7 @@ function positiveScore(value){
 function pickAlert(game){
   if(!game||game.league!=='standard'||Number(game.status?.short)!==2||game.status?.halftime===true)return null;
   const period=Number(game.periods?.current);
-  if(![1,2].includes(period)||game.periods?.endOfPeriod===true)return null;
+  if(![1,2].includes(period)||(period===2&&game.periods?.endOfPeriod===true))return null;
   const rawClock=game.status?.clock;
   if(period===2&&typeof rawClock==='string'&&/^0{1,2}:0{2}(?:\.0+)?$/.test(rawClock.trim()))return null;
   const away=game.teams?.visitors?.name,home=game.teams?.home?.name;
