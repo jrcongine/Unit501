@@ -36,6 +36,8 @@
   }
  }
  function notify(a){
+  // Capture every first qualifying observation for later official final-score grading.
+  window.Unit501ComebackTracker?.observe(a);
   const seen=readSeen(),id=String(a.id);
   if(seen[id]||seenInMemory.has(id))return;
   seenInMemory.add(id);
