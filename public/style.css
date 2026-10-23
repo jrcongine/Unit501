@@ -263,3 +263,5 @@ a{color:#97e3fc}
 .scenario-comparison strong{font-size:26px;font-variant-numeric:tabular-nums}
 .upset-alert-panel{border:1px solid #c39b46;border-radius:12px;padding:14px;margin:16px 0;background:#302919}
 .upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
+
+.availability-coverage-warning{border-left:4px solid #e2b453;padding:10px 12px;background:#2b271b;color:#ffe1a0;line-height:1.5}
