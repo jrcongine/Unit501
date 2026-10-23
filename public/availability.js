@@ -105,14 +105,6 @@
 
     panel.append(node('p','Source: API-Sports. Fetch times show when we checked the feed, not when a roster changed. Injuries cache for 15 minutes; rosters for one hour. Expired reports refresh automatically while this tab is visible for an upcoming matchup within seven days.'));
     const americanGap=americanReportGap(game,data.teams);
-    if(americanGap){
-      const warning=node('p','⚠ '+americanGapMessage);
-      warning.className='availability-coverage-warning';
-      panel.append(warning);
-      const link=node('a','Open American Conference official website to check game-day reports');
-      link.href=americanWebsite;link.target='_blank';link.rel='noopener noreferrer';
-      panel.append(link);
-    }
     for(const t of data.teams) {
       panel.append(node('h3',t.id===game.awayId?game.a:game.h));
       const summary=Unit501InjuryModel.teamSummary(data,game,t.id);
@@ -214,7 +206,16 @@
         'No verified current injury report — availability unknown.'));
       teamGrid.append(teamCard);
     }
-    panel.append(teamGrid,full);
+    panel.append(teamGrid);
+    if(americanGap){
+      const warning=node('p','⚠ '+americanGapMessage);
+      warning.className='availability-coverage-warning';
+      panel.append(warning);
+      const link=node('a','Open American Conference official website to check game-day reports');
+      link.href=americanWebsite;link.target='_blank';link.rel='noopener noreferrer';
+      panel.append(link);
+    }
+    panel.append(full);
   }
   async function load(background=false) {
     if(background===true && loading)return;
