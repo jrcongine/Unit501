@@ -6,6 +6,7 @@ const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../public/nba.html'),'utf8');
 const js=fs.readFileSync(path.join(__dirname,'../public/nba-comeback-alerts.js'),'utf8');
 const server=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
+const tracking=fs.readFileSync(path.join(__dirname,'../public/nba-comeback-history-ui.js'),'utf8');
 test('NBA page exposes an opt-in 20-point watch with a functional alert script',()=>{
  assert.match(html,/id="nba-comeback-enabled"/);
  assert.match(html,/id="nba-comeback-check"/);
@@ -23,4 +24,14 @@ test('NBA live-score endpoint is separate from existing cached season-game sched
  assert.match(server,/u\.pathname==='\/api\/nba\/comeback-watch'/);
  assert.match(server,/nbaComebackWatch\(\)/);
  assert.match(server,/u\.pathname==='\/api\/nba\/games'/);
+});
+test('observed comeback history records first 20-point trigger and grades NBA finals without inventing odds',()=>{
+ assert.match(html,/src="nba-comeback-history\.js"/);
+ assert.match(html,/src="nba-comeback-history-ui\.js"/);
+ assert.match(html,/id="nba-comeback-grade"/);
+ assert.match(html,/id="nba-comeback-records"/);
+ assert.match(js,/Unit501ComebackTracker\?\.observe\(a\)/);
+ assert.match(tracking,/model\.add\(records,alert,Date\.now\(\),date\)/);
+ assert.match(tracking,/model\.applyFinals\(records,data\.games\)/);
+ assert.match(tracking,/No completed observations with recorded live prices/);
 });
