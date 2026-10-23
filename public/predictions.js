@@ -1,15 +1,6 @@
 /* UNIT 501 player projections: transparent recent-game averages, not betting advice. */
 (() => {
   'use strict';
-  function priceSummary(entry) {
-    const fresh = entry.source === 'auto' && Number.isFinite(entry.savedAt) && entry.savedAt <= Date.now() && Date.now()-entry.savedAt <= 1800000;
-    return ['over','under'].map(side => {
-      const price = fresh ? entry[side] : null;
-      if (!Number.isInteger(price) || Math.abs(price) < 100) return `${side}: price unavailable`;
-      const rate = price < 0 ? -price / (100-price) : 100 / (100+price);
-      return `${side} ${price>0?'+':''}${price} (${(rate*100).toFixed(1)}% break-even)`;
-    }).join(' • ');
-  }
   const el = id => document.getElementById(id);
   const button = el('predict');
   const status = el('predict-status');
@@ -328,9 +319,6 @@ for (let i = rows.length - 1; i >= 0; i--) {
       }
     });
     board.append(copy, copyStatus);
-    const priceNote = document.createElement('p');
-    priceNote.textContent = 'Break-even is the price-implied win rate among settled wins/losses (pushes excluded), not a model probability or estimated edge. Missing prices stay unavailable; manual line edits clear automatic prices.';
-    board.append(priceNote);
     if (!rows.length) {
       const empty = document.createElement('p');
      empty.textContent = 'No lines match these filters. Reset the filters, or enter a line on a player card below.';
@@ -349,7 +337,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Prices / break-even', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -364,7 +352,6 @@ for (let i = rows.length - 1; i >= 0; i--) {
       `${matchupTeams.map(t => t.name).join(' vs ')} | ${el('date').value} | Game ${selected.id}`,
       `Copied ${new Date().toLocaleString('en-US', {timeZone:'America/Chicago'})} CT`,
       'Historical comparisons only; not ranked picks or win probabilities. Verify participation, role, current line and price.',
-      'Break-even rates are price-implied thresholds among wins/losses (pushes excluded), not model probabilities or an edge estimate.',
       ''
     ];
     for (const row of rows) {
@@ -374,12 +361,10 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), `${row.values.length} ${row.values.length === 1 ? 'game' : 'games'}`, projection.toFixed(1), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), String(row.values.length), projection.toFixed(1), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text];
-      const prices = priceSummary(row.entry);
-      fields.push(prices);
       const observed=row.entry.source==='auto'?row.entry.movement:null;
       const movement=observed?(observed.changed?
         `First observed ${observed.firstLine} → ${observed.line} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:
@@ -387,7 +372,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       fields.push(movement);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${prices} | ${movement}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${movement}`);
       report.push(row.workloadHistory.text);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
@@ -433,6 +418,17 @@ const explanation = document.createElement('p');
 explanation.textContent = [availabilityText, row.support.label, `${row.workload}% workload.`, row.weather.reason, row.checks.join(' • ')].join(' ');
 details.append(summary, explanation);
 cell.append(details);
+        } else if (index === 8) {
+          const recent=document.createElement('div');recent.className='prop-recent';
+          const largest=Math.max(above,below,equal);
+          for(const [label,count,tone] of [['Above',above,'above'],['Below',below,'below'],['Equal',equal,'equal']]){
+            const item=document.createElement('span');
+            item.className='prop-recent-item prop-recent-'+tone+(count===largest&&largest>0?' is-leading':'');
+            const number=document.createElement('strong');number.textContent=String(count);
+            const caption=document.createElement('span');caption.textContent=label;
+            item.append(number,caption);recent.append(item);
+          }
+          cell.append(recent);
         } else cell.textContent = value;
         tr.append(cell);
       });
@@ -623,13 +619,13 @@ cell.append(details);
     const powerPanel=document.createElement('div');
     powerPanel.style.cssText='border:1px solid #55c8ec;border-radius:12px;background:#122c40;padding:12px;margin:12px 0';
     const powerHeading=document.createElement('strong');
-    powerHeading.textContent='🎮 Game-day player modifiers';
+    powerHeading.textContent='🎮 Player scenarios';
     powerPanel.append(powerHeading);
     const powerButtons=document.createElement('div');
     powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
     const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal'],['boost','⚡ Prime-time Enhance +10%'],
-      ['dud','🥊 Rivalry Dud −10%'],['fatigue','🪫 Short-week Fatigue −5%']]) {
+    for (const [mode,label] of [['off','Normal 0%'],['boost','🍄 Star Power +10%'],
+      ['dud','🥶 Rivalry Dud −10%'],['fatigue','😴 Fatigue −5%']]) {
       const control=document.createElement('button');
       control.type='button';control.textContent=label;
       control.setAttribute('aria-pressed',String(activeMode===mode));
@@ -641,7 +637,15 @@ cell.append(details);
       });
       powerButtons.append(control);
     }
-    powerPanel.append(powerButtons);
+    const enhanceLabel=document.createElement('label');enhanceLabel.className='prime-time-toggle';
+    const enhance=document.createElement('input');enhance.type='checkbox';enhance.id='prime-time-enhance';
+    enhance.checked=activeMode==='boost';
+    enhance.addEventListener('change',()=>{
+      if(enhance.checked)starScenarios.set(record.id,'boost');else starScenarios.delete(record.id);
+      showPlayer();
+    });
+    enhanceLabel.append(enhance,' Prime-Time Enhance — '+(enhance.checked?'ON':'OFF'));
+    powerPanel.append(enhanceLabel,powerButtons);
     const powerNote=document.createElement('p');
     const preview=window.Unit501StarPower?.adjust(100,activeMode,selected) ||
       {applied:false,label:'Standard projection',factor:1,warning:'Game-day modifiers unavailable.'};
@@ -693,10 +697,17 @@ results.appendChild(workload);
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
       card.append(supportInfo);
+      const comparisonPanel=document.createElement('div');comparisonPanel.className='scenario-comparison';
+      for(const [label,value] of [['Original',model.beforeScenario],['Adjusted',adjusted]]){
+        const metric=document.createElement('div');
+        const heading=document.createElement('span');heading.textContent=label;
+        const amount=document.createElement('strong');amount.textContent=value.toFixed(1);
+        metric.append(heading,amount);comparisonPanel.append(metric);
+      }
+      card.append(comparisonPanel);
       if(model.starPower.applied){
         const effect=document.createElement('p');
-        effect.style.cssText='background:#1a3b50;color:#b8f2ff;padding:8px;border-radius:6px;font-weight:bold';
-        effect.textContent=model.starPower.label+': standard '+model.beforeScenario.toFixed(1)+' → scenario '+adjusted.toFixed(1)+'. '+model.starPower.warning+' Not archived as a standard prediction.';
+        effect.textContent=model.starPower.label+' · Manual scenario; original model kept separate.';
         card.append(effect);
       }
       if (model.workloadWarning) {
