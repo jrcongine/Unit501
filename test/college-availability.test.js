@@ -19,7 +19,7 @@ test('official college reports require both schools, exact kickoff and a valid p
 });
 test('official college Out gates without provider coverage and uncertain statuses remain conditional',async()=>{
  let calls=0;const get=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>{calls++;return conf==='SEC'?{x:report()}:{};});
- const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,3);
+ const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,4);
  assert.equal(t[0].official.publisher,'SEC');assert.equal(t[0].official.rows[0].id,'10');
  const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).blocked,true);
  assert.equal(assess(data,game,'2','20',now,true).state,'conditional');
@@ -63,4 +63,43 @@ test('newer published official availability supersedes older provider report but
  t[0].injuries={available:true,checkedAt:now,rows:[{id:'10',teamId:'1',status:'Questionable',date:new Date(now-7200000).toISOString()}]};
  const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).state,'available');
  t[0].injuries.rows[0].date=new Date(now).toISOString();assert.equal(assess(data,game,'1','10',now,true).state,'conflict');
+});
+
+test('American Conference exact game report matches Army–Tulsa only after publication and gates verified Out',async()=>{
+ const start=Date.parse('2026-10-24T00:30:00Z'); // 7:30 PM CT on Oct 23
+ const reportTime=Date.parse('2026-10-23T22:30:00Z'); // 5:30 PM CT, two hours before kickoff
+ const matchup={league:{id:2,season:2026},game:{date:{timestamp:start/1000}},
+   teams:{away:{id:201,name:'Army'},home:{id:202,name:'Tulsa'}}};
+ const query={league:'2',season:'2026',game:'300',away:'201',home:'202'};
+ const playerReport={
+   conferenceTimeZone:'CT',publishDate:'2026-10-23',postedTime:'17:30:00',
+   footer:{date:'2026-10-23',time:'19:30:00'},
+   games:[{teamName:'Army',rows:[{name:'RB #10 Test Runner',status:'Out'}]},
+          {teamName:'Tulsa',rows:[{name:'WR #20 Test Receiver',status:'Game Time Decision'}]}]
+ };
+ const roster=()=>[
+   {id:'201',roster:{available:true,checkedAt:reportTime,rows:[{id:'110',name:'Test Runner',position:'RB'}]},injuries:{available:false,rows:[]}},
+   {id:'202',roster:{available:true,checkedAt:reportTime,rows:[{id:'220',name:'Test Receiver',position:'WR'}]},injuries:{available:false,rows:[]}}
+ ];
+ let conferences=[];
+ const fetchPublic=async conf=>{conferences.push(conf);return conf==='American'?{matching:playerReport}:{};};
+ const before=roster();
+ await createCollegeAvailability(async()=>({response:[matchup]}),()=>reportTime-1000,fetchPublic)(query,before);
+ assert.equal(before[0].official.available,false);
+ const after=roster();
+ await createCollegeAvailability(async()=>({response:[matchup]}),()=>reportTime+1000,fetchPublic)(query,after);
+ assert.ok(conferences.includes('American'));
+ assert.equal(after[0].official.available,true);
+ assert.equal(after[0].official.source,'American');
+ assert.equal(after[0].official.url,'https://theamerican.org/sports/2026/8/6/football_player_availability.aspx');
+ assert.equal(after[0].official.publishedAt,reportTime);
+ assert.equal(after[0].official.rows[0].id,'110');
+ assert.equal(after[1].official.rows[0].id,'220');
+ const result={current:true,teams:after},game={id:'300',kickoff:start};
+ assert.equal(assess(result,game,'201','110',reportTime+1000,true).blocked,true);
+ assert.equal(assess(result,game,'202','220',reportTime+1000,true).state,'conditional');
+ const wrongTeam=structuredClone(playerReport);wrongTeam.games[0].teamName='Memphis';
+ assert.equal(matchReports({bad:wrongTeam},matchup,'2026',reportTime+1000).length,0);
+ const wrongTime=structuredClone(playerReport);wrongTime.footer.time='18:30:00';
+ assert.equal(matchReports({bad:wrongTime},matchup,'2026',reportTime+1000).length,0);
 });
