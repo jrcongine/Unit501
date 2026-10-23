@@ -41,3 +41,18 @@ test('sweep scheduling never runs on startup and paused sweeps use zero provider
   assert.match(worker.status().message,/daily/);
  }finally{global.setInterval=set;}
 });
+
+test('default budget permits the full 7500 calls and blocks call 7501 until UTC rollover',async()=>{
+ let clock=Date.parse('2026-10-23T12:00:00Z'),calls=0;
+ const meter=createMeter({now:()=>clock});
+ assert.equal(meter.snapshot().budget,7500);
+ for(let i=0;i<7500;i++)await meter.track('/games',async()=>{calls++;});
+ assert.equal(calls,7500);
+ assert.equal(meter.snapshot().remaining,0);
+ await assert.rejects(meter.track('/games',async()=>{calls++;}),/safety budget reached/);
+ assert.equal(calls,7500);
+ clock+=86400000;
+ await meter.track('/games',async()=>{calls++;});
+ assert.equal(calls,7501);
+ assert.equal(meter.snapshot().remaining,7499);
+});

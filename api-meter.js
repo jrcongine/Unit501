@@ -12,7 +12,7 @@ function category(endpoint){
   if(route==='/leagues')return 'leagueCoverage';
   return 'other';
 }
-function createMeter({now=Date.now,budget=1500}={}){
+function createMeter({now=Date.now,budget=7500}={}){
   const cap=Number(budget);
   if(!Number.isSafeInteger(cap)||cap<1||cap>7500)throw Error('Invalid football daily soft budget');
   const startedAt=new Date(now()).toISOString();
