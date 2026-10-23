@@ -21,11 +21,11 @@
       americanTeams.has(americanKey(game.a))&&americanTeams.has(americanKey(game.h))&&
       teams?.every(t=>t.official?.available!==true);
   }
-  const americanGapMessage='American Conference official game-day availability reports are not imported by Unit 501. '+
-    'The conference has published a two-hours-before-kickoff reporting policy for conference games; '+
-    'verify the current-season report on the conference website near kickoff. Refresh here checks connected feeds only. '+
-    'No official report here means unknown availability, not a healthy roster.';
-  const americanWebsite='https://theamerican.org/';
+  const americanGapMessage='No verified American Conference availability report is available for this matchup yet. '+
+    'The conference publishes its game-day report around two hours before kickoff; the report may not be posted yet, '+
+    'or the feed may be unavailable or unable to match the game and roster identities. '+
+    'Refresh injuries near kickoff or check the official report directly. Unknown does not mean healthy.';
+  const americanWebsite='https://theamerican.org/sports/2026/8/6/football_player_availability.aspx';
   function reportAge(date) {
     const time=Date.parse(date);
     if(!Number.isFinite(time)) return 'report date unknown';
@@ -202,7 +202,7 @@
       if(rows.length){
         const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
       }else teamCard.append(node('p',fresh?'No injury concerns listed in a verified game report.':
-        americanGap?'Official American Conference report not connected — availability unknown.':
+        americanGap?'American Conference report not verified for this game yet — availability unknown.':
         'No verified current injury report — availability unknown.'));
       teamGrid.append(teamCard);
     }
@@ -211,7 +211,7 @@
       const warning=node('p','⚠ '+americanGapMessage);
       warning.className='availability-coverage-warning';
       panel.append(warning);
-      const link=node('a','Open American Conference official website to check game-day reports');
+      const link=node('a','View American Conference official availability reports');
       link.href=americanWebsite;link.target='_blank';link.rel='noopener noreferrer';
       panel.append(link);
     }
