@@ -205,3 +205,26 @@ test('role labels distinguish current announcements, depth order and user review
   assert.equal(result.alerts[0].label,label);assert.equal(result.alerts[0].source,'manual');assert.equal(result.changed,true);
  }
 });
+
+
+test('official absence flags a same-position workload opportunity before new role appears in history',()=>{
+ const {roleContext}=require('../public/player-form'),now=Date.now(),game={id:'g',league:'2',season:'2026',kickoff:now+3600000};
+ const history=[8,5,17].map((carries,i)=>({gameDate:(now-(i+1)*86400000)/1000,carries}));
+ const team={id:'texas',roster:{available:true,checkedAt:now,rows:[{id:'brown',position:'RB'}]},
+ official:{available:true,gameId:'g',kickoff:game.kickoff,checkedAt:now,rows:[{id:'smothers',teamId:'texas',name:'Hollywood Smothers',position:'RB',status:'Out'}]},
+ injuryUsage:{available:true,gameId:'g',kickoff:game.kickoff,league:'2',season:'2026',checkedAt:now,rows:[{id:'smothers',position:'RB',role:'recent regular contributor'}]}};
+ const result=roleContext(history,'rushYds',team,'brown',game,'',now);
+ assert.equal(result.changed,true);assert.equal(result.alerts[0].label,'Expanded role opportunity');
+ assert.match(result.alerts[0].detail,/Hollywood Smothers ruled out/);
+ assert.doesNotMatch(result.alerts[0].label,/Confirmed starter/);
+ for(const invalid of [
+  {...team,official:{...team.official,gameId:'other'}},
+  {...team,official:{...team.official,checkedAt:now-900001}},
+  {...team,official:{...team.official,rows:[{...team.official.rows[0],status:'Questionable'}]}},
+  {...team,official:{...team.official,rows:[{...team.official.rows[0],position:'WR'}]}},
+  {...team,injuryUsage:{...team.injuryUsage,rows:[]}},
+  {...team,injuryUsage:{...team.injuryUsage,season:'2025'}},
+  {...team,roster:{...team.roster,checkedAt:now-3600001}}
+ ])assert.equal(roleContext(history,'rushYds',invalid,'brown',game,'',now).active,false);
+ assert.equal(roleContext(history.map((g,i)=>i===0?{...g,carries:undefined}:g),'rushYds',team,'brown',game,'',now).active,false);
+});

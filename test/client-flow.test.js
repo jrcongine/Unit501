@@ -694,3 +694,19 @@ test('selected-player controls precede comparisons and role reviews highlight ev
  assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/Your role review/);
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();assert.equal(controls.hidden,true);
 });
+
+
+test('prop board automatically highlights a current same-position replacement opportunity',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/Expanded role opportunity/);
+ const game=h.run('selected'),now=Date.now();
+ const data={current:true,teams:[{id:'1',roster:{available:true,checkedAt:now,rows:[{id:'7',position:'RB'}]},
+ official:{available:true,gameId:game.id,kickoff:game.kickoff,checkedAt:now,rows:[{id:'9',teamId:'1',name:'Regular contributor',position:'RB',status:'Out'}]},
+ injuryUsage:{available:true,gameId:game.id,kickoff:game.kickoff,checkedAt:now,league:game.league,season:game.season,rows:[{id:'9',position:'RB',role:'recent regular contributor'}]}}]};
+ h.context.Unit501Availability={snapshot:()=>data,assess:()=>({blocked:false,state:'available'}),describe:()=> 'Available'};
+ await h.context.document.dispatchEvent({type:'unit501:availability-updated'});
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Expanded role opportunity.*Regular contributor ruled out/);
+ const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
+ assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
+});

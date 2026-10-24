@@ -48,7 +48,27 @@
       if(latest>=1.5*Math.max(average,1)&&latest-average>=minimum)
         alerts.push({label:'Usage increase',detail:'Latest game: '+latest+' '+label+' vs '+average.toFixed(1)+' across the previous '+prior.length+' games. Review whether the larger role continues.',source:'box-score'});
     }
-    return {alerts,active:alerts.length>0,changed:alerts.some(a=>a.source==='manual'||a.source==='box-score')};
+    // A larger role can begin today, before it appears in past box scores.
+    // Match an exact-game official absence to a recently used teammate at the
+    // same roster position. This is an opportunity flag, not a starter claim.
+    const own=(team?.roster?.rows||[]).filter(p=>String(p.id)===String(playerId));
+    const official=team?.official,usage=team?.injuryUsage;
+    const scoped=report=>String(report?.gameId)===String(game?.id)&&report?.kickoff===game?.kickoff;
+    if(own.length===1&&['QB','RB','FB','WR','TE'].includes(own[0].position)&&
+       team.roster.available&&fresh(team.roster.checkedAt,3600000)&&
+       official?.available&&scoped(official)&&fresh(official.checkedAt,900000)&&
+       usage?.available&&scoped(usage)&&fresh(usage.checkedAt,3600000)&&
+       String(usage.league)===String(game?.league)&&String(usage.season)===String(game?.season)){
+      const peers=(official.rows||[]).filter(p=>String(p.id)!==String(playerId)&&String(p.teamId)===String(team.id)&&
+        p.position===own[0].position&&/^out$|^inactive$/i.test(p.status||'')&&
+        (usage.rows||[]).some(r=>String(r.id)===String(p.id)&&r.position===p.position&&r.role==='recent regular contributor'));
+      const recorded=games.map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);
+      if(peers.length&&recorded.length>=2&&Number.isFinite(latest)&&latest>0){
+        alerts.push({label:'Expanded role opportunity',detail:peers.map(p=>p.name||'Same-position contributor').join(', ')+
+          ' ruled out in the current official report. This player has recorded '+label+' and may take on more work; starting status and workload share remain unconfirmed.',source:'absence'});
+      }
+    }
+    return {alerts,active:alerts.length>0,changed:alerts.some(a=>a.source==='manual'||a.source==='box-score'||a.source==='absence')};
   }
   function summarize(history,key) {
     const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
