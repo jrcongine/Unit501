@@ -64,3 +64,37 @@ test('newer published official availability supersedes older provider report but
  const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).state,'available');
  t[0].injuries.rows[0].date=new Date(now).toISOString();assert.equal(assess(data,game,'1','10',now,true).state,'conflict');
 });
+
+
+test('Texas Smothers nickname mismatch resolves official Out and highlights Brown using the reported matchup values',async()=>{
+ // Minimal regression from the user's exported game 24745 report.
+ const now=Date.parse('2026-10-24T21:56:30.918Z'),kickoff=1792884600000;
+ const game={id:24745,league:'2',season:'2026',kickoff};
+ const q={league:'2',season:'2026',game:'24745',away:'131',home:'195'};
+ const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:131,name:'Ole Miss'},home:{id:195,name:'Texas'}}};
+ const texas={id:'195',roster:{available:true,checkedAt:1792878792604,rows:[{id:'15918',name:'Raleek Brown',position:'RB'},{id:'39057',name:'Daylan Smothers',position:'RB'}]},
+  injuries:{available:true,checkedAt:now,rows:[]},injuryUsage:{available:true,checkedAt:1792878945897,gameId:'24745',kickoff,league:'2',season:'2026',rows:[
+   {id:'15918',position:'RB',metric:'carries',values:[8,5,17],role:'recent regular contributor'},
+   {id:'39057',position:'RB',metric:'carries',values:[12,12,null],role:'recent regular contributor'}]}};
+ const official={publishDate:'2026-10-23',postedTime:'19:10:00',conferenceTimeZone:'CT',footer:{date:'2026-10-24',time:'18:30:00'},games:[
+  {teamName:'Ole Miss',rows:[]},{teamName:'Texas',rows:[{name:'RB #0 Raleek Brown',status:'Available'},{name:'RB #2 Hollywood Smothers',status:'Out'}]}]};
+ await createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='SEC'?{r:official}:{})(q,[{id:'131',roster:{rows:[]}},texas]);
+ assert.equal(texas.official.unmatched,0);
+ assert.equal(texas.official.rows.find(p=>p.name==='Hollywood Smothers').id,'39057');
+ const data={current:true,teams:[texas]};
+ assert.equal(assess(data,game,'195','39057',now,true).blocked,true);
+ assert.equal(assess(data,game,'195','15918',now,true).state,'available');
+ const history=[8,5,17].map((carries,i)=>({carries,gameDate:kickoff/1000-86400*(i+1)}));
+ const role=require('../public/player-form').roleContext(history,'rushYds',texas,'15918',game,'',now);
+ assert.equal(role.active,true);assert.match(role.alerts.find(a=>a.source==='absence').detail,/Hollywood Smothers ruled out/);
+});
+test('college nickname aliases require the reviewed league, season, school, ID and position',()=>{
+ const {matchPlayer}=require('../player-name-match');
+ const row={name:'Hollywood Smothers',position:'RB'},player={id:'39057',name:'Daylan Smothers',position:'RB'},scope={league:'2',season:'2026'};
+ assert.equal(matchPlayer(row,[player],'195',scope),player);
+ for(const s of [{},{league:'1',season:'2026'},{league:'2',season:'2025'}])assert.equal(matchPlayer(row,[player],'195',s),null);
+ assert.equal(matchPlayer(row,[player],'131',scope),null);
+ assert.equal(matchPlayer(row,[{...player,id:'other'}],'195',scope),null);
+ assert.equal(matchPlayer(row,[{...player,position:'WR'}],'195',scope),null);
+ assert.equal(matchPlayer(row,[player,{...player,id:'other',name:'Hollywood Smothers'}],'195',scope),null);
+});

@@ -173,5 +173,18 @@
     "source": "https://www.buffalobills.com/team/players-roster/joshua-palmer/",
     "reviewedAt": "2026-10-12",
     "evidence": "Official Bills biography uses Josh Palmer at the Joshua Palmer URL; current provider roster has one Joshua Palmer, WR #5, player 2164."
+  },
+  {
+    "league": "2",
+    "season": "2026",
+    "teamId": "195",
+    "reportName": "Hollywood Smothers",
+    "rosterName": "Daylan Smothers",
+    "playerId": "39057",
+    "position": "RB",
+    "source": "https://gopack.com/sports/football/roster/daylan-smothers/15279",
+    "currentTeamSource": "https://texaslonghorns.com/sports/football/roster/hollywood-smothers/16939",
+    "reviewedAt": "2026-10-24",
+    "evidence": "Official NC State biography uses Hollywood Smothers at its Daylan Smothers URL; current Texas biography confirms the player. The reported Texas provider roster has one Daylan Smothers, RB, id 39057. Scope this reviewed alias to college football, Texas and the 2026 season."
   }
 ]

@@ -56,7 +56,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
     const rows=[],unresolved=[];let unmatched=0;
     for(const r of sections[0].rows){
      const match=/^([A-Z]{1,5})\s+#\d+\s+(.+)$/.exec(r.name||'');if(!match||typeof r.status!=='string'){unmatched++;unresolved.push({name:r.name,status:r.status});continue;}
-     const player=matchPlayer({name:match[2],position:match[1]},team.roster?.rows||[],team.id);
+     const player=matchPlayer({name:match[2],position:match[1]},team.roster?.rows||[],team.id,q);
      if(!player){unmatched++;unresolved.push({name:match[2],position:match[1],status:r.status});continue;}
      rows.push({id:player.id,teamId:String(team.id),name:match[2],position:match[1],status:r.status,description:'Conference availability report',date:new Date(report.publishedAt).toISOString()});
     }

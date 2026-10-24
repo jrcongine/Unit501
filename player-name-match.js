@@ -11,9 +11,9 @@ const nameParts = value => {
 // Side-specific offensive-line labels identify the same position family.
 const positionKey = value => ({lt:'t',rt:'t',ot:'t',lg:'g',rg:'g',og:'g'}[key(value)] || key(value));
 const aliases = require('./injury-name-aliases.json');
-function matchPlayer(row, roster, teamId) {
+function matchPlayer(row, roster, teamId, scope={}) {
   const source=nameParts(row.name);
-  const alias=aliases.find(a=>String(a.teamId)===String(teamId)&&key(a.reportName)===key(row.name)&&key(a.position)===key(row.position));
+  const alias=aliases.find(a=>(!a.league||String(scope.league)===a.league)&&(!a.season||String(scope.season)===a.season)&&String(a.teamId)===String(teamId)&&key(a.reportName)===key(row.name)&&key(a.position)===key(row.position));
   const candidates=roster.filter(p=>{
     const target=nameParts(p.name);
     return target.base===source.base || (alias&&String(p.id)===alias.playerId&&key(p.name)===key(alias.rosterName));
