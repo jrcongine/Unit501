@@ -7,7 +7,7 @@ test('game-day and rivalry modifiers are opt-in, bounded player-only scenarios',
  const dud=adjust(80,'dud',game),fatigue=adjust(80,'fatigue',game);
  assert.equal(normal.adjusted,80);assert.equal(normal.applied,false);
  assert.equal(boost.adjusted,88);assert.equal(boost.applied,true);
- assert.match(boost.label,/🍄/);assert.match(dud.label,/🥶/);assert.match(fatigue.label,/😴/);
+ assert.match(boost.label,/⚡/);assert.match(dud.label,/⚡/);assert.match(fatigue.label,/😴/);
  assert.equal(dud.adjusted,72);assert.equal(fatigue.adjusted,76);
  assert.equal(boost.weekday,'Thursday');
  assert.match(boost.warning,/short week/i);

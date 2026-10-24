@@ -171,3 +171,15 @@ test('consistent receiving production is not suppressed by spike safeguard',()=>
  assert.equal(model.outlierAdjustment,null);
  assert.equal(model.baseline,model.weighted);
 });
+
+ test('cover ordering compares rates across metrics and preserves pushes and unknowns',()=>{
+ const {compareCovers}=require('../public/player-form');
+ const row=(name,values,line=10)=>({record:{name},def:{key:name},values,line});
+ const frequent=row('frequent',[11,12,13,0]);
+ const perfect=row('perfect',[11,12]);
+ const pushes=row('pushes',[10,10,10]);
+ const unders=row('unders',[0,0,0]);
+ const unknown=row('unknown',[]);
+ assert.deepEqual([frequent,unknown,perfect].sort((a,b)=>compareCovers(a,b,'most-covers')).map(r=>r.record.name),['perfect','frequent','unknown']);
+ assert.deepEqual([pushes,unknown,unders,perfect].sort((a,b)=>compareCovers(a,b,'least-covers')).map(r=>r.record.name),['unders','pushes','perfect','unknown']);
+ });

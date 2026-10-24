@@ -1,6 +1,18 @@
 /* Recorded performance, not a player talent grade or calibrated forecast. */
 (function(root){
   'use strict';
+  function compareCovers(a,b,mode) {
+    const history=row=>{
+      const values=row.values.filter(Number.isFinite);
+      const above=values.filter(value=>value>row.line).length;
+      const below=values.filter(value=>value<row.line).length;
+      return {count:values.length,rate:values.length?above/values.length:null,below:values.length?below/values.length:0};
+    };
+    const x=history(a),y=history(b);
+    if(x.rate===null||y.rate===null)return Number(x.rate===null)-Number(y.rate===null);
+    return (mode==='least-covers'?x.rate-y.rate||y.below-x.below:y.rate-x.rate)||
+      y.count-x.count||a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
+  }
   function summarize(history,key) {
     const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
     const valid=g=>Number.isFinite(g[key]) && (key.endsWith('Yds') || g[key]>=0);
@@ -130,7 +142,7 @@
     return {sample,count,flags,needsReview,
       label:`${sample} (${count} recorded games)${flags.length?' • Review: '+flags.join(', '):' • No additional data flags'}`};
   }
-  const api={efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
+  const api={compareCovers,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
