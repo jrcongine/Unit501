@@ -227,6 +227,8 @@ addFilter('sort', 'Order', [
   ['reviewed-gap', 'Cleaner data first — biggest difference'],
   ['gap', 'Largest discrepancy overall'],
   ['stat-gap', 'Largest difference within each stat'],
+  ['most-covers', 'Most Covers'],
+  ['least-covers', 'Least Covers'],
   ['sample', 'Most recorded games']
 ]);
 board.append(filters);
@@ -244,7 +246,9 @@ const researchNote = document.createElement('p');
  researchNote.style.cssText='font-size:.9em;opacity:.85';
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
-orderingNote.textContent = board.dataset.sort === 'reviewed-gap'
+orderingNote.textContent = ['most-covers','least-covers'].includes(board.dataset.sort)
+   ? 'Sorted across visible props by percentage above the current line. Equal results remain separate; ties favor more below-line results for Least Covers, then more recorded games. Historical frequency, not win probability.'
+   : board.dataset.sort === 'reviewed-gap'
    ? 'Cleaner data first sorts props with at least five recorded games and no statistical or workload flags ahead of those needing review, then orders by absolute projection-versus-line difference. It is not a betting-edge ranking; playing status, odds and model calibration still need verification.'
    : board.dataset.sort === 'gap'
    ? 'Largest discrepancy overall ranks every visible prop by the absolute distance between projection and line, biggest first. It mixes yards, attempts and counts, so this is a raw numerical comparison, not betting value or a win probability.'
@@ -283,6 +287,8 @@ for (let i = rows.length - 1; i >= 0; i--) {
         ? Number(a.support.needsReview) - Number(b.support.needsReview) || gap(b) - gap(a)
         : gap(b) - gap(a)) || statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
         a.record.name.localeCompare(b.record.name));
+    } else if (['most-covers','least-covers'].includes(board.dataset.sort)) {
+      rows.sort((a,b)=>Unit501PlayerForm.compareCovers(a,b,board.dataset.sort));
     } else if (board.dataset.sort === 'sample') {
       rows.sort((a, b) => b.values.length - a.values.length);
     }
@@ -624,8 +630,8 @@ cell.append(details);
     const powerButtons=document.createElement('div');
     powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
     const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal 0%'],['boost','🍄 Star Power +10%'],
-      ['dud','🥶 Rivalry Dud −10%'],['fatigue','😴 Fatigue −5%']]) {
+    for (const [mode,label] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],
+      ['dud','⚡ Rivalry Dud −10%'],['fatigue','😴 Fatigue −5%']]) {
       const control=document.createElement('button');
       control.type='button';control.textContent=label;
       control.setAttribute('aria-pressed',String(activeMode===mode));

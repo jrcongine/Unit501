@@ -766,3 +766,15 @@ test('prop history uses numeric game counts and manual enhance can be switched o
  toggle=h.nodes.get('prime-time-enhance');toggle.checked=false;await toggle.dispatchEvent({type:'change'});
  assert.deepEqual(values(),baseline);
 });
+
+test('manual game mode invalidates results, reaches simulation, and resets for a matchup',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('gameMode').value,'normal');h.run('sim()');
+ h.nodes.get('gameMode').value='upset';await h.nodes.get('gameMode').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('score').textContent,'—');h.run('sim()');
+ assert.match(h.nodes.get('note').textContent,/Manual upset: projected margin ×0.9/);
+ h.nodes.get('gameMode').value='primetime';await h.nodes.get('gameMode').dispatchEvent({type:'change'});h.run('sim()');
+ assert.match(h.nodes.get('note').textContent,/Manual primetime: projected margin ×1.1/);
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('gameMode').value,'normal');
+});

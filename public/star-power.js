@@ -3,8 +3,8 @@
   'use strict';
   const modes = Object.freeze({
     off: {label:'Standard projection',factor:1},
-    boost: {label:'🍄 Star Power',factor:1.10},
-    dud: {label:'🥶 Rivalry Dud',factor:0.90},
+    boost: {label:'⚡ Star Power',factor:1.10},
+    dud: {label:'⚡ Rivalry Dud',factor:0.90},
     fatigue: {label:'😴 Fatigue',factor:0.95}
   });
   function adjust(value, mode = 'off', game = null) {

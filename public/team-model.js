@@ -149,15 +149,22 @@
     const weatherAway=preWeatherAway*(1-weather.reduction),weatherHome=preWeatherHome*(1-weather.reduction);
     const marketTransfer=Math.max(-weatherHome,Math.min(weatherAway,market.margin/2));
     market.appliedMargin=marketTransfer*2;
-    return {available:true,away:weatherAway-marketTransfer,home:weatherHome+marketTransfer,market,
+    const gameMode=['upset','primetime'].includes(adjustments.gameMode)?adjustments.gameMode:'normal';
+    const factor=gameMode==='upset'?.9:gameMode==='primetime'?1.1:1;
+    const beforeAway=weatherAway-marketTransfer,beforeHome=weatherHome+marketTransfer;
+    const scoreTotal=beforeAway+beforeHome,baselineMargin=beforeHome-beforeAway;
+    const adjustedMargin=Math.max(-scoreTotal,Math.min(scoreTotal,baselineMargin*factor));
+    const gameScenario={mode:gameMode,factor,applied:gameMode!=='normal',baselineMargin,adjustedMargin};
+    return {available:true,away:gameScenario.applied?(scoreTotal-adjustedMargin)/2:beforeAway,
+      home:gameScenario.applied?(scoreTotal+adjustedMargin)/2:beforeHome,market,gameScenario,
       weather,preWeatherAway,preWeatherHome,
       quarterback,injury,lineup:{applied:lineupValid,awayChange:lineupAway,homeChange:lineupHome},preInjuryAway,preInjuryHome,
       preVenueAway,preVenueHome,venue,
       unadjustedAway:score(away,home,awayAdjustment,false),unadjustedHome:score(home,away,homeAdjustment,false),
       schedule:{applied:scheduleApplied,away:awaySchedule,home:homeSchedule},
       baseline,awayGames:away.games,homeGames:home.games,
-      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':''),ratingPriorGames,calibration:ratingPriorGames!==4||market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
-      probabilityCalibration:ratingPriorGames===4&&!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
+      pace,modelVersion:(legacy?'scoring-v1':paceApplied?'pace-v1':'scoring-v2')+(venue.variable?'-home-field-v1':'')+(venue.context?'-home-context-v1':'')+(gameScenario.applied?'-game-mode-v1':''),ratingPriorGames,calibration:gameScenario.applied||ratingPriorGames!==4||market.applied||qbApplied||venue.variable||venue.context?null:paceApplied?data.paceValidation?.calibration||null:data.validation?.calibration || null,
+      probabilityCalibration:!gameScenario.applied&&ratingPriorGames===4&&!market.applied&&!qbApplied&&!venue.variable&&!venue.context&&!legacy&&!paceApplied&&!injury.applied&&!weather.applied&&!awayAdjustment&&!homeAdjustment&&!adjustments.lineup?.applied&&(!adjustments.venueMode||adjustments.venueMode==='auto')&&
         data.validation?.probabilityCalibration?.before===game.kickoff&&String(data.validation.probabilityCalibration.league)===String(game.league)&&String(data.validation.probabilityCalibration.season)===String(game.season)?data.validation.probabilityCalibration:null};
   }
   function simulate(prediction, spread, total, runs = 50000, random = Math.random) {

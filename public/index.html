@@ -179,6 +179,11 @@
 <p id="home-field-status">Historical home-field estimates load with the matchup. These are performance estimates, not crowd-noise ratings.</p>
 <details><summary>NFL historical home-field rankings</summary><div id="home-field-rankings"></div></details>
 <p id="matchup-context-status"></p>
+<section aria-label="Game scenario">
+<label for="gameMode">Game mode</label>
+<select id="gameMode"><option value="normal">Normal 0%</option><option value="upset">Upset −10%</option><option value="primetime">Primetime +10%</option></select>
+<p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
+</section>
 <section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert</h3>
 <label><input id="upsetAlertEnabled" type="checkbox" checked> Sunday / neutral-site alerts</label>
 <p id="upset-alert-status" role="status">Context alerts only — no automatic odds or points adjustment.</p>
