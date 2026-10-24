@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
       const date=u.searchParams.get('date');
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid NBA date (YYYY-MM-DD) required.'});
       try{return send(res,200,await nbaGames(date));}
-      catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:'NBA schedule unavailable. Verify NBA provider access and try again.'});}
+      catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:e.code==='NBA_PLAN_ACCESS'?e.message:'NBA schedule unavailable. Verify NBA provider access and try again.',code:e.code==='NBA_PLAN_ACCESS'?e.code:'NBA_UNAVAILABLE'});}
     }
     if(u.pathname==='/api/nba/context'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
@@ -96,7 +96,7 @@ const server = http.createServer(async (req, res) => {
     }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
-      if(!['nfl','ncaaf','mlb'].includes(league))return send(res,400,{error:'Choose NFL, college football or MLB.'});
+      if(!['nfl','ncaaf','mlb','nba','nhl'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA or NHL.'});
       return send(res,200,await outsidePicks(league));
     }
     if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());

@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NBA Beta — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"></head>
 <body><main>
-<nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (football / MLB)</a></nav>
+<nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
 <section class="card nba-intro"><h2>Basketball data lab</h2>
 <p>Phase 1: real NBA schedule and scores. This is <strong>not</strong> a betting simulator yet. No projected spreads, totals or player props are generated.</p>
@@ -10,6 +10,11 @@
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
 <p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p></section>
+<section class="card"><h2>First-half deficit watch</h2>
+<label><input id="nba-alert-enable" type="checkbox"> Watch for a team down 20+ before halftime</label>
+<button id="nba-alert-permission" type="button">Enable browser notifications</button>
+<p id="nba-alert-status" role="status">Off. Watches today's games while this page is open and visible. Current-season NBA data required.</p>
+<div id="nba-alert-list" aria-live="polite"></div></section>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / NBA GAME LAB</span><h2 id="nba-matchup">Select an NBA matchup</h2>
@@ -33,4 +38,4 @@
 <p>Points, rebounds, assists, and threes will appear once player minutes, rosters and model checks are available. No unsupported prop estimates will be shown.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="unit501-shared-ui.js"></script><script src="nba.js"></script></body></html>
+</main><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script></body></html>

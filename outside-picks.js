@@ -3,8 +3,8 @@ const boyds=require('./boyds-picks');
 const pickswise=require('./pickswise-picks');
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
 const SOURCES = {
-  covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb'}},
-  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb'}},
+  covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb',nba:'https://www.covers.com/picks/nba',nhl:'https://www.covers.com/picks/nhl'}},
+  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb',nba:'https://www.wagertalk.com/free-sports-picks/nba',nhl:'https://www.wagertalk.com/free-sports-picks/nhl'}},
   boyds: {name:"Boyd's Bets",urls:boyds.URLS},
   pickswise: {name:'Pickswise',urls:pickswise.URLS}
 };
@@ -92,9 +92,10 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
     pending.set(id,work);try{return await work;}finally{pending.delete(id);}
   }
   return async league=>{
-    if(!['nfl','ncaaf','mlb'].includes(league))throw Error('Unsupported league');
+    if(!['nfl','ncaaf','mlb','nba','nhl'].includes(league))throw Error('Unsupported league');
     const sources=await Promise.all(['covers','wagertalk','boyds','pickswise'].map(key=>source(key,league)));
-    return {league,sources:sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}))};
+    const current=sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}));
+    return {league,sources:current,consensus:require('./pick-consensus').consensus(current)};
   };
 }
 module.exports={parseCovers,parseWagerTalk,createFeed,text};

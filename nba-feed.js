@@ -40,16 +40,22 @@ function normalizeGame(game){
   tipoff:start,endedAt,status:STATES[status],statusCode:status,
   awayScore:status===2||status===3?numberOrNull(game.scores?.visitors?.points):null,
   homeScore:status===2||status===3?numberOrNull(game.scores?.home?.points):null,
+  period:Number.isInteger(Number(game.periods?.current))&&Number(game.periods.current)>0?Number(game.periods.current):null,
+  halftime:game.periods?.halftime===true,
   arena:typeof game.arena?.name==='string'?game.arena.name.slice(0,100):null
  };
 }
 function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_SPORTS_KEY||process.env.API_SPORTS_KEY}={}){
- const cache=new Map(),pending=new Map();
+ const cache=new Map(),pending=new Map(),failures=new Map();
  return async function getGames(date){
   if(!validDate(date))throw Error('Invalid NBA date');
   const season=inferSeason(date);
   const id=season+':'+date;
-  if(cache.has(id)&&now()-cache.get(id).at<900000)return cache.get(id).result;
+  const previous=cache.get(id);
+  const ttl=previous?.result.games.some(g=>g.statusCode===2||(g.statusCode===1&&Math.abs(Date.parse(g.tipoff)-now())<3600000))?60000:900000;
+  if(previous&&now()-previous.at<ttl)return previous.result;
+  const failure=failures.get(id);
+  if(failure&&now()-failure.at<300000)throw failure.error;
   if(pending.has(id))return pending.get(id);
   const work=(async()=>{
    const apiKey=key();
@@ -58,6 +64,7 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
    const response=await fetcher(url,{headers:{'x-apisports-key':apiKey,Accept:'application/json'},signal:AbortSignal.timeout(12000)});
    if(!response.ok)throw Error('NBA provider returned HTTP '+response.status);
    const data=await response.json();
+   if(data?.errors?.plan){const error=new Error('NBA provider plan does not include the selected season. Enable current-season API-NBA access or configure an eligible NBA key.');error.code='NBA_PLAN_ACCESS';throw error;}
    if(!data||!Array.isArray(data.response)||
       (data.errors&&(Array.isArray(data.errors)?data.errors.length:Object.keys(data.errors).length)))throw Error('NBA provider response unavailable');
    // A schedule can genuinely be empty. Missing/invalid records must not become invented games.
@@ -68,7 +75,7 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
    return result;
   })();
   pending.set(id,work);
-  try{return await work;}finally{pending.delete(id);}
+  try{return await work;}catch(error){failures.set(id,{at:now(),error});throw error;}finally{pending.delete(id);}
  };
 }
 module.exports={createNBAFeed,normalizeGame,validDate,inferSeason};

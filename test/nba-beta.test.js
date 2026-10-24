@@ -67,3 +67,9 @@ test('NBA beta is a distinct schedule-only view and football league selector rem
  assert.match(server,/\/api\/nba\/games/);
  assert.match(server,/private-access/);
 });
+test('NBA plan denial is actionable and cached to avoid repeatedly spending free-plan calls',async()=>{
+ let calls=0;
+ const get=createNBAFeed({key:()=> 'test',fetcher:async()=>{calls++;return {ok:true,json:async()=>({errors:{plan:'Denied'},response:[]})};}});
+ for(let n=0;n<2;n++)await assert.rejects(get('2026-10-24'),e=>e.code==='NBA_PLAN_ACCESS');
+ assert.equal(calls,1);
+});

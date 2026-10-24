@@ -131,3 +131,11 @@ test('readable public picks survive a three-megabyte source page',async()=>{
  const result=await feed('nfl');assert.equal(result.sources[0].status,'available');assert.equal(result.sources[0].picks[0].author,'Test Analyst');
  const mlb=await feed('mlb');assert.equal(mlb.sources.length,4);assert.equal(mlb.league,'mlb');
 });
+test('NBA and NHL route all four public sources and preserve league identity',async()=>{
+ const urls=[];const feed=createFeed({fetcher:async url=>{urls.push(url);return new Response('<h1>No picks</h1>');}});
+ for(const league of ['nba','nhl']){
+  const result=await feed(league);assert.equal(result.sources.length,4);assert.equal(result.league,league);
+  assert.ok(urls.some(url=>url.includes('covers.com/picks/'+league)));
+  assert.ok(urls.some(url=>url.includes('pickswise.com/'+league+'/picks/')));
+ }
+});

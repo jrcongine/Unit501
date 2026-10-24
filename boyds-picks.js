@@ -3,10 +3,12 @@
 const URLS={
   nfl:'https://www.boydsbets.com/free-nfl-picks/',
   ncaaf:'https://www.boydsbets.com/free-college-football-picks/',
-  mlb:'https://www.boydsbets.com/free-baseball-picks/'
+  mlb:'https://www.boydsbets.com/free-baseball-picks/',
+  nba:'https://www.boydsbets.com/free-nba-picks/',
+  nhl:'https://www.boydsbets.com/free-nhl-picks/'
 };
 const SUMMARY='https://www.boydsbets.com/free-sports-picks/';
-const SPORTS={nfl:'NFL',ncaaf:'NCAA-F',mlb:'MLB'};
+const SPORTS={nfl:'NFL',ncaaf:'NCAA-F',mlb:'MLB',nba:'NBA',nhl:'NHL'};
 const MONTHS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const pad=x=>String(x).padStart(2,'0');
 function plain(html){
@@ -51,7 +53,7 @@ function parseSport(html,league,now=Date.now()){
   if(!event)continue;
   const eventDate=shortDate([null,event[2],event[3],event[4]]);
   if(!eventDate||eventDate<today(now))continue;
-  const selection=body.match(/\b(NFL|NCAA-F|MLB)\s*\|\s*(.{3,140}?)\s+Play on:\s*(.{3,160}?)\s+(?:Game Analysis|Pick Released on)/i);
+  const selection=body.match(/\b(NFL|NCAA-F|MLB|NBA|NHL)\s*\|\s*(.{3,140}?)\s+Play on:\s*(.{3,160}?)\s+(?:Game Analysis|Pick Released on)/i);
   if(!selection||selection[1].toUpperCase()!==SPORTS[league])continue;
   const matchup=selection[2].trim(),pick=selection[3].trim();
   if(!/\bvs\.?\b|\bat\b|@/i.test(matchup)||!/[+-]\d{2,4}\b/.test(pick))continue;
