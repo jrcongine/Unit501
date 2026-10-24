@@ -301,3 +301,18 @@ test('simulation exposes raw blowout frequencies without changing score means',(
  assert.equal(r.blowout.threshold,21);assert.ok(r.blowout.home>.7);assert.ok(r.blowout.away<.01);assert.ok(r.blowout.any<=1);
  assert.ok(Math.abs(r.meanAway-7)<.4);assert.ok(Math.abs(r.meanHome-38)<.4);
 });
+
+test('manual game modes scale margin, preserve totals, and never follow kickoff automatically',()=>{
+ const {game,data}=scheduled();
+ const base=project(data,game,{});
+ assert.deepEqual(project(data,game,{gameMode:'normal'}),base);
+ assert.deepEqual(project(data,game,{gameMode:'invalid'}),base);
+ for(const [gameMode,factor] of [['upset',.9],['primetime',1.1]]){
+  const changed=project(data,game,{gameMode});
+  assert.ok(Math.abs(changed.home-changed.away-(base.home-base.away)*factor)<1e-9);
+  assert.ok(Math.abs(changed.home+changed.away-base.home-base.away)<1e-9);
+  assert.deepEqual(changed.venue,base.venue);
+  assert.equal(changed.calibration,null);assert.equal(changed.probabilityCalibration,null);
+  assert.equal(changed.gameScenario.mode,gameMode);
+ }
+});

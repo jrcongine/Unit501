@@ -25,6 +25,7 @@ $('venueMode').addEventListener('change', () => {
   invalidateSimulation('Game location changed. Run the simulation again.');
   updateUpsetAlert(selected);
 });
+$('gameMode').addEventListener('change',()=>invalidateSimulation('Game mode changed. Run the simulation again.'));
 $('upsetAlertEnabled').addEventListener('change',()=>updateUpsetAlert(selected));
 $('variableHomeField').addEventListener('change',()=>invalidateSimulation('Home-field estimate setting changed. Run the simulation again.'));
 $('homeContext').addEventListener('input',()=>invalidateSimulation('Matchup-context assumption changed. Run the simulation again.'));
@@ -815,6 +816,7 @@ async function choose(game) {
   $('variableHomeField').checked=false;
   $('homeContext').value=game.league==='1'?2:3;
   $('homeFieldMode').value='auto';
+  $('gameMode').value='normal';
   $('homeContext').disabled=true;
   $('homeFieldReason').disabled=true;
   $('homeFieldReason').value='';
@@ -873,7 +875,7 @@ function sim() {
   const automatic=['1','2'].includes(selected.league)&&$('autoInjuries').checked&&window.Unit501AutoInjury?
     window.Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,lineup,forecastAt,data):null;
   if(automatic)renderAutomaticInjuries(automatic,true);
-  const options = {now:forecastAt,
+  const options = {now:forecastAt,gameMode:$('gameMode').value,
     away:Number($('awayRating').value),home:Number($('homeRating').value),venueMode:$('venueMode').value,
     variableHomeField:$('variableHomeField').checked,homeFieldProfile:homeFieldProfiles,homeFieldTotal:$('homeFieldMode').value==='manual'?Number($('homeContext').value):null,homeFieldReason:$('homeFieldReason').value,
     forecast:forecastContext?.game === selected ? forecastContext.data : null,
@@ -921,6 +923,7 @@ function sim() {
     ? ` Before wind ${prediction.preWeatherAway.toFixed(1)}–${prediction.preWeatherHome.toFixed(1)} → after wind ${prediction.away.toFixed(1)}–${prediction.home.toFixed(1)}.` : '');
   const paceNote=prediction.pace?.reason||'Drive reports unavailable; current scoring retained.';
   $('note').textContent = `Score order: ${selected.a}–${selected.h}. Based on ${prediction.awayGames}/${prediction.homeGames} completed games, with early-season smoothing. ${calibratedMarkets.length?'Calibration applied to '+calibratedMarkets.join(', ')+'. Those percentages exclude pushes/tied scores; other markets remain raw frequencies.':'Raw model frequencies; calibration unavailable for this sample or adjusted scenario.'} Variance: ${result.varianceSource}. Raw win/cover/over frequencies: ${percent(result.win)} / ${percent(result.cover)} / ${percent(result.over)}. Lineup scenario score changes: ${prediction.lineup.awayChange.toFixed(1)} / ${prediction.lineup.homeChange.toFixed(1)} points. Injury point assumptions add to confirmed lineup scenarios, but known duplicate player losses are skipped automatically. See Historical model check for held-out errors. These are not validated betting probabilities. ${scheduleNote} ${prediction.venue.reason} Home-margin change before weather: +${prediction.venue.appliedMargin.toFixed(1)} points. ${weatherNote} ${injuryNote} ${availabilityNote} Spread pushes: ${percent(result.spreadPush)}; total pushes: ${percent(result.totalPush)}; tied scores: ${percent(result.tie)} (overtime not modeled).`;
+  if(prediction.gameScenario?.applied)$('note').textContent+=` Manual ${prediction.gameScenario.mode}: projected margin ×${prediction.gameScenario.factor}; total unchanged.`;
   $('note').textContent+=` Simulated 21+ point margins: ${selected.a} ${percent(result.blowout.away)}, ${selected.h} ${percent(result.blowout.home)}. These are raw simulation frequencies, not calibrated blowout probabilities.`;
   $('note').textContent+=' '+paceNote+' QB passing changes: '+prediction.quarterback.away.toFixed(1)+' / '+prediction.quarterback.home.toFixed(1)+' points.';
   if(window.Unit501ForecastArchive){
