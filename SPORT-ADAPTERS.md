@@ -13,7 +13,7 @@ NBA should have the same familiar user journey as football: select league and da
 
 | Capability | Football now | NBA beta now | NBA implementation gate |
 | --- | --- | --- | --- |
-| Schedule/game IDs/results | Live football provider | Separate API-NBA adapter and schedule | Confirm Railway NBA API plan and live game shapes |
+| Schedule/game IDs/results | Live football provider | API-NBA plus labeled public ESPN NBA fallback | Confirm Railway NBA API plan and live game shapes |
 | Team scoring history | Existing football ranks | Pregame season/last-10/last-5 and venue scoring, recent results, calendar rest; no projection | Confirm provider history completeness and current team IDs |
 | Score projections | Football team scoring engine | **Disabled** | Per-possession ratings, pace, rest, schedule and defense |
 | Spread/total odds | Existing football FanDuel matching | NBA-only FanDuel paired pregame quotes | Live bookmaker access and market coverage |
@@ -32,4 +32,4 @@ NBA should have the same familiar user journey as football: select league and da
 6. Do not silently alter the existing football model, archive key, Big 12 picks, or sportsbook data while building NBA.
 
 ## Next milestone
-The selected-game dashboard now includes scoring windows, home/away splits, results and calendar rest using the existing team-history calls. Confirm live NBA subscription and history completeness, then add real possession/box-score coverage, pace and opponent strength. Build and backtest a separately versioned basketball score model before enabling estimates and downstream prop labs.
+The selected-game dashboard now includes scoring windows, home/away splits, results and calendar rest using the existing team-history calls. Verify selected-source history completeness, then add real possession/box-score coverage, pace and opponent strength. Build and backtest a separately versioned basketball score model before enabling estimates and downstream prop labs.

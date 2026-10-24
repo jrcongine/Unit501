@@ -90,7 +90,8 @@
   contextStatus.textContent='Checking earlier NBA team scores…';
   try{
    const query=new URLSearchParams({date:dateInput.value,game:String(game.id)});
-   const res=await fetch('/api/nba/context?'+query,{signal:AbortSignal.timeout(17000)});
+   if(game.provider)query.set('provider',game.provider);
+   const res=await fetch('/api/nba/context?'+query,{signal:AbortSignal.timeout(30000)});
    const data=await res.json();
    if(token!==contextRequest)return;
    if(!res.ok)throw Error('NBA history not available');
@@ -101,11 +102,11 @@
    activeContext={data,game};
    renderHeadToHead();
    for(const side of [data.away,data.home])comparison.append(renderTeam(side));
-   contextStatus.textContent=data.message||'Historical scoring data loaded.';
+   contextStatus.textContent=(data.source?data.source+' · ':'')+(data.message||'Historical scoring data loaded.');
   }catch{
    if(token!==contextRequest)return;
    comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
-   contextStatus.textContent='NBA team history unavailable. Check API-NBA access; no projections were generated.';
+   contextStatus.textContent='NBA team history unavailable from the selected source; no projections were generated.';
   }
  }
 function choose(game){
@@ -126,7 +127,7 @@ function choose(game){
   ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
-   const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(17000)});
+   const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(30000)});
    const data=await response.json();
    if(serial!==request)return;
    if(!response.ok||!Array.isArray(data.games))throw Error(data.code==='NBA_PLAN_ACCESS'?data.error:'NBA games could not be loaded. Check the NBA connection and try again.');
@@ -143,7 +144,7 @@ function choose(game){
     games.append(card);
    }
    status.textContent=data.games.length+' NBA game(s) loaded · updated '+new Date(data.checkedAt).toLocaleTimeString()+
-    '. Schedule/results only; NBA projections are not active.';
+    '. '+(data.source||'NBA feed')+(data.fallback?' (fallback)':'')+' · NBA projections are not active.';
   }catch(error){
    if(serial!==request)return;
    games.replaceChildren();
@@ -171,7 +172,7 @@ function choose(game){
   if(!alertToggle.checked||watching||document.hidden)return;
   watching=true;
   try{
-   const response=await fetch('/api/nba/games?date='+shared.dateCentral(),{signal:AbortSignal.timeout(17000)});
+   const response=await fetch('/api/nba/games?date='+shared.dateCentral(),{signal:AbortSignal.timeout(30000)});
    const data=await response.json();
    if(!alertToggle.checked)return;
    if(!response.ok){alertToggle.checked=false;throw Error(data.error||'NBA data unavailable; watch stopped.');}

@@ -7,8 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
-const nbaGames = require('./nba-feed').createNBAFeed();
-const nbaContext = require('./nba-context').createNBAContext();
+const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:require('./nba-public').createPublicNBA()});
+const nbaGames = nbaSources.games;
+const nbaContext = nbaSources.context;
 const nbaOdds = require('./nba-odds').createNBAOdds();
 const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
@@ -87,6 +88,7 @@ const server = http.createServer(async (req, res) => {
       try{
         const slate=await nbaGames(date),game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
+        if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
         return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':'game'));
       }catch(e){return send(res,503,{error:e.message});}
     }
@@ -98,6 +100,7 @@ const server = http.createServer(async (req, res) => {
         const slate=await nbaGames(date);
         const game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected game not found on this NBA slate.'});
+        if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
         return send(res,200,await nbaContext(game,slate.season));
       }catch(e){
         console.error('NBA team context:',e.message);

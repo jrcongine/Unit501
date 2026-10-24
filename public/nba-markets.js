@@ -35,7 +35,9 @@
   const status=kind==='game'?gameStatus:propStatus,button=kind==='game'?refresh:loadProps;
   button.disabled=true;status.textContent=kind==='game'?'Loading FanDuel NBA spread and total…':'Loading FanDuel NBA player props…';
   try{
-   const response=await fetch('/api/nba/'+(kind==='game'?'odds':'props')+'?'+new URLSearchParams({date,game:String(game.id)}),{signal:AbortSignal.timeout(30000)});
+   const query=new URLSearchParams({date,game:String(game.id)});
+   if(game.provider)query.set('provider',game.provider);
+   const response=await fetch('/api/nba/'+(kind==='game'?'odds':'props')+'?'+query,{signal:AbortSignal.timeout(45000)});
    const data=await response.json();
    if(serial!==sequence||task!==(kind==='game'?gameTask:propTask))return;
    if(!response.ok)throw Error(data.error||'NBA FanDuel quotes unavailable.');
