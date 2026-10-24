@@ -18,9 +18,75 @@
   return label+': '+record.games+' games · '+record.pointsFor+' scored · '+
     record.pointsAgainst+' allowed · '+(record.net>0?'+':'')+record.net+' average margin';
  }
+ let activeContext=null;
+ const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
+ const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
+ function renderHeadToHead(){
+  headToHead.replaceChildren();
+  if(!activeContext)return;
+  const {data,game}=activeContext;
+  const scope=formWindow.value;
+  const record=(side,away)=>scope==='venue'?(away?side.awaySplit:side.homeSplit):side[scope];
+  const away=record(data.away,true),home=record(data.home,false);
+  const title={season:'Season',recent10:'Last 10',recent5:'Last 5',venue:'Road team away / home team at home'}[scope]||'Season';
+  const table=node('table','');table.className='nba-form-table';
+  table.append(node('caption',title+' · completed games before this matchup'));
+  const header=node('tr','');
+  for(const label of ['Metric',game.away+' (away)',game.home+' (home)']){const th=node('th',label);th.scope='col';header.append(th);}
+  const thead=node('thead','');thead.append(header);table.append(thead);
+  const body=node('tbody','');
+  for(const [label,field,format] of [
+   ['Games','games',v=>String(v)],['Record',null,(v,r)=>r.wins+'–'+r.losses],
+   ['Points scored / game','pointsFor',v=>v.toFixed(1)],['Points allowed / game','pointsAgainst',v=>v.toFixed(1)],
+   ['Average margin','net',signed]
+  ]){
+   const row=node('tr',''),heading=node('th',label);heading.scope='row';row.append(heading);
+   for(const r of [away,home])row.append(node('td',r?format(r[field],r):'—'));
+   body.append(row);
+  }
+  table.append(body);headToHead.append(table);
+  if(!away||!home)headToHead.append(node('p','One or both teams have no qualifying games in this view.','nba-sample-note'));
+  else if(Math.min(away.games,home.games)<5)headToHead.append(node('p','Early sample: at least one side has fewer than five games in this view.','nba-sample-note'));
+  const ar=data.away.rest,hr=data.home.rest;
+  if(ar?.available&&hr?.available&&ar.fullDaysOff!==hr.fullDaysOff){
+   const rested=ar.fullDaysOff>hr.fullDaysOff?game.away:game.home;
+   headToHead.append(node('p','Rest difference: '+rested+' has '+Math.abs(ar.fullDaysOff-hr.fullDaysOff)+' more full day(s) off. No automatic score adjustment.','nba-rest-comparison'));
+  }
+ }
+ function renderTeam(side){
+  const card=node('section','', 'nba-team-history');
+  card.append(node('h4',side.name),node('p',side.sampleLabel||'History unavailable','nba-sample-note'));
+  const rest=side.rest;
+  if(rest?.available){
+   const label=rest.sameDay?'Same-day game':rest.backToBack?'Back to back':rest.fullDaysOff+' full day(s) off';
+   card.append(node('p',label+(rest.threeInFour?' · Third game in four days':''),rest.backToBack||rest.sameDay?'nba-rest-flag':'nba-rest-normal'));
+   card.append(node('p',rest.gamesLast7Days+' completed game(s) in the previous seven days · '+rest.gapHours+' hours between tipoffs','war-muted'));
+  }else card.append(node('p','Rest unverified: '+(rest?.reason||'Earlier schedule unavailable.'),'war-muted'));
+  if(side.lastPlayedAt)card.append(node('p','Previous scored game: '+shared.timeCentral(side.lastPlayedAt),'war-muted'));
+  const form=node('div','', 'nba-form-strip');form.setAttribute('aria-label','Last five recorded results, newest first');
+  for(const result of (side.recentGames||[]).slice(0,5)){
+   const chip=node('span',result.result,'nba-form-chip nba-result-'+result.result);
+   chip.title=result.opponent+': '+result.for+'–'+result.against;
+   form.append(chip);
+  }
+  if(form.children.length)card.append(node('p','Recent form · newest first','war-muted'),form);
+  card.append(node('p',summaryLine('At home',side.homeSplit)),node('p',summaryLine('On the road',side.awaySplit)));
+  const history=node('details','');history.className='nba-recent-results';
+  history.append(node('summary','Last '+(side.recentGames||[]).length+' recorded results'));
+  const list=node('ol','');
+  for(const result of side.recentGames||[]){
+   list.append(node('li',result.result+' · '+shared.timeCentral(result.tipoff)+' · '+(result.venue==='away'?'@ ':'vs ')+result.opponent+' · '+result.for+'–'+result.against+' ('+signed(result.margin)+')'));
+  }
+  if(!list.children.length)history.append(node('p','No qualifying results available.'));
+  else history.append(list);
+  card.append(history);
+  if(side.coverage?.conflictingGames)card.append(node('p',side.coverage.conflictingGames+' conflicting game record(s) excluded.','nba-sample-note'));
+  return card;
+ }
+ formWindow.addEventListener('change',renderHeadToHead);
  async function loadContext(game){
   const token=++contextRequest;
-  comparison.replaceChildren();
+  comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
   contextStatus.textContent='Checking earlier NBA team scores…';
   try{
    const query=new URLSearchParams({date:dateInput.value,game:String(game.id)});
@@ -32,19 +98,13 @@
     contextStatus.textContent=data.reason||'NBA historical comparison not yet available for this game.';
     return;
    }
-   for(const side of [data.away,data.home]){
-    const card=node('section','', 'nba-team-history');
-    card.append(node('h4',side.name),node('p',side.sampleLabel||'History unavailable','war-muted'));
-    card.append(node('p',summaryLine('Season',side.season)));
-    card.append(node('p',summaryLine('Last 10',side.recent10)));
-    card.append(node('p',summaryLine('Last 5',side.recent5)));
-    if(side.lastPlayedAt)card.append(node('p','Previous tipoff: '+shared.timeCentral(side.lastPlayedAt),'war-muted'));
-    comparison.append(card);
-   }
+   activeContext={data,game};
+   renderHeadToHead();
+   for(const side of [data.away,data.home])comparison.append(renderTeam(side));
    contextStatus.textContent=data.message||'Historical scoring data loaded.';
   }catch{
    if(token!==contextRequest)return;
-   comparison.replaceChildren();
+   comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
    contextStatus.textContent='NBA team history unavailable. Check API-NBA access; no projections were generated.';
   }
  }
@@ -52,6 +112,7 @@ function choose(game){
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
+   formWindow.value='recent5';
    byId('nba-prediction').textContent='Unavailable: no validated NBA score model yet.';
    loadContext(game);
    lab.classList.remove('hidden');
@@ -61,7 +122,7 @@ function choose(game){
  async function refresh(){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
-  ++contextRequest;
+  ++contextRequest;activeContext=null;
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(17000)});
@@ -92,7 +153,7 @@ function choose(game){
  load.addEventListener('click',refresh);
  dateInput.addEventListener('change',refresh);
  byId('nba-clear').addEventListener('click',()=>{
-   ++contextRequest;
+   ++contextRequest;activeContext=null;
    lab.classList.add('hidden');players.classList.add('hidden');
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});

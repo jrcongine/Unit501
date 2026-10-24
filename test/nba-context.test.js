@@ -91,3 +91,41 @@ test('NBA comparison renders its own context without changing football scoring c
  assert.match(html,/not predictions/i);
  assert.doesNotMatch(client,/Unit501TeamModel|forecastArchive|Monte Carlo/i);
 });
+
+
+test('NBA venue splits and last-ten results preserve team perspective and chronological order',()=>{
+ const s=summarize([old1,old2,safelyFinished],5,selected);
+ assert.equal(s.homeSplit.games,1);assert.equal(s.homeSplit.pointsFor,101);
+ assert.equal(s.awaySplit.games,2);assert.equal(s.awaySplit.pointsFor,110);
+ assert.deepEqual(s.recentGames.map(g=>g.id),[112,118,111]);
+ assert.equal(s.recentGames[0].opponentId,8);assert.equal(s.recentGames[0].venue,'home');
+ assert.equal(s.recentGames[0].result,'W');assert.equal(s.recentGames[0].for,101);
+ assert.equal(s.coverage.complete,false);
+});
+test('NBA rest uses Central calendar dates, counts schedule congestion and remains separate from score samples',()=>{
+ const yesterday={...old2,scores:{visitors:{points:null},home:{points:null}}};
+ const s=summarize([old1,yesterday],5,selected);
+ assert.equal(s.sample,1);assert.equal(s.rest.available,true);assert.equal(s.rest.backToBack,true);
+ assert.equal(s.rest.fullDaysOff,0);assert.equal(s.rest.gapHours,25);
+ assert.equal(s.rest.gamesLast7Days,2);assert.equal(s.rest.threeInFour,true);
+ const rested=summarize([old1],5,selected);assert.equal(rested.rest.fullDaysOff,2);assert.equal(rested.rest.backToBack,false);
+ const uncertain=summarize([old1,{...old2,status:{short:2}}],5,selected);
+ assert.equal(uncertain.rest.available,false);assert.match(uncertain.rest.reason,/not verified finished/);
+});
+test('Central calendar back-to-back detection does not use UTC dates or a 24-hour threshold',()=>{
+ const matchup={...selected,tipoff:'2026-11-02T02:00:00Z'};
+ const previous=game(200,'2026-11-01T03:30:00Z',5,7,100,90);
+ const s=summarize([previous],5,matchup);
+ assert.equal(s.rest.gapHours,22.5);assert.equal(s.rest.backToBack,true);
+ assert.equal(s.rest.previousDate,'2026-10-31');
+ const sameDay=summarize([game(201,'2026-10-24T06:00:00Z',5,7,100,90)],5,selected);
+ assert.equal(sameDay.rest.sameDay,true);assert.equal(sameDay.rest.backToBack,false);
+});
+test('conflicting duplicate finals and wrong-season rows cannot create form or rest signals',()=>{
+ const conflict={...old1,scores:{...old1.scores,visitors:{points:115}}};
+ const older={...old2,id:9000,season:2025};
+ const s=summarize([old1,conflict,older],5,selected);
+ assert.equal(s.sample,0);assert.equal(s.coverage.conflictingGames,1);assert.equal(s.coverage.wrongSeason,1);
+ assert.equal(s.rest.available,false);
+ const reversed=summarize([conflict,old1,older],5,selected);assert.equal(reversed.sample,0);
+});

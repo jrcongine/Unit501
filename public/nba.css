@@ -25,3 +25,16 @@
 .nba-team-history h4{margin:0 0 8px;color:#ffd78c}
 .nba-team-history p{margin:8px 0;font-size:14px;line-height:1.5}
 @media(max-width:650px){.nba-comparison{grid-template-columns:1fr}}
+
+.nba-head-to-head{overflow-x:auto;margin:14px 0}.nba-form-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.nba-form-table caption{text-align:left;padding:8px 0;color:#a9bbd0;font-size:13px}
+.nba-form-table th,.nba-form-table td{padding:13px 12px;border-bottom:1px solid #304155;text-align:left}
+.nba-form-table thead th{color:#8fe5f0;background:#102b3b}.nba-form-table td{font-size:18px;font-weight:700}
+.nba-form-table tbody th{font-size:14px;font-weight:500;color:#c6d4e4}
+.nba-form-strip{display:flex;gap:7px;margin:10px 0 16px}.nba-form-chip{padding:8px 12px;border-radius:8px;font-weight:800;background:#26394b}
+.nba-result-W{color:#a8f3d4;background:#123b31}.nba-result-L{color:#ffc3b9;background:#492c30}
+.nba-rest-flag,.nba-sample-note{color:#f4ce85}.nba-rest-normal{color:#a8f3d4}.nba-rest-comparison{color:#a5e0f3;background:#142e40;border-left:3px solid #7fd2ea;padding:12px}
+.nba-recent-results{border-top:1px solid #354057;padding-top:12px;margin-top:14px}.nba-recent-results summary,.nba-model-status summary{cursor:pointer;font-weight:700;color:#91d9ef}
+.nba-recent-results ol{padding-left:20px;color:#c6d4e4}.nba-recent-results li{line-height:1.5;margin:9px 0;font-size:13px}
+.nba-model-status{margin:18px 0}.nba-context{border-top:0;padding-top:0}
+@media(max-width:550px){.nba-form-table th,.nba-form-table td{padding:10px 8px}.nba-form-table td{font-size:16px}}

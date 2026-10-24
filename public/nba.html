@@ -4,9 +4,9 @@
 <body><main>
 <nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
-<section class="card nba-intro"><h2>Basketball data lab</h2>
-<p>Phase 1: real NBA schedule and scores. This is <strong>not</strong> a betting simulator yet. No projected spreads, totals or player props are generated.</p>
-<p>NBA data uses its own API-Sports NBA connection. Missing or unavailable data will be reported, not estimated.</p></section>
+<section class="card nba-intro"><h2>NBA matchup dashboard</h2>
+<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. Score projections, spreads and player props are not active yet.</p>
+<p>Choose a game to compare both teams. Missing data stays unavailable; small samples are labeled.</p></section>
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
 <p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p></section>
@@ -19,18 +19,24 @@
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / NBA GAME LAB</span><h2 id="nba-matchup">Select an NBA matchup</h2>
 <p id="nba-game-context" class="war-muted"></p>
+<section aria-label="NBA pregame team comparison" id="nba-team-context" class="nba-context">
+<h3>Pregame matchup comparison</h3>
+<p class="war-muted">Completed games from the same season stage before this matchup only. Descriptive statistics, not predictions.</p>
+<p id="nba-team-context-status" role="status" class="war-muted">Select a matchup to inspect its previous results.</p>
+<label for="nba-form-window">Compare form</label>
+<select id="nba-form-window"><option value="recent5">Last 5 games</option><option value="recent10">Last 10 games</option><option value="season">Season</option><option value="venue">Venue split: away / home</option></select>
+<div id="nba-head-to-head" class="nba-head-to-head" aria-live="polite"></div>
+<p class="war-muted">Rest uses Central calendar dates and completed same-stage games. It does not measure travel, player minutes or lineup availability. History is the provider's returned sample; full schedule coverage is not independently verified.</p>
+<div id="nba-team-comparison" class="nba-comparison"></div>
+</section>
+<details class="nba-model-status"><summary>Model & market status</summary>
 <div class="nba-lab-grid">
 <div><h3>Projected score</h3><p id="nba-prediction" class="nba-disabled">Not available — NBA model not calibrated</p></div>
 <div><h3>Spread / total</h3><p class="nba-disabled">Pending NBA odds integration and validation</p></div>
 <div><h3>Injuries & rotations</h3><p class="nba-disabled">Pending minutes and availability data</p></div>
 <div><h3>Historical accuracy</h3><p class="nba-disabled">Requires archived pregame NBA predictions</p></div>
 </div>
-<section aria-label="NBA pregame team comparison" id="nba-team-context" class="nba-context">
-<h3>Team scoring comparison</h3>
-<p class="war-muted">Completed games from the same season stage before this matchup only. Descriptive statistics, not predictions.</p>
-<p id="nba-team-context-status" role="status" class="war-muted">Select a matchup to inspect its previous results.</p>
-<div id="nba-team-comparison" class="nba-comparison"></div>
-</section>
+</details>
 <button id="nba-clear" type="button" class="war-secondary">Back to NBA slate</button>
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
