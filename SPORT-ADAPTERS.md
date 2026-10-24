@@ -16,9 +16,9 @@ NBA should have the same familiar user journey as football: select league and da
 | Schedule/game IDs/results | Live football provider | Separate API-NBA adapter and schedule | Confirm Railway NBA API plan and live game shapes |
 | Team scoring history | Existing football ranks | Pregame season/last-10/last-5 and venue scoring, recent results, calendar rest; no projection | Confirm provider history completeness and current team IDs |
 | Score projections | Football team scoring engine | **Disabled** | Per-possession ratings, pace, rest, schedule and defense |
-| Spread/total odds | Existing football FanDuel matching | **Disabled** | Verified NBA market mapping and timestamps |
+| Spread/total odds | Existing football FanDuel matching | NBA-only FanDuel paired pregame quotes | Live bookmaker access and market coverage |
 | Availability | Football injury/lineup scoring | **Disabled** | Confirmed NBA starters, minutes restrictions, rotations |
-| Player props | Football position-specific estimates | **Disabled** | Minutes + usage and points/rebounds/assists/3PM model |
+| Player props | Football position-specific estimates | FanDuel points/rebounds/assists/threes lines only; projections disabled | Minutes + usage and points/rebounds/assists/3PM model |
 | Monte Carlo probabilities | Football score-based sim | **Disabled** | Basketball distribution and variance calibration |
 | Forecast archive and report card | Football browser-local archive | **Disabled** | Sport-keyed pregame snapshots, no post-tipoff backfill |
 | War Room | NFL/college football/MLB published picks | **Not NBA-enabled** | Attributable, dated NBA picks from proven feeds |

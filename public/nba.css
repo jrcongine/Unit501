@@ -38,3 +38,9 @@
 .nba-recent-results ol{padding-left:20px;color:#c6d4e4}.nba-recent-results li{line-height:1.5;margin:9px 0;font-size:13px}
 .nba-model-status{margin:18px 0}.nba-context{border-top:0;padding-top:0}
 @media(max-width:550px){.nba-form-table th,.nba-form-table td{padding:10px 8px}.nba-form-table td{font-size:16px}}
+
+.nba-market-panel{margin:18px 0;padding:14px;border:1px solid #3b6475;border-radius:12px;background:#102431}
+.nba-market-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+.nba-quote-card{padding:14px;border:1px solid #35505d;border-radius:10px;background:#10202e}.nba-quote-card h4{color:#91d9ef;margin:0 0 10px}.nba-quote-card p{font-size:17px;font-weight:700}.nba-quote-card small{font-size:11px;letter-spacing:0;font-weight:500}
+.nba-prop-filters{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.nba-prop-filters label{display:grid;gap:6px}.nba-prop-filters input{max-width:280px}
+#nba-prop-lines .nba-form-table td{font-size:14px;font-weight:500;white-space:nowrap}

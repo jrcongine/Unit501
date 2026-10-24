@@ -9,6 +9,7 @@ const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
 const nbaGames = require('./nba-feed').createNBAFeed();
 const nbaContext = require('./nba-context').createNBAContext();
+const nbaOdds = require('./nba-odds').createNBAOdds();
 const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
@@ -79,6 +80,15 @@ const server = http.createServer(async (req, res) => {
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid NBA date (YYYY-MM-DD) required.'});
       try{return send(res,200,await nbaGames(date));}
       catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:e.code==='NBA_PLAN_ACCESS'?e.message:'NBA schedule unavailable. Verify NBA provider access and try again.',code:e.code==='NBA_PLAN_ACCESS'?e.code:'NBA_UNAVAILABLE'});}
+    }
+    if(['/api/nba/odds','/api/nba/props'].includes(u.pathname)){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid NBA date and game ID required.'});
+      try{
+        const slate=await nbaGames(date),game=slate.games.find(g=>String(g.id)===id);
+        if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
+        return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':'game'));
+      }catch(e){return send(res,503,{error:e.message});}
     }
     if(u.pathname==='/api/nba/context'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');

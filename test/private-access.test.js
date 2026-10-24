@@ -14,7 +14,7 @@ test('private gate fails closed without a strong configured password',()=>{
 });
 test('all app and paid API routes require correct owner credentials',()=>{
   const password='test-password-123456789';
-  for(const url of ['/','/app.js','/api/fanduel','/api/fanduel-props','/api/games']){
+  for(const url of ['/','/app.js','/api/fanduel','/api/fanduel-props','/api/games','/api/nba/odds','/api/nba/props']){
     for(const credentials of [undefined,'jr:wrong','other:'+password]){
       const r=attempt(url,password,credentials);assert.equal(r.allowed,false);assert.equal(r.status,401);
     }

@@ -5,7 +5,7 @@
 <nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
 <section class="card nba-intro"><h2>NBA matchup dashboard</h2>
-<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. Score projections, spreads and player props are not active yet.</p>
+<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed; Unit 501 projections are not active yet.</p>
 <p>Choose a game to compare both teams. Missing data stays unavailable; small samples are labeled.</p></section>
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
@@ -19,6 +19,10 @@
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / NBA GAME LAB</span><h2 id="nba-matchup">Select an NBA matchup</h2>
 <p id="nba-game-context" class="war-muted"></p>
+<section class="nba-market-panel" aria-label="FanDuel NBA spread and total">
+<h3>FanDuel spread & total</h3><button id="nba-refresh-odds" type="button">Refresh game lines</button>
+<p id="nba-odds-status" role="status" class="war-muted"></p><div id="nba-game-odds" class="nba-market-grid"></div>
+</section>
 <section aria-label="NBA pregame team comparison" id="nba-team-context" class="nba-context">
 <h3>Pregame matchup comparison</h3>
 <p class="war-muted">Completed games from the same season stage before this matchup only. Descriptive statistics, not predictions.</p>
@@ -32,7 +36,7 @@
 <details class="nba-model-status"><summary>Model & market status</summary>
 <div class="nba-lab-grid">
 <div><h3>Projected score</h3><p id="nba-prediction" class="nba-disabled">Not available — NBA model not calibrated</p></div>
-<div><h3>Spread / total</h3><p class="nba-disabled">Pending NBA odds integration and validation</p></div>
+
 <div><h3>Injuries & rotations</h3><p class="nba-disabled">Pending minutes and availability data</p></div>
 <div><h3>Historical accuracy</h3><p class="nba-disabled">Requires archived pregame NBA predictions</p></div>
 </div>
@@ -40,8 +44,14 @@
 <button id="nba-clear" type="button" class="war-secondary">Back to NBA slate</button>
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
-<span class="section-kicker">03 / PLAYER MARKETS</span><h2>Player Projections</h2>
-<p>Points, rebounds, assists, and threes will appear once player minutes, rosters and model checks are available. No unsupported prop estimates will be shown.</p>
+<span class="section-kicker">03 / PLAYER MARKETS</span><h2>FanDuel player props</h2>
+<p>Sportsbook lines and prices for the selected game. Unit 501 player projections are not available yet.</p>
+<button id="nba-load-props" type="button">Load FanDuel player props</button>
+<p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>
+<div class="nba-prop-filters"><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label>
+<label for="nba-prop-search">Player <input id="nba-prop-search" type="search" placeholder="Search player name"></label></div>
+<div id="nba-prop-lines" class="nba-head-to-head"></div>
+<p class="war-muted">Quotes must have paired Over/Under lines and source updates within 30 minutes. Loading props uses the odds feed; filters reuse loaded quotes. Missing markets stay unavailable.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script></body></html>
+</main><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>

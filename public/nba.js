@@ -109,6 +109,7 @@
   }
  }
 function choose(game){
+   window.Unit501NBAMarkets?.select(game,dateInput.value);
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
@@ -122,7 +123,7 @@ function choose(game){
  async function refresh(){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
-  ++contextRequest;activeContext=null;
+  ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(17000)});
@@ -153,7 +154,7 @@ function choose(game){
  load.addEventListener('click',refresh);
  dateInput.addEventListener('change',refresh);
  byId('nba-clear').addEventListener('click',()=>{
-   ++contextRequest;activeContext=null;
+   ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
    lab.classList.add('hidden');players.classList.add('hidden');
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});
