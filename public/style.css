@@ -263,3 +263,9 @@ a{color:#97e3fc}
 .scenario-comparison strong{font-size:26px;font-variant-numeric:tabular-nums}
 .upset-alert-panel{border:1px solid #c39b46;border-radius:12px;padding:14px;margin:16px 0;background:#302919}
 .upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
+
+.player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
+.player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
+.prop-role-alert{background:#342c18}.prop-role-alert td:first-child{border-left:4px solid #f3c65b}
+.prop-role-badge{color:#ffe4a1;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #a78539;border-radius:8px;background:#342c18;min-width:180px}
+.prop-role-badge strong{display:block;color:#ffdc7c}

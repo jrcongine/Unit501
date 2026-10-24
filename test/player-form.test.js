@@ -183,3 +183,25 @@ test('consistent receiving production is not suppressed by spike safeguard',()=>
  assert.deepEqual([frequent,unknown,perfect].sort((a,b)=>compareCovers(a,b,'most-covers')).map(r=>r.record.name),['perfect','frequent','unknown']);
  assert.deepEqual([pushes,unknown,unders,perfect].sort((a,b)=>compareCovers(a,b,'least-covers')).map(r=>r.record.name),['unders','pushes','perfect','unknown']);
  });
+
+
+test('role review highlights a usage increase but never invents missing workload',()=>{
+ const {roleContext}=require('../public/player-form');
+ const history=[20,5,4,6].map((carries,i)=>({gameDate:1000-i*100,carries}));
+ const role=roleContext(history,'rushYds',null,'1',{kickoff:2000000});
+ assert.equal(role.changed,true);assert.match(role.alerts[0].detail,/20 carries vs 5.0/);
+ assert.equal(roleContext(history.map((g,i)=>i===1?{...g,carries:null}:g),'rushYds',null,'1',{}).active,false);
+ assert.equal(roleContext(history,'recYds',null,'1',{}).active,false);
+});
+test('role labels distinguish current announcements, depth order and user reviews',()=>{
+ const {roleContext}=require('../public/player-form'),now=Date.now(),game={id:'g',kickoff:now+86400000};
+ const team={starters:{gameId:'g',kickoff:game.kickoff,checkedAt:now,rows:[{id:'1',publishedAt:new Date(now).toISOString(),publisher:'Team'}]},depth:{available:true,gameId:'g',kickoff:game.kickoff,checkedAt:now,rows:[{id:'1',rank:1}]}};
+ assert.deepEqual(roleContext([],'rushYds',team,'1',game,'',now).alerts.map(a=>a.label),['Confirmed starter','Listed starter']);
+ assert.equal(roleContext([],'rushYds',team,'2',game,'',now).active,false);
+ assert.equal(roleContext([],'rushYds',team,'1',{...game,id:'other'},'',now).active,false);
+ assert.equal(roleContext([],'rushYds',team,'1',game,'',now+86400001).active,false);
+ for(const [manual,label] of [['new','New starter'],['returning','Back to starter role'],['primary','Primary option'],['increase','Significant usage increase']]){
+  const result=roleContext([],'rushYds',null,'1',game,manual,now);
+  assert.equal(result.alerts[0].label,label);assert.equal(result.alerts[0].source,'manual');assert.equal(result.changed,true);
+ }
+});

@@ -20,3 +20,10 @@ test('venue lookup does not infer a home location and limits reviewed roof class
  assert.equal(resolve({season:2026,venueName:'Mercedes-Benz Stadium'}).roof,'retractable');
  assert.equal(resolve({season:2026,venueName:'Mercedes-Benz Superdome'}).roof,'indoor');
 });
+
+test('college stadium aliases resolve Texas and Ole Miss without guessing from the home team',()=>{
+ for(const venueName of ['Darrell K Royal-Texas Memorial Stadium at Campbell-Williams Field','DKR-Texas Memorial Stadium','Vaught-Hemingway Stadium/Hollingsworth Field','Vaught-Hemingway Stadium at Hollingsworth Field']){
+  const venue=resolve({season:'2026',venueName});assert.ok(venue,venueName);assert.equal(venue.roof,'outdoor');
+ }
+ assert.equal(resolve({season:'2026',h:'Texas',venueName:''}),null);
+});

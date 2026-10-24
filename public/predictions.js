@@ -12,6 +12,7 @@
   let matchupTeams = [];
   const enteredLines = new Map();
   const workloadScenarios = new Map();
+  const roleReviews = new Map();
   const starScenarios = new Map(); // Manually selected per player; default OFF.
   const shortlisted = new Set();
   let lineScope = '';
@@ -54,7 +55,7 @@
           const key = lineKey(record, def);
           const entry = readLine(key);
           if (entry.value !== '') continue;
-          const movement=window.Unit501LineWatch?.observe(localStorage,
+          const movement=window.Unit501LineWatch?.observeBrowser(
             [game.league,game.season,game.id,record.teamId,record.playerId,def.key].join(':'),
             quote.line,quote.updatedAt);
           enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',
@@ -119,6 +120,23 @@
   const board = document.createElement('section');
   board.id = 'saved-line-comparisons';
   results.before(board);
+  const scenarioControls=document.createElement('section');
+  scenarioControls.id='player-scenario-controls';
+  scenarioControls.className='player-scenario-controls';
+  scenarioControls.hidden=true;
+  board.before(scenarioControls);
+  function roleFor(record,key){
+    const team=window.Unit501Availability?.snapshot()?.teams?.find(t=>String(t.id)===String(record.teamId));
+    return Unit501PlayerForm.roleContext(Array.from(record.games.values()),key,team,record.playerId,selected,roleReviews.get(record.id)||'');
+  }
+  function roleBadges(parent,role){
+    for(const alert of role.alerts){
+      const badge=document.createElement('p');badge.className='prop-role-badge';
+      const label=document.createElement('strong');label.textContent=alert.label;
+      const detail=document.createElement('span');detail.textContent=' — '+alert.detail;
+      badge.append(label,detail);parent.append(badge);
+    }
+  }
   function renderComparisons() {
     board.replaceChildren();
     if (!loadedFor) return;
@@ -146,6 +164,7 @@
         if(window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
         const checks = Unit501PlayerForm.reviewChecks(model, entry, availability);
+        if(model.role.changed)checks.push('Role / usage change: verify current workload; season baseline may lag');
         const support = Unit501PlayerForm.dataSupport(model, availability);
         rows.push({record, def, entry, line, checks, support, ...model});
       }
@@ -227,6 +246,10 @@ addFilter('sort', 'Order', [
   ['reviewed-gap', 'Cleaner data first — biggest difference'],
   ['gap', 'Largest discrepancy overall'],
   ['stat-gap', 'Largest difference within each stat'],
+  ['above-desc', 'Most Above'],
+  ['above-asc', 'Fewest Above'],
+  ['below-desc', 'Most Below'],
+  ['below-asc', 'Fewest Below'],
   ['most-covers', 'Most Covers'],
   ['least-covers', 'Least Covers'],
   ['sample', 'Most recorded games']
@@ -246,7 +269,9 @@ const researchNote = document.createElement('p');
  researchNote.style.cssText='font-size:.9em;opacity:.85';
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
-orderingNote.textContent = ['most-covers','least-covers'].includes(board.dataset.sort)
+orderingNote.textContent = /^(above|below)-(asc|desc)$/.test(board.dataset.sort)
+   ? 'Sorted by the number of recorded games '+(board.dataset.sort.startsWith('above')?'above':'below')+' the current line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Equal results stay separate; ties use sample size, then player name.'
+   : ['most-covers','least-covers'].includes(board.dataset.sort)
    ? 'Sorted across visible props by percentage above the current line. Equal results remain separate; ties favor more below-line results for Least Covers, then more recorded games. Historical frequency, not win probability.'
    : board.dataset.sort === 'reviewed-gap'
    ? 'Cleaner data first sorts props with at least five recorded games and no statistical or workload flags ahead of those needing review, then orders by absolute projection-versus-line difference. It is not a betting-edge ranking; playing status, odds and model calibration still need verification.'
@@ -289,6 +314,8 @@ for (let i = rows.length - 1; i >= 0; i--) {
         a.record.name.localeCompare(b.record.name));
     } else if (['most-covers','least-covers'].includes(board.dataset.sort)) {
       rows.sort((a,b)=>Unit501PlayerForm.compareCovers(a,b,board.dataset.sort));
+    } else if (/^(above|below)-(asc|desc)$/.test(board.dataset.sort)) {
+      rows.sort((a,b)=>Unit501PlayerForm.compareRecent(a,b,board.dataset.sort));
     } else if (board.dataset.sort === 'sample') {
       rows.sort((a, b) => b.values.length - a.values.length);
     }
@@ -346,7 +373,28 @@ for (let i = rows.length - 1; i >= 0; i--) {
     for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
-      cell.textContent = name;
+      if(name==='Recent above / below / equal'){
+        const heading=document.createElement('span');heading.textContent='Recent ';
+        cell.append(heading);
+        for(const [index,side] of ['above','below'].entries()){
+          if(index)cell.append(' / ');
+          const sort=document.createElement('button');sort.type='button';
+          sort.id='sort-recent-'+side;
+          const active=board.dataset.sort.startsWith(side+'-');
+          const ascending=board.dataset.sort===side+'-asc';
+          sort.textContent=side[0].toUpperCase()+side.slice(1)+(active?(ascending?' ↑':' ↓'):'');
+          sort.setAttribute('aria-label','Sort by '+side+' count, '+(active&&!ascending?'fewest':'most')+' first');
+          sort.setAttribute('aria-pressed',String(active));
+          sort.addEventListener('click',()=>{
+            board.dataset.sort=active&&!ascending?side+'-asc':side+'-desc';
+            renderComparisons();
+            el('sort-recent-'+side)?.focus({preventScroll:true});
+          });
+          cell.append(sort);
+          if(active)cell.setAttribute('aria-sort',ascending?'ascending':'descending');
+        }
+        cell.append(' / Equal');
+      }else cell.textContent = name;
       cell.style.cssText = 'padding:10px;border-bottom:1px solid #45495b';
       header.append(cell);
     }
@@ -362,6 +410,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     ];
     for (const row of rows) {
       const tr = document.createElement('tr');
+      if(row.role.active)tr.className='prop-role-alert';
       const projection = Number(row.adjusted.toFixed(1));
       const diff = Number((projection - row.line).toFixed(1));
       const above = row.values.filter(v => v > row.line).length;
@@ -380,6 +429,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
       report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${movement}`);
       report.push(row.workloadHistory.text);
+      for(const alert of row.role.alerts)report.push(alert.label+': '+alert.detail);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
@@ -410,6 +460,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
             input?.focus({preventScroll:true});
           });
           cell.append(open);
+          roleBadges(cell,row.role);
           const availabilityText = window.Unit501Availability?.describe(
   row.record.teamId, row.record.playerId
 ) || 'Availability not checked yet.';
@@ -566,7 +617,7 @@ cell.append(details);
     const starPower=window.Unit501StarPower?.adjust(adjusted,starScenarios.get(record.id) || 'off',selected) ||
       {adjusted,applied:false,label:'Standard projection',factor:1,warning:'Modifier unavailable.'};
     adjusted=starPower.adjusted;
-    return {starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    return {role:roleFor(record,def.key),starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function propSnapshot(record,def,model){
     const entry=readLine(lineKey(record,def));
@@ -584,6 +635,7 @@ cell.append(details);
     }
     renderComparisons();
     results.replaceChildren();
+    scenarioControls.replaceChildren();scenarioControls.hidden=true;
     const record = choices.find(x => x.id === picker.value);
     if (!record) return;
     const title = document.createElement('h3');
@@ -601,9 +653,29 @@ cell.append(details);
       results.appendChild(withheld);
       return;
     }
+    scenarioControls.hidden=false;
+    const scenarioTitle=document.createElement('h3');
+    scenarioTitle.textContent='Player controls — '+record.name+' — '+record.team;
+    scenarioControls.append(scenarioTitle);
+    const scopeNote=document.createElement('p');scopeNote.textContent='These controls apply to this selected player. Changes update their rows in the table below.';
+    scenarioControls.append(scopeNote);
+    const roleLabel=document.createElement('label');roleLabel.textContent='Role review: ';
+    const roleSelect=document.createElement('select');roleSelect.id='player-role-review';
+    for(const [value,label] of [['','Automatic evidence'],['new','New starter'],['returning','Back to starter role'],['primary','Primary option'],['increase','Significant usage increase']]){
+      const option=document.createElement('option');option.value=value;option.textContent=label;roleSelect.append(option);
+    }
+    roleSelect.value=roleReviews.get(record.id)||'';
+    roleSelect.addEventListener('change',()=>{
+      if(roleSelect.value)roleReviews.set(record.id,roleSelect.value);else roleReviews.delete(record.id);
+      showPlayer();
+    });
+    roleLabel.append(roleSelect);scenarioControls.append(roleLabel);
+    const roleNote=document.createElement('p');roleNote.textContent='Role review highlights the player; their projection still uses recorded history. Season averages can lag a new or larger role.';
+    scenarioControls.append(roleNote);
     const scenarioLabel = document.createElement('label');
     scenarioLabel.textContent = 'Expected workload scenario (% of normal): ';
     const scenario = document.createElement('select');
+    scenario.id='player-workload-scenario';
     scenario.setAttribute('aria-label', 'Expected workload scenario');
     for (const percent of [100, 75, 50, 25, 0]) {
       const option = document.createElement('option');
@@ -617,12 +689,13 @@ cell.append(details);
       showPlayer();
     };
     scenarioLabel.appendChild(scenario);
-    results.appendChild(scenarioLabel);
+    scenarioControls.appendChild(scenarioLabel);
     const scenarioNote = document.createElement('p');
     scenarioNote.textContent = 'Your scenario scales this player’s stats linearly, not their chance of playing. It does not redistribute touches or adjust team scores. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
-    results.appendChild(scenarioNote);
+    scenarioControls.appendChild(scenarioNote);
     // Manual player scenario switches affect only the selected player's props, not team scores.
     const powerPanel=document.createElement('div');
+    powerPanel.id='player-power-controls';
     powerPanel.style.cssText='border:1px solid #55c8ec;border-radius:12px;background:#122c40;padding:12px;margin:12px 0';
     const powerHeading=document.createElement('strong');
     powerHeading.textContent='🎮 Player scenarios';
@@ -660,7 +733,7 @@ cell.append(details);
       ' Experimental scenario only; not a validated betting edge or automatic player boost. Changes do not affect team totals.';
     powerNote.style.cssText='font-size:.9em;color:#c8dbe6;margin:0';
     powerPanel.append(powerNote);
-    results.append(powerPanel);
+    scenarioControls.append(powerPanel);
     const workload = document.createElement('p');
 const history = Array.from(record.games.values())
   .sort((a, b) => b.gameDate - a.gameDate);
@@ -813,6 +886,8 @@ results.appendChild(workload);
     enteredLines.clear();
     workloadScenarios.clear();
     starScenarios.clear();
+    roleReviews.clear();
+    scenarioControls.replaceChildren();scenarioControls.hidden=true;
     lineScope = '';
     board.replaceChildren();
     picker.disabled = true;
@@ -928,6 +1003,6 @@ if (league === '1' && stage !== 'regular season') return false;
   document.addEventListener('unit501:weather-updated',()=>{if(loadedFor)showPlayer();});
   el('weatherEnabled')?.addEventListener('change',()=>{if(loadedFor)showPlayer();});
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
-  picker.addEventListener('change', () => {   showPlayer();   results.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
+  picker.addEventListener('change', () => {   showPlayer();   scenarioControls.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
   reset();
 })();

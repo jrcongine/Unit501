@@ -22,5 +22,32 @@ const {matchEvent}=require('../game-venue');
 test('venue matching requires both teams, season and kickoff, preserving neutral venue',()=>{
  const q={league:'2',season:'2026',kickoff:game.kickoff,home:'Texas',away:'Florida'};
  const e={season:{year:2026},competitions:[{date:new Date(game.kickoff).toISOString(),neutralSite:true,competitors:[{homeAway:'home',team:{location:'Texas'}},{homeAway:'away',team:{location:'Florida'}}]}]};
- assert.equal(matchEvent([e],q).length,1);assert.equal(matchEvent([e],{...q,home:'Texas State'}).length,0);assert.equal(matchEvent([e],{...q,season:'2025'}).length,0);assert.equal(matchEvent([e],{...q,kickoff:game.kickoff+3600000}).length,0);
+ assert.equal(matchEvent([e],q).length,1);assert.equal(matchEvent([e],{...q,home:'Texas State'}).length,0);assert.equal(matchEvent([e],{...q,season:'2025'}).length,0);assert.equal(matchEvent([e],{...q,kickoff:game.kickoff+3600000}).length,1);assert.equal(matchEvent([e],{...q,kickoff:game.kickoff+86400000}).length,0);
+});
+
+test('college venue resolves from event summary when scoreboard omits stadium',async()=>{
+ const {resolveVenue}=require('../game-venue'),original=global.fetch;
+ const kickoff=Date.parse('2026-10-24T19:30:00Z');let calls=0;
+ global.fetch=async url=>{calls++;return {ok:true,json:async()=>String(url).includes('/scoreboard?')?{
+  events:[{id:'college-venue-test',season:{year:2026},competitions:[{date:new Date(kickoff+3600000).toISOString(),neutralSite:false,
+   competitors:[{homeAway:'home',team:{location:'Texas'}},{homeAway:'away',team:{location:'Ole Miss'}}]}]}]
+ }:{gameInfo:{venue:{id:'stadium-texas',fullName:'Darrell K Royal-Texas Memorial Stadium at Campbell-Williams Field',address:{city:'Austin',state:'TX'},indoor:false}}}};};
+ try{
+  const result=await resolveVenue({league:'2',season:'2026',kickoff,home:'Texas Longhorns',away:'Mississippi'});
+  assert.equal(result.available,true);assert.equal(result.roof,'outdoor');assert.equal(result.neutralSite,false);
+  assert.equal(result.latitude,30.284);assert.equal(calls,2);
+ }finally{global.fetch=original;}
+});
+test('provider stadium coordinates avoid a city geocoding dependency and preserve neutral status',async()=>{
+ const {resolveVenue}=require('../game-venue'),original=global.fetch;
+ const kickoff=Date.parse('2026-11-01T01:00:00Z');let calls=0;
+ global.fetch=async()=>{calls++;return {ok:true,json:async()=>({events:[{id:'neutral-coordinates-test',season:{year:2026},competitions:[{
+  date:new Date(kickoff).toISOString(),neutralSite:true,venue:{fullName:'Neutral Test Stadium',latitude:32.7,longitude:-97.1,indoor:true,address:{city:'Arlington',state:'TX'}},
+  competitors:[{homeAway:'home',team:{location:'Texas'}},{homeAway:'away',team:{location:'Ole Miss'}}]
+ }]}]})};};
+ try{
+  const result=await resolveVenue({league:'2',season:'2026',kickoff,home:'Texas',away:'Ole Miss'});
+  assert.equal(result.available,true);assert.equal(result.neutralSite,true);assert.equal(result.locationPrecision,'stadium');
+  assert.equal(result.latitude,32.7);assert.equal(result.roof,'indoor');assert.equal(calls,1);
+ }finally{global.fetch=original;}
 });

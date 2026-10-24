@@ -1,7 +1,13 @@
-/* Stadium-area forecast locations reviewed for the 2026 NFL season. */
+/* Stadium-area forecast locations reviewed for the 2026 football season. */
 (function(root) {
  'use strict';
  const venues = [
+  {name:"Darrell K Royal-Texas Memorial Stadium",latitude:30.284,longitude:-97.733,roof:"outdoor",
+   aliases:["DKR-Texas Memorial Stadium","Darrell K Royal-Texas Memorial Stadium at Campbell-Williams Field"],
+   sourceUrl:"https://texaslonghorns.com/sports/2026/2/10/football-fan-guide"},
+  {name:"Vaught-Hemingway Stadium",latitude:34.362,longitude:-89.534,roof:"outdoor",
+   aliases:["Vaught-Hemingway Stadium at Hollingsworth Field","Vaught-Hemingway Stadium/Hollingsworth Field"],
+   sourceUrl:"https://olemisssports.com/facilities/vaught-hemingway-stadiumhollingsworth-field/3"},
   {name:"Wembley Stadium",latitude:51.56,longitude:-0.28,roof:"outdoor",aliases:[]},
   {name:"Tottenham Hotspur Stadium",latitude:51.60,longitude:-0.07,roof:"outdoor",aliases:[]},
   {

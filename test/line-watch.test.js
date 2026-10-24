@@ -22,6 +22,16 @@ test('line watch excludes stale, future, invalid and polluted data rather than s
   assert.equal(observe(s,'x',line,at,now),null);
  assert.equal(s.raw.size,0);
  s.raw.set('unit501:observed-fanduel:v1:x','malformed');
- assert.equal(observe(s,'x',42.5,now,now),null);
+ assert.equal(observe(s,'x',42.5,now,now).firstLine,42.5);
  assert.equal(observe(s,'',42.5,now,now),null);
+});
+
+test('blocked or full storage retains verified history in the session',()=>{
+ const now=Date.now(),scope='blocked-'+now;
+ const blocked={getItem(){throw Error('Blocked');},setItem(){throw Error('Quota');}};
+ const first=observe(blocked,scope,53.5,now-1000,now);
+ assert.equal(first.firstLine,53.5);assert.equal(first.persisted,false);
+ const next=observe(blocked,scope,54.5,now,now);
+ assert.equal(next.firstLine,53.5);assert.equal(next.delta,1);assert.equal(next.persisted,false);
+ assert.equal(observe(blocked,scope,55.5,now-1800001,now),null);
 });

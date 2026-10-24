@@ -31,3 +31,11 @@ test('rare total override replaces base, requires reason and respects venue gate
  assert.equal(venueEffect(game,home,away,'auto',{...settings,homeFieldTotal:6}).valid,false);
  assert.equal(venueEffect(game,home,away,'auto').margin,2);
 });
+
+test('college standard advantage is three margin points and neutral removes it',()=>{
+ const game={league:'2',venueName:'College Stadium'},home={homeVenues:{collegestadium:2}},away={homeVenues:{}};
+ assert.equal(venueEffect(game,home,away,'home').margin,3);
+ assert.equal(venueEffect(game,home,away,'auto').margin,3);
+ assert.equal(venueEffect(game,home,away,'neutral').margin,0);
+ assert.equal(venueEffect({...game,venueName:''},home,away,'auto').margin,0);
+});

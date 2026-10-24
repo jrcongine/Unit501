@@ -13,6 +13,43 @@
     return (mode==='least-covers'?x.rate-y.rate||y.below-x.below:y.rate-x.rate)||
       y.count-x.count||a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
   }
+  function compareRecent(a,b,mode) {
+    const side=mode.startsWith('above')?'above':'below';
+    const count=row=>row.values.filter(v=>Number.isFinite(v)&&(side==='above'?v>row.line:v<row.line)).length;
+    const direction=mode.endsWith('-asc')?1:-1;
+    return direction*(count(a)-count(b))||b.values.length-a.values.length||
+      a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
+  }
+  function roleContext(history,key,team,playerId,game,manual='',now=Date.now()) {
+    const alerts=[];
+    const labels={new:'New starter',returning:'Back to starter role',primary:'Primary option',increase:'Significant usage increase'};
+    if(labels[manual])alerts.push({label:labels[manual],detail:'Your role review for this matchup. Season averages may reflect a smaller prior role.',source:'manual'});
+    const fresh=(at,age)=>Number.isFinite(at)&&at<=now&&now-at<=age;
+    const starters=team?.starters;
+    if(String(starters?.gameId)===String(game?.id)&&starters?.kickoff===game?.kickoff&&fresh(starters?.checkedAt,900000)){
+      const named=(starters.rows||[]).filter(p=>String(p.id)===String(playerId)&&fresh(Date.parse(p.publishedAt),7*86400000));
+      if(named.length===1)alerts.push({label:'Confirmed starter',detail:(named[0].publisher||'Reviewed team announcement')+' names this player as a starter for this matchup.',source:'announcement'});
+    }
+    const depth=team?.depth;
+    if(depth?.available&&String(depth.gameId)===String(game?.id)&&depth.kickoff===game?.kickoff&&fresh(depth.checkedAt,86400000)){
+      const rows=(depth.rows||[]).filter(p=>String(p.id)===String(playerId)&&Number(p.rank)===1);
+      if(rows.length)alerts.push({label:'Listed starter',detail:'Current depth chart lists first string. Game-day starting role and primary workload still need confirmation.',source:'depth'});
+    }
+    const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
+    const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
+    const games=history.filter(g=>Number.isFinite(g.gameDate)&&(!Number.isFinite(game?.kickoff)||g.gameDate*1000<game.kickoff)).sort((a,b)=>b.gameDate-a.gameDate);
+    const latest=games[0]?.[metric];
+    const prior=games.slice(1,4).map(g=>g[metric]);
+    // Compare consecutive team games: missing workload must not become zero or
+    // skip a recent gap to manufacture a promotion from an older appearance.
+    if(Number.isFinite(latest)&&latest>=0&&prior.length>=2&&prior.every(v=>Number.isFinite(v)&&v>=0)){
+      const average=prior.reduce((a,b)=>a+b,0)/prior.length;
+      const minimum={attempts:8,carries:5,targets:3}[metric];
+      if(latest>=1.5*Math.max(average,1)&&latest-average>=minimum)
+        alerts.push({label:'Usage increase',detail:'Latest game: '+latest+' '+label+' vs '+average.toFixed(1)+' across the previous '+prior.length+' games. Review whether the larger role continues.',source:'box-score'});
+    }
+    return {alerts,active:alerts.length>0,changed:alerts.some(a=>a.source==='manual'||a.source==='box-score')};
+  }
   function summarize(history,key) {
     const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
     const valid=g=>Number.isFinite(g[key]) && (key.endsWith('Yds') || g[key]>=0);
@@ -142,7 +179,7 @@
     return {sample,count,flags,needsReview,
       label:`${sample} (${count} recorded games)${flags.length?' • Review: '+flags.join(', '):' • No additional data flags'}`};
   }
-  const api={compareCovers,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
+  const api={roleContext,compareRecent,compareCovers,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

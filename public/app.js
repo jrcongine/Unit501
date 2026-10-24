@@ -10,9 +10,7 @@ function invalidateSimulation(message) {
   latestForecast=null;
   window.Unit501Availability?.scoring?.(null);
   previewAutomaticInjuries();
-  $('game-pick-price').value='';
   $('availability-score-status').textContent='';
-  $('forecast-archive-status').textContent='';
   for (const id of ['score','cover','over','win']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
   document.dispatchEvent(new Event('unit501:simulation-invalidated'));
@@ -133,6 +131,7 @@ function renderMarketPulse(){
     const display=window.Unit501MarketPulse?.movement(kind,observed,game.a,game.h);
     pulseCard(movement,label,
       pulseManual?'Manual line entered — movement paused':display?.text||'No observed FanDuel line yet.',
+      observed?.persisted===false?'History kept for this visit only; browser storage unavailable.':
       'First verified quote seen on this browser, not necessarily sportsbook opening line.',
       pulseManual?'flat':display?.tone||'flat');
   }
@@ -217,7 +216,7 @@ async function loadFanDuel() {
       if (Number.isFinite(data[key])) {
         $(id).value = data[key];
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
-        const observed=window.Unit501LineWatch?.observe(localStorage,
+        const observed=window.Unit501LineWatch?.observeBrowser(
           [game.league,game.season,game.id,'game',key].join(':'),data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
         if(pulseObservations?.game===game)pulseObservations[id]=observed;
         const movement=observed?.changed?` • since first observed ${observed.firstLine} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:'';
@@ -267,6 +266,7 @@ document.addEventListener('visibilitychange', watchWeather);
 async function loadVenueForecast(game, conditions, roof) {
   if (forecastContext?.game !== game) forecastContext={game,data:null,settled:false};
   let venue = game.weatherVenue || window.Unit501Venues?.resolve(game);
+  let venueMessage='';
   if(!venue){
     conditions.textContent='Looking up matchup stadium…';
     try{
@@ -274,10 +274,17 @@ async function loadVenueForecast(game, conditions, roof) {
       const response=await fetch('/api/game-venue?'+query,{signal:AbortSignal.timeout(35000)});
       const result=await response.json();
       if(selected!==game||!conditions.isConnected)return;
-      if(response.ok&&result.available){venue=result;game.weatherVenue=result;conditions.previousElementSibling.textContent=result.name+(result.locationPrecision==='city'?' • '+result.city+', '+result.state+' (city-area forecast)':'');}
-    }catch{}
+      if(response.ok&&result.available){
+        venue=result;game.weatherVenue=result;
+        if(!game.venueName)game.venueName=result.name;
+      }else venueMessage=result.message||result.error||'Venue lookup unavailable.';
+    }catch{venueMessage='Venue feed could not be reached. Try selecting the matchup again.';}
   }
   if(selected!==game || !conditions.isConnected)return;
+  if(venue){
+    const label=weatherPanel.children[1];
+    if(label)label.textContent=venue.name+(venue.locationPrecision==='city'?' • '+venue.city+', '+venue.state+' (city-area forecast)':'');
+  }
   if(venue?.roof==='indoor'){
     forecastContext={game,data:{roof:'indoor',kickoff:game.kickoff},settled:true};
     conditions.textContent='Indoor venue: no outdoor weather adjustment.';roof.textContent='Enclosed playing conditions.';
@@ -286,7 +293,7 @@ async function loadVenueForecast(game, conditions, roof) {
   const location = venue && [venue.latitude, venue.longitude];
   if (!location) {
     conditions.textContent =
-      'Forecast unavailable: matchup stadium could not be located. No weather adjustment applied.';
+      'Forecast unavailable: '+(venueMessage||'Matchup stadium could not be located.')+' No weather adjustment applied.';
     forecastContext={game,data:null,settled:true};
     document.dispatchEvent(new Event('unit501:weather-updated'));
     return;
@@ -929,33 +936,15 @@ function sim() {
   if(window.Unit501ForecastArchive){
     if(automatic&&!automatic.ready){
       latestForecast=null;
-      $('forecast-archive-status').textContent='Forecast not archived: automatic injury feeds or depth coverage are incomplete. Rerun after both teams have current reports; missing coverage must not become the frozen first forecast.';
     }else try{
       const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,marketContext:{awaySpread:spread,total,quotes:gameQuotes?.game===selected?gameQuotes.data:null},availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
       latestForecast=snapshot;
-      fillGamePickPrice();
-      $('forecast-archive-status').textContent=Unit501ForecastArchive.save(localStorage,snapshot).message;
-    }catch{ $('forecast-archive-status').textContent='Forecast archive could not be saved on this browser. This prediction is not archived.'; }
+      Unit501ForecastArchive.save(localStorage,snapshot);
+    }catch{ latestForecast=null; }
   }
   document.dispatchEvent(new Event('unit501:simulation-completed'));
   return true;
 }
-
-function fillGamePickPrice(){
-  const [market,direction]=$('game-pick-direction').value.split(':');
-  const q=latestForecast?.inputs.marketContext?.quotes;
-  const updated=Date.parse(q?.[market==='spread'?'spreadUpdated':'totalUpdated']);
-  const value=q?.prices?.[direction];
-  $('game-pick-price').value=Number.isInteger(value)&&Number.isFinite(updated)&&Date.now()-updated<=1800000&&updated<=Date.now()+60000?String(value):'';
-}
-$('game-pick-direction').addEventListener('change',fillGamePickPrice);
-$('save-game-pick').onclick=()=>{
-  const choice=$('game-pick-direction').value;
-  const [market,direction]=choice.split(':');
-  const line=latestForecast?.inputs.marketContext?.[market==='spread'?'awaySpread':'total'];
-  const raw=$('game-pick-price').value.trim();
-  $('forecast-archive-status').textContent=Unit501ForecastArchive.select(localStorage,latestForecast,{market,direction,line,price:raw===''?null:Number(raw)}).message;
-};
 
 $('load').onclick = load;
 $('sim').onclick = sim;
@@ -977,58 +966,6 @@ document.addEventListener('unit501:availability-updated',()=>{
   }else if($('availability-score-status').textContent){
     $('availability-score-status').textContent='Availability reports changed or freshness was rechecked. Run the simulation again to review score coverage.';
   }
-});
-
-$('download-forecast-archive').onclick=()=>{
-  try{
-    const archive=Unit501ForecastArchive.read(localStorage);
-    if(!archive.snapshots.length){$('forecast-archive-status').textContent='No pregame forecasts have been saved on this browser yet.';return;}
-    const url=URL.createObjectURL(new Blob([JSON.stringify(archive,null,2)],{type:'application/json'}));
-    const link=document.createElement('a');link.href=url;link.download='unit501-forecasts.json';link.click();
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
-    $('forecast-archive-status').textContent='Archive download requested. Open Saved forecast accuracy to review matched results; pending forecasts wait for confirmed finals.';
-  }catch{$('forecast-archive-status').textContent='Saved archive could not be downloaded. Existing data retained.';}
-};
-
-let forecastRefreshAt=0;
-async function refreshForecastResults(){
- const button=$('refresh-forecast-results');if(button.disabled)return;button.disabled=true;forecastRefreshAt=Date.now();
- $('forecast-archive-status').textContent='Checking saved forecasts against confirmed final games…';
- try{
-  const result=await Unit501ForecastResults.refresh(localStorage,async url=>{
-   const response=await fetch(url,{signal:AbortSignal.timeout(15000)});const data=await response.json();
-   if(!response.ok||data.error)throw Error('Result request failed');return data;
-  });
-  $('forecast-archive-status').textContent=`${result.matched} score/prop outcomes matched to confirmed finals. ${result.failed} archive requests failed. Missing player stats remain unknown; open Saved forecast accuracy to compare errors.`;
- }catch{$('forecast-archive-status').textContent='Final results could not be saved. Existing archive retained.';}
- finally{button.disabled=false;}
-};
-
-$('refresh-forecast-results').onclick=refreshForecastResults;
-function autoRefreshForecastResults(){
- if(document.hidden)return;
- try{if(Unit501ForecastResults.autoRefreshDue(Unit501ForecastArchive.read(localStorage),forecastRefreshAt))refreshForecastResults();}catch{}
-}
-// Browser-local archives can only be checked while this app is open.
-setTimeout(autoRefreshForecastResults,0);
-setTimeout(function checkForecastResults(){autoRefreshForecastResults();setTimeout(checkForecastResults,300000);},300000);
-document.addEventListener('visibilitychange',autoRefreshForecastResults);
-document.addEventListener('unit501:archive-updated',autoRefreshForecastResults);
-
-$('forecast-review').addEventListener('toggle',()=>{
- if($('forecast-review').open&&Date.now()-forecastRefreshAt>=300000){
-  try{if(Unit501ForecastArchive.read(localStorage).snapshots.some(s=>s.game.kickoff<Date.now()))refreshForecastResults();}catch{}
- }
-});
-$('import-forecast-archive').addEventListener('change',async()=>{
- const input=$('import-forecast-archive'),file=input.files?.[0];if(!file)return;
- try{
-  if(file.size>20*1024*1024)throw Error('Choose an archive smaller than 20 MB.');
-  const result=Unit501ForecastArchive.importArchive(localStorage,await file.text());
-  $('forecast-archive-status').textContent=`${result.imported} forecasts restored. ${result.skipped} existing targets kept without replacement. Imported timestamps and reports still need review.`;
-  forecastRefreshAt=0;
- }catch(e){$('forecast-archive-status').textContent='Archive import failed; existing forecasts retained. '+(e instanceof SyntaxError?'Choose a valid JSON archive.':e.message);}
- finally{input.value='';}
 });
 
 $('maintenance-panel').addEventListener('toggle',async()=>{

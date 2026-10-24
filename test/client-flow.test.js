@@ -49,7 +49,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','forecast-review.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -198,50 +198,12 @@ test('simulation archives ordinary forecasts and keeps the first forecast across
  h.run('$("awayOffenseLoss").value="4"; sim()');
  const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots[0]');
  assert.equal(saved.baseline.away,24);assert.equal(saved.adjusted.away,24);assert.equal(saved.records[0].actual,null);
- assert.ok(saved.forecastAt<saved.game.kickoff);assert.match(h.nodes.get('forecast-archive-status').textContent,/saved on this browser/);
+ assert.ok(saved.forecastAt<saved.game.kickoff);
  h.run('$("awayOffenseLoss").value="7"; sim()');
  assert.equal(h.run('Unit501ForecastArchive.read(localStorage).snapshots[0].adjusted.away'),24);
  const next=harness(h.storage);await next.settle();assert.equal(next.run('Unit501ForecastArchive.read(localStorage).snapshots.length'),1);
 });
 
-test('saved forecast accuracy shows pending outcomes and real paired errors without inventing samples',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('$("awayOffenseLoss").value="4"; sim()');
- assert.match(h.nodes.get('forecast-review-results').textContent,/2 pending final outcomes/);
- assert.match(h.nodes.get('forecast-review-results').textContent,/No eligible final outcomes/);
- const pendingText=h.nodes.get('forecast-review-results').textContent;
- assert.match(pendingText,/Pending targets/);assert.match(pendingText,/NFL · Team points/);
- assert.match(pendingText,/Awaiting matched final outcomes/);
- assert.doesNotMatch(pendingText,/0.00 higher|Unchanged|NaN/);
- h.run(`const archiveForReview=Unit501ForecastArchive.read(localStorage);for(const r of archiveForReview.snapshots[0].records){r.actual=19;r.resultKnownAt=r.kickoff+100000;}localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify(archiveForReview));document.dispatchEvent(new Event('unit501:archive-updated'));`);
- const text=h.nodes.get('forecast-review-results').textContent;
- assert.match(text,/2 matched targets/);assert.match(text,/NFL · Team points/);assert.match(text,/1\/30 games — insufficient/);
- assert.match(text,/5.00/);assert.match(text,/3.00/);assert.match(text,/2.00 lower/);
- assert.match(text,/Baseline bias/);assert.match(text,/Adjusted bias/);
- assert.match(text,/\+5.00/);assert.match(text,/\+3.00/);
- assert.match(text,/positive means projections ran too high/);
-});
-
-test('miss-pattern panel shows eligible errors and selected spread decisions separately',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.nodes.get('game-pick-direction').value='spread:home';h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
- h.nodes.get('save-game-pick').onclick();
- const initial=h.nodes.get('forecast-review-results').textContent;
- assert.match(initial,/Where projections miss/);
- assert.match(initial,/No eligible completed game forecasts/);
- assert.match(initial,/NFL · Spread: 0W–0L · 0 push · 1 pending/);
- h.run(`const a=Unit501ForecastArchive.read(localStorage);for(const s of a.snapshots)for(const r of s.records){r.actual=19;r.resultKnownAt=r.kickoff+10000;}localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify(a));Unit501ForecastReview.render();`);
- const after=h.nodes.get('forecast-review-results').textContent;
- assert.match(after,/Where projections miss/);
- assert.match(after,/NFL · Team points/);
- assert.match(after,/\(1 game\)/);
- assert.match(after,/projected \/ 19.0 actual/);
- assert.match(after,/NFL · Spread: [01]W–[01]L · 0 push · 0 pending/);
- const details=h.nodes.get('forecast-miss-patterns');
- details.open=true;await details.dispatchEvent({type:'toggle'});
- h.run('Unit501ForecastReview.render()');
- assert.equal(h.nodes.get('forecast-miss-patterns').open,true);
-});
 test('ordinary prop forecasts and chosen picks stay separate with exact line and price',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
@@ -255,41 +217,6 @@ test('ordinary prop forecasts and chosen picks stay separate with exact line and
  input.value='30.5';await input.dispatchEvent({type:'input'});assert.equal(h.nodes.get('pick-price-1:7-carries').value,'');
  await h.nodes.get('save-pick-1:7-carries').dispatchEvent({type:'click'});
  assert.equal(archive().length,firstCount);assert.equal(archive().find(s=>s.selection).selection.line,21.5);
- assert.match(h.nodes.get('forecast-review-results').textContent,/under 21.5 · price -136/);
-});
-
-test('game picks freeze simulation lines and cannot use invalidated forecasts',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- h.nodes.get('game-pick-direction').value='spread:home';h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
- h.nodes.get('game-pick-price').value='-110';h.nodes.get('save-game-pick').onclick();
- const saved=h.run('Unit501ForecastArchive.read(localStorage).snapshots');
- assert.equal(saved.length,2);assert.equal(saved[1].selection.line,7.5);assert.equal(saved[1].selection.direction,'home');
- assert.equal(saved[0].inputs.marketContext.total,48.5);
- assert.match(h.nodes.get('forecast-review-results').textContent,/home -7.5/);
- h.nodes.get('spread').value='9.5';await h.nodes.get('spread').dispatchEvent({type:'input'});
- h.nodes.get('save-game-pick').onclick();assert.match(h.nodes.get('forecast-archive-status').textContent,/Run an eligible pregame forecast first/);
-});
-
-test('pending-only prop markets display separately from score results',async()=>{
- const h=harness();await h.settle();
- h.run(`const pendingProp={league:'1',season:'2026',gameId:'999',teamId:'1',playerId:'9',kind:'prop',market:'rec',modelVersion:'test-v1',evidenceUrl:'https://example.org/forecast',kickoff:200000,forecastAt:100000,inputAsOf:90000,baseline:5,adjusted:4,actual:null,resultKnownAt:null};localStorage.setItem(Unit501ForecastArchive.key,JSON.stringify({schema:1,snapshots:[{records:[pendingProp]}]}));Unit501ForecastReview.render();`);
- const panel=h.nodes.get('forecast-review-results');
- assert.match(panel.textContent,/NFL · Receptions/);
- assert.doesNotMatch(panel.textContent,/NFL · Team points/);
- const table=panel.children.find(n=>n.children?.some(c=>c.tag==='table')).children[0];
- const cells=table.children.find(n=>n.tag==='tbody').children[0].children.map(n=>n.textContent);
- assert.deepEqual(cells,['NFL · Receptions','0','0','1','—','—','—','—','—','Awaiting final outcomes','Awaiting matched final outcomes']);
-});
-test('opening accuracy panel auto-checks past results once and throttles repeated opens',async()=>{
- const h=harness();await h.settle();let calls=0;
- const kickoff=Date.now()-100000;
- const archive={schema:1,snapshots:[{schema:1,game:{id:'9',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},forecastAt:kickoff-1000,records:[]}]};
- h.storage.set('unit501-score-archive-v1',JSON.stringify(archive));
- h.context.fetch=async()=>{calls++;return {ok:true,json:async()=>({response:[]})};};
- h.nodes.get('forecast-review').open=true;
- await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();await h.settle();
- assert.equal(calls,1);assert.equal(h.nodes.get('refresh-forecast-results').disabled,false);
- await h.nodes.get('forecast-review').dispatchEvent({type:'toggle'});await h.settle();assert.equal(calls,1);
 });
 
 test('switching matchups clears scenarios and ignores late injury, rating, ranking, odds and prop responses',async()=>{
@@ -354,11 +281,11 @@ test('saved manual lines stay scoped to a game and return only when that exact g
  const original=h.context.fetch;
  h.context.fetch=async url=>{const u=new URL(url,'http://localhost');if(u.pathname==='/api/games')return {ok:true,json:async()=>({response:[h.game,next]})};return original(url);};
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
- const workload=h.nodes.get('predict-results').children.find(n=>n.tag==='label').children.find(n=>n.tag==='select');workload.value='50';workload.onchange();
+ const workload=h.nodes.get('player-workload-scenario');workload.value='50';workload.onchange();
  const line=h.nodes.get('line-1:7-carries');line.value='21.5';await line.dispatchEvent({type:'input'});
  h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
- assert.equal(h.nodes.get('predict-results').children.find(n=>n.tag==='label').children.find(n=>n.tag==='select').value,'100');
+ assert.equal(h.nodes.get('player-workload-scenario').value,'100');
  assert.ok(![...h.storage].some(([k,v])=>k.includes(':1000:')&&JSON.parse(v).value==='21.5'));
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('line-1:7-carries').value,'21.5');
@@ -466,19 +393,6 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
 });
 
-test('accuracy date controls narrow the displayed report and reset restores its scope',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('$("autoInjuries").checked=false; $("venueMode").value="neutral"; injuryModeChanged()');h.run('sim()');
- const panel=h.nodes.get('forecast-review-results');
- const descendants=n=>[n,...(n.children||[]).flatMap(descendants)];
- const start=descendants(panel).find(n=>n.tag==='input'&&n.type==='date');
- start.value='2099-01-01';await start.dispatchEvent({type:'change'});
- assert.match(panel.textContent,/0 of 1 saved snapshots/);
- const reset=descendants(panel).find(n=>n.tag==='button'&&n.textContent==='Reset filters');
- await reset.dispatchEvent({type:'click'});
- assert.match(panel.textContent,/1 of 1 saved snapshots/);
- assert.match(panel.textContent,/Download filtered accuracy report/);
-});
-
 test('shortlist preserves chosen markets through filters, copies current rows and resets for another matchup',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
@@ -510,19 +424,6 @@ test('shortlist preserves chosen markets through filters, copies current rows an
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('prop-filter-shortlist').value,'');
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/0 shortlisted/);
-});
-
-test('returning to visible app grades saved forecasts without opening accuracy panel',async()=>{
- const h=harness();await h.settle();
- const kickoff=Math.floor((Date.now()-86400000)/1000)*1000;
- const snapshot={schema:1,forecastAt:kickoff-1000,game:{id:'999',league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},records:[{kind:'score',market:'points',gameId:'999',league:'1',season:'2026',teamId:'1',kickoff,forecastAt:kickoff-1000,actual:null,resultKnownAt:null}]};
- h.storage.set('unit501-score-archive-v1',JSON.stringify({schema:1,snapshots:[snapshot]}));
- h.game.game.date.timestamp=kickoff/1000;h.game.game.status.short='FT';h.game.scores.away.total=21;
- let calls=0;const original=h.context.fetch;h.context.fetch=async url=>{if(String(url).startsWith('/api/games'))calls++;return original(url);};
- h.context.document.hidden=true;await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,0);
- h.context.document.hidden=false;await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();await h.settle();
- assert.equal(calls,1);assert.equal(JSON.parse(h.storage.get('unit501-score-archive-v1')).snapshots[0].records[0].actual,21);
- await h.context.document.dispatchEvent({type:'visibilitychange'});await h.settle();assert.equal(calls,1);
 });
 
 test('matchup review exposes unmatched official injury names without inventing roster identities',async()=>{
@@ -606,31 +507,6 @@ test('data-support display and filters keep thin samples visible without claimin
   assert.match(board.textContent,/No lines match these filters/);
 });
 
-test('saved accuracy UI shows market reliability without counting selected picks as model forecasts',async()=>{
-  const h=harness();await h.settle();
-  const forecast={
-    schema:1,kind:'prop',forecastAt:90000,
-    game:{league:'1',season:'2026',id:'100',awayId:'1',homeId:'2',a:'Team A',h:'Team B',kickoff:100000},
-    inputs:{playerName:'RB 1'},records:[{
-      league:'1',season:'2026',gameId:'100',teamId:'1',playerId:'7',
-      kind:'prop',market:'recYds',modelVersion:'player-v1',
-      evidenceUrl:'https://example.org/archived',kickoff:100000,forecastAt:90000,inputAsOf:80000,
-      resultKnownAt:120000,baseline:30,adjusted:26,actual:20
-    }]
-  };
-  const chosen={...forecast,selection:{market:'recYds',direction:'over',line:19.5,price:-110,selectedAt:95000}};
-  h.storage.set('unit501-score-archive-v1',JSON.stringify({schema:1,snapshots:[forecast,chosen]}));
-  h.run('window.Unit501ForecastReview.render()');
-  const reliability=h.nodes.get('forecast-market-reliability');
-  assert.ok(reliability);
-  assert.match(reliability.textContent,/Market reliability/);
-  assert.match(reliability.textContent,/NFL · 2026 · player-v1/);
-  assert.match(reliability.textContent,/Receiving yards/);
-  assert.match(reliability.textContent,/1 games \/ 1 targets/);
-  assert.match(reliability.textContent,/Not enough games to review/);
-  assert.match(reliability.textContent,/not statistical significance/);
-});
-
 test('Game Lab automatically scores a confirmed defender absence and cleanly switches back to manual',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  const game=h.run('selected'),now=Date.now();
@@ -669,7 +545,6 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  assert.notEqual(h.nodes.get('score').textContent,'—');
  assert.equal(h.run('latestForecast'),null);
  assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded|incomplete/i);
- assert.match(h.nodes.get('forecast-archive-status').textContent,/Forecast not archived/);
 });
 
 test('observed FanDuel changes appear in Game Lab only after newer valid price timestamps',async()=>{
@@ -777,4 +652,45 @@ test('manual game mode invalidates results, reaches simulation, and resets for a
  assert.match(h.nodes.get('note').textContent,/Manual primetime: projected margin ×1.1/);
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.equal(h.nodes.get('gameMode').value,'normal');
+});
+
+test('Game Lab removes tracking controls and result polling while simulations still complete',async()=>{
+ const h=harness();await h.settle();
+ for(const id of ['game-pick-direction','game-pick-price','save-game-pick','forecast-review','forecast-review-results','refresh-forecast-results','download-forecast-archive','import-forecast-archive','forecast-archive-status'])assert.equal(h.nodes.has(id),false,id);
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,'—');
+ assert.equal(h.timers.some(t=>String(t.fn).includes('checkForecastResults')),false);
+});
+test('Above and Below header clicks sort visible player props by counts and reverse on another click',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const check=async(side,expected)=>{
+  await h.nodes.get('sort-recent-'+side).dispatchEvent({type:'click'});
+  assert.equal(h.nodes.get('prop-filter-sort').value,expected);
+  let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
+  const counts=[...copied.matchAll(/Above\/below\/equal: (\d+) \/ (\d+) \/ (\d+)/g)].map(m=>Number(m[side==='above'?1:2]));
+  assert.ok(counts.length>1);
+  const sign=expected.endsWith('desc')?-1:1;
+  assert.deepEqual(counts,[...counts].sort((a,b)=>sign*(a-b)));
+ };
+ await check('above','above-desc');await check('above','above-asc');
+ await check('below','below-desc');await check('below','below-asc');
+});
+
+
+test('selected-player controls precede comparisons and role reviews highlight every affected prop',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const controls=h.nodes.get('player-scenario-controls');
+ assert.equal(controls.hidden,false);assert.match(controls.textContent,/Player controls.*RB 1/);
+ assert.equal(h.nodes.get('player-power-controls').parentNode,controls);
+ assert.equal(h.nodes.get('prime-time-enhance').parentNode.parentNode.parentNode,controls);
+ const role=h.nodes.get('player-role-review');role.value='primary';await role.dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Primary option.*Your role review/);
+ const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
+ assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
+ h.nodes.get('player-role-review').value='';await h.nodes.get('player-role-review').dispatchEvent({type:'change'});
+ assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/Your role review/);
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();assert.equal(controls.hidden,true);
 });
