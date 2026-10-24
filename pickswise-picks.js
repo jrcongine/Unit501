@@ -5,7 +5,9 @@
 const URLS={
   nfl:'https://www.pickswise.com/nfl/picks/',
   ncaaf:'https://www.pickswise.com/college-football/picks/',
-  mlb:'https://www.pickswise.com/mlb/picks/'
+  mlb:'https://www.pickswise.com/mlb/picks/',
+  nba:'https://www.pickswise.com/nba/picks/',
+  nhl:'https://www.pickswise.com/nhl/picks/'
 };
 const MONTH={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const pad=v=>String(v).padStart(2,'0');
@@ -22,7 +24,7 @@ const eastDate=now=>{
   const part=x=>p.find(t=>t.type===x).value;return [Number(part('year')),Number(part('month')),Number(part('day'))];
 };
 function pickCards(html){
-  const markers=[...String(html||'').matchAll(/\b(?:Point Spread Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g)];
+  const markers=[...String(html||'').matchAll(/\b(?:(?:Point Spread|Puck Line) Pick|Game Totals Pick(?:\s+(?:Over|Under))?|Money Line Pick|Player Prop Pick)\b/g)];
   const person=/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}(?:\s+\([^)]+\))?$/;
   return markers.slice(0,80).map((marker,i)=>{
     const before=html.slice(Math.max(0,marker.index-1800),marker.index);
@@ -55,7 +57,9 @@ function parse(html,league,now=Date.now()){
   const pageTitle=plain(String(html||'').match(/<h1\b[^>]*>([\s\S]*?)<\/h1\s*>/i)?.[1]||'').toLowerCase();
   if((pageTitle.includes('college football picks')&&league!=='ncaaf') ||
      (pageTitle.includes('nfl picks')&&league!=='nfl') ||
-     (pageTitle.includes('mlb picks')&&league!=='mlb'))return [];
+     (pageTitle.includes('mlb picks')&&league!=='mlb') ||
+     (pageTitle.includes('nba picks')&&league!=='nba') ||
+     (pageTitle.includes('nhl picks')&&league!=='nhl'))return [];
   const tables=[...String(html||'').matchAll(/<table\b[^>]*>([\s\S]*?)<\/table\s*>/gi)];
   if(!tables.length)return [];
   const firstTable=tables[0].index;

@@ -15,6 +15,16 @@
       const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(35000)});
       if(!response.ok)throw Error('Unavailable');const data=await response.json();if(version!==request)return;
       if(!Array.isArray(data.sources))throw Error('Invalid feed');
+      const summary=el('section',null,'war-feed-source');
+      summary.append(el('h4','Most repeated selections'));
+      if(!data.consensus?.length)summary.append(el('p','No verified matching selections across the loaded picks. Undated picks and different lines are not combined.','war-muted'));
+      for(const pick of data.consensus||[]){
+        const card=el('article',null,'war-record');
+        card.append(el('strong',pick.pick+' · '+pick.count+' named selections'),el('p',pick.matchup+' · '+pick.date));
+        for(const member of pick.sources){const link=el('a',member.source+' — '+member.author+': '+member.pick);link.href=member.url;link.target='_blank';link.rel='noopener noreferrer';const line=el('p');line.append(link);card.append(line);}
+        summary.append(card);
+      }
+      list.append(summary);
       let count=0;
       for(const source of data.sources){
         const section=el('section',null,'war-feed-source');section.append(el('h4',source.name));

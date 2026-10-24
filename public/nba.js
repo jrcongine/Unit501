@@ -67,7 +67,7 @@ function choose(game){
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(17000)});
    const data=await response.json();
    if(serial!==request)return;
-   if(!response.ok||!Array.isArray(data.games))throw Error('NBA feed unavailable');
+   if(!response.ok||!Array.isArray(data.games))throw Error(data.code==='NBA_PLAN_ACCESS'?data.error:'NBA games could not be loaded. Check the NBA connection and try again.');
    if(!data.games.length){status.textContent='No NBA games returned for this date. Check official schedule or try another date.';return;}
    for(const game of data.games){
     const score=game.awayScore!==null&&game.homeScore!==null?
@@ -85,7 +85,7 @@ function choose(game){
   }catch(error){
    if(serial!==request)return;
    games.replaceChildren();
-   status.textContent='NBA games could not be loaded. The NBA API connection may not be enabled. No predictions were generated.';
+   status.textContent=error.message;
   }finally{if(serial===request)load.disabled=false;}
  }
  dateInput.value=shared.dateCentral();
@@ -97,5 +97,39 @@ function choose(game){
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});
  });
- // No automatic polling: leave the API quota available for deliberate loads.
+ // Monitoring is explicitly enabled and only runs while this page is visible.
+ const alertToggle=byId('nba-alert-enable'),alertStatus=byId('nba-alert-status'),alertList=byId('nba-alert-list');
+ const track=window.Unit501NBAAlerts.createTracker();
+ let watching=false,watchTimer=null;
+ byId('nba-alert-permission').addEventListener('click',async()=>{
+  if(!('Notification' in window)){alertStatus.textContent='Browser notifications unavailable here; alerts still appear on this page.';return;}
+  try{const permission=await Notification.requestPermission();alertStatus.textContent=permission==='granted'?'Browser notifications enabled. Turn on the watch to begin.':'Notifications not enabled; alerts still appear on this page.';}catch{alertStatus.textContent='Browser notifications unavailable; alerts still appear on this page.';}
+ });
+ async function watch(){
+  if(!alertToggle.checked||watching||document.hidden)return;
+  watching=true;
+  try{
+   const response=await fetch('/api/nba/games?date='+shared.dateCentral(),{signal:AbortSignal.timeout(17000)});
+   const data=await response.json();
+   if(!alertToggle.checked)return;
+   if(!response.ok){alertToggle.checked=false;throw Error(data.error||'NBA data unavailable; watch stopped.');}
+   for(const alert of track(data.games)){
+    const message=alert.team+' down '+alert.deficit+' in Q'+alert.period+' · '+alert.score;
+    alertList.prepend(node('p',message));
+    if('Notification' in window&&Notification.permission==='granted'){
+     try{new Notification('Unit 501: first-half deficit',{body:message,tag:'nba-'+alert.id+'-'+alert.team});}catch{/* Inline alert remains visible. */}
+    }
+   }
+   alertStatus.textContent='Watching today · checked '+new Date(data.checkedAt).toLocaleTimeString()+'. One alert per trailing team per game. This is a score alert, not a comeback prediction.';
+  }catch(error){alertStatus.textContent=error.message;}
+  finally{watching=false;if(alertToggle.checked)watchTimer=setTimeout(watch,60000);}
+ }
+ alertToggle.addEventListener('change',()=>{
+  clearTimeout(watchTimer);
+  if(alertToggle.checked)watch();else alertStatus.textContent='Watch off.';
+ });
+ document.addEventListener('visibilitychange',()=>{
+  clearTimeout(watchTimer);
+  if(!document.hidden&&alertToggle.checked)watch();
+ });
 })();
