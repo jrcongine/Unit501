@@ -225,3 +225,7 @@ the same cooldown; manual Refresh remains available. Source dates and links
 are still required; EV and Juice Reel entries without an accessible public
 pick feed remain manual and are **not** automatically filled or counted as
 votes. Background polling stops when the War Room is closed.
+
+## Unit 501 sayings
+- **Always Buy the Hook.**
+- **Chase a check, never chase a bitch.**
