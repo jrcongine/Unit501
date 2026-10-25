@@ -10,7 +10,7 @@
  function render(){
   panel.replaceChildren();
   try{
-   const archive=Unit501ForecastArchive.read(localStorage);
+   const archive=Unit501ForecastArchive.read(Unit501Storage);
    panel.append(node('h3','Accuracy dashboard'));
    const controls=node('div','');
    const records=archive.snapshots.flatMap(s=>s.records||[]);

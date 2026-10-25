@@ -74,12 +74,12 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Referrer-Policy','same-origin');
     res.setHeader('Cache-Control','no-store');
     if(await accounts.handle(req,res))return;
-    const accountFile=accounts.enabled&&req.method==='GET'&&['/account.html','/account.js','/account.css'].includes(u.pathname);
+    const customer=await accounts.session(req);
+    const accountFile=accounts.enabled&&req.method==='GET'&&['/account.html','/account.js','/account.css','/browser-storage.js'].includes(u.pathname);
     if(accountFile){
       res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     }
     if(!accountFile){
-      const customer=await accounts.session(req);
       if(!await accounts.allowCustomer(req,customer)){
         if(customer&&!req.headers.authorization)return send(res,403,{error:'This control is available to the owner only.'});
         if(!require('./private-access').allowRequest(req,res))return;
@@ -420,13 +420,19 @@ if (u.pathname === '/api/team-games') {
 
     };
 
+    let contents=fs.readFileSync(p);
+    if(ext==='.html'){
+      const scope=customer?'customer:'+customer.id:require('./private-access').isOwner(req)?'owner':'guest';
+      // Scope comes from authenticated server state, never from URL parameters.
+      contents=contents.toString('utf8').replace('<body>','<body data-unit501-scope="'+scope+'">');
+    }
     send(
 
       res,
 
       200,
 
-      fs.readFileSync(p),
+      contents,
 
       types[ext] || 'application/octet-stream'
 

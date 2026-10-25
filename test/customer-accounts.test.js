@@ -24,10 +24,13 @@ async function setup(t,{httpsCookies=false}={}){
  const env={UNIT501_CUSTOMER_ACCOUNTS:'1',UNIT501_ACCOUNT_DATA_DIR:dir,UNIT501_PUBLIC_ORIGIN:httpsCookies?'https://unit501.test':root,UNIT501_BETA_INVITE:invite};
  const make=()=>createAccounts({env,now:()=>clock});accounts=make();
  t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await fs.rm(dir,{recursive:true,force:true});});
+ const identities=new Map();
  async function request(route,{method='GET',cookie,body,origin=env.UNIT501_PUBLIC_ORIGIN,headers={}}={}){
-  const response=await fetch(root+route,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{}),...(origin?{Origin:origin}:{}),...headers},body:body?JSON.stringify(body):undefined});
+  const response=await fetch(root+route,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{}),...(identities.has(cookie)?{'X-Unit501-Account-ID':identities.get(cookie)}:{}),...(origin?{Origin:origin}:{}),...headers},body:body?JSON.stringify(body):undefined});
   const text=await response.text();let data;try{data=JSON.parse(text);}catch{data=text;}
-  return {status:response.status,data,cookie:response.headers.get('set-cookie'),headers:response.headers};
+  const sessionCookie=response.headers.get('set-cookie');
+  if(sessionCookie&&data.user)identities.set(sessionCookie.split(';')[0],data.user.id);
+  return {status:response.status,data,cookie:sessionCookie,headers:response.headers};
  }
  async function signup(address='one@example.com'){
   const result=await request('/api/account/signup',{method:'POST',body:{email:address,password,invite}});
@@ -77,6 +80,18 @@ test('simultaneous saves cannot silently replace a newer revision',async t=>{
  const results=await Promise.all([save('A'),save('B')]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
  const winner=results.find(r=>r.status===200);
  assert.deepEqual((await app.request('/api/account/records',{cookie:one.token})).data,winner.data);
+});
+test('an old tab cannot read, overwrite or sign out a newly selected account through its changed cookie',async t=>{
+ const app=await setup(t),one=await app.signup(),two=await app.signup('two@example.com');
+ const headers={'X-Unit501-Account-ID':one.data.user.id};
+ for(const request of [
+  {route:'/api/account/records',options:{cookie:two.token,headers}},
+  {route:'/api/account/records',options:{method:'PUT',cookie:two.token,headers,body:{revision:0,records:{}}}},
+  {route:'/api/account/logout',options:{method:'POST',cookie:two.token,headers,body:{}}}
+ ])assert.equal((await app.request(request.route,request.options)).status,409);
+ assert.equal((await app.request('/api/account/records',{method:'PUT',cookie:one.token,headers:{'X-Unit501-Account-ID':''},body:{revision:0,records:{}}})).status,409);
+ assert.equal((await app.request('/api/account/me',{cookie:two.token})).status,200);
+ assert.equal((await app.request('/api/account/records',{cookie:two.token})).data.revision,0);
 });
 test('invalid archives, unsupported keys, missing revision and cross-site writes retain saved records',async t=>{
  const app=await setup(t),one=await app.signup(),cookie=one.token;
@@ -143,10 +158,12 @@ test('real server serves the isolated account page, accepts customer sessions an
  });
  let response=await fetch(root+'/');assert.equal(response.status,401);await response.text();
  response=await fetch(root+'/account.html');assert.equal(response.status,200);assert.ok(response.headers.get('content-security-policy').includes("script-src 'self'"));assert.match(await response.text(),/Your picks/);
- for(const asset of ['account.js','account.css']){response=await fetch(root+'/'+asset);assert.equal(response.status,200);await response.text();}
+ for(const asset of ['account.js','account.css','browser-storage.js']){response=await fetch(root+'/'+asset);assert.equal(response.status,200);await response.text();}
  response=await fetch(root+'/api/account/signup',{method:'POST',headers:{Origin:root,'Content-Type':'application/json'},body:JSON.stringify({email:'server@example.com',password,invite})});
- assert.equal(response.status,201);const cookie=response.headers.get('set-cookie').split(';')[0];await response.text();
- response=await fetch(root+'/',{headers:{Cookie:cookie}});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.match(await response.text(),/Football Command Center/);
+ assert.equal(response.status,201);const cookie=response.headers.get('set-cookie').split(';')[0],user=(await response.json()).user;
+ response=await fetch(root+'/?userId=owner',{headers:{Cookie:cookie}});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');const html=await response.text();assert.match(html,/Football Command Center/);assert.ok(html.includes('data-unit501-scope="customer:'+user.id+'"'));
+ response=await fetch(root+'/account.html');assert.match(await response.text(),/data-unit501-scope="guest"/);
+ response=await fetch(root+'/',{headers:{Authorization:'Basic '+Buffer.from('jr:owner-password-123456789').toString('base64')}});assert.match(await response.text(),/data-unit501-scope="owner"/);
  response=await fetch(root+'/api/provider-usage',{headers:{Cookie:cookie}});assert.equal(response.status,403);assert.equal(response.headers.get('www-authenticate'),null);await response.text();
  response=await fetch(root+'/api/provider-usage',{headers:{Authorization:'Basic '+Buffer.from('jr:owner-password-123456789').toString('base64')}});assert.equal(response.status,200);await response.text();
 });

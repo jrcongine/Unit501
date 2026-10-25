@@ -30,7 +30,7 @@
     delta:Math.round((entry.lastLine-entry.firstLine)*100)/100,changed:entry.lastLine!==entry.firstLine,persisted};
  }
  function observeBrowser(scope,line,sourceAt,now=Date.now()){
-  let storage;try{storage=root.localStorage;}catch{}
+  let storage;try{storage=root.Unit501Storage;}catch{}
   return observe(storage,scope,line,sourceAt,now);
  }
  const api={observe,observeBrowser};

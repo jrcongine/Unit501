@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Your account · UNIT501</title>
 <link rel="stylesheet" href="account.css">
+<script src="browser-storage.js" defer></script>
 <script src="account.js" defer></script>
 </head>
 <body><main>
@@ -34,10 +35,10 @@
 <nav aria-label="Sports dashboards"><a href="/">Open football</a><a href="nba.html">Open NBA</a></nav>
 <hr><h2>Saved records</h2>
 <p>Save a copy before switching devices. On another device, sign in here and load that copy before opening the dashboard. Changes are saved only when you choose Save.</p>
-<p class="muted">This browser may contain records from its previous user. Only save records that belong to you. Loading replaces these two archives on this browser and downloads a backup first.</p>
+<p class="muted">Your records are kept separate from other accounts on this browser. Loading replaces your two archives and downloads a backup first.</p>
 <p id="records-status" role="status" aria-live="polite"></p>
 <div class="actions"><button id="save-records" type="button">Save this browser’s records</button><button id="load-records" type="button">Load my saved records</button></div>
 <button id="logout" type="button" class="secondary">Sign out</button>
-<p class="muted">Signing out ends this session. Dashboard records remain on this browser; use your own device during the beta.</p>
+<p class="muted">Signing out closes access to your dashboard tabs. Your local records stay saved for your next sign-in.</p>
 </section>
 </main></body></html>

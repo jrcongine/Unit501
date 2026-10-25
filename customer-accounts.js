@@ -128,6 +128,9 @@ function createAccounts({env=process.env,now=Date.now}={}){
     return true;
    }
    const user=await session(req);if(!user)throw fault(401,'Sign in to your customer account.');
+   const expected=req.headers['x-unit501-account-id'];
+   if((expected&&expected!==user.id)||(!expected&&((pathname==='/api/account/records'&&req.method==='PUT')||(pathname==='/api/account/logout'&&req.method==='POST'))))
+    throw fault(409,'Your account changed. Reload the account page and try again.');
    limit('account:'+user.id,120,60000);
    if(pathname==='/api/account/me'&&req.method==='GET'){send(res,200,{user});return true;}
    if(pathname==='/api/account/logout'&&req.method==='POST'){
