@@ -82,6 +82,22 @@ test('actual client home-context control changes margin and resets on game selec
  h.nodes.get('variableHomeField').checked=true;h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.equal(h.nodes.get('homeContext').value,'2');assert.equal(h.nodes.get('homeFieldMode').value,'auto');assert.equal(h.nodes.get('variableHomeField').checked,false);
 });
+test('team context labels pending yardage and provider coverage gaps without treating them as zero',async()=>{
+ const h=harness();await h.settle();
+ for(const team of h.data.teams.slice(0,2))for(const key of ['rushFor','passFor','rushAgainst','passAgainst'])
+  team.metrics[key]={average:null,games:0,rank:null,pool:0};
+ h.data.metrics=[['rushFor','Rushing offense',false],['passFor','Passing offense',false],
+  ['pointsFor','Scoring offense',false],['rushAgainst','Run defense',true],['passAgainst','Pass defense',true]];
+ h.data.detailCoverage={requested:16,eligible:100,limited:true};
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected,{loading:true})`);
+ assert.match(h.nodes.get('team-context').textContent,/Checking box scores/);
+ assert.match(h.nodes.get('team-context').textContent,/Only 16 of 100 eligible games/);
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected,{warning:'Provider box scores failed.'})`);
+ assert.match(h.nodes.get('team-context').textContent,/No usable rushing\/passing totals/);
+ assert.match(h.nodes.get('team-context').textContent,/Provider box scores failed/);
+});
+
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);

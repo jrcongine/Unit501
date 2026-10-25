@@ -21,6 +21,15 @@ test('venue lookup does not infer a home location and limits reviewed roof class
  assert.equal(resolve({season:2026,venueName:'Mercedes-Benz Superdome'}).roof,'indoor');
 });
 
+test('2026 NFL Paris venue has outdoor stadium coordinates without a U.S. state',()=>{
+ const paris=resolve({season:'2026',venueName:'Stade de France'});
+ assert.ok(paris);
+ assert.equal(paris.roof,'outdoor');
+ assert.equal(paris.latitude,48.9245);
+ assert.equal(paris.longitude,2.3601);
+ assert.equal(resolve({season:'2027',venueName:'Stade de France'}),null);
+});
+
 test('college stadium aliases resolve Texas and Ole Miss without guessing from the home team',()=>{
  for(const venueName of ['Darrell K Royal-Texas Memorial Stadium at Campbell-Williams Field','DKR-Texas Memorial Stadium','Vaught-Hemingway Stadium/Hollingsworth Field','Vaught-Hemingway Stadium at Hollingsworth Field']){
   const venue=resolve({season:'2026',venueName});assert.ok(venue,venueName);assert.equal(venue.roof,'outdoor');

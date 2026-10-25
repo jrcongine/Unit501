@@ -10,6 +10,9 @@
    sourceUrl:"https://olemisssports.com/facilities/vaught-hemingway-stadiumhollingsworth-field/3"},
   {name:"Wembley Stadium",latitude:51.56,longitude:-0.28,roof:"outdoor",aliases:[]},
   {name:"Tottenham Hotspur Stadium",latitude:51.60,longitude:-0.07,roof:"outdoor",aliases:[]},
+  // 2026 Paris international game: verified open playing field, not a U.S. city/state.
+  {name:"Stade de France",latitude:48.9245,longitude:2.3601,roof:"outdoor",aliases:[],
+   sourceUrl:"https://mapcarta.com/25586214"},
   {
     "name": "Soldier Field",
     "latitude": 41.86,

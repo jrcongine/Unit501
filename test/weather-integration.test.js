@@ -51,3 +51,31 @@ test('provider stadium coordinates avoid a city geocoding dependency and preserv
   assert.equal(result.latitude,32.7);assert.equal(result.roof,'indoor');assert.equal(calls,1);
  }finally{global.fetch=original;}
 });
+
+test('NFL Paris matchup resolves an outdoor venue without U.S. state geocoding',async()=>{
+ const {resolveVenue}=require('../game-venue'),original=global.fetch;
+ const kickoff=Date.parse('2026-10-25T13:30:00Z');
+ const venue={id:'france-venue',fullName:'Stade de France',address:{city:'Saint-Denis',country:'France'},indoor:false};
+ const urls=[];
+ global.fetch=async url=>{
+  urls.push(String(url));
+  const data=String(url).includes('/summary?')
+   ? {gameInfo:{venue}}
+   : {events:[{id:'nfl-paris-2026',season:{year:2026},competitions:[{
+      date:new Date(kickoff).toISOString(),neutralSite:true,venue,
+      competitors:[{homeAway:'home',team:{displayName:'New Orleans Saints'}},
+                   {homeAway:'away',team:{displayName:'Pittsburgh Steelers'}}]
+     }]}]};
+  return {ok:true,json:async()=>data};
+ };
+ try {
+  const resolved=await resolveVenue({league:'1',season:'2026',kickoff,home:'New Orleans Saints',away:'Pittsburgh Steelers'});
+  assert.equal(resolved.available,true);
+  assert.equal(resolved.neutralSite,true);
+  assert.equal(resolved.roof,'outdoor');
+  assert.equal(resolved.latitude,48.9245);
+  assert.equal(resolved.longitude,2.3601);
+  assert.equal(urls.length,2);
+  assert.ok(urls.every(url=>!url.includes('geocoding-api')));
+ }finally{global.fetch=original;}
+});
