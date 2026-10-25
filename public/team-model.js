@@ -217,7 +217,20 @@
     return {blowout:{threshold:21,away:awayBlowouts/runs,home:homeBlowouts/runs,any:(awayBlowouts+homeBlowouts)/runs},calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
       varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
-  const model={project,simulate,venueEffect,weatherEffect};
+  // Classify the point forecast independently of cover frequencies. A positive
+  // away line identifies the away underdog; it never changes projected scores.
+  function outcome(prediction, awaySpread) {
+    if (!prediction?.available || ![prediction.away,prediction.home,awaySpread].every(Number.isFinite)) return null;
+    const margin=prediction.away-prediction.home;
+    const winner=margin>0?'away':margin<0?'home':null;
+    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
+    const coverMargin=margin+awaySpread;
+    const cover=coverMargin>0?'away':coverMargin<0?'home':null;
+    return {winner,underdog,cover,margin,coverMargin,
+      upset:!!underdog&&winner===underdog,
+      underdogCoverOnly:!!underdog&&cover===underdog&&winner!==underdog&&winner!==null};
+  }
+  const model={project,simulate,venueEffect,weatherEffect,outcome};
   if (typeof module !== 'undefined' && module.exports) module.exports=model;
   else root.Unit501TeamModel=model;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

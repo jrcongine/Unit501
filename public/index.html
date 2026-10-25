@@ -196,7 +196,7 @@
 <p id="matchup-context-status"></p>
 <section aria-label="Game scenario">
 <label for="gameMode">Game mode</label>
-<select id="gameMode"><option value="normal">Normal 0%</option><option value="upset">Upset −10%</option><option value="primetime">Primetime +10%</option></select>
+<select id="gameMode"><option value="normal">Normal margin</option><option value="upset">Narrow margin by 10% (manual)</option><option value="primetime">Widen margin by 10% (manual)</option></select>
 <p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
 </section>
 <section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert</h3>
@@ -227,6 +227,17 @@
 <div><small>Away win</small><b id="win">—</b></div>
 
 </div>
+
+<section class="outcome-summary" aria-label="Outright winner and underdog outlook" aria-live="polite">
+<h3>Outright winner &amp; underdog outlook</h3>
+<p id="outright-pick">Run a simulation to see the projected winner.</p>
+<p id="underdog-outlook">—</p>
+<p id="win-both">—</p>
+<small>Winner uses the unrounded score forecast. An underdog covering the spread is different from winning outright. Simulation frequencies are model estimates; tied scores are separate and overtime is not modeled.</small>
+<details><summary>Has UNIT501 called an upset? Saved forecast history</summary>
+<div id="upset-history">Run a simulation to check saved pregame forecasts.</div>
+</details>
+</section>
 
 <p id="availability-score-status" role="status" style="color:#e8b95b"></p>
 <p id="note"></p>

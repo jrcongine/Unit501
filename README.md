@@ -304,3 +304,26 @@ votes. Background polling stops when the War Room is closed.
 ## Unit 501 sayings
 - **Always Buy the Hook.**
 - **Chase a check, never chase a bitch.**
+
+## Outright underdog picks and saved upset history
+
+Football Game Lab now names the projected outright winner, separately identifies
+an underdog projected to win versus one projected to cover while losing, and
+shows both teams' simulated win frequencies. Spread sign identifies the market
+underdog; the spread does not force the score forecast to favor either team.
+Winner classification uses unrounded forecasts, so rounded displayed scores
+can occasionally appear tied despite a small projected edge. Raw ties remain
+separate; calibrated win frequencies condition on non-tied scores. Overtime is
+not modeled. The former manual “Upset” control is labeled “Narrow margin by
+10%”: it preserves the winner and is not an upset detector.
+
+The expandable saved-history summary checks first pregame score snapshots and
+the spread captured with those snapshots. It counts outright underdog picks,
+actual upsets, called/missed upsets, unsuccessful upset picks, final ties and
+pending outcomes. Leagues, seasons and archived model versions remain separate.
+Selected wagers and player props are excluded, as are duplicate games, invalid
+or late forecasts, missing lines and pick’em lines. A cover-only projection
+never counts as an outright upset pick. Results must already be matched in the
+browser archive; this display starts no new provider polling. No complete-season
+or lifetime upset record can be inferred from missing browser history, and an
+entered spread is not authenticated as the sportsbook closing line.

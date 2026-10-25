@@ -110,6 +110,8 @@
   const key=++sequence;
   status.textContent='Loading '+names[league]+' power index and league headlines…';
   power.replaceChildren();news.replaceChildren();
+  snapshots.delete(league);
+  renderMatchup();
   try{
    const response=await fetch('/api/league-pulse?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(30000)});
    const data=await response.json();
@@ -124,6 +126,7 @@
    if(key!==sequence)return;
    status.textContent='League pulse could not load. Try Refresh; no ranks or headlines were invented.';
    power.replaceChildren();news.replaceChildren();power.append(el('p','Verified power rankings unavailable.','league-pulse-empty'));
+   renderMatchup();
   }
  }
  selector.addEventListener('change',()=>load(selector.value));

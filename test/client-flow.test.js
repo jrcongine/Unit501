@@ -790,3 +790,39 @@ test('prop board automatically highlights a current same-position replacement op
  const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
  assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
 });
+
+test('Game Lab names outright upset picks, separates cover-only, and clears stale picks',async()=>{
+ const h=harness();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run('$("venueMode").value="neutral"; $("spread").value="10.5"; $("total").value="48.5"; $("awayRating").value="4"; $("homeRating").value="0"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team A to win outright.*UNDERDOG UPSET PICK/);
+ assert.match(h.nodes.get('underdog-outlook').textContent,/Team A \+10.5: projected to win outright/);
+ assert.match(h.nodes.get('win-both').textContent,/Team A win.*Team B win.*tied scores/);
+ h.run('$("awayRating").value="-4"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright/);
+ assert.doesNotMatch(h.nodes.get('outright-pick').textContent,/UPSET PICK/);
+ assert.match(h.nodes.get('underdog-outlook').textContent,/cover, but lose outright/);
+ h.run('$("spread").value="-10.5"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright.*UNDERDOG UPSET PICK/);
+ h.run('$("awayRating").value="0"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/no outright winner/);
+ h.run('$("spread").value="0"; sim()');
+ assert.match(h.nodes.get('underdog-outlook').textContent,/Pick’em line/);
+ await h.nodes.get('spread').dispatchEvent({type:'input'});
+ for(const id of ['outright-pick','underdog-outlook','win-both'])assert.equal(h.nodes.get(id).textContent,'—');
+});
+
+test('refreshing league rankings withdraws old Game Lab ranks when the source fails',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/#1 of 32/);
+ const request=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(String(url).startsWith('/api/league-pulse'))throw Error('Provider unavailable');
+  return request(url);
+ };
+ h.run('Unit501LeaguePulse.show("nfl")');await h.settle();
+ assert.doesNotMatch(h.nodes.get('league-pulse-matchup').textContent,/#1 of 32/);
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/when the current standings are verified/);
+ assert.match(h.nodes.get('league-pulse-status').textContent,/could not load/);
+});

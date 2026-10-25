@@ -319,3 +319,7 @@ a{color:#97e3fc}
  .league-pulse-team .league-pulse-trend{grid-column:2 / -1;text-align:left;padding-left:0}
  .league-pulse-matchup-grid{grid-template-columns:1fr}
 }
+#lab .outcome-summary{margin:16px 0;padding:16px;border:1px solid #55c8ec;border-radius:12px;background:#122c40}
+#lab .outcome-summary h3{margin:0 0 10px;color:#bcecff}
+#lab .outcome-summary p{margin:8px 0;overflow-wrap:anywhere}
+#lab #outright-pick{font-weight:800;font-size:1.1em}
