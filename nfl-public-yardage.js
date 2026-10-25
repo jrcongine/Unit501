@@ -1,93 +1,151 @@
 'use strict';
-// Public NFL team-season yardage context, for display only.
-// Never substitutes for historical pregame box scores or the calibrated scoring/prop models.
-// Publicly reachable endpoints are not a grant of commercial redistribution rights.
-const BASE='https://site.api.espn.com/apis/site/v2/sports/football/nfl';
+// Display-only NFL regular-season yardage rankings from nflverse team-week data.
+// The stats_team release is CC BY 4.0, with attribution required.
+// This module never changes the paid provider's historical game boxes or score/prop models.
+// The weekly CSV is checked against the complete API-Sports scoring schedule before use.
+const URL='https://github.com/nflverse/nflverse-data/releases/download/stats_team/stats_team_week_';
+const SOURCE='https://github.com/nflverse/nflverse-data/releases/tag/stats_team';
+const LICENSE='https://creativecommons.org/licenses/by/4.0/';
 const YARDAGE=['rushFor','passFor','rushAgainst','passAgainst'];
 const normalize=name=>String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const finite=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
-function numberField(categories,category,name){
- const groups=(categories||[]).filter(x=>x?.name===category);
- const entries=groups.length===1?(groups[0].stats||[]).filter(x=>x.name===name):[];
- return entries.length===1?finite(entries[0].value):null;
-}
-function readESPNTeam(raw,club,season){
- if(!raw||Number(raw.season?.year)!==Number(season)||Number(raw.season?.type)!==2||
-    Number(raw.requestedSeason?.year)!==Number(season)||
-    Number(raw.requestedSeason?.type)!==2||
-    String(raw.team?.id)!==String(club.id)||
-    normalize(raw.team?.displayName)!==normalize(club.name))return null;
- const offense=raw.results?.stats?.categories,defense=raw.results?.opponent;
- if(!Array.isArray(offense)||!Array.isArray(defense))return null;
- const games=numberField(offense,'general','gamesPlayed');
- if(!Number.isInteger(games)||games<1||games>17)return null;
- const record=/^(\d+)-(\d+)(?:-(\d+))?$/.exec(String(raw.team?.recordSummary||''));
- if(record&&Number(record[1])+Number(record[2])+Number(record[3]||0)!==games)return null;
- const fields=[
-  ['rushFor',offense,'rushing','rushingYards','rushingYardsPerGame'],
-  ['passFor',offense,'passing','netPassingYards','netPassingYardsPerGame'],
-  ['rushAgainst',defense,'rushing','rushingYards','rushingYardsPerGame'],
-  ['passAgainst',defense,'passing','netPassingYards','netPassingYardsPerGame']
- ];
- const totals={};
- for(const [key,categories,group,stat,averageStat]of fields){
-  const total=numberField(categories,group,stat);
-  const reportedAvg=numberField(categories,group,averageStat);
-  const matchesGames=numberField(categories,group,'teamGamesPlayed');
-  if(!Number.isInteger(total)||total<0||total>900*games||
-     reportedAvg===null||Math.abs(total/games-reportedAvg)>0.16||
-     (matchesGames!==null&&matchesGames!==games))return null;
-  totals[key]=total;
+const clubs=[
+ ['Arizona Cardinals','ARI'],['Atlanta Falcons','ATL'],['Baltimore Ravens','BAL'],
+ ['Buffalo Bills','BUF'],['Carolina Panthers','CAR'],['Chicago Bears','CHI'],
+ ['Cincinnati Bengals','CIN'],['Cleveland Browns','CLE'],['Dallas Cowboys','DAL'],
+ ['Denver Broncos','DEN'],['Detroit Lions','DET'],['Green Bay Packers','GB'],
+ ['Houston Texans','HOU'],['Indianapolis Colts','IND'],['Jacksonville Jaguars','JAX'],
+ ['Kansas City Chiefs','KC'],['Las Vegas Raiders','LV'],['Los Angeles Chargers','LAC'],
+ ['Los Angeles Rams','LA'],['Miami Dolphins','MIA'],['Minnesota Vikings','MIN'],
+ ['New England Patriots','NE'],['New Orleans Saints','NO'],['New York Giants','NYG'],
+ ['New York Jets','NYJ'],['Philadelphia Eagles','PHI'],['Pittsburgh Steelers','PIT'],
+ ['San Francisco 49ers','SF'],['Seattle Seahawks','SEA'],['Tampa Bay Buccaneers','TB'],
+ ['Tennessee Titans','TEN'],['Washington Commanders','WAS']
+];
+const nameToCode=new Map(clubs.map(([name,code])=>[normalize(name),code]));
+const codeToName=new Map(clubs.map(([name,code])=>[code,name]));
+function csvRows(source){
+ if(typeof source!=='string'||source.length>12000000||source.length<50)return null;
+ const rows=[];let row=[],value='',quoted=false;
+ for(let i=0;i<source.length;i++){
+  const c=source[i];
+  if(c==='"'){if(quoted&&source[i+1]==='"'){value+='"';i++;}else quoted=!quoted;}
+  else if(c===','&&!quoted){row.push(value);value='';}
+  else if((c==='\n'||c==='\r')&&!quoted){
+   if(c==='\r'&&source[i+1]==='\n')i++;
+   row.push(value);value='';
+   if(row.some(x=>x!==''))rows.push(row);
+   row=[];
+  }else value+=c;
  }
- return {id:String(club.id),name:club.name,games,totals};
+ if(quoted)return null;
+ if(value||row.length){row.push(value);rows.push(row);}
+ return rows;
+}
+function parseWeekData(text,season){
+ const table=csvRows(text);
+ if(!table?.length)return null;
+ const header=table.shift().map((s,i)=>i===0?s.replace(/^\uFEFF/,''):s);
+ const columns=['season','week','team','season_type','game_id','opponent_team',
+  'passing_yards','sack_yards_lost','rushing_yards'];
+ const indices=columns.map(k=>header.indexOf(k));
+ if(indices.some(i=>i<0)||new Set(header).size!==header.length)return null;
+ const groups=new Map();
+ const numeric=value=>/^-?\d+$/.test(String(value))?Number(value):null;
+ let seen=0;
+ for(const line of table){
+  if(line.length!==header.length)return null;
+  const row=Object.fromEntries(columns.map((k,i)=>[k,line[indices[i]]]));
+  if(row.season!==String(season)||row.season_type!=='REG')continue;
+  const week=numeric(row.week);
+  if(!Number.isInteger(week)||week<1||week>18||
+    !new RegExp('^'+season+'_' + String(week).padStart(2,'0')+'_[A-Z]+_[A-Z]+$').test(row.game_id)||
+    !codeToName.has(row.team)||!codeToName.has(row.opponent_team)||
+    row.team===row.opponent_team)return null;
+  const pass=numeric(row.passing_yards),sack=numeric(row.sack_yards_lost),rush=numeric(row.rushing_yards);
+  if(!Number.isInteger(pass)||pass<0||pass>900||
+    !Number.isInteger(sack)||sack>0||sack< -200||
+    !Number.isInteger(rush)||rush< -100||rush>650||
+    pass+sack< -200)return null;
+  const item={team:row.team,opponent:row.opponent_team,pass:pass+sack,rush,week};
+  if(!groups.has(row.game_id))groups.set(row.game_id,[]);
+  groups.get(row.game_id).push(item);seen++;
+ }
+ if(!seen||seen>32*18||groups.size*2!==seen)return null;
+ const totals=new Map(clubs.map(([name,code])=>[code,{name,games:0,
+  totals:{rushFor:0,passFor:0,rushAgainst:0,passAgainst:0}}]));
+ const pairs=new Map();
+ for(const rows of groups.values()){
+  if(rows.length!==2||rows[0].team!==rows[1].opponent||
+    rows[1].team!==rows[0].opponent||rows[0].week!==rows[1].week)return null;
+  const pair=[rows[0].team,rows[1].team].sort().join('|');
+  pairs.set(pair,(pairs.get(pair)||0)+1);
+  for(const [i,row]of rows.entries()){
+   const opponent=rows[1-i];
+   const t=totals.get(row.team);
+   t.games++;
+   t.totals.rushFor+=row.rush;
+   t.totals.passFor+=row.pass;
+   t.totals.rushAgainst+=opponent.rush;
+   t.totals.passAgainst+=opponent.pass;
+  }
+ }
+ if([...totals.values()].some(t=>t.games<1||t.games>17))return null;
+ return {season:String(season),gameCount:groups.size,pairs,
+  teams:[...totals.values()]};
+}
+function verifyMatchSchedule(snapshot,leagueGames,query){
+ if(!snapshot||!Array.isArray(leagueGames))return false;
+ const expected=new Map();let games=0;
+ for(const g of leagueGames){
+  if(String(g?.league?.id)!=='1'||String(g?.league?.season)!==String(query.season)||
+      g.game?.stage!=='Regular Season')continue;
+  const timestamp=Number(g.game?.date?.timestamp)*1000;
+  if(!Number.isFinite(timestamp)||timestamp<=0||timestamp>=query.before||
+     !['FT','AOT','FINAL'].includes(String(g.game?.status?.short||'').toUpperCase()))continue;
+  const away=nameToCode.get(normalize((g.teams?.away||g.teams?.visitors)?.name));
+  const home=nameToCode.get(normalize(g.teams?.home?.name));
+  if(!away||!home||away===home)return false;
+  const key=[away,home].sort().join('|');
+  expected.set(key,(expected.get(key)||0)+1);
+  games++;
+ }
+ if(games!==snapshot.gameCount||expected.size!==snapshot.pairs.size)return false;
+ return [...expected].every(([key,count])=>snapshot.pairs.get(key)===count);
 }
 function createPublicNFLYardage(options={}){
  const request=options.request||(async url=>{
-  const response=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{Accept:'application/json'}});
-  if(!response.ok)throw Error('Public NFL data HTTP '+response.status);
-  return response.json();
+  const response=await fetch(url,{signal:AbortSignal.timeout(25000),
+    headers:{Accept:'text/csv','User-Agent':'Unit501-NFL-Stats-Client'}});
+  if(!response.ok)throw Error('nflverse statistics HTTP '+response.status);
+  return response.text();
  });
  const clock=options.now||Date.now;
  const lifetime=options.ttlMs??30*60000;
  let cache=null,inflight=null;
- async function build(season){
-  const list=await request(BASE+'/teams?limit=40');
-  const clubs=list?.sports?.[0]?.leagues?.[0]?.teams?.map(v=>v.team);
-  if(!Array.isArray(clubs)||clubs.length!==32||new Set(clubs.map(t=>String(t?.id))).size!==32||
-    new Set(clubs.map(t=>normalize(t?.displayName))).size!==32)throw Error('Incomplete public NFL team list.');
-  const results=new Array(32),workers=Array.from({length:4},async(_,worker)=>{
-   for(let i=worker;i<32;i+=4){
-    const club=clubs[i];
-    const payload=await request(BASE+'/teams/'+encodeURIComponent(club.id)+
-      '/statistics?season='+encodeURIComponent(season)+'&seasontype=2');
-    const row=readESPNTeam(payload,{id:club.id,name:club.displayName},season);
-    if(!row)throw Error('Unverified public team statistics: '+club.displayName);
-    results[i]=row;
-   }
-  });
-  await Promise.all(workers);
-  if(results.some(t=>!t))throw Error('Incomplete NFL public yardage snapshot.');
-  return {season:String(season),fetchedAt:clock(),source:'ESPN 2026 NFL team statistics',
-    teams:results};
+ async function refresh(season){
+  const text=await request(URL+encodeURIComponent(season)+'.csv');
+  const snapshot=parseWeekData(text,season);
+  if(!snapshot)throw Error('Incomplete or malformed nflverse team statistics.');
+  snapshot.fetchedAt=clock();
+  cache=snapshot;
+  return cache;
  }
  return async function get(query,leagueGames=[]){
-  const now=clock(),season=String(query?.season||''),before=Number(query?.before);
-  if(String(query?.league)!=='1'||season!==String(new Date(now).getUTCFullYear())||
+  const now=clock(),before=Number(query?.before),season=String(query?.season||'');
+  const current=new Date(now).getUTCFullYear();
+  const acceptedSeasons=[String(current)];
+  if(new Date(now).getUTCMonth()<3)acceptedSeasons.push(String(current-1));
+  if(String(query?.league)!=='1'||!acceptedSeasons.includes(season)||
     !Number.isFinite(before)||before<=now||before-now>10*86400000)return null;
-  // Never blend live-game totals into a pregame ranking. A final game is fine:
-  // the calling adapter separately compares all 32 completed-game counts.
-  if(leagueGames.some(g=>String(g?.league?.id)==='1'&&
-    String(g?.league?.season)===season&&g.game?.stage==='Regular Season'&&
-    Number(g.game?.date?.timestamp)*1000<=now&&
-    !['FT','AOT','FINAL'].includes(String(g.game?.status?.short||'').toUpperCase())))return null;
   try{
    if(!cache||cache.season!==season||now-cache.fetchedAt>=lifetime){
-    if(!inflight)inflight=build(season).then(value=>{cache=value;return value;})
-      .catch(()=>null).finally(()=>{inflight=null;});
-    const fresh=await inflight;
-    if(!fresh)return null;
+    if(!inflight)inflight=refresh(season).catch(()=>null).finally(()=>{inflight=null});
+    if(!(await inflight))return null;
    }
-   return cache?.fetchedAt<before?cache:null;
+   return cache?.fetchedAt<before&&verifyMatchSchedule(cache,leagueGames,query)
+     ? {season,source:'nflverse team-week statistics (CC BY 4.0)',
+       sourceUrl:SOURCE,licenseUrl:LICENSE,fetchedAt:cache.fetchedAt,
+       teams:cache.teams} : null;
   }catch{return null;}
  };
 }
@@ -127,9 +185,10 @@ function withVerifiedYardage(data,snapshot){
   });
  }
  return {...data,verifiedYardage:{
-  source:'ESPN NFL regular-season team statistics',
+  source:snapshot.source||'nflverse team-week statistics (CC BY 4.0)',
+  sourceUrl:snapshot.sourceUrl||SOURCE,licenseUrl:snapshot.licenseUrl||LICENSE,
   fetchedAt:snapshot.fetchedAt,coverage:32,
   teams:Object.fromEntries(ranks)
  }};
 }
-module.exports={createPublicNFLYardage,readESPNTeam,withVerifiedYardage};
+module.exports={createPublicNFLYardage,parseWeekData,verifyMatchSchedule,withVerifiedYardage};
