@@ -31,6 +31,7 @@ const getRankings = require('./rankings').createRankings(api, {
   publicNFL:require('./nfl-public-yardage').createPublicNFLYardage()
 });
 const getBettingSplits=require('./betting-splits').createSplits();
+const getLeaguePulse=require('./league-pulse').createLeaguePulse();
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
 
@@ -73,6 +74,11 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/league-pulse'){
+      const league=u.searchParams.get('league')||'nfl';
+      if(!require('./league-pulse').LEAGUES[league])return send(res,400,{error:'Choose NFL, college football, NBA, MLB or NHL.'});
+      return send(res,200,await getLeaguePulse(league));
+    }
     if(u.pathname==='/api/betting-splits'){
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
