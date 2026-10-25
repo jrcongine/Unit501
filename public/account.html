@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your account · UNIT501</title>
+<link rel="stylesheet" href="account.css">
+<script src="account.js" defer></script>
+</head>
+<body><main>
+<header><p class="eyebrow">UNIT501 · PRIVATE BETA</p><h1>Your picks. On your devices.</h1><p>Sign in to keep a copy of your War Room and forecast records in your account.</p></header>
+<p id="account-status" role="status" aria-live="polite">Checking your account…</p>
+<section id="signed-out" hidden>
+<form id="login-form" class="card">
+<h2>Welcome back</h2>
+<label for="login-email">Email</label><input id="login-email" name="email" type="email" autocomplete="username" maxlength="254" required>
+<label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="256" required>
+<button type="submit">Sign in</button>
+<p class="muted">Need help accessing your beta account? Contact the person who invited you.</p>
+</form>
+<details class="card"><summary>Have a beta invitation?</summary>
+<form id="signup-form">
+<h2>Create your account</h2>
+<label for="signup-email">Email</label><input id="signup-email" name="email" type="email" autocomplete="username" maxlength="254" required>
+<label for="signup-password">Choose a password</label><input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required aria-describedby="password-help">
+<p id="password-help" class="muted">Use at least 12 characters and a password you don’t use elsewhere.</p>
+<label for="signup-invite">Invitation code</label><input id="signup-invite" name="invite" type="password" autocomplete="off" required>
+<button type="submit">Join the beta</button>
+</form></details>
+</section>
+<section id="signed-in" class="card" hidden>
+<p class="eyebrow">SIGNED IN</p><h2 id="account-email"></h2>
+<p>Private beta access. No paid subscription is active.</p>
+<nav aria-label="Sports dashboards"><a href="/">Open football</a><a href="nba.html">Open NBA</a></nav>
+<hr><h2>Saved records</h2>
+<p>Save a copy before switching devices. On another device, sign in here and load that copy before opening the dashboard. Changes are saved only when you choose Save.</p>
+<p class="muted">This browser may contain records from its previous user. Only save records that belong to you. Loading replaces these two archives on this browser and downloads a backup first.</p>
+<p id="records-status" role="status" aria-live="polite"></p>
+<div class="actions"><button id="save-records" type="button">Save this browser’s records</button><button id="load-records" type="button">Load my saved records</button></div>
+<button id="logout" type="button" class="secondary">Sign out</button>
+<p class="muted">Signing out ends this session. Dashboard records remain on this browser; use your own device during the beta.</p>
+</section>
+</main></body></html>

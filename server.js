@@ -35,6 +35,7 @@ const getPlayerRatings = require('./player-ratings').createRatings(api);
 const rosterMaintenance=require('./roster-maintenance').createRosterMaintenance(api,getAvailability);
 
 const PORT = process.env.PORT || 5010;
+const accounts = require('./customer-accounts').createAccounts();
 
 const API = 'https://v1.american-football.api-sports.io';
 
@@ -66,11 +67,27 @@ async function providerAPI(endpoint) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if(!require('./private-access').allowRequest(req,res))return;
-
   try {
-
     const u = new URL(req.url, 'http://localhost');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('X-Frame-Options','DENY');
+    res.setHeader('Referrer-Policy','same-origin');
+    res.setHeader('Cache-Control','no-store');
+    if(await accounts.handle(req,res))return;
+    const accountFile=accounts.enabled&&req.method==='GET'&&['/account.html','/account.js','/account.css'].includes(u.pathname);
+    if(accountFile){
+      res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    }
+    if(!accountFile){
+      const customer=await accounts.session(req);
+      if(!await accounts.allowCustomer(req,customer)){
+        if(customer&&!req.headers.authorization)return send(res,403,{error:'This control is available to the owner only.'});
+        if(!require('./private-access').allowRequest(req,res))return;
+      }
+    }
+    // Private application files and customer records must never be shared-cached.
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('X-Robots-Tag','noindex, nofollow');
     if(u.pathname==='/api/betting-splits'){
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
@@ -360,7 +377,7 @@ if (u.pathname === '/api/team-games') {
     }
 
     // Revalidate app files so a reload receives the latest controls and scripts.
-    res.setHeader('Cache-Control','no-cache, max-age=0, must-revalidate');
+    res.setHeader('Cache-Control','no-store');
     // Serve the existing app.
 
     const publicDir = path.resolve(__dirname, 'public');
@@ -419,7 +436,7 @@ if (u.pathname === '/api/team-games') {
 
     console.error(e);
 
-    send(res, 500, { error: e.message });
+    send(res, e.status || 500, { error: e.message });
 
   }
 
