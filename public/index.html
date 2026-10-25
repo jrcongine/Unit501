@@ -108,11 +108,25 @@
 
 <div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
 <section id="games" class="grid" aria-label="Available matchups"></section>
+<section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
+  <div class="league-pulse-heading">
+    <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
+    <div class="league-pulse-actions"><label for="league-pulse-league">League
+      <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
+      </label><button id="league-pulse-refresh" type="button">Refresh updates</button></div>
+  </div>
+  <p id="league-pulse-status" role="status" aria-live="polite">Load a slate to see league updates, or choose another league.</p>
+  <div class="league-pulse-columns">
+    <section aria-label="Overall league power index"><h3>League-wide Power Rankings</h3><div id="league-pulse-power"></div></section>
+    <section aria-label="Current league headlines"><h3>📰 Around the League</h3><div id="league-pulse-headlines"></div></section>
+  </div>
+</section>
 
 <section id="lab" class="card hidden">
 
 <span class="section-kicker">02 / RUN THE NUMBERS</span>
 <h2 id="matchup">Game Lab</h2>
+<section id="league-pulse-matchup" class="league-pulse-matchup" aria-label="Selected teams' overall league power ranks"></section>
 
 <div class="inputs">
 
@@ -256,6 +270,7 @@
 <script src="market-pulse.js"></script>
 <script src="weather-model.js"></script>
 <script src="unit501-shared-ui.js"></script>
+<script src="league-pulse.js"></script>
 <script src="app.js"></script>
 
 <script src="injury-model.js"></script>
