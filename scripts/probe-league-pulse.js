@@ -46,4 +46,11 @@ async function get(url){
   const results=await Promise.all(urls.map(get));
   for(let i=0;i<results.length;i++)console.log('PULSE PROBE',league,i,JSON.stringify(results[i]));
  }
+  const app=require('../league-pulse').createLeaguePulse();
+  for(const league of Object.keys(leagues)){
+    const result=await app(league);
+    console.log('PULSE LIVE',league,JSON.stringify({count:result.power?.teams?.length||0,
+      message:result.power?.message||null,headlines:result.headlines.items.length,
+      sample:result.power?.teams?.[0]||null}));
+  }
 })().catch(e=>{console.error('Probe failed',e.message);process.exitCode=1});
