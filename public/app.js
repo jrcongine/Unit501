@@ -490,7 +490,12 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   if(verifiedYardage){
     const source=document.createElement('p');
     source.style.cssText='color:#83e2ba;font-weight:600';
-    source.textContent='League rushing/passing ranks available for all 32 teams (ESPN regular-season totals; game counts verified against this matchup). Display-only: does not change score or player projections.';
+    source.textContent='League rushing/passing ranks available for all 32 teams (nflverse weekly regular-season totals, verified against the completed game schedule). Display-only: does not change score or player projections. Data: ';
+    const credit=document.createElement('a');
+    credit.href='https://github.com/nflverse/nflverse-data/releases/tag/stats_team';
+    credit.target='_blank';credit.rel='noopener noreferrer';
+    credit.textContent='nflverse team stats (CC BY 4.0; aggregated by UNIT 501)';
+    source.append(credit);
     teamContext.append(source);
   }
   const unavailable = [game.awayId,game.homeId]
@@ -539,7 +544,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
         rank.textContent = displayMetric.rank === null
           ? (data.scope.includes('FBS rankings') && !team.fbsName ? ' • Outside FBS ranking pool'
             : coverage ? ` • Rank unavailable (${coverage.complete}/${coverage.expected} teams complete)` : ' • Rank unavailable')
-          : ` • #${displayMetric.rank} of ${displayMetric.pool}${verifiedMetric ? ' (ESPN verified)' : team.fbsName ? ' FBS' : ''}`;
+          : ` • #${displayMetric.rank} of ${displayMetric.pool}${verifiedMetric ? ' (nflverse)' : team.fbsName ? ' FBS' : ''}`;
         if (displayMetric.rank !== null) rank.style.color = displayMetric.rank <= Math.ceil(displayMetric.pool / 4) ? '#83e2ba' : displayMetric.rank > Math.floor(displayMetric.pool * .75) ? '#ffc184' : '#c5cede';
         row.append(title,value,rank);
         if (!verifiedMetric && metric.games !== team.games) {
@@ -555,7 +560,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = (data.detailCoverage?.limited ? `API conservation: detailed paid rushing/passing box scores sampled from ${data.detailCoverage.requested} of ${data.detailCoverage.eligible} eligible games. ${verifiedYardage?'League yardage ranks come separately from 32 verified ESPN team-season snapshots, not the paid sample.':'National yardage ranks may remain unavailable.'} Scoring rankings and score forecasts use completed-game scores. ` : '') + data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
+  note.textContent = (data.detailCoverage?.limited ? `API conservation: detailed paid rushing/passing box scores sampled from ${data.detailCoverage.requested} of ${data.detailCoverage.eligible} eligible games. ${verifiedYardage?'League yardage ranks come separately from validated nflverse weekly team stats (CC BY 4.0), not the paid sample.':'National yardage ranks may remain unavailable.'} Scoring rankings and score forecasts use completed-game scores. ` : '') + data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
   for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
     const team=data.teams.find(t=>t.id===id),pace=team?.pace;
