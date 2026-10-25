@@ -40,7 +40,7 @@ function getEntries(data){
  return found;
 }
 function buildPowerBoard(raw,league,year,at){
- const config=LEAGUES[league];if(!config||!raw||typeof raw!=='object')return null;
+ const config=Object.hasOwn(LEAGUES,league)?LEAGUES[league]:null;if(!config||!raw||typeof raw!=='object')return null;
  if(raw.season?.year!=null&&Number(raw.season.year)!==Number(year))return null;
  const entries=getEntries(raw);
  if(entries.length<config.teams)return null;
@@ -106,7 +106,7 @@ function articleLink(value){
  }catch{return null;}
 }
 function parseHeadlines(data,league,now){
- if(!LEAGUES[league]||!Array.isArray(data?.articles))return [];
+ if(!Object.hasOwn(LEAGUES,league)||!Array.isArray(data?.articles))return [];
  const seen=new Set(),articles=[];
  for(const item of data.articles){
   const title=String(item?.headline||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
@@ -135,13 +135,18 @@ function createLeaguePulse({request,now=Date.now,ttl=15*60000}={}){
   const last=cache.get(key),current=now();
   if(last&&current-last.at<age)return last.pending;
   const item={at:current};
-  item.pending=Promise.resolve().then(()=>fetchJSON(url)).then(data=>format(data,current)).catch(()=>null);
+  item.pending=Promise.resolve().then(()=>fetchJSON(url)).then(data=>format(data,current)).catch(()=>{
+   // Permit a retry after one minute when an external source fails;
+   // do not serve an old snapshot as if it were current.
+   item.at=now()-age+Math.min(60000,age);
+   return null;
+  });
   cache.set(key,item);
   if(cache.size>30)cache.delete(cache.keys().next().value);
   return item.pending;
  }
  return async function pulse(league){
-  const config=LEAGUES[league];
+  const config=Object.hasOwn(LEAGUES,league)?LEAGUES[league]:null;
   if(!config)return null;
   const year=seasonYear(league,now());
   const standingsURL=ROOT+config.sport+'/standings?season='+year+(league==='ncaaf'?'&level=2':'');
