@@ -49,7 +49,7 @@ test('past records section stays hidden when empty and enables a backup when old
     const storage={getItem:k=>storageMap.get(k)||null,setItem:(k,v)=>storageMap.set(k,v)};
     core.save(storage,items);
     const body={append(){}};
-    const ctx={window:{Unit501WarRoomCore:core},document:{getElementById:id=>nodes.get(id),body},localStorage:storage,Date,JSON,Blob,URL};
+    const ctx={window:{Unit501WarRoomCore:core},document:{getElementById:id=>nodes.get(id),body},Unit501Storage:storage,localStorage:storage,Date,JSON,Blob,URL};
     vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/war-room.js'),'utf8'),ctx);
     return nodes;
   };

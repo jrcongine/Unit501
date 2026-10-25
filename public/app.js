@@ -955,7 +955,7 @@ function sim() {
     }else try{
       const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,marketContext:{awaySpread:spread,total,quotes:gameQuotes?.game===selected?gameQuotes.data:null},availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
       latestForecast=snapshot;
-      Unit501ForecastArchive.save(localStorage,snapshot);
+      Unit501ForecastArchive.save(Unit501Storage,snapshot);
     }catch{ latestForecast=null; }
   }
   document.dispatchEvent(new Event('unit501:simulation-completed'));

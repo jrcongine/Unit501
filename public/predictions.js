@@ -106,7 +106,7 @@
     if (!entry) {
       entry = { value: '', savedAt: null, persisted: false };
       try {
-        const saved = JSON.parse(localStorage.getItem(key));
+        const saved = JSON.parse(Unit501Storage.getItem(key));
         if (saved && typeof saved.value === 'string' && n(saved.value) !== null &&
             Number.isFinite(saved.savedAt) && saved.savedAt > 0 &&
             Number.isFinite(new Date(saved.savedAt).getTime())) {
@@ -161,7 +161,7 @@
         if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) continue;
         const model = projectionFor(record, def);
         if (!model) continue;
-        if(window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
+        if(window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(Unit501Storage,propSnapshot(record,def,model));
         const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
         const checks = Unit501PlayerForm.reviewChecks(model, entry, availability);
         if(model.role.changed)checks.push('Role / usage change: verify current workload; season baseline may lag');
@@ -525,8 +525,8 @@ cell.append(details);
       if (persist) {
         entry = { value: input.value, savedAt: valid ? Date.now() : null, persisted: false };
         try {
-          if (valid) localStorage.setItem(key, JSON.stringify({ value: entry.value, savedAt: entry.savedAt }));
-          else localStorage.removeItem(key);
+          if (valid) Unit501Storage.setItem(key, JSON.stringify({ value: entry.value, savedAt: entry.savedAt }));
+          else Unit501Storage.removeItem(key);
           entry.persisted = true;
         } catch { /* Continue with this session's entry if saving is unavailable. */ }
         enteredLines.set(key, entry);
@@ -575,7 +575,7 @@ cell.append(details);
       if(selected!==game||window.Unit501Availability?.assess(record.teamId,record.playerId).blocked){pickStatus.textContent='Selection changed or player unavailable. Reload the projection.';return;}
       const model=projectionFor(record,def);
       const snapshot=model?propSnapshot(record,def,model):null;
-      pickStatus.textContent=Unit501ForecastArchive.select(localStorage,snapshot,{market:def.key,direction:direction.value,line:n(input.value),price:price.value.trim()===''?null:Number(price.value)}).message;
+      pickStatus.textContent=Unit501ForecastArchive.select(Unit501Storage,snapshot,{market:def.key,direction:direction.value,line:n(input.value),price:price.value.trim()===''?null:Number(price.value)}).message;
     });
     input.addEventListener('input', () => update(true));
     card.append(label, savedInfo, comparison,direction,price,pick,pickStatus);
@@ -766,7 +766,7 @@ results.appendChild(workload);
       if (!model) continue;
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
       if(window.Unit501ForecastArchive && !model.starPower.applied){
-        const saved=Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
+        const saved=Unit501ForecastArchive.save(Unit501Storage,propSnapshot(record,def,model));
         const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
       }
       const trend = model.form.trend + ' • ' + model.form.sample;

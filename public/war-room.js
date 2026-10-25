@@ -5,12 +5,12 @@
   const byId = id => document.getElementById(id);
   const panel = byId('war-archive');
   if (!core || !panel) return;
-  const entries = core.load(localStorage);
+  const entries = core.load(Unit501Storage);
   if (!entries.length) return; // Keep older decisions intact but never show an empty archive.
   panel.hidden = false;
   byId('war-archive-count').textContent = entries.length + ' saved';
   byId('war-export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),decisions:core.load(localStorage)}, null, 2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),decisions:core.load(Unit501Storage)}, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
