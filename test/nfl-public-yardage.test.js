@@ -29,7 +29,7 @@ function payload(club,games=6,totals={rushFor:595,passFor:1328,rushAgainst:619,p
  ];
  return {season:{year:2026,type:2},requestedSeason:{year:2026,type:2},
   team:{id:club.id,displayName:club.displayName,recordSummary:'4-2'},
-  results:{stats:off,opponent:def}};
+  results:{stats:off,opponent:defense}};
 }
 test('public season reader uses net passing, all four verified values and game counts',()=>{
  const club={id:'23',name:'Pittsburgh Steelers'};
