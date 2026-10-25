@@ -494,8 +494,12 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     const credit=document.createElement('a');
     credit.href='https://github.com/nflverse/nflverse-data/releases/tag/stats_team';
     credit.target='_blank';credit.rel='noopener noreferrer';
-    credit.textContent='nflverse team stats (CC BY 4.0; aggregated by UNIT 501)';
-    source.append(credit);
+    credit.textContent='nflverse team stats';
+    const license=document.createElement('a');
+    license.href='https://creativecommons.org/licenses/by/4.0/';
+    license.target='_blank';license.rel='noopener noreferrer';
+    license.textContent='CC BY 4.0';
+    source.append(credit,' (',license,'; aggregated by UNIT 501).');
     teamContext.append(source);
   }
   const unavailable = [game.awayId,game.homeId]
