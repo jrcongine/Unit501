@@ -27,7 +27,9 @@ async function api(endpoint){
   }
   return data;
 }
-const getRankings = require('./rankings').createRankings(api);
+const getRankings = require('./rankings').createRankings(api, {
+  publicNFL:require('./nfl-public-yardage').createPublicNFLYardage()
+});
 const getBettingSplits=require('./betting-splits').createSplits();
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
