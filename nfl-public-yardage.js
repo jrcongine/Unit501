@@ -42,11 +42,11 @@ function readESPNTeam(raw,club,season){
  return {id:String(club.id),name:club.name,games,totals};
 }
 function createPublicNFLYardage(options={}){
- const request=options.request||async url=>{
+ const request=options.request||(async url=>{
   const response=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{Accept:'application/json'}});
   if(!response.ok)throw Error('Public NFL data HTTP '+response.status);
   return response.json();
- };
+ });
  const clock=options.now||Date.now;
  const lifetime=options.ttlMs??30*60000;
  let cache=null,inflight=null;
