@@ -138,7 +138,7 @@
   activeGame={league:d.league,away:d.away,home:d.home};
   renderMatchup();
  });
- document.addEventListener('unit501:selection-changed',()=>{
+ document.addEventListener('unit501:matchup-cleared',()=>{
   activeGame=null;if(matchup)matchup.replaceChildren();
  });
  document.addEventListener('unit501:nba-clear',()=>{
