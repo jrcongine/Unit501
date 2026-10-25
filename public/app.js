@@ -505,7 +505,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   const unavailable = [game.awayId,game.homeId]
     .map(id=>data.teams.find(t=>t.id===id))
     .filter(t=>t?.games && t.metrics?.rushFor?.games===0 && t.metrics?.passFor?.games===0);
-  if (loading || (!verifiedYardage && (unavailable.length || data.detailCoverage?.limited))) {
+  if (!verifiedYardage && (loading || unavailable.length || data.detailCoverage?.limited)) {
     const info=document.createElement('p');
     info.style.color='#ffc184';
     const reasons=[];
