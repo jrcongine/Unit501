@@ -224,6 +224,17 @@ function createRankings(api, options = {}) {
         return data;
       });
       const validation=job.data.validation;
+      // The independent public source only adds labeled visual league ranks.
+      // It never changes the paid historical box scores or score/prop models.
+      let publicYardage=null;
+      const publicTask=query.league==='1'&&typeof options.publicNFL==='function'
+        ? Promise.resolve().then(()=>options.publicNFL(query,games)).then(snapshot=>{
+          if(!snapshot)return;
+          publicYardage=snapshot;
+          if(job.data)job.data=require('./nfl-public-yardage').withVerifiedYardage(job.data,snapshot);
+        }).catch(()=>{}) : Promise.resolve();
+      const decorate=data=>publicYardage
+        ? require('./nfl-public-yardage').withVerifiedYardage(data,publicYardage):data;
       job.total = boxGames.length;
       for (const g of boxGames) {
         const id = String(g.game?.id);
@@ -232,17 +243,18 @@ function createRankings(api, options = {}) {
         job.completed++;
         if (job.completed === selectedCount) {
           // Publish the selected teams' complete averages while national coverage loads.
-          job.data = summary(boxes);
+          job.data = decorate(summary(boxes));
           job.data.validation=validation;
         }
       }
-      job.data = summary(boxes);
+      job.data = decorate(summary(boxes));
       job.data.validation=validation;
       job.data.paceValidation=require('./pace-backtest').validatePace(past,query,before=>{
         const data=summarize(scoringGames,boxes,{...query,before},[...roster.values()]);
         for(const t of data.teams)if(reports.has(t.id)){t.opponentScheduleVerified=reports.get(t.id);t.scoringOnly=true;}
         return data;
       });
+      await publicTask;
       job.state = 'ready';
     } catch (error) {
       job.state = 'error';
