@@ -467,7 +467,7 @@ function contextMessage(message) {
   text.textContent = message;
   teamContext.append(title,text);
 }
-function showTeamContext(data, game) {
+function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   const nextModel=Unit501TeamModel.project(data,game);
   const nextSignature = JSON.stringify([data.before, data.coverage?.pointsFor, data.coverage?.pointsAgainst,
     data.teams.map(t => [t.id,t.games,t.metrics.pointsFor,t.metrics.pointsAgainst,t.opponents,t.homeVenues,t.opponentScheduleVerified]),
@@ -479,6 +479,26 @@ function showTeamContext(data, game) {
   scoringContext = {game,data,signature:nextSignature};
   document.dispatchEvent(new Event('unit501:team-context-updated'));
   contextMessage(`${data.season} ${data.scope} • completed games before this matchup.`);
+  if (warning) {
+    const alert = document.createElement('p');
+    alert.setAttribute('role','status');
+    alert.style.cssText='color:#ffc184;font-weight:600';
+    alert.textContent=warning;
+    teamContext.append(alert);
+  }
+  const unavailable = [game.awayId,game.homeId]
+    .map(id=>data.teams.find(t=>t.id===id))
+    .filter(t=>t?.games && t.metrics?.rushFor?.games===0 && t.metrics?.passFor?.games===0);
+  if (loading || unavailable.length || data.detailCoverage?.limited) {
+    const info=document.createElement('p');
+    info.style.color='#ffc184';
+    const reasons=[];
+    if (loading) reasons.push('Checking detailed rushing/passing box scores; missing yardage is not zero.');
+    else if (unavailable.length) reasons.push('No usable rushing/passing totals were returned for '+unavailable.map(t=>t.name).join(' and ')+' in checked box scores. These are missing records, not zero-yard games.');
+    if (data.detailCoverage?.limited) reasons.push('Only '+data.detailCoverage.requested+' of '+data.detailCoverage.eligible+' eligible games are sampled to protect the paid football API. Full-league yardage ranks may remain unavailable.');
+    info.textContent=reasons.join(' ');
+    teamContext.append(info);
+  }
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
   for (const [id,name] of [[game.awayId,game.a],[game.homeId,game.h]]) {
@@ -502,8 +522,9 @@ function showTeamContext(data, game) {
         const title = document.createElement('div');
         title.textContent = label;
         const value = document.createElement('strong');
-        value.textContent = metric.average === null ? 'Unavailable' :
-          `${metric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
+        value.textContent = metric.average === null
+          ? (loading && !key.startsWith('points') ? 'Checking box scores…' : 'Unavailable')
+          : `${metric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
         const rank = document.createElement('span');
         const coverage = data.coverage?.[key];
         rank.textContent = metric.rank === null
@@ -515,7 +536,7 @@ function showTeamContext(data, game) {
         if (metric.games !== team.games) {
           const coverage = document.createElement('div');
           coverage.style.cssText = 'font-size:.85em;color:#ffc184';
-          coverage.textContent = `${metric.games}/${team.games} games have this stat • incomplete average`;
+          coverage.textContent = `${metric.games}/${team.games} games have this stat • ${loading && !key.startsWith('points') ? 'box scores still loading' : 'incomplete average'}`;
           row.append(coverage);
         }
         column.append(row);
@@ -610,11 +631,7 @@ function loadTeamContext(game) {
       const result = await response.json();
       if (task !== contextSequence || selected !== game) return;
       if (result.state === 'error' && result.data) {
-        showTeamContext(result.data, game);
-        const warning = document.createElement('p');
-        warning.setAttribute('role', 'status');
-        warning.textContent = 'Rankings could not finish: ' + result.message + ' Select the game again in a minute to retry.';
-        teamContext.append(warning);
+        showTeamContext(result.data, game, {warning:'Rankings could not finish: '+result.message+' Select the game again in a minute to retry.'});
         return;
       }
       if (!response.ok || result.error || result.state === 'error') throw new Error(result.error || result.message || 'Stats unavailable.');
@@ -624,7 +641,7 @@ function loadTeamContext(game) {
       if(progress!==lastProgress){lastProgress=progress;lastChanged=Date.now();}
       const stalled=Date.now()-lastChanged>120000;
       if (result.data) {
-        showTeamContext(result.data, game);
+        showTeamContext(result.data, game, {loading:true});
         const status = document.createElement('p');
         status.setAttribute('role', 'status');
         status.textContent = progress + (result.data.coverage.pointsFor.ranked && result.data.coverage.pointsAgainst.ranked ? ' Scoring is ready: you can run the simulation while yardage rankings finish.' : '') + (stalled ? ' No progress for two minutes. Check provider quota or reselect this game to retry.' : '');
@@ -634,8 +651,7 @@ function loadTeamContext(game) {
     } catch (error) {
       if (task === contextSequence && selected === game) {
         if(scoringContext?.game===game) {
-          showTeamContext(scoringContext.data,game);
-          const warning=document.createElement('p');warning.textContent='Rankings refresh stopped: '+error.message+' Reselect the game to retry.';teamContext.append(warning);
+          showTeamContext(scoringContext.data,game,{warning:'Rankings refresh stopped: '+error.message+' Reselect the game to retry.'});
         } else contextMessage('Team comparison unavailable: ' + error.message);
       }
     }

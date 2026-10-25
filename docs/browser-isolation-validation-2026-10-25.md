@@ -9,10 +9,11 @@ Archive writes and logout require `X-Unit501-Account-ID`. A mismatched expected 
 ## Verification
 
 - Local suite: 451 tests passed, zero failures, cancellations or skips. Syntax and diff checks passed.
+- After merging the independent main update from PR #139, the combined draft passed all 454 local tests.
 - Added tests cover owner archive preservation, two customers sharing one browser store, sign-out before event delivery, return-to-same-user leases, non-rotating profile refreshes, delayed responses, invalid scopes, stale dashboard hiding, stale-cookie API actions and authenticated HTML scope injection.
 - Deployment `86518923-8b5a-4ca5-a8a3-23132ee87d07` of application commit `817c441b7d8c257849e3b2011e9be050671b219b` reached Railway `SUCCESS`. Build logs confirmed all 451 tests passed.
 - The deployed account page loaded its scripts and displayed the expected signed-out form in the browser at https://unit501-account-test-production.up.railway.app/account.html.
-- The original `Unit501` service retained successful deployment `8c7b43a6-7e5d-4be3-97b4-079c5ec21c10`.
+- The original `Unit501` service separately advanced to successful deployment `850a019b-8407-4e75-95af-df5105c58da3`, running main commit `9ec8281a5f2d4344cddc895b8c9fcc10847f3243` (Paris venue and NFL yardage coverage, PR #139). This account work did not trigger that release or change the original service configuration. The main update was merged into the account draft to preserve it.
 
 A fresh authenticated live account-switch/save walkthrough was not repeated: the earlier synthetic test credentials were temporary and were not retained in this session. Existing invitation and owner credentials were not rotated to work around that limitation. Live authenticated checks from the original account/persistence deployment are recorded separately in `account-test-validation-2026-10-25.md`. iPhone/Android visual testing remains outstanding.
 
