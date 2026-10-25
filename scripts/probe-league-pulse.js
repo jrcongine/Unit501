@@ -46,6 +46,27 @@ async function get(url){
   const results=await Promise.all(urls.map(get));
   for(let i=0;i<results.length;i++)console.log('PULSE PROBE',league,i,JSON.stringify(results[i]));
  }
+  // Diagnose FBS inclusion and stat completeness without printing entire provider payloads.
+  const fbs=require('../fbs-2026.json');
+  const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const alias=new Map(fbs.teams.flatMap(t=>t.aliases.map(a=>[normalize(a),t.name])));
+  const raw=await (await fetch('https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?season=2026&level=2')).json();
+  const entries=[];
+  function dig(n){if(n?.standings?.entries)entries.push(...n.standings.entries);for(const x of n?.children||[])dig(x)}
+  dig(raw);
+  const valid=[],invalid=[],skipped=[];
+  for(const e of entries){
+    const name=e.team?.displayName||e.team?.name,canon=alias.get(normalize(name));
+    if(!canon){skipped.push(name);continue;}
+    const stats=e.stats||[],get=k=>stats.find(x=>x.name===k)?.value;
+    const w=get('wins'),l=get('losses'),f=get('pointsFor'),a=get('pointsAgainst'),diff=get('pointDifferential');
+    const missing=(!Number.isInteger(w)||!Number.isInteger(l)||!Number.isFinite(f)||!Number.isFinite(a)||!Number.isFinite(diff)||Math.abs(f-a-diff)>1.001);
+    if(missing)invalid.push({name,canon,w,l,f,a,diff});else valid.push({name,canon,w,l,f,a,diff,id:e.team.id});
+  }
+  const present=new Set(valid.map(x=>x.canon)),missing=fbs.teams.map(x=>x.name).filter(x=>!present.has(x));
+  console.log('PULSE FBS',JSON.stringify({expected:fbs.teams.length,entries:entries.length,
+    matches:valid.length,uniqueMatched:present.size,missed:missing,invalid:invalid.slice(0,25),
+    skipped:skipped.length,skippedSample:skipped.slice(0,14)}));
   const app=require('../league-pulse').createLeaguePulse();
   for(const league of Object.keys(leagues)){
     const result=await app(league);
