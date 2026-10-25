@@ -61,6 +61,33 @@ Unit 501 now protects the paid **American-football** API subscription separately
 - Open **Football API usage** below the slate controls to see the process-only request count, categories, failures and blocked attempts. The protected `/api/provider-usage` endpoint returns the same numbers. **Counters reset whenever Railway restarts** and may miss traffic from other instances, deployments or API consumers. The API-Sports dashboard is the only authoritative account-level usage total. This counter is not a historical audit of earlier requests.
 - These savings mean detailed rushing/passing rankings usually will **not** become fully populated from a single game load. Do not interpret missing ranks as zero, and do not change score projections to compensate for missing yardage box scores. The automatic player-ratings bulk build remains user-initiated with its checkbox off by default; the daily budget applies if someone runs it.
 
+## Verified NFL rushing and passing ranks (current season)
+
+UNIT 501 can display 32-team rushing/passing offense and defense ranks from
+[nflverse team-level weekly statistics](https://github.com/nflverse/nflverse-data/releases/tag/stats_team)
+(**CC BY 4.0**, [license](https://creativecommons.org/licenses/by/4.0/)).
+UNIT 501 aggregates the unmodified regular-season weekly rows into per-team
+averages, then ranks most yards gained on offense and fewest allowed on defense.
+**Net passing yards** use gross passing yards plus the dataset's negative sack
+yards lost. Defense comes from the opponent's paired game row, not a separate
+speculative defense feed. Attribution is included beside the rankings in Game Lab.
+
+The independent dataset requires no extra paid API-Sports calls. A current-season
+CSV is downloaded and cached for up to 30 minutes; publication by nflverse may
+lag newly finished games. Rankings appear only for upcoming matchups (within
+10 days), after the full data has been reconciled against the API-Sports
+completed regular-season schedule: 32 unique clubs, exactly one paired set
+of rows per game, matching game-opponent pairs and completed team game counts,
+and consistency with any fully sampled paid box statistics. If an update is
+missing, invalid, mismatched, or the selected kickoff has already passed,
+the previous conservative `Rank unavailable` behavior remains.
+
+This is **display-only context**, not a change to score simulations, player-prop
+defense adjustments, historical replays, injury scenarios, or betting decisions.
+The 16-box paid API conservation cap is unchanged. nflverse supplies the
+dataset as-is and does not sponsor or endorse UNIT 501. Data license and upstream
+rights for commercial distribution should be reviewed separately before sale.
+
 ## Current football extensions
 FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
