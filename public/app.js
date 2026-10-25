@@ -804,6 +804,7 @@ async function load() {
     }).map(parseGame);
 
     if (!slate.length) {
+      document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:league==='1'?'nfl':'ncaaf'}}));
       $('status').textContent = 'NO GAMES RETURNED';
       showMessage(
         'No games were returned for this date. This could mean there are no games scheduled, or your data plan does not include this season.'
@@ -812,6 +813,7 @@ async function load() {
     }
 
     $('status').textContent = 'GAME DATA RECEIVED';
+    document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:league==='1'?'nfl':'ncaaf'}}));
     games.innerHTML = '';
 
     slate.forEach(game => {
@@ -846,6 +848,7 @@ async function choose(game) {
     if (link) { link.classList.remove('is-unavailable'); link.setAttribute('aria-disabled','false'); link.tabIndex = 0; link.textContent = label; }
   }
   $('matchup').textContent = window.Unit501SharedUI.matchup(game.a, game.h);
+  document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:game.league==='1'?'nfl':'ncaaf',away:game.a,home:game.h}}));
 
   // Do not invent a betting line when current odds are unavailable.
   $('spread').value = '';
