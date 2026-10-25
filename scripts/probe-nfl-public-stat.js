@@ -5,6 +5,8 @@ const base='https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 const sources=[
   ['site-team','https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/23?enable=stats'],
   ['site-team-stats','https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/23/statistics?season=2026&seasontype=2'],
+  ['site-saints-stats','https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/18/statistics?season=2026&seasontype=2'],
+  ['site-all-teams','https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams?limit=40'],
   ['core-team-stats','https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/types/2/teams/23/statistics'],
   ['site-league-stats','https://site.api.espn.com/apis/site/v2/sports/football/nfl/statistics?season=2026'],
   ['web-league-stats','https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/statistics/team?season=2026']
@@ -30,7 +32,19 @@ function shape(data){
   }
  }
  descend(data,'$');
+ const seasonStats=data?.results?.stats?.categories||[];
+ const opponentStats=data?.results?.opponent||[];
+ const targeted=categories=>categories.map(c=>({
+  name:c.name,
+  stats:(c.stats||[]).filter(s=>/rushingYards|netPassingYards|passingYards|gamesPlayed|totalYards|sackYards/i.test(s.name))
+     .map(s=>({name:s.name,value:s.value,displayValue:s.displayValue,perGameValue:s.perGameValue,rank:s.rank}))
+ })).filter(c=>c.stats.length);
+ const all=data?.sports?.[0]?.leagues?.[0]?.teams||[];
  return {top:keys(data),team:keys(data?.team),stats:keys(data?.stats),
+   season:data?.season,requestedSeason:data?.requestedSeason,
+   teamRecord:data?.team?.recordSummary,activeTeams:all.map(x=>({id:x.team?.id,name:x.team?.displayName})).slice(0,34),
+   seasonCategories:seasonStats.map(x=>x.name),opponentCategories:opponentStats.map(x=>x.name),
+   exactOffense:targeted(seasonStats),exactDefense:targeted(opponentStats),
    splits:keys(data?.splits),categories:Array.isArray(data?.splits?.categories)?
    data.splits.categories.map(c=>({name:c.name,stats:(c.stats||[]).slice(0,4).map(s=>({name:s.name,displayValue:s.displayValue}))})).slice(0,14):[],
    samples};
