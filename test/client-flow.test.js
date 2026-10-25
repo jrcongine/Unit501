@@ -109,15 +109,15 @@ test('verified league yardage ranks appear without replacing the paid scoring or
  ];
  h.data.teams[0].metrics.rushFor={average:99.2,games:4,rank:null,pool:0};
  h.data.teams[1].metrics.rushFor={average:97.3,games:4,rank:null,pool:0};
- h.data.verifiedYardage={coverage:32,source:'ESPN NFL regular-season team statistics',teams:{
+ h.data.verifiedYardage={coverage:32,source:'nflverse team-week statistics (CC BY 4.0)',teams:{
   '1':{rushFor:{average:99.2,rank:20,pool:32,games:4}},
   '2':{rushFor:{average:97.3,rank:21,pool:32,games:4}}
  }};
  h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
  const displayed=h.nodes.get('team-context').textContent;
  assert.match(displayed,/99\.2 yds\/game/);
- assert.match(displayed,/#20 of 32 \(ESPN verified\)/);
- assert.match(displayed,/#21 of 32 \(ESPN verified\)/);
+ assert.match(displayed,/#20 of 32 \(nflverse\)/);
+ assert.match(displayed,/#21 of 32 \(nflverse\)/);
  assert.match(displayed,/Display-only: does not change score or player projections/);
  assert.equal(h.data.teams[0].metrics.rushFor.rank,null);
 });
