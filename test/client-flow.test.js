@@ -113,8 +113,13 @@ test('verified league yardage ranks appear without replacing the paid scoring or
   '1':{rushFor:{average:99.2,rank:20,pool:32,games:4}},
   '2':{rushFor:{average:97.3,rank:21,pool:32,games:4}}
  }};
- h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
+ h.run('showTeamContext('+JSON.stringify(h.data)+',selected,{loading:true})');
  const displayed=h.nodes.get('team-context').textContent;
+ // Sampling may still be running, but all six visible league ranks are independently verified.
+ // Do not display an orange missing-yardage warning above valid national rankings.
+ assert.doesNotMatch(displayed,/Checking detailed rushing\/passing box scores/);
+ assert.doesNotMatch(displayed,/missing yardage is not zero/);
+
  assert.match(displayed,/99\.2 yds\/game/);
  assert.match(displayed,/#20 of 32 \(nflverse\)/);
  assert.match(displayed,/#21 of 32 \(nflverse\)/);
