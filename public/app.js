@@ -694,6 +694,7 @@ function clearSelection() {
     if (link) { link.classList.add('is-unavailable'); link.setAttribute('aria-disabled','true'); link.tabIndex = -1; link.textContent = label; }
   }
   document.dispatchEvent(new Event('unit501:selection-changed'));
+  document.dispatchEvent(new Event('unit501:matchup-cleared'));
 }
 
 const today = window.Unit501SharedUI.dateCentral();
