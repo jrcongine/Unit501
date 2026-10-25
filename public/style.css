@@ -269,3 +269,53 @@ a{color:#97e3fc}
 .prop-role-alert{background:#342c18}.prop-role-alert td:first-child{border-left:4px solid #f3c65b}
 .prop-role-badge{color:#ffe4a1;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #a78539;border-radius:8px;background:#342c18;min-width:180px}
 .prop-role-badge strong{display:block;color:#ffdc7c}
+
+
+/* Embedded five-league UNIT 501 Pulse: on the slate, never a separate tab. */
+.league-pulse-panel{border:1px solid #36546a;background:linear-gradient(150deg,#152535,#101723 60%);scroll-margin-top:18px}
+.league-pulse-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid #30475d;padding-bottom:12px}
+.league-pulse-heading h2{margin:4px 0;font-size:clamp(19px,3.5vw,26px);color:#d6f5ff}
+.league-pulse-actions{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.league-pulse-actions label{font-size:12px;color:#afcfdf}
+.league-pulse-actions select{min-width:155px;display:block;margin-top:4px}
+.league-pulse-actions button{min-height:45px;font-size:14px}
+#league-pulse-status{font-size:13px;color:#adc9d4;line-height:1.4}
+.league-pulse-columns{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:16px}
+.league-pulse-columns>section{min-width:0}
+.league-pulse-columns h3{color:#c4edfa;border-bottom:1px solid #2d4860;font-size:17px;padding-bottom:9px;margin:14px 0}
+.league-pulse-note,.league-pulse-explainer,.league-pulse-empty{font-size:12px;color:#b4c5d8;line-height:1.5}
+.league-pulse-explainer{margin-bottom:14px;color:#9ec7d4}
+.league-pulse-group{margin:10px 0;border:1px solid #304a5f;border-radius:11px;overflow:hidden;background:#111f2d}
+.league-pulse-group>summary{padding:12px;font-size:14px;color:#e7f4ff;background:#1a3346;cursor:pointer;font-weight:850}
+.league-pulse-group[open]>summary{border-bottom:1px solid #2b5161}
+.league-pulse-list{margin:0;padding:0;list-style:none}
+.league-pulse-team{display:grid;grid-template-columns:32px minmax(95px,1fr) 52px 55px 84px;align-items:center;gap:5px;padding:9px 8px;border-top:1px solid #26384a;font-size:12px}
+.league-pulse-team:first-child{border-top:0}
+.league-pulse-team:nth-child(even){background:#172634}
+.league-pulse-rank{color:#8ee5fa;font-size:15px;font-variant-numeric:tabular-nums}
+.league-pulse-name{font-weight:750;color:#f1f7fe;overflow-wrap:anywhere}
+.league-pulse-record{color:#adc0d2;font-variant-numeric:tabular-nums}
+.league-pulse-index{color:#f0e5b7;font-variant-numeric:tabular-nums;text-align:center}
+.league-pulse-trend{text-align:right;font-weight:800;font-size:11px}
+.league-pulse-trend.trend-up{color:#83e3bc}
+.league-pulse-trend.trend-down{color:#ffaeae}
+.league-pulse-trend.trend-flat{color:#a7b8ce}
+.league-pulse-articles{list-style:none;padding:0;margin:4px 0}
+.league-pulse-story{padding:13px 2px;border-bottom:1px solid #2b4052}
+.league-pulse-story-link{display:block;color:#e7f8ff;text-decoration:none;line-height:1.43;font-weight:800;font-size:14px}
+.league-pulse-story-link:hover{text-decoration:underline;color:#88e7f1}
+.league-pulse-byline{margin-top:6px;color:#9bb4c8;font-size:12px;line-height:1.4}
+.league-pulse-matchup{margin:12px 0;padding:11px;border:1px solid #345c69;border-radius:12px;background:linear-gradient(105deg,#152934,#1b2d36)}
+.league-pulse-matchup:empty{display:none}
+.league-pulse-matchup h3{font-size:16px;color:#baf0f8;margin:2px 0 10px}
+.league-pulse-matchup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.league-pulse-matchup-team{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px;border:1px solid #345268;border-radius:10px;background:#10212d}
+.league-pulse-matchup-team strong{font-size:17px;color:#8ee6f0}
+.league-pulse-matchup-team span{font-weight:850}
+.league-pulse-matchup-team small{width:100%;font-size:12px;letter-spacing:normal;color:#b6c7da}
+@media(max-width:900px){.league-pulse-columns{grid-template-columns:1fr}}
+@media(max-width:520px){
+ .league-pulse-team{grid-template-columns:31px minmax(80px,1fr) 45px 51px;gap:4px;font-size:11px}
+ .league-pulse-team .league-pulse-trend{grid-column:2 / -1;text-align:left;padding-left:0}
+ .league-pulse-matchup-grid{grid-template-columns:1fr}
+}
