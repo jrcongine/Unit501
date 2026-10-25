@@ -52,7 +52,11 @@ function buildPowerBoard(raw,league,year,at){
   const key=league==='ncaaf'?fbsNames.get(normalize(name)):name;
   if(!key||!normalize(key))continue;
   const id=String(t.id);
-  const wins=stat(stats,'wins'),losses=stat(stats,'losses');
+  const overall=/^(\d+)-(\d+)(?:-(\d+))?$/.exec(String(textStat(stats,'overall')));
+  const wins=stat(stats,'wins');
+  const reportedLosses=stat(stats,'losses');
+  const losses=reportedLosses!==null?reportedLosses:
+    league==='ncaaf'&&overall&&Number(overall[1])===wins?Number(overall[2]):null;
   const ot=league==='nhl'?(stat(stats,'otLosses')??stat(stats,'overtimeLosses')??0):0;
   const ties=league==='nfl'?(stat(stats,'ties')??0):0;
   const played=wins+losses+ot+ties;
@@ -87,7 +91,7 @@ function buildPowerBoard(raw,league,year,at){
  if(teams.size!==config.teams)return null;
  const sorted=[...teams.values()].sort((a,b)=>b.score-a.score||b.margin-a.margin||b.wins-a.wins||a.name.localeCompare(b.name));
  sorted.forEach((t,i)=>{t.rank=i+1;});
- return {league,season:year,asOf:new Date(at).toISOString(),available:true,
+ return {league,season:year,asOf:new Date(at).toISOString(),available:true,source:'ESPN',
   provider:'ESPN standings',metric:'UNIT 501 Power Index · 55% season results + 45% scoring margin; relative to league-specific scale',
   trendNote:'↑/↓/→ show current win/loss streak momentum (2+ games), not changes in ranking position.',
   basis:league==='mlb'?'Regular-season standings; does not include postseason results.':'Current season standings; display only, not a betting projection.',
