@@ -10,7 +10,7 @@
     // User-initiated refresh or league switch may supersede an in-flight request.
     loading=true;lastAttempt=Date.now();
     const version=++request, league=byId('war-feed-league').value;
-    window.Unit501LeaguePulse?.show(league);
+    if(typeof window!=='undefined')window.Unit501LeaguePulse?.show(league);
     loaded=true; list.replaceChildren();byId('war-feed-status').textContent='Loading public selections…';
     try{
       const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(35000)});
