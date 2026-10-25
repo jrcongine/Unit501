@@ -76,7 +76,7 @@ const server = http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://localhost');
     if(u.pathname==='/api/league-pulse'){
       const league=u.searchParams.get('league')||'nfl';
-      if(!require('./league-pulse').LEAGUES[league])return send(res,400,{error:'Choose NFL, college football, NBA, MLB or NHL.'});
+      if(!Object.hasOwn(require('./league-pulse').LEAGUES,league))return send(res,400,{error:'Choose NFL, college football, NBA, MLB or NHL.'});
       return send(res,200,await getLeaguePulse(league));
     }
     if(u.pathname==='/api/betting-splits'){
