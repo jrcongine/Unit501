@@ -20,6 +20,11 @@ jobs:
           node-version: '20'
       - name: Run regression tests
         run: npm test
+      - name: Probe free NFL league stat sources (informational)
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 2
+        run: node scripts/probe-nfl-public-stat.js
       - name: Check public War Room feeds (informational)
         if: success()
         continue-on-error: true
