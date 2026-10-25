@@ -65,6 +65,43 @@ test('unmatched membership, future season and cutoff cannot produce national ran
   const future=summarize(games,boxes,{...query,season:'2027'},teams);
   assert.ok(future.teams.every(t=>t.metrics.pointsFor.rank===null));
 });
+test('NFL completes display-only yardage ranks from 32 verified team snapshots despite paid box-score cap',async()=>{
+ const names=Array.from({length:32},(_,i)=>({id:i+1,name:'NFL Team '+(i+1)}));
+ const games=[],boxes=new Map(),totals={};
+ for(let i=0;i<32;i+=2){
+  const game={league:{id:1,season:2026},
+   game:{id:i/2+1,stage:'Regular Season',date:{timestamp:1000},status:{short:'FT'}},
+   teams:{away:names[i],home:names[i+1]},scores:{away:{total:22},home:{total:24}}};
+  games.push(game);
+  boxes.set(String(game.game.id),[names[i],names[i+1]].map((t,j)=>{
+   const value=80+i+j;
+   totals[String(t.id)]={rushFor:value,passFor:150+value,rushAgainst:200-value,passAgainst:350-value};
+   return {team:t,statistics:{rushings:{total:value},passing:{total:150+value}}};
+  }));
+ }
+ // Match opponent allowed values to opponent offensive box scores.
+ const rows=names.map((t,i)=>({
+  id:String(t.id),name:t.name,games:1,totals:{
+   rushFor:totals[t.id].rushFor,passFor:totals[t.id].passFor,
+   rushAgainst:totals[i%2===0?i+2:i].rushFor,
+   passAgainst:totals[i%2===0?i+2:i].passFor
+  }
+ }));
+ const get=createRankings(async endpoint=>endpoint.startsWith('/games?')?
+  {response:games}:{response:boxes.get(endpoint.split('=')[1])||[]},
+  {delayMs:0,boxLimit:2,cacheDir:await fs.mkdtemp(path.join(os.tmpdir(),'unit501-public-test-')),
+   publicNFL:async()=>({season:'2026',fetchedAt:1000,teams:rows})});
+ const q={league:'1',season:'2026',before:2000000,away:'1',home:'2'};
+ const job=get(q),deadline=Date.now()+10000;
+ while(job.state==='loading'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(job.state,'ready');
+ assert.equal(job.data.coverage.rushFor.complete,4);
+ assert.equal(job.data.coverage.rushFor.ranked,false);
+ assert.equal(job.data.verifiedYardage?.coverage,32);
+ assert.equal(job.data.teams[0].metrics.rushFor.rank,null);
+ assert.equal(job.data.coverage.pointsFor.ranked,true);
+});
+
 test('NFL complete pool still ranks and excludes preseason', () => {
   const {games,boxes}=fixture();
   const nfl=games.slice(0,32).map(g=>({...g,league:{id:1,season:2026},game:{...g.game,stage:'Regular Season'}}));

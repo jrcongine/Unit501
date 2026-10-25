@@ -98,6 +98,30 @@ test('team context labels pending yardage and provider coverage gaps without tre
  assert.match(h.nodes.get('team-context').textContent,/Provider box scores failed/);
 });
 
+test('verified league yardage ranks appear without replacing the paid scoring or prop context',async()=>{
+ const h=harness();await h.settle();
+ h.run('$("league").value="1"');
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();
+ h.data.metrics=[
+  ['rushFor','Rushing offense',false],['passFor','Passing offense',false],
+  ['pointsFor','Scoring offense',false],['rushAgainst','Run defense',true],
+  ['passAgainst','Pass defense',true],['pointsAgainst','Scoring defense',true]
+ ];
+ h.data.teams[0].metrics.rushFor={average:99.2,games:4,rank:null,pool:0};
+ h.data.teams[1].metrics.rushFor={average:97.3,games:4,rank:null,pool:0};
+ h.data.verifiedYardage={coverage:32,source:'nflverse team-week statistics (CC BY 4.0)',teams:{
+  '1':{rushFor:{average:99.2,rank:20,pool:32,games:4}},
+  '2':{rushFor:{average:97.3,rank:21,pool:32,games:4}}
+ }};
+ h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
+ const displayed=h.nodes.get('team-context').textContent;
+ assert.match(displayed,/99\.2 yds\/game/);
+ assert.match(displayed,/#20 of 32 \(nflverse\)/);
+ assert.match(displayed,/#21 of 32 \(nflverse\)/);
+ assert.match(displayed,/Display-only: does not change score or player projections/);
+ assert.equal(h.data.teams[0].metrics.rushFor.rank,null);
+});
+
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);

@@ -486,16 +486,32 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     alert.textContent=warning;
     teamContext.append(alert);
   }
+  const verifiedYardage=data.verifiedYardage?.coverage===32?data.verifiedYardage:null;
+  if(verifiedYardage){
+    const source=document.createElement('p');
+    source.style.cssText='color:#83e2ba;font-weight:600';
+    source.textContent='League rushing/passing ranks available for all 32 teams (nflverse weekly regular-season totals, verified against the completed game schedule). Display-only: does not change score or player projections. Data: ';
+    const credit=document.createElement('a');
+    credit.href='https://github.com/nflverse/nflverse-data/releases/tag/stats_team';
+    credit.target='_blank';credit.rel='noopener noreferrer';
+    credit.textContent='nflverse team stats';
+    const license=document.createElement('a');
+    license.href='https://creativecommons.org/licenses/by/4.0/';
+    license.target='_blank';license.rel='noopener noreferrer';
+    license.textContent='CC BY 4.0';
+    source.append(credit,' (',license,'; aggregated by UNIT 501).');
+    teamContext.append(source);
+  }
   const unavailable = [game.awayId,game.homeId]
     .map(id=>data.teams.find(t=>t.id===id))
     .filter(t=>t?.games && t.metrics?.rushFor?.games===0 && t.metrics?.passFor?.games===0);
-  if (loading || unavailable.length || data.detailCoverage?.limited) {
+  if (loading || (!verifiedYardage && (unavailable.length || data.detailCoverage?.limited))) {
     const info=document.createElement('p');
     info.style.color='#ffc184';
     const reasons=[];
     if (loading) reasons.push('Checking detailed rushing/passing box scores; missing yardage is not zero.');
-    else if (unavailable.length) reasons.push('No usable rushing/passing totals were returned for '+unavailable.map(t=>t.name).join(' and ')+' in checked box scores. These are missing records, not zero-yard games.');
-    if (data.detailCoverage?.limited) reasons.push('Only '+data.detailCoverage.requested+' of '+data.detailCoverage.eligible+' eligible games are sampled to protect the paid football API. Full-league yardage ranks may remain unavailable.');
+    else if (!verifiedYardage && unavailable.length) reasons.push('No usable rushing/passing totals were returned for '+unavailable.map(t=>t.name).join(' and ')+' in checked box scores. These are missing records, not zero-yard games.');
+    if (data.detailCoverage?.limited && !verifiedYardage) reasons.push('Only '+data.detailCoverage.requested+' of '+data.detailCoverage.eligible+' eligible games are sampled to protect the paid football API. Full-league yardage ranks may remain unavailable.');
     info.textContent=reasons.join(' ');
     teamContext.append(info);
   }
@@ -517,23 +533,25 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
       column.append(count);
       for (const [key,label] of data.metrics) {
         const metric = team.metrics[key];
+        const verifiedMetric=verifiedYardage?.teams?.[String(team.id)]?.[key]||null;
+        const displayMetric=verifiedMetric||metric;
         const row = document.createElement('div');
         row.style.cssText = 'padding:10px 0;border-top:1px solid #293142';
         const title = document.createElement('div');
         title.textContent = label;
         const value = document.createElement('strong');
-        value.textContent = metric.average === null
+        value.textContent = displayMetric.average === null
           ? (loading && !key.startsWith('points') ? 'Checking box scores…' : 'Unavailable')
-          : `${metric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
+          : `${displayMetric.average.toFixed(1)} ${key.startsWith('points') ? 'pts' : 'yds'}/game`;
         const rank = document.createElement('span');
         const coverage = data.coverage?.[key];
-        rank.textContent = metric.rank === null
+        rank.textContent = displayMetric.rank === null
           ? (data.scope.includes('FBS rankings') && !team.fbsName ? ' • Outside FBS ranking pool'
             : coverage ? ` • Rank unavailable (${coverage.complete}/${coverage.expected} teams complete)` : ' • Rank unavailable')
-          : ` • #${metric.rank} of ${metric.pool}${team.fbsName ? ' FBS' : ''}`;
-        if (metric.rank !== null) rank.style.color = metric.rank <= Math.ceil(metric.pool / 4) ? '#83e2ba' : metric.rank > Math.floor(metric.pool * .75) ? '#ffc184' : '#c5cede';
+          : ` • #${displayMetric.rank} of ${displayMetric.pool}${verifiedMetric ? ' (nflverse)' : team.fbsName ? ' FBS' : ''}`;
+        if (displayMetric.rank !== null) rank.style.color = displayMetric.rank <= Math.ceil(displayMetric.pool / 4) ? '#83e2ba' : displayMetric.rank > Math.floor(displayMetric.pool * .75) ? '#ffc184' : '#c5cede';
         row.append(title,value,rank);
-        if (metric.games !== team.games) {
+        if (!verifiedMetric && metric.games !== team.games) {
           const coverage = document.createElement('div');
           coverage.style.cssText = 'font-size:.85em;color:#ffc184';
           coverage.textContent = `${metric.games}/${team.games} games have this stat • ${loading && !key.startsWith('points') ? 'box scores still loading' : 'incomplete average'}`;
@@ -546,7 +564,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   }
   const note = document.createElement('p');
   note.style.cssText = 'font-size:.85em;color:#aeb9c9';
-  note.textContent = (data.detailCoverage?.limited ? `API conservation: detailed rushing/passing stats sampled from ${data.detailCoverage.requested} of ${data.detailCoverage.eligible} eligible games; national yardage ranks may remain unavailable. Scoring rankings and score forecasts use completed-game scores. ` : '') + data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
+  note.textContent = (data.detailCoverage?.limited ? `API conservation: detailed paid rushing/passing box scores sampled from ${data.detailCoverage.requested} of ${data.detailCoverage.eligible} eligible games. ${verifiedYardage?'League yardage ranks come separately from validated nflverse weekly team stats (CC BY 4.0), not the paid sample.':'National yardage ranks may remain unavailable.'} Scoring rankings and score forecasts use completed-game scores. ` : '') + data.explanation + ' Passing uses team box-score totals. Scoring allowed includes all opponent points, including defense/special teams. Rankings show raw averages. Game predictions combine offense and opposing defense deviations from one league scoring average, with small-sample smoothing. Schedule strength adjusts predicted scores only when both teams have complete opponent scoring coverage; otherwise the baseline is retained. Rushing and passing ranks are context only. Player projections use their separate model.';
   teamContext.append(grid,note);
   for(const [id,name]of [[game.awayId,game.a],[game.homeId,game.h]]){
     const team=data.teams.find(t=>t.id===id),pace=team?.pace;
