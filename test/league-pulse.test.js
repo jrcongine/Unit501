@@ -61,8 +61,15 @@ test('NHL accounts for overtime points and college only allows verified FBS scho
  const nhl=buildPowerBoard(fixture(clubs,2027,'nhl'),'nhl',2027,0);
  assert.equal(nhl.count,32);
  assert.match(nhl.teams[0].record,/\d+-\d+-1/);
- const schools=membership.teams.map(t=>t.aliases.at(-1));
- const college=buildPowerBoard(fixture(schools,2026,'ncaaf'),'ncaaf',2026,0);
+ const schools=membership.teams.map(t=>t.name);
+ const raw=fixture(schools,2026,'ncaaf');
+ for(const entry of raw.children.flatMap(c=>c.standings.entries)){
+  const wins=entry.stats.find(x=>x.name==='wins').value;
+  const losses=entry.stats.find(x=>x.name==='losses').value;
+  entry.stats=entry.stats.filter(x=>x.name!=='losses');
+  entry.stats.push({name:'overall',displayValue:wins+'-'+losses});
+ }
+ const college=buildPowerBoard(raw,'ncaaf',2026,0);
  assert.ok(college);
  assert.equal(college.count,membership.teams.length);
  assert.equal(college.top.length,10);
