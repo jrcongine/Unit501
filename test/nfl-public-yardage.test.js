@@ -1,99 +1,102 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {createPublicNFLYardage,readESPNTeam,withVerifiedYardage}=require('../nfl-public-yardage');
-const names=[
- 'Arizona Cardinals','Atlanta Falcons','Baltimore Ravens','Buffalo Bills','Carolina Panthers',
- 'Chicago Bears','Cincinnati Bengals','Cleveland Browns','Dallas Cowboys','Denver Broncos',
- 'Detroit Lions','Green Bay Packers','Houston Texans','Indianapolis Colts','Jacksonville Jaguars',
- 'Kansas City Chiefs','Las Vegas Raiders','Los Angeles Chargers','Los Angeles Rams','Miami Dolphins',
- 'Minnesota Vikings','New England Patriots','New Orleans Saints','New York Giants','New York Jets',
- 'Philadelphia Eagles','Pittsburgh Steelers','San Francisco 49ers','Seattle Seahawks',
- 'Tampa Bay Buccaneers','Tennessee Titans','Washington Commanders'
+const {createPublicNFLYardage,parseWeekData,verifyMatchSchedule,withVerifiedYardage}=require('../nfl-public-yardage');
+const clubs=[
+ ['Arizona Cardinals','ARI'],['Atlanta Falcons','ATL'],['Baltimore Ravens','BAL'],
+ ['Buffalo Bills','BUF'],['Carolina Panthers','CAR'],['Chicago Bears','CHI'],
+ ['Cincinnati Bengals','CIN'],['Cleveland Browns','CLE'],['Dallas Cowboys','DAL'],
+ ['Denver Broncos','DEN'],['Detroit Lions','DET'],['Green Bay Packers','GB'],
+ ['Houston Texans','HOU'],['Indianapolis Colts','IND'],['Jacksonville Jaguars','JAX'],
+ ['Kansas City Chiefs','KC'],['Las Vegas Raiders','LV'],['Los Angeles Chargers','LAC'],
+ ['Los Angeles Rams','LA'],['Miami Dolphins','MIA'],['Minnesota Vikings','MIN'],
+ ['New England Patriots','NE'],['New Orleans Saints','NO'],['New York Giants','NYG'],
+ ['New York Jets','NYJ'],['Philadelphia Eagles','PHI'],['Pittsburgh Steelers','PIT'],
+ ['San Francisco 49ers','SF'],['Seattle Seahawks','SEA'],['Tampa Bay Buccaneers','TB'],
+ ['Tennessee Titans','TEN'],['Washington Commanders','WAS']
 ];
-const clubs=names.map((name,i)=>({id:String(i+1),displayName:name}));
-const entry=(name,value)=>({name,value});
-function payload(club,games=6,totals={rushFor:595,passFor:1328,rushAgainst:619,passAgainst:1226}){
- const off={
-  categories:[
-   {name:'general',stats:[entry('gamesPlayed',games)]},
-   {name:'rushing',stats:[entry('rushingYards',totals.rushFor),entry('rushingYardsPerGame',totals.rushFor/games),entry('teamGamesPlayed',games)]},
-   {name:'passing',stats:[entry('netPassingYards',totals.passFor),entry('netPassingYardsPerGame',totals.passFor/games),
-     entry('passingYards',totals.passFor+100),entry('teamGamesPlayed',games)]}
-  ]
- };
- const defense=[
-  {name:'rushing',stats:[entry('rushingYards',totals.rushAgainst),entry('rushingYardsPerGame',totals.rushAgainst/games),entry('teamGamesPlayed',games)]},
-  {name:'passing',stats:[entry('netPassingYards',totals.passAgainst),entry('netPassingYardsPerGame',totals.passAgainst/games),
-    entry('passingYards',totals.passAgainst+50),entry('teamGamesPlayed',games)]}
- ];
- return {season:{year:2026,type:2},requestedSeason:{year:2026,type:2},
-  team:{id:club.id,displayName:club.displayName,recordSummary:'4-2'},
-  results:{stats:off,opponent:defense}};
+function fixture(){
+ const header='season,week,team,season_type,game_id,opponent_team,passing_yards,sack_yards_lost,rushing_yards';
+ const rows=[],games=[];
+ const timestamp=Date.parse('2026-10-18T19:00:00Z')/1000;
+ for(let i=0;i<clubs.length;i+=2){
+  const [away,ac]=clubs[i],[home,hc]=clubs[i+1];
+  const id='2026_06_'+ac+'_'+hc;
+  const start=20+i;
+  rows.push('2026,6,'+ac+',REG,'+id+','+hc+','+(200+start)+',-10,'+(80+start));
+  rows.push('2026,6,'+hc+',REG,'+id+','+ac+','+(210+start)+',-20,'+(90+start));
+  games.push({league:{id:1,season:2026},
+   game:{id:i/2+1,date:{timestamp},stage:'Regular Season',status:{short:'FT'}},
+   teams:{away:{id:i+1,name:away},home:{id:i+2,name:home}}});
+ }
+ return {csv:header+'\n'+rows.join('\n')+'\n',games};
 }
-test('public season reader uses net passing, all four verified values and game counts',()=>{
- const club={id:'23',name:'Pittsburgh Steelers'};
- const row=readESPNTeam(payload({id:'23',displayName:club.name}),club,2026);
- assert.deepEqual(row.totals,{rushFor:595,passFor:1328,rushAgainst:619,passAgainst:1226});
- assert.equal(row.games,6);
- const wrong=payload({id:'23',displayName:club.name});
- wrong.results.stats.categories[2].stats[1].value=999;
- assert.equal(readESPNTeam(wrong,club,2026),null);
- const wrongSeason=payload({id:'23',displayName:club.name});wrongSeason.season.year=2025;
- assert.equal(readESPNTeam(wrongSeason,club,2026),null);
- const wrongGames=payload({id:'23',displayName:club.name});wrongGames.results.stats.categories[0].stats[0].value=5;
- assert.equal(readESPNTeam(wrongGames,club,2026),null);
+test('nflverse team-week parser calculates net passing yards and opponent defensive totals for all 32',()=>{
+ const {csv,games}=fixture(),snapshot=parseWeekData(csv,2026);
+ assert.ok(snapshot);
+ assert.equal(snapshot.teams.length,32);
+ assert.equal(snapshot.gameCount,16);
+ const first=snapshot.teams.find(x=>x.name==='Arizona Cardinals');
+ const second=snapshot.teams.find(x=>x.name==='Atlanta Falcons');
+ assert.deepEqual(first.totals,{rushFor:100,passFor:210,rushAgainst:110,passAgainst:210});
+ assert.deepEqual(second.totals,{rushFor:110,passFor:210,rushAgainst:100,passAgainst:210});
+ assert.equal(verifyMatchSchedule(snapshot,games,{season:'2026',before:Date.parse('2026-10-25')}),true);
+ assert.equal(verifyMatchSchedule(snapshot,[...games,games[0]],{season:'2026',before:Date.parse('2026-10-25')}),false);
+ assert.equal(parseWeekData(csv.replace('2026_06_ARI_ATL','2026_05_ARI_ATL'),2026),null);
+ assert.equal(parseWeekData(csv.replace('2026,6,ATL,REG','2026,6,AAA,REG'),2026),null);
+ assert.equal(parseWeekData(csv.replace('2026,6,ATL,REG','2025,6,ATL,REG'),2026),null);
+ assert.equal(parseWeekData(csv.replace('2026,6,ATL,REG','2026,6,ATL,PRE'),2026),null);
+ assert.equal(parseWeekData(csv.replace('2026,6,ATL,REG','2026,6,ATL,REG,extra'),2026),null);
 });
-test('public source checks all 32 teams, uses 33 no-key requests, caches and refuses past kickoffs or live games',async()=>{
- const now=Date.parse('2026-10-25T12:00:00Z'),kickoff=now+3600000;
- const calls=[];
- const request=async url=>{
-  calls.push(url);
-  if(url.endsWith('/teams?limit=40'))return {sports:[{leagues:[{teams:clubs.map(team=>({team}))}]}]};
-  const id=/\/teams\/(\d+)\/statistics/.exec(url)?.[1];
-  if(!id)throw Error('Unexpected '+url);
-  return payload(clubs.find(t=>t.id===id));
- };
- const get=createPublicNFLYardage({request,now:()=>now});
- const q={league:'1',season:'2026',before:kickoff};
- const result=await get(q,[]);
- assert.equal(result.teams.length,32);
- assert.equal(calls.length,33);
- assert.equal((await get(q,[])).teams.length,32);
- assert.equal(calls.length,33);
- assert.equal(await get({...q,before:now-1},[]),null);
- assert.equal(await get({...q,season:'2025'},[]),null);
- const live=[{league:{id:1,season:2026},game:{stage:'Regular Season',date:{timestamp:(now-1000)/1000},status:{short:'Q2'}}}];
- assert.equal(await get(q,live),null);
- assert.equal(calls.length,33);
-});
-test('incomplete or wrong-season public data is never presented as full national coverage',async()=>{
+test('nflverse source makes one CC-BY CSV request, caches, refuses mismatched schedule and past kickoff',async()=>{
  const now=Date.parse('2026-10-25T12:00:00Z');
- let bad=false;
- const request=async url=>{
-  if(url.endsWith('/teams?limit=40'))return {sports:[{leagues:[{teams:clubs.map(team=>({team}))}]}]};
-  const club=clubs.find(t=>t.id===/\/teams\/(\d+)\/statistics/.exec(url)?.[1]);
-  const row=payload(club);if(club.id==='32')row.season.year=bad?2025:2026;else if(club.id==='31')row.results.opponent=[];
-  return row;
- };
- const q={league:'1',season:'2026',before:now+30000};
- const get=createPublicNFLYardage({request,now:()=>now});
- assert.equal(await get(q,[]),null);
- bad=true;
- assert.equal(await get(q,[]),null);
+ const {csv,games}=fixture(),calls=[];
+ const get=createPublicNFLYardage({now:()=>now,request:async url=>{calls.push(url);return csv;}});
+ const q={league:'1',season:'2026',before:now+3600000};
+ const result=await get(q,games);
+ assert.ok(result);
+ assert.equal(result.teams.length,32);
+ assert.match(result.source,/nflverse/);
+ assert.equal(result.licenseUrl,'https://creativecommons.org/licenses/by/4.0/');
+ assert.equal(calls.length,1);
+ assert.match(calls[0],/stats_team_week_2026\.csv/);
+ assert.equal((await get(q,games)).teams.length,32);
+ assert.equal(calls.length,1);
+ assert.equal(await get(q,[...games,{...games[0],game:{...games[0].game,id:99}}]),null);
+ assert.equal(await get({...q,before:now-1},games),null);
+ assert.equal(await get({...q,season:'2025'},games),null);
+ // An unrelated game in progress is excluded from the completed-game field,
+ // but cannot be smuggled into the csv, which must match completed pairs.
+ const live={...games[0],game:{...games[0].game,id:999,status:{short:'Q2'}}};
+ assert.equal((await get(q,[...games,live])).teams.length,32);
+ assert.equal(calls.length,1);
+});
+test('malformed, missing, mismatched and duplicate rows cannot create all-32 coverage',async()=>{
+ const now=Date.parse('2026-10-25T12:00:00Z');
+ const {csv,games}=fixture();
+ for(const invalid of [
+  csv.replace(/2026,6,WAS,REG,[^\n]+\n/,''),
+  csv.replace('2026,6,ATL,REG','2026,6,CHI,REG'),
+  csv.replace('2026,6,ARI,REG','2027,6,ARI,REG'),
+  csv.replace(',-10,100',',garbage,100'),
+  csv.replace('2026,6,ARI,REG','2026,6,ARI,REG,garbage,')
+ ]){
+  const get=createPublicNFLYardage({now:()=>now,request:async()=>invalid});
+  assert.equal(await get({league:'1',season:'2026',before:now+30000},games),null);
+ }
 });
 function scoringData(){
  return {scope:'NFL regular season',season:'2026',before:Date.parse('2026-10-25T13:30:00Z'),
   coverage:{pointsFor:{ranked:true,expected:32},pointsAgainst:{ranked:true,expected:32}},
-  teams:clubs.map(club=>({id:club.id,name:club.displayName,games:6,metrics:{
+  teams:clubs.map(([name],i)=>({id:String(i+1),name,games:6,metrics:{
    rushFor:{average:null,games:0,rank:null},passFor:{average:null,games:0,rank:null},
    rushAgainst:{average:null,games:0,rank:null},passAgainst:{average:null,games:0,rank:null},
    pointsFor:{average:22,games:6,rank:1},pointsAgainst:{average:24,games:6,rank:1}
   }}))}
 }
-test('32-team verified ranks do not alter scoring stats, paid-box metrics or model eligibility',()=>{
+test('display-only national ranks do not alter scoring stats, paid yardage sample or projections',()=>{
  const data=scoringData();
- const raw=data.teams.map((t,i)=>({id:t.id,name:t.name,games:6,
+ const raw=data.teams.map((t,i)=>({name:t.name,games:6,
   totals:{rushFor:600+i,passFor:1200+i,rushAgainst:600+i,passAgainst:1200+i}}));
  const snapshot={season:'2026',fetchedAt:data.before-1000,teams:raw};
  const original=JSON.stringify(data);
