@@ -296,9 +296,13 @@ a{color:#97e3fc}
 
 .player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
 .player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
-.prop-role-alert{background:#342c18}.prop-role-alert td:first-child{border-left:4px solid #f3c65b}
-.prop-role-badge{color:#ffe4a1;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #a78539;border-radius:8px;background:#342c18;min-width:180px}
-.prop-role-badge strong{display:block;color:#ffdc7c}
+/* Light cream for rows with verified role/usage alerts.
+   Target tbody explicitly so this wins over zebra-striped even rows. */
+tbody tr.prop-role-alert{background:#f6efc8;color:#17283b}
+tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
+tbody tr.prop-role-alert details{color:#25445d !important}
+.prop-role-badge{color:#28384b;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fff8da;min-width:180px}
+.prop-role-badge strong{display:block;color:#59430b}
 
 
 /* Embedded five-league UNIT 501 Pulse: on the slate, never a separate tab. */
