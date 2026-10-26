@@ -76,7 +76,10 @@ test('explicit workload scenario scales stats and rejects invalid inputs', () =>
   assert.equal(workloadProjection(80,100),80);
   assert.equal(workloadProjection(80,75),60);
   assert.equal(workloadProjection(80,0),0);
-  for (const p of [-1,101,NaN,'75']) assert.throws(() => workloadProjection(80,p));
+  assert.equal(workloadProjection(80,125),100);
+  assert.equal(workloadProjection(80,150),120);
+  assert.equal(workloadProjection(80,200),160);
+  for (const p of [-1,201,NaN,Infinity,'75']) assert.throws(() => workloadProjection(80,p));
 });
 test('team review deduplicates reports and keeps unavailable, conditional and unknown separate',()=>{
   const {teamSummary}=require('../public/injury-model');

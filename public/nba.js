@@ -112,6 +112,7 @@
 function choose(game){
    window.Unit501NBAMarkets?.select(game,dateInput.value);
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
+   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home}}));
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
    formWindow.value='recent5';
@@ -131,7 +132,9 @@ function choose(game){
    const data=await response.json();
    if(serial!==request)return;
    if(!response.ok||!Array.isArray(data.games))throw Error(data.code==='NBA_PLAN_ACCESS'?data.error:'NBA games could not be loaded. Check the NBA connection and try again.');
-   if(!data.games.length){status.textContent='No NBA games returned for this date. Check official schedule or try another date.';return;}
+   if(!data.games.length){
+    if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:'nba'}}));
+    status.textContent='No NBA games returned for this date. Check official schedule or try another date.';return;}
    for(const game of data.games){
     const score=game.awayScore!==null&&game.homeScore!==null?
       ' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'';
@@ -143,6 +146,7 @@ function choose(game){
     });
     games.append(card);
    }
+   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:'nba'}}));
    status.textContent=data.games.length+' NBA game(s) loaded · updated '+new Date(data.checkedAt).toLocaleTimeString()+
     '. '+(data.source||'NBA feed')+(data.fallback?' (fallback)':'')+' · NBA projections are not active.';
   }catch(error){
@@ -157,6 +161,7 @@ function choose(game){
  byId('nba-clear').addEventListener('click',()=>{
    ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
    lab.classList.add('hidden');players.classList.add('hidden');
+   if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-clear'));
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});
  });

@@ -16,8 +16,22 @@
 <p id="nba-alert-status" role="status">Off. Watches today's games while this page is open and visible. Current-season NBA data required.</p>
 <div id="nba-alert-list" aria-live="polite"></div></section>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
+<section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
+  <div class="league-pulse-heading">
+    <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
+    <div class="league-pulse-actions"><label for="league-pulse-league">League
+      <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
+      </label><button id="league-pulse-refresh" type="button">Refresh updates</button></div>
+  </div>
+  <p id="league-pulse-status" role="status" aria-live="polite">Load a slate to see league updates, or choose another league.</p>
+  <div class="league-pulse-columns">
+    <section aria-label="Overall league power index"><h3>League-wide Power Rankings</h3><div id="league-pulse-power"></div></section>
+    <section aria-label="Current league headlines"><h3>📰 Around the League</h3><div id="league-pulse-headlines"></div></section>
+  </div>
+</section>
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / NBA GAME LAB</span><h2 id="nba-matchup">Select an NBA matchup</h2>
+<section id="nba-league-pulse-matchup" class="league-pulse-matchup" aria-label="Selected NBA teams' overall power ranks"></section>
 <p id="nba-game-context" class="war-muted"></p>
 <section class="nba-market-panel" aria-label="FanDuel NBA spread and total">
 <h3>FanDuel spread & total</h3><button id="nba-refresh-odds" type="button">Refresh game lines</button>
@@ -54,4 +68,4 @@
 <p class="war-muted">Quotes must have paired Over/Under lines and source updates within 30 minutes. Loading props uses the odds feed; filters reuse loaded quotes. Missing markets stay unavailable.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>
+</main><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>

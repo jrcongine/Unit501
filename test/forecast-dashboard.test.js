@@ -66,3 +66,48 @@ test('latest recorded game-day report only summarizes matched archived finals in
  assert.equal(summary.markets[0].games,1);
  assert.equal(latestDay([pending],compare,selectionResult),null);
 });
+
+function upsetSnapshot(id,line,projectedAway,projectedHome,actualAway,actualHome){
+ const kickoff=Date.parse('2026-10-25T17:00:00Z'),forecastAt=kickoff-600000;
+ return {schema:1,forecastAt,game:{id:String(id),league:'1',season:'2026',awayId:'1',homeId:'2',kickoff},
+  inputs:{marketContext:{awaySpread:line}},records:[['1',projectedAway,actualAway],['2',projectedHome,actualHome]].map(([teamId,adjusted,actual])=>({
+   league:'1',season:'2026',gameId:String(id),teamId,kind:'score',market:'points',modelVersion:'v1',
+   evidenceUrl:'https://example.com/captured',kickoff,forecastAt,inputAsOf:forecastAt,
+   resultKnownAt:actual===null?null:kickoff+10000,baseline:adjusted,adjusted,actual
+  }))};
+}
+test('upset history distinguishes called, missed, false-alarm and pending outright picks using saved lines',()=>{
+ const {upsetHistory}=require('../public/forecast-dashboard');
+ const snapshots=[
+  upsetSnapshot(1,10.5,27,24,28,21), // away upset called
+  upsetSnapshot(2,-10.5,24,27,21,28), // home upset called
+  upsetSnapshot(3,10.5,24,27,28,21), // cover-only projection missed actual upset
+  upsetSnapshot(4,10.5,27,24,21,28), // false alarm
+  upsetSnapshot(5,10.5,27,24,null,null),
+  upsetSnapshot(6,10.5,27,24,21,21), // final tie, not an outright win
+  upsetSnapshot(7,0,27,24,28,21),
+  upsetSnapshot(8,null,27,24,28,21)
+ ];
+ const before=JSON.stringify(snapshots),result=upsetHistory(snapshots,Date.parse('2026-10-26'));
+ assert.equal(result.groups.length,1);
+ assert.deepEqual(result.groups[0],{league:'1',season:'2026',modelVersion:'v1',forecasts:6,projectedUpsets:5,
+  pending:1,completed:5,actualUpsets:3,calledUpsets:2,missedUpsets:1,falseAlarms:1,actualTies:1});
+ assert.equal(result.pickem,1);assert.equal(result.missingLine,1);
+ assert.equal(JSON.stringify(snapshots),before);
+});
+test('upset history rejects duplicate and postgame forecasts and keeps leagues and model versions separate',()=>{
+ const {upsetHistory}=require('../public/forecast-dashboard'),now=Date.parse('2026-10-26');
+ const good=upsetSnapshot(1,10.5,27,24,28,21);
+ const late=upsetSnapshot(2,10.5,27,24,28,21);late.records[0].forecastAt=late.game.kickoff+1;
+ const college=upsetSnapshot(3,10.5,27,24,28,21);college.game.league='2';college.records.forEach(r=>r.league='2');
+ const version=upsetSnapshot(4,10.5,27,24,28,21);version.records.forEach(r=>r.modelVersion='v2');
+ const mixed=upsetSnapshot(5,10.5,27,24,28,21);mixed.records[0].modelVersion='v2';
+ const future=upsetSnapshot(6,10.5,27,24,28,21);future.records[0].resultKnownAt=now+1;
+ const missing=upsetSnapshot(7,10.5,27,24,28,21);missing.records.pop();
+ const selected={...good,selection:{market:'spread'}};
+ const out=upsetHistory([good,good,late,college,version,mixed,future,missing,selected],now);
+ assert.equal(out.excluded,6);
+ assert.equal(out.groups.length,2);
+ assert.deepEqual(out.groups.map(g=>[g.league,g.modelVersion,g.calledUpsets]),[['2','v1',1],['1','v2',1]]);
+ assert.equal(upsetHistory([],now).groups.length,0);
+});

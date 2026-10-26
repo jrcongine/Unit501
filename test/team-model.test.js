@@ -316,3 +316,21 @@ test('manual game modes scale margin, preserve totals, and never follow kickoff 
   assert.equal(changed.gameScenario.mode,gameMode);
  }
 });
+
+test('outright underdog picks are separate from covers for both line orientations',()=>{
+ const {outcome}=require('../public/team-model');
+ const p=(away,home)=>({available:true,away,home});
+ assert.equal(outcome(p(27,24),10.5).upset,true);
+ assert.equal(outcome(p(24,27),-10.5).upset,true);
+ assert.equal(outcome(p(24,27),10.5).underdogCoverOnly,true);
+ assert.equal(outcome(p(27,24),-10.5).underdogCoverOnly,true);
+ assert.equal(outcome(p(14,28),10.5).underdogCoverOnly,false);
+ assert.equal(outcome(p(24,27),3).cover,null);
+ assert.equal(outcome(p(24,24),10.5).winner,null);
+ assert.equal(outcome(p(24,24),10.5).upset,false);
+ assert.equal(outcome(p(24.1,24.2),10.5).winner,'home');
+ assert.equal(outcome(p(27,24),0).underdog,null);
+ assert.equal(outcome(p(27,24),0).upset,false);
+ assert.equal(outcome(p(27,24),null),null);
+ assert.equal(outcome({available:false},10.5),null);
+});
