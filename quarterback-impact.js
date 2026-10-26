@@ -31,7 +31,7 @@ function createQuarterbackImpact(api,now=Date.now){
   if(!fresh(report,900000,now())||String(report.gameId)!==String(q.game)||!fresh(t.roster,3600000,now())||report.kickoff<=now()||report.kickoff>now()+7*86400000)return;
   const game={id:String(q.game),league:q.league,season:q.season,kickoff:report.kickoff},data={current:true,teams,rosterOwnership};
   const qbs=t.roster.rows.filter(p=>p.position==='QB');
-  const outs=qbs.filter(p=>report.rows.some(r=>String(r.id)===String(p.id)&&String(r.status).toLowerCase()==='out')&&assess(data,game,t.id,p.id,now(),true).state==='unavailable');
+  const outs=qbs.filter(p=>(report.rows.some(r=>String(r.id)===String(p.id)&&String(r.status).toLowerCase()==='out')||/\binjured reserve\b/i.test(p.group||''))&&assess(data,game,t.id,p.id,now(),true).state==='unavailable');
   if(!outs.length){t.quarterback={...scope,available:true,checkedAt:now(),rows:[]};return;}
   try{
    const all=await read(`/games?team=${t.id}&season=${q.season}`);
