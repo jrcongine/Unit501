@@ -63,7 +63,14 @@
   }
   for(const {teamId,side,label,team:t} of teams){
    const roster=new Map((t.roster.rows||[]).filter(r=>r?.id).map(r=>[String(r.id),r]));
-   const outs=(t.official.rows||[]).filter(r=>status(r.status)==='out'&&String(r.teamId)===teamId);
+   // IR players are often absent from the weekly game-status report. Only a fresh
+   // provider roster's explicit injured-reserve group can add these candidates.
+   // Never treat an empty weekly report as proof of health.
+   const officialOuts=(t.official.rows||[]).filter(r=>status(r.status)==='out'&&String(r.teamId)===teamId);
+   const reserveOuts=String(game.league)==='1'?(t.roster.rows||[])
+     .filter(r=>r.id&&/\binjured reserve\b/i.test(r.group||''))
+     .map(r=>({...r,teamId,status:'Injured reserve',rosterIR:true})):[];
+   const outs=[...officialOuts,...reserveOuts];
    const seen=new Set();
    for(const player of outs){
     const id=String(player.id);
@@ -139,8 +146,8 @@
     const points=Math.round(Math.min(reserve?0.10:weight[1],available)*100)/100;
     if(points<=0){withheld.push(label+': positional sensitivity capped at 2 points for '+weight[0]+'.');continue;}
     injury[field]+=points;
-    applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,status:'Out',
-      evidence:t.official.url||null});
+    applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,
+      status:player.rosterIR?'Injured reserve':'Out',evidence:player.rosterIR?null:t.official.url||null});
    }
    const handledNames=new Set();
    for(const p of t.official.unresolved||[])if(status(p.status)==='out'){
@@ -156,10 +163,10 @@
      identitySource:'official-report-and-team-depth',evidence:t.official.url||null,depthEvidence:t.depth.url||null});
    }
    if(t.official.unmatched||t.official.unresolved?.length)withheld.push(label+': provider identities remain unresolved; supported official-name depth matches are shown separately without inferred player IDs.');
-   if(!applied.some(p=>p.teamId===teamId))withheld.push(label+': no supported Out adjustment; this does not establish full health.');
+   if(!applied.some(p=>p.teamId===teamId))withheld.push(label+': no supported injury adjustment; this does not establish full health.');
   }
   state.ready=true;
-  state.message='Experimental positional injury sensitivity: only fresh, matched official Out reports with starter, RB2 depth, or recent offensive workload evidence; capped at 2 points per team and side. '+
+  state.message='Experimental positional injury sensitivity: fresh, matched official Out reports or explicit injured-reserve entries from current NFL provider rosters, with starter, RB2 depth, or recent workload evidence; capped at 2 points per team and side. '+
     'Weights are hand-set assumptions, not validated player values. An absence may already be reflected in season averages; do not use this as a proven betting edge.';
   return state;
  }
