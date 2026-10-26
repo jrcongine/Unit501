@@ -304,6 +304,11 @@ tbody tr.prop-role-alert td label{color:#13263a}
 tbody tr.prop-role-alert .prop-shortlist-label{color:#13263a;font-weight:850}
 tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
 tbody tr.prop-role-alert details{color:#284057 !important}
+/* Deliberate navy separator only when the next visible line belongs to a
+   DIFFERENT player; lines for one player remain visually grouped. */
+#saved-line-comparisons tbody tr.prop-player-group-start > td{
+  border-top:8px solid #15283d;
+}
 .prop-role-badge{color:#192b40;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fffdf4;min-width:180px}
 .prop-role-badge strong{display:block;color:#59430b}
 
