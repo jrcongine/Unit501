@@ -5,7 +5,7 @@
 <nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
 <section class="card nba-intro"><h2>NBA matchup dashboard</h2>
-<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed. Experimental team score estimates use the selected scoring-history window. Player projections are still pending.</p>
+<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed. Experimental team and player estimates use recent completed games.</p>
 <p>Choose a game to compare both teams. Missing data stays unavailable; small samples are labeled.</p></section>
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
@@ -76,13 +76,15 @@
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
 <span class="section-kicker">03 / PLAYER MARKETS</span><h2>FanDuel player props</h2>
-<p>Sportsbook lines and prices for the selected game. Unit 501 player projections are not available yet.</p>
+<p>Player projections and recent results use up to five completed games.</p>
 <button id="nba-load-props" type="button">Load FanDuel player props</button>
 <p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>
 <div class="nba-prop-filters"><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label>
-<label for="nba-prop-search">Player <input id="nba-prop-search" type="search" placeholder="Search player name"></label></div>
+<label for="nba-prop-search">Player <input id="nba-prop-search" type="search" placeholder="Search player name"></label>
+<label for="nba-prop-sort">Sort <select id="nba-prop-sort"><option value="name">Player</option><option value="most">Most Covers</option><option value="least">Least Covers</option></select></label></div>
+<p id="nba-player-history-status" role="status" class="war-muted"></p>
 <div id="nba-prop-lines" class="nba-head-to-head"></div>
-<p class="war-muted">Quotes must have paired Over/Under lines and source updates within 30 minutes. Loading props uses the odds feed; filters reuse loaded quotes. Missing markets stay unavailable.</p>
+<p class="war-muted">Projections use ESPN’s returned recent-game results and assume the player plays. Two to four games is a small sample. Injury status and role can change.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>
+</main><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba.js"></script><script src="nba-player-model.js"></script><script src="nba-markets.js"></script></body></html>

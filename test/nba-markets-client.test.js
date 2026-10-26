@@ -13,8 +13,12 @@ function harness(){
  const base=g=>({gameId:g.id,tipoff:g.tipoff,bookmaker:'FanDuel',message:'Loaded',props:[],coverage:[]});
  const data=(g,props)=>props?{...base(g),props:[{name:'Player A',market:'player_points',label:'Points',line:20.5,over:-110,under:100,updatedAt:clock},{name:'Player B',market:'player_rebounds',label:'Rebounds',line:9.5,over:110,under:-120,updatedAt:clock}]}:{...base(g),spread:{away:3.5,home:-3.5,awayPrice:-110,homePrice:-110,updatedAt:clock},total:{line:225.5,over:-110,under:100,updatedAt:clock}};
  const context={document,Date:class extends Date{static now(){return clock;}},URLSearchParams,AbortSignal,setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},Unit501SharedUI:{timeCentral:iso=>iso}};context.window=context;
- context.fetch=async url=>{calls.push(url);return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
- vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
+ context.fetch=async url=>{calls.push(url);
+  if(String(url).startsWith('/api/nba/player-history?'))return {ok:true,json:async()=>({gameId:game.id,tipoff:game.tipoff,checkedAt:clock,teams:[
+   {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:25},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:22}]}]},
+   {available:true,players:[{name:'Player B',results:[{gameId:3,tipoff:'2026-10-23T00:00:00Z',player_rebounds:10},{gameId:4,tipoff:'2026-10-21T00:00:00Z',player_rebounds:8}]}]}]})};
+  return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
+ vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,context,calls,timers,game,data,settle,select:async(g=game)=>{context.Unit501NBAMarkets.select(g,'2026-10-24');await settle();},advance:ms=>{clock+=ms;}};
 }
@@ -22,19 +26,19 @@ test('NBA game lines load on selection, props load on demand, and stat/name filt
  const h=harness();await h.select();
  assert.equal(h.calls.length,1);assert.match(h.nodes.get('nba-game-odds').textContent,/Clippers \+3.5.*Bulls -3.5.*225.5/);
  assert.equal(h.nodes.get('nba-prop-lines').textContent,'');
- await h.nodes.get('nba-load-props').events.click();assert.equal(h.calls.length,2);
+ await h.nodes.get('nba-load-props').events.click();assert.equal(h.calls.length,3);
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A.*Player B/);
  const stat=h.nodes.get('nba-prop-market');stat.value='player_points';stat.events.change();
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A/);assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player B/);
  const name=h.nodes.get('nba-prop-search');name.value='unmatched';name.events.input();
- assert.match(h.nodes.get('nba-prop-lines').textContent,/No current/);assert.equal(h.calls.length,2);
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/No current/);assert.equal(h.calls.length,3);
 });
 test('NBA quote display expires stale prices locally without polling the odds API',async()=>{
  const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();
  h.advance(1800001);h.timers.at(-1)();
  assert.match(h.nodes.get('nba-game-odds').textContent,/No current paired/);
  assert.doesNotMatch(h.nodes.get('nba-game-odds').textContent,/225.5/);
- assert.match(h.nodes.get('nba-prop-lines').textContent,/No current/);assert.equal(h.calls.length,2);
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/No current/);assert.equal(h.calls.length,3);
 });
 test('NBA quote failure keeps fresh prior quotes and wrong-game responses cannot overwrite them',async()=>{
  const h=harness();await h.select();
@@ -146,4 +150,33 @@ test('official injury statuses highlight matching props and withdraw on expiry o
  assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
  report.teams[1].players=[];market.setInjuries(h.game,report);h.advance(7200001);h.timers.at(-1)();
  assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+});
+
+test('NBA props show recent baselines, cover counts, sorting and OUT suppression',async()=>{
+ const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
+ let text=h.nodes.get('nba-prop-lines').textContent;
+ assert.match(text,/Player A.*Points.*20\.5.*23\.5.*2.*0.*0.*2/);
+ assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*1.*1.*0.*2/);
+ const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
+ text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
+ sort.value='most';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));
+ assert.equal(h.calls.length,count);
+ h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[{available:true,players:[{name:'Player A',status:'Out'}]},{available:true,players:[]}]});
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*Points.*20\.5.*OUT/);
+ assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*23\.5/);
+});
+
+test('late player history cannot replace the new matchup projection',async()=>{
+ const h=harness();await h.select();let release;
+ const historyFor=(game,value)=>({gameId:game.id,tipoff:game.tipoff,checkedAt:Date.parse('2026-10-24T20:00:00Z'),teams:[
+  {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:value},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:value}]}]},
+  {available:true,players:[]}]});
+ h.context.fetch=url=>String(url).startsWith('/api/nba/player-history?')?new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>historyFor(h.game,99)});}):Promise.resolve({ok:true,json:async()=>h.data(h.game,true)});
+ await h.nodes.get('nba-load-props').events.click();await h.settle();
+ const next={...h.game,id:900,away:'Cavaliers',home:'Celtics'};
+ h.context.fetch=async url=>({ok:true,json:async()=>String(url).startsWith('/api/nba/player-history?')?historyFor(next,12):h.data(next,String(url).includes('/props?'))});
+ await h.select(next);await h.nodes.get('nba-load-props').events.click();await h.settle();
+ release();await h.settle();await h.settle();
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A.*12\.0/);
+ assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/99\.0/);
 });

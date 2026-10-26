@@ -52,3 +52,6 @@ section.nba-model-status{padding:16px;border:1px solid #426374;border-radius:12p
 #nba-prediction-detail{font-size:13px;line-height:1.5}
 
 .nba-injury-out{color:#ffb0a5;font-weight:800}
+
+.nba-prop-count,.nba-prop-strong{font-weight:800;text-align:center}
+.nba-prop-strong{background:#e7f7e9;color:#173f29}
