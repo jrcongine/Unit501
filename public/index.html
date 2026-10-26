@@ -199,7 +199,7 @@
 <select id="gameMode"><option value="normal">Normal margin</option><option value="upset">Narrow margin by 10% (manual)</option><option value="primetime">Widen margin by 10% (manual)</option></select>
 <p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
 </section>
-<section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert</h3>
+<section id="upset-alert-panel" class="upset-alert-panel" data-alert-state="idle" aria-label="Upset Alert"><h3 id="upset-alert-title">Upset Alert</h3>
 <label><input id="upsetAlertEnabled" type="checkbox" checked> Sunday / neutral-site alerts</label>
 <p id="upset-alert-status" role="status">Context alerts only — no automatic odds or points adjustment.</p>
 </section>

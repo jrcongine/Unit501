@@ -293,8 +293,12 @@ a{color:#97e3fc}
 .scenario-comparison>div{display:flex;flex-direction:column;gap:6px;padding:14px;background:#172c40;border:1px solid #52718a;border-radius:10px}
 .scenario-comparison span{font-size:14px;color:#cfdae5}
 .scenario-comparison strong{font-size:26px;font-variant-numeric:tabular-nums}
-.upset-alert-panel{border:1px solid #c39b46;border-radius:12px;padding:14px;margin:16px 0;background:#302919}
-.upset-alert-panel h3{margin:0 0 10px;color:#ffe2a0}
+/* Keep the upset context control neutral; only actual Sunday/neutral-site
+   review flags use amber warning colors (no automatic score change). */
+.upset-alert-panel{border:1px solid #38627a;border-radius:12px;padding:14px;margin:16px 0;background:#132b3d}
+.upset-alert-panel h3{margin:0 0 10px;color:#e8f4ff}
+.upset-alert-panel[data-alert-state="active"]{border-color:#c39b46;background:#302919}
+.upset-alert-panel[data-alert-state="active"] h3{color:#ffe2a0}
 
 .player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
 .player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
