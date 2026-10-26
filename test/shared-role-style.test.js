@@ -34,6 +34,7 @@ test('visible prop table separates distinct players but keeps their market rows 
  const projections=fs.readFileSync(path.join(__dirname,'../public/predictions.js'),'utf8');
  assert.match(projections,/let previousPlayerId = null;/);
  assert.match(projections,/previousPlayerId !== null && row\.record\.id !== previousPlayerId/);
- assert.match(projections,/tr\.classList\.add\('prop-player-group-start'\)/);
+ assert.match(projections,/tr\.className \+= \(tr\.className \? ' ' : ''\)\+'prop-player-group-start'/);
+ assert.match(projections,/if\(row\.role\.active\)tr\.className='prop-role-alert'/);
  assert.match(css,/#saved-line-comparisons tbody tr\.prop-player-group-start > td\{\s*border-top:8px solid #15283d;/);
 });
