@@ -72,7 +72,10 @@ function buildPowerBoard(raw,league,year,at){
   // For teams appearing in multiple standings groups, the same season record must agree.
   const previous=teams.get(id);
   if(previous){
-   if(previous.name!==key||previous.games!==played||previous.diff!==diff)return null;
+   if(previous.name!==key||previous.games!==played||previous.diff!==diff||
+      previous.wins!==wins||previous.losses!==losses||previous.record!==
+        (league==='nhl'?wins+'-'+losses+'-'+ot:wins+'-'+losses+(ties?'-'+ties:''))||
+      previous.pointsFor!==pointsFor||previous.pointsAgainst!==pointsAgainst)return null;
    continue;
   }
   if(seenNames.has(normalize(key)))return null;

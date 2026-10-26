@@ -119,3 +119,26 @@ test('league pulse caches standings and headlines independently and preserves ne
  assert.equal(calls.length,4);
  assert.equal(await load('unsupported'),null);
 });
+
+test('duplicate standings cannot hide conflicting records or scoring totals in any league',()=>{
+ for(const league of Object.keys(LEAGUES)){
+  const names=league==='ncaaf'?membership.teams.map(t=>t.name):Array.from({length:LEAGUES[league].teams},(_,i)=>league+' Team '+i);
+  for(const change of ['record','scoring']){
+   const raw=fixture(names,2026,league);
+   const duplicate=structuredClone(raw.children[0].standings.entries[0]);
+   const stat=name=>duplicate.stats.find(s=>s.name===name);
+   // Both changes preserve games played and point differential: the old
+   // duplicate gate silently accepted them and depended on source row order.
+   if(change==='record'){stat('wins').value++;stat('losses').value--;}
+   else{stat('pointsFor').value+=7;stat('pointsAgainst').value+=7;}
+   raw.children.push({standings:{entries:[duplicate]}});
+   assert.equal(buildPowerBoard(raw,league,2026,0),null,league+' '+change);
+   raw.children.reverse();
+   assert.equal(buildPowerBoard(raw,league,2026,0),null,league+' reversed '+change);
+  }
+  const raw=fixture(names,2026,league);
+  const expected=buildPowerBoard(raw,league,2026,0);
+  raw.children.push({standings:{entries:[structuredClone(raw.children[0].standings.entries[0])]}});
+  assert.deepEqual(buildPowerBoard(raw,league,2026,0),expected);
+ }
+});
