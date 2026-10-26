@@ -413,10 +413,10 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const tr = document.createElement('tr');
       // Separate distinct players visually, but keep one player's different
       // stat markets together as a single scanning group.
+      if(row.role.active)tr.className='prop-role-alert';
       if (previousPlayerId !== null && row.record.id !== previousPlayerId)
-        tr.classList.add('prop-player-group-start');
+        tr.className += (tr.className ? ' ' : '')+'prop-player-group-start';
       previousPlayerId = row.record.id;
-      if(row.role.active)tr.classList.add('prop-role-alert');
       const projection = Number(row.adjusted.toFixed(1));
       const diff = Number((projection - row.line).toFixed(1));
       const above = row.values.filter(v => v > row.line).length;
