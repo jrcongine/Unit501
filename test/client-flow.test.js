@@ -858,3 +858,21 @@ test('expanded-role scenarios adjust only the selected player and reset on a new
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.equal(h.nodes.get('player-workload-scenario').value,'100');
 });
+
+test('college board opens Top 25, collapses the remaining FBS tiers and retains every Game Lab rank',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ await h.run('Unit501LeaguePulse.show("ncaaf")');
+ const board=h.nodes.get('league-pulse-power');
+ const groups=board.children.filter(n=>n.className==='league-pulse-group');
+ assert.equal(groups.length,3);
+ assert.deepEqual(groups.map(n=>n.open),[true,false,false]);
+ assert.deepEqual(groups.map(n=>n.children[1].children.length),[25,25,88]);
+ assert.deepEqual(groups.map(n=>n.children[1].start),[1,26,51]);
+ assert.match(groups[0].textContent,/Top 25 · FBS Power Index/);
+ assert.match(groups[1].textContent,/26–50 · Next Tier/);
+ assert.match(groups[2].textContent,/51–138 · Rest of FBS/);
+ assert.doesNotMatch(board.textContent,/Bottom Feeders|Top 10/);
+ const g=structuredClone(h.game);g.league.id=2;g.teams.away={id:138,name:'League Team 138'};
+ h.run(`$("league").value="2"; choose(parseGame(${JSON.stringify(g)}))`);await h.settle();
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/#138 of 138/);
+});

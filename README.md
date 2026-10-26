@@ -106,7 +106,12 @@ percentage and 45% season scoring margin normalized by sport-specific
 scales; these are simple **descriptive** measures, not an adjusted
 strength-of-schedule, injury or wagering prediction model. NHL results
 account for overtime standings points. The layout separates **Top 10
-Contenders**, a collapsible **Middle of the Pack** and **Bottom 10**.
+Contenders**, a collapsible **Middle of the Pack** and **Bottom 10** for pro
+leagues. College football opens **Top 25 · FBS Power Index** by default, with
+collapsed **26–50 · Next Tier** and **51–138 · Rest of FBS** sections. All FBS
+teams retain their overall ranks for selected matchups in Game Lab. This is a
+layout change; the underlying record/scoring-margin index still does not adjust
+for schedule strength and is not the AP or CFP poll.
 The ↑, ↓ and → arrows refer ONLY to the current consecutive win/loss streak
 (2+ for ascending/declining; otherwise steady), **not** a team's actual
 rank change from the previous week. The UI clearly explains this distinction.
