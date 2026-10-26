@@ -49,3 +49,54 @@ test('NBA authentication errors are safe and retryable after the connection is c
  for(let i=0;i<2;i++)await assert.rejects(feed(game),e=>e.message.includes('INVALID_KEY')&&!e.message.includes('secret-key'));
  assert.equal(calls,2);
 });
+
+test('NBA moneylines require exactly two ordered team outcomes with fresh valid prices',()=>{
+ const moneyline=market('h2h',[{name:event.away_team,price:150},{name:event.home_team,price:-175}]);
+ assert.deepEqual(gameLines(quotes([moneyline]),now).moneyline,{away:150,home:-175,updatedAt:now});
+ for(const bad of [market('h2h',moneyline.outcomes,now-1800001),market('h2h',moneyline.outcomes,now+60001),
+  market('h2h',moneyline.outcomes.slice(0,1)),market('h2h',[...moneyline.outcomes,{name:'Draw',price:500}]),
+  market('h2h',[moneyline.outcomes[0],moneyline.outcomes[0]]),
+  market('h2h',[moneyline.outcomes[0],{name:'Wrong team',price:-175}]),
+  market('h2h',moneyline.outcomes.map(o=>({...o,price:75})))]){
+  assert.equal(gameLines(quotes([bad]),now).moneyline,null);
+ }
+ assert.equal(gameLines(quotes([moneyline,moneyline]),now).moneyline,null);
+});
+
+test('three-book comparison is on demand, shares one league request, and keeps bookmaker and market identity separate',async()=>{
+ const ml=market('h2h',[{name:event.away_team,price:150},{name:event.home_team,price:-175}]);
+ const events={...event,bookmakers:[
+  {key:'fanduel',markets:[spread,total,ml]},
+  {key:'draftkings',markets:[{...spread,outcomes:spread.outcomes.map(o=>({...o,point:o.point>0?4.5:-4.5}))},
+    {...ml,outcomes:ml.outcomes.map(o=>({...o,price:o.price>0?160:-180}))}]},
+  {key:'betmgm',markets:[market('h2h',ml.outcomes,now-1800001),total]},
+  {key:'unrequested',markets:[ml]}
+ ]};
+ const urls=[],feed=createNBAOdds({now:()=>now,key:()=> 'test-key',fetcher:async url=>{urls.push(url);return {ok:true,json:async()=>[events]};}});
+ const ordinary=await feed(game);assert.equal(urls.length,1);
+ assert.equal(new URL(urls[0]).searchParams.get('bookmakers'),'fanduel');
+ assert.equal(new URL(urls[0]).searchParams.get('markets'),'spreads,totals');
+ assert.equal(ordinary.bookmaker,'FanDuel');
+ const [a,b]=await Promise.all([feed(game,'comparison'),feed(game,'comparison')]);
+ assert.deepEqual(a,b);assert.equal(urls.length,2);
+ const q=new URL(urls[1]).searchParams;
+ assert.equal(q.get('bookmakers'),'fanduel,draftkings,betmgm');assert.equal(q.get('markets'),'h2h,spreads,totals');
+ assert.equal(a.bookmaker,'Multiple');assert.equal(a.available,true);
+ assert.equal(a.books.length,3);
+ assert.equal(a.books[0].spread.away,3.5);assert.equal(a.books[1].spread.away,4.5);
+ assert.equal(a.books[0].moneyline.away,150);assert.equal(a.books[1].moneyline.away,160);
+ assert.equal(a.books[1].total,null);assert.equal(a.books[2].moneyline,null);
+ assert.equal(a.books[2].total.line,225.5);
+ const duplicate={...events,bookmakers:[...events.bookmakers,events.bookmakers[1]]};
+ assert.equal(gameLines(duplicate,now,'draftkings').moneyline,null);
+ assert.equal(gameLines(duplicate,now,'fanduel').moneyline.away,150);
+});
+
+test('started, unconfigured and ambiguous NBA comparisons withhold all sportsbook prices',async()=>{
+ const feed=createNBAOdds({now:()=>now,key:()=>null,fetcher:async()=>{throw Error('must not fetch');}});
+ assert.deepEqual((await feed(game,'comparison')).books,[]);
+ const started=await feed({...game,tipoff:new Date(now-1).toISOString()},'comparison');
+ assert.equal(started.available,false);assert.deepEqual(started.books,[]);
+ const duplicate=createNBAOdds({now:()=>now,key:()=> 'test',fetcher:async()=>({ok:true,json:async()=>[quotes([spread]),quotes([spread])]})});
+ assert.deepEqual((await duplicate(game,'comparison')).books,[]);
+});

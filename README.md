@@ -262,3 +262,26 @@ votes. Background polling stops when the War Room is closed.
 ## Unit 501 sayings
 - **Always Buy the Hook.**
 - **Chase a check, never chase a bitch.**
+
+### On-demand NBA moneylines and sportsbook comparison
+
+NBA Game Lab includes a separate comparison button for FanDuel, DraftKings and
+BetMGM moneylines, spreads and totals. It calls the protected
+`/api/nba/comparison?date=YYYY-MM-DD&game=ID` route only when requested. The
+existing automatic FanDuel spread/total load and on-demand player-prop requests
+remain unchanged. Comparison results share a five-minute league cache and
+reuse the existing server-only odds credential. Missing books and unsupported,
+duplicate, stale or unpaired markets remain unavailable. Quotes expire locally
+at tipoff or 30 minutes after the source update; there is no paid polling.
+
+The comparison asks The Odds API for three featured markets and three named
+bookmakers in one league request. Its V4 documentation counts up to ten named
+bookmakers as one region; adding moneyline to spread/total can consume an
+additional market credit. Comparison is therefore explicit, not automatic.
+Reference: https://the-odds-api.com/liveapi/guides/v4/
+
+The table lists each sportsbook and each team's outright-win price separately.
+These are bookmaker quotes, not UNIT501 predictions or a recommendation. Market
+source timestamps remain separate, and prices at different spread/total lines
+are never labeled as directly comparable best bets. On phones, the table
+scrolls sideways with the sportsbook name kept visible.

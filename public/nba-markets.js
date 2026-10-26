@@ -4,8 +4,10 @@
  const $=id=>document.getElementById(id),ui=root.Unit501SharedUI;
  const gameBoard=$('nba-game-odds'),propBoard=$('nba-prop-lines'),gameStatus=$('nba-odds-status'),propStatus=$('nba-props-status');
  const refresh=$('nba-refresh-odds'),loadProps=$('nba-load-props'),market=$('nba-prop-market'),search=$('nba-prop-search');
+ const compare=$('nba-compare-odds'),compareStatus=$('nba-comparison-status'),compareBoard=$('nba-book-comparison');
  if(!gameBoard||!propBoard||!ui)return;
  let selected=null,date='',sequence=0,gameTask=0,propTask=0,quotes=null,props=null,timer=null;
+ let comparisonTask=0,comparison=null;
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
  const fresh=at=>Number.isFinite(at)&&at<=Date.now()+60000&&Date.now()-at<=1800000&&selected&&Date.parse(selected.tipoff)>Date.now();
@@ -28,6 +30,55 @@
   const body=node('tbody','');
   for(const p of rows){const row=node('tr','');for(const value of [p.name,p.label,p.line,signed(p.over),signed(p.under),ui.timeCentral(new Date(p.updatedAt).toISOString())])row.append(node('td',value));body.append(row);}
   table.append(node('caption',rows.length+' fresh FanDuel prop line(s) · bookmaker quotes, not projections'),body);propBoard.append(table);
+ }
+ function renderComparison(){
+  compareBoard.replaceChildren();if(!selected||!comparison)return;
+  const table=node('table','', 'nba-form-table nba-book-table'),header=node('tr','');
+  for(const label of ['Sportsbook',selected.away+' moneyline',selected.home+' moneyline',selected.away+' spread',selected.home+' spread','Over','Under']){
+   const cell=node('th',label);cell.scope='col';header.append(cell);
+  }
+  const head=node('thead','');head.append(header);table.append(head);
+  table.append(node('caption','Pregame quotes · source times in Central Time · scroll sideways for all markets'));
+  const body=node('tbody','');
+  for(const book of comparison.books){
+   const row=node('tr',''),name=node('th',book.name);name.scope='row';row.append(name);
+   const m=book.moneyline,s=book.spread,t=book.total;
+   for(const [value,at] of [
+    [m?signed(m.away):'',m?.updatedAt],[m?signed(m.home):'',m?.updatedAt],
+    [s?signed(s.away)+' ('+signed(s.awayPrice)+')':'',s?.updatedAt],
+    [s?signed(s.home)+' ('+signed(s.homePrice)+')':'',s?.updatedAt],
+    [t?t.line+' ('+signed(t.over)+')':'',t?.updatedAt],[t?t.line+' ('+signed(t.under)+')':'',t?.updatedAt]
+   ]){
+    const cell=node('td',fresh(at)?value:'Unavailable');
+    if(fresh(at)){
+     const time=node('small','Updated '+new Date(at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago',timeZoneName:'short'}));
+     time.title=ui.timeCentral(new Date(at).toISOString());cell.append(time);
+    }
+    row.append(cell);
+   }
+   body.append(row);
+  }
+  if(!comparison.books.length){compareBoard.append(node('p','No pregame comparison quotes are available for this matchup.'));return;}
+  table.append(body);compareBoard.append(table);
+ }
+ async function loadComparison(){
+  if(!selected)return;
+  const game=selected,serial=sequence,task=++comparisonTask;
+  compare.disabled=true;compareStatus.textContent='Loading moneylines, spreads and totals from three sportsbooks…';
+  try{
+   const query=new URLSearchParams({date,game:String(game.id)});if(game.provider)query.set('provider',game.provider);
+   const response=await fetch('/api/nba/comparison?'+query,{signal:AbortSignal.timeout(45000)}),data=await response.json();
+   if(serial!==sequence||task!==comparisonTask)return;
+   if(!response.ok)throw Error(data.error||'NBA sportsbook comparison unavailable.');
+   if(String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||data.bookmaker!=='Multiple'||!Array.isArray(data.books)||
+    data.books.some(b=>!b||!['fanduel','draftkings','betmgm'].includes(b.key))||new Set(data.books.map(b=>b.key)).size!==data.books.length)
+    throw Error('NBA comparison matchup or sportsbooks could not be verified.');
+   comparison=data;renderComparison();
+   compareStatus.textContent=(data.message||'NBA sportsbook comparison checked.')+' Cached up to five minutes; source quotes expire after 30 minutes or at tipoff.';
+  }catch(error){
+   if(serial!==sequence||task!==comparisonTask)return;
+   compareStatus.textContent=error.message+' Any previously loaded fresh comparison quotes are retained.';renderComparison();
+  }finally{if(serial===sequence&&task===comparisonTask)compare.disabled=false;}
  }
  async function load(kind){
   if(!selected)return;
@@ -55,11 +106,12 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){sequence++;selected=null;quotes=null;props=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';refresh.disabled=true;loadProps.disabled=true;}
- function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();}timer=setTimeout(tick,60000);}
- root.Unit501NBAMarkets={clear,select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;propStatus.textContent='Click Load FanDuel player props for points, rebounds, assists and threes. No player-stat projections yet.';load('game');tick();}};
+ function clear(){sequence++;selected=null;quotes=null;props=null;comparison=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
+ function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
+ root.Unit501NBAMarkets={clear,select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;compare.disabled=false;compareStatus.textContent='Click Compare to check FanDuel, DraftKings and BetMGM; no comparison request has been made yet.';propStatus.textContent='Click Load FanDuel player props for points, rebounds, assists and threes. No player-stat projections yet.';load('game');tick();}};
  refresh.addEventListener('click',()=>load('game'));loadProps.addEventListener('click',()=>load('props'));
  market.addEventListener('change',renderProps);search.addEventListener('input',renderProps);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden){renderGames();renderProps();}});
+ compare.addEventListener('click',loadComparison);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){renderGames();renderProps();renderComparison();}});
  clear();
 })(window);
