@@ -112,7 +112,12 @@
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
- root.Unit501NBAMarkets={clear,spreadFor(game){
+ root.Unit501NBAMarkets={clear,linesFor(game){
+  if(!selected||String(selected.id)!==String(game?.id)||selected.tipoff!==game.tipoff)return {};
+  const spread=quotes?.spread,total=quotes?.total;
+  return {awaySpread:spread&&fresh(spread.updatedAt)&&Number.isFinite(spread.away)&&Number.isFinite(spread.home)&&Math.abs(spread.away+spread.home)<1e-9?spread.away:null,
+   total:total&&fresh(total.updatedAt)&&Number.isFinite(total.line)&&total.line>0?total.line:null};
+ },spreadFor(game){
   const s=quotes?.spread;
   return selected&&String(selected.id)===String(game.id)&&selected.tipoff===game.tipoff&&s&&fresh(s.updatedAt)&&Number.isFinite(s.away)&&Number.isFinite(s.home)&&Math.abs(s.away+s.home)<1e-9?s.away:null;
  },select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;compare.disabled=false;compareStatus.textContent='Click Compare to check FanDuel, DraftKings and BetMGM; no comparison request has been made yet.';propStatus.textContent='Click Load FanDuel player props for points, rebounds, assists and threes. No player-stat projections yet.';load('game');tick();}};

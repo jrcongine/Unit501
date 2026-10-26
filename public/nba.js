@@ -25,6 +25,7 @@
   const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
   detail.textContent='';
   const alert=byId('nba-upset-pick');alert.hidden=true;alert.textContent='';
+  const simulation=byId('nba-simulation'),simulationDetail=byId('nba-simulation-detail');simulation.textContent='';simulationDetail.textContent='';
   if(!activeContext){output.textContent='Estimate unavailable until matching team history loads.';return;}
   const {game,data}=activeContext;
   const result=window.Unit501NBAModel.project(game,data,formWindow.value);
@@ -36,6 +37,19 @@
    alert.hidden=false;alert.className='automatic-upset-pick';
    alert.textContent='⚠ UPSET ALERT · '+(outlook.winner==='away'?game.away:game.home)+' projected to win outright as the spread underdog.';
   }
+  // Stable seed avoids changing displayed results merely because a quote redraws.
+  let seed=(Number(game.id)>>>0)||1;
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  const lines=window.Unit501NBAMarkets?.linesFor?.(game)||{};
+  const sim=window.Unit501NBAModel.simulate(result,data,lines,10000,random);
+  if(sim.available){
+   const percent=n=>(n*100).toFixed(1)+'%';
+   let message='10,000 simulations · '+game.away+' win '+percent(sim.awayWin)+' · '+game.home+' win '+percent(sim.homeWin)+' · tie '+percent(sim.tie);
+   if(sim.spread)message+=' · '+game.away+' '+signed(sim.spread.line)+' cover '+percent(sim.spread.away)+' · '+game.home+' cover '+percent(sim.spread.home)+' · push '+percent(sim.spread.push);
+   if(sim.total)message+=' · Over '+sim.total.line+' '+percent(sim.total.over)+' · Under '+percent(sim.total.under)+' · push '+percent(sim.total.push);
+   simulation.textContent=message;
+   simulationDetail.textContent='Experimental frequencies, not calibrated odds. Resamples each team’s last '+sim.sampleGames[0]+'/'+sim.sampleGames[1]+' completed games; does not account for injuries, player minutes or overtime.';
+  }else simulation.textContent=sim.reason;
   detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation;
  }
  function renderHeadToHead(){

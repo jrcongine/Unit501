@@ -24,5 +24,34 @@
    awayGames:a.games,homeGames:h.games,thin:Math.min(a.games,h.games)<10,
    explanation:'Each score averages the team’s scoring and its opponent’s points allowed in the selected view. Experimental; no calibrated win probability. Injuries, minutes, pace and rest are not adjusted. Returned-history coverage is not independently verified.'};
  }
- const api={project,version};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAModel=api;
+ // Research simulation from the most recent completed team-game scores.
+ // Samples offensive/defensive deviations independently; no calibration is implied.
+ function simulate(estimate,data,lines={},runs=10000,random=Math.random){
+  if(!estimate?.available||![estimate.away,estimate.home].every(Number.isFinite)||
+     !Number.isInteger(runs)||runs<1||runs>100000||typeof random!=='function')return {available:false,reason:'Valid score estimate required.'};
+  const histories=[data?.away?.recentGames,data?.home?.recentGames];
+  if(histories.some(list=>!Array.isArray(list)||list.length<5||list.length>10||list.some(g=>
+     ![g.for,g.against].every(v=>Number.isFinite(v)&&v>=0))))
+   return {available:false,reason:'At least five complete recent games per team are needed for the simulation.'};
+  const samples=histories.map(list=>{
+   const means=['for','against'].map(key=>list.reduce((a,g)=>a+g[key],0)/list.length);
+   return list.map(g=>({off:g.for-means[0],def:g.against-means[1]}));
+  });
+  const hasSpread=Number.isFinite(lines.awaySpread),hasTotal=Number.isFinite(lines.total)&&lines.total>0;
+  let awayWins=0,homeWins=0,ties=0,awayCovers=0,homeCovers=0,spreadPushes=0,overs=0,unders=0,totalPushes=0;
+  const pick=list=>{const value=random();if(!Number.isFinite(value)||value<0||value>=1)throw Error('Invalid random sample');return list[Math.floor(value*list.length)];};
+  for(let i=0;i<runs;i++){
+   const away=Math.max(0,Math.round(estimate.away+(pick(samples[0]).off+pick(samples[1]).def)/Math.SQRT2));
+   const home=Math.max(0,Math.round(estimate.home+(pick(samples[1]).off+pick(samples[0]).def)/Math.SQRT2));
+   if(away>home)awayWins++;else if(home>away)homeWins++;else ties++;
+   if(hasSpread){const margin=away+lines.awaySpread-home;if(margin>0)awayCovers++;else if(margin<0)homeCovers++;else spreadPushes++;}
+   if(hasTotal){const diff=away+home-lines.total;if(diff>0)overs++;else if(diff<0)unders++;else totalPushes++;}
+  }
+  const ratio=n=>n/runs;
+  return {available:true,runs,awayWin:ratio(awayWins),homeWin:ratio(homeWins),tie:ratio(ties),
+   spread:hasSpread?{away:ratio(awayCovers),home:ratio(homeCovers),push:ratio(spreadPushes),line:lines.awaySpread}:null,
+   total:hasTotal?{over:ratio(overs),under:ratio(unders),push:ratio(totalPushes),line:lines.total}:null,
+   sampleGames:histories.map(list=>list.length)};
+ }
+ const api={project,simulate,version};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAModel=api;
 })(typeof window!=='undefined'?window:globalThis);
