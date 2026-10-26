@@ -296,15 +296,15 @@ a{color:#97e3fc}
 
 .player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
 .player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
-/* Shared, high-contrast role/usage highlights for any sport.
-   Keep the TABLE ROW dark, so all data remains readable in the dark UI.
-   Only the compact alert badge uses warm cream, with dark text. */
-tbody tr.prop-role-alert{background:#213b52;color:#f7fafc}
+/* Shared sport-neutral role/usage highlights: 50%-lighter ivory instead
+   of the original yellow (#f6efc8), with dark row text and Shortlist labels. */
+tbody tr.prop-role-alert{background:#faf7e3;color:#13263a}
 tbody tr.prop-role-alert td,
-tbody tr.prop-role-alert td label{color:#f7fafc}
-tbody tr.prop-role-alert td:first-child{border-left:4px solid #e4be64}
-tbody tr.prop-role-alert details{color:#f7fafc !important}
-.prop-role-badge{color:#192b40;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fff4ce;min-width:180px}
+tbody tr.prop-role-alert td label{color:#13263a}
+tbody tr.prop-role-alert .prop-shortlist-label{color:#13263a;font-weight:850}
+tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
+tbody tr.prop-role-alert details{color:#284057 !important}
+.prop-role-badge{color:#192b40;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fffdf4;min-width:180px}
 .prop-role-badge strong{display:block;color:#59430b}
 
 
