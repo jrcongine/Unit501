@@ -20,9 +20,13 @@
   const result=el('li',null,'league-pulse-team');
   const rank=el('strong','#'+team.rank,'league-pulse-rank');
   const title=el('span',team.name,'league-pulse-name');
+  if(Number.isInteger(team.scheduleRank)&&team.fbsRecord){
+   title.append(el('small','FBS '+team.fbsRecord+' · schedule #'+team.scheduleRank,'league-pulse-strength'));
+  }
   const record=el('span',team.record,'league-pulse-record');
   const score=el('strong',Number(team.score).toFixed(1),'league-pulse-index');
   score.title='UNIT 501 Power Index, not an official ranking or a betting prediction';
+  if(Number.isInteger(team.scheduleRank))score.title='Schedule-adjusted FBS results index; not a win probability';
   const form=el('span',team.trend==='up'?'↑ '+team.trendLabel:team.trend==='down'?'↓ '+team.trendLabel:'→ '+team.trendLabel,
     'league-pulse-trend trend-'+team.trend);
   form.title='Form based on consecutive wins/losses, not ranking movement';
@@ -46,7 +50,8 @@
    power.append(el('p',board?.message||'Overall power rankings are not verified for this league.','league-pulse-empty'));return;
   }
   const context=el('p','UNIT 501 Power Index · current '+board.season+' season · '+board.teams.length+' teams · '+board.basis,'league-pulse-note');
-  const formula=el('p','Calculated from season results and points scored versus points allowed. ↑/↓/→ = win/loss streak momentum, NOT movement in rank. Display only; it does not affect predictions.','league-pulse-explainer');
+  const formula=el('p',(board.explanation||'Calculated from season results and points scored versus points allowed.')+' ↑/↓/→ = win/loss streak momentum, NOT movement in rank. Display only; it does not affect predictions.','league-pulse-explainer');
+  if(board.scheduleAdjustment?.applied===false)formula.append(el('span',' '+board.scheduleAdjustment.reason));
   if(data.league==='ncaaf'){
    power.append(context,formula,
     group('🏆 Top 25 · FBS Power Index',board.teams.slice(0,25),true),
@@ -105,7 +110,7 @@
    const card=el('div',null,'league-pulse-matchup-team');
    card.append(el('strong',team?'#'+team.rank+' of '+data.power.count:'Rank unavailable'),
     el('span',name),
-    el('small',team?'Power '+team.score.toFixed(1)+' · '+(team.trend==='up'?'↑':team.trend==='down'?'↓':'→')+' '+team.trendLabel:'Team identity not verified'));
+    el('small',team?'Power '+team.score.toFixed(1)+(Number.isInteger(team.scheduleRank)?' · FBS '+team.fbsRecord+' · schedule #'+team.scheduleRank:'')+' · '+(team.trend==='up'?'↑':team.trend==='down'?'↓':'→')+' '+team.trendLabel:'Team identity not verified'));
    grid.append(card);
   }
   matchup.append(title,grid,el('p','Current-season ranking context only. Not a historical pregame rating or an automatic score/prop adjustment.','league-pulse-note'));
@@ -128,7 +133,7 @@
    renderBoard(data);renderNews(data);renderMatchup();
    status.textContent=names[league]+' · updated '+
     new Date(data.checkedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+
-    ' CT · source: ESPN standings / headline links';
+    ' CT · sources: '+(data.power?.provider||'ESPN standings')+' / ESPN headline links';
   }catch{
    if(key!==sequence)return;
    status.textContent='League pulse could not load. Try Refresh; no ranks or headlines were invented.';

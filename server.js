@@ -31,7 +31,11 @@ const getRankings = require('./rankings').createRankings(api, {
   publicNFL:require('./nfl-public-yardage').createPublicNFLYardage()
 });
 const getBettingSplits=require('./betting-splits').createSplits();
-const getLeaguePulse=require('./league-pulse').createLeaguePulse();
+const getLeaguePulse=require('./league-pulse').createLeaguePulse({
+  // One shared, metered season-schedule request per 15-minute college cache.
+  // Uses the same schedule cache as Game Lab; no extra box-score downloads.
+  collegeSchedule:season=>api('/games?league=2&season='+season)
+});
 const getAvailability = require('./availability').createAvailability(api);
 const getPlayerRatings = require('./player-ratings').createRatings(api);
 
