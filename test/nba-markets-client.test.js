@@ -125,3 +125,12 @@ test('upset classification only receives fresh paired spread for the selected ma
  h.advance(1800001);assert.equal(market.spreadFor(h.game),null);
  market.clear();assert.equal(market.spreadFor(h.game),null);
 });
+
+test('NBA simulation reuses only fresh, matching market lines',async()=>{
+ const h=harness();await h.select();
+ const market=h.context.Unit501NBAMarkets,values=market.linesFor(h.game);
+ assert.equal(values.awaySpread,3.5);assert.equal(values.total,225.5);
+ assert.equal(market.linesFor({...h.game,id:900}).awaySpread,undefined);
+ h.advance(1800001);
+ assert.equal(market.linesFor(h.game).awaySpread,null);assert.equal(market.linesFor(h.game).total,null);
+});

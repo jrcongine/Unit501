@@ -159,3 +159,24 @@ test('actual NBA market refresh and reset drive automatic upset headline without
  assert.equal(alert.hidden,false);
  h.context.Unit501NBAMarkets.clear();assert.equal(alert.hidden,true);
 });
+
+test('NBA simulation follows projections and fresh line updates without new requests',async()=>{
+ const h=harness();h.games[0].tipoff=new Date(Date.now()+86400000).toISOString();h.games[0].statusCode=1;
+ const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(String(url).startsWith('/api/nba/context?')){
+   const d=h.data(h.games[0]);d.tipoff=h.games[0].tipoff;d.stage=h.games[0].stage;d.away.id=h.games[0].awayId;d.home.id=h.games[0].homeId;d.home.recentGames=Array.from({length:5},(_,i)=>({for:100+i*3,against:106+i}));
+   d.home.recent5={games:5,pointsFor:106,pointsAgainst:108};
+   return {ok:true,json:async()=>d};
+  }
+  return original(url);
+ };
+ let lines={awaySpread:2.5,total:220.5};
+ h.context.Unit501NBAMarkets={select(){},clear(){},spreadFor:()=>lines.awaySpread,linesFor:()=>lines};
+ await h.load();await h.choose(0);
+ assert.match(h.nodes.get('nba-simulation').textContent,/10,000 simulations.*Chicago Bulls win.*cover.*Over 220.5/);
+ assert.match(h.nodes.get('nba-simulation-detail').textContent,/not calibrated.*injuries/);
+ const count=h.requests.length;lines={};h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
+ assert.doesNotMatch(h.nodes.get('nba-simulation').textContent,/cover|Over/);
+ assert.equal(h.requests.length,count);
+});
