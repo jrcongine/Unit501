@@ -7,11 +7,13 @@ const fs = require('fs');
 const path = require('path');
 const fanduel = require('./fanduel');
 const outsidePicks = require('./outside-picks').createFeed();
-const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:require('./nba-public').createPublicNBA()});
+const publicNBA = require('./nba-public').createPublicNBA();
+const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:publicNBA});
 const nbaGames = nbaSources.games;
 const nbaContext = nbaSources.context;
 const nbaOdds = require('./nba-odds').createNBAOdds();
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
+const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA});
 const injurySlate = require('./nba-slate-cache').createSlateCache(nbaGames);
 const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
@@ -110,6 +112,16 @@ const server = http.createServer(async (req, res) => {
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
         return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
       }catch(e){return send(res,503,{error:e.message});}
+    }
+    if(u.pathname==='/api/nba/player-history'){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid NBA date and game ID required.'});
+      try{
+        const slate=await injurySlate(date),game=slate.games.find(g=>String(g.id)===id);
+        if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
+        if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
+        return send(res,200,await nbaPlayerHistory(game,date,slate.season));
+      }catch(error){console.error('NBA player history:',error.message);return send(res,503,{error:'NBA player history unavailable for this matchup.'});}
     }
     if(u.pathname==='/api/nba/injuries'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
