@@ -56,7 +56,42 @@
   }
   return {date,matchedTargets:audit.accepted,excluded:audit.skips,markets,selected:pickStats};
  }
- const api={filter,dateKey,diagnosis,report,latestDay};
+ function upsetHistory(snapshots,now=Date.now()){
+  const compare=typeof module!=='undefined'&&module.exports?require('./injury-backtest').compare:root.Unit501InjuryBacktest.compare;
+  const candidates=snapshots.filter(s=>!s.selection&&(!s.kind||s.kind==='score'));
+  const key=s=>JSON.stringify([s.game?.league,s.game?.season,s.game?.id].map(String));
+  const counts=new Map();for(const s of candidates)counts.set(key(s),(counts.get(key(s))||0)+1);
+  const groups=new Map();let excluded=0,missingLine=0,pickem=0;
+  for(const s of candidates){
+   const g=s.game,rs=s.records,line=s.inputs?.marketContext?.awaySpread;
+   if(counts.get(key(s))!==1||!g||!Array.isArray(rs)||rs.length!==2||
+     !Number.isFinite(s.forecastAt)||s.forecastAt>now||s.forecastAt>=g.kickoff||
+     String(g.awayId)===String(g.homeId)||rs.some(r=>!r||r.kind!=='score'||
+      String(r.gameId)!==String(g.id)||String(r.league)!==String(g.league)||String(r.season)!==String(g.season)||
+      r.forecastAt!==s.forecastAt||r.kickoff!==g.kickoff||
+      (r.resultKnownAt!==null&&r.resultKnownAt>now))){excluded++;continue;}
+   const away=rs.find(r=>String(r.teamId)===String(g.awayId)),home=rs.find(r=>String(r.teamId)===String(g.homeId));
+   if(!away||!home||away.modelVersion!==home.modelVersion){excluded++;continue;}
+   const check=compare(rs);
+   if(check.skips.invalid||check.skips.late||check.skips.ambiguous||check.skips.version||check.accepted+check.skips.pending!==2){excluded++;continue;}
+   if(!Number.isFinite(line)||!Number.isInteger(line*2)){missingLine++;continue;}
+   if(line===0){pickem++;continue;}
+   const groupKey=JSON.stringify([String(g.league),String(g.season),away.modelVersion]);
+   if(!groups.has(groupKey))groups.set(groupKey,{league:String(g.league),season:String(g.season),modelVersion:away.modelVersion,
+    forecasts:0,projectedUpsets:0,pending:0,completed:0,actualUpsets:0,calledUpsets:0,missedUpsets:0,falseAlarms:0,actualTies:0});
+   const out=groups.get(groupKey),sign=line>0?1:-1;
+   const predicted=(away.adjusted-home.adjusted)*sign>0;
+   out.forecasts++;if(predicted)out.projectedUpsets++;
+   if(check.skips.pending){out.pending++;continue;}
+   out.completed++;
+   const margin=(away.actual-home.actual)*sign;
+   if(margin===0){out.actualTies++;continue;}
+   if(margin>0){out.actualUpsets++;if(predicted)out.calledUpsets++;else out.missedUpsets++;}
+   else if(predicted)out.falseAlarms++;
+  }
+  return {groups:[...groups.values()],excluded,missingLine,pickem};
+ }
+ const api={filter,dateKey,diagnosis,report,latestDay,upsetHistory};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.Unit501ForecastDashboard=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

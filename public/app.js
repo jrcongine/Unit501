@@ -11,7 +11,7 @@ function invalidateSimulation(message) {
   window.Unit501Availability?.scoring?.(null);
   previewAutomaticInjuries();
   $('availability-score-status').textContent='';
-  for (const id of ['score','cover','over','win']) $(id).textContent = '—';
+  for (const id of ['score','cover','over','win','outright-pick','underdog-outlook','win-both','upset-history']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
   document.dispatchEvent(new Event('unit501:simulation-invalidated'));
 }
@@ -694,6 +694,7 @@ function clearSelection() {
     if (link) { link.classList.add('is-unavailable'); link.setAttribute('aria-disabled','true'); link.tabIndex = -1; link.textContent = label; }
   }
   document.dispatchEvent(new Event('unit501:selection-changed'));
+  document.dispatchEvent(new Event('unit501:matchup-cleared'));
 }
 
 const today = window.Unit501SharedUI.dateCentral();
@@ -804,6 +805,7 @@ async function load() {
     }).map(parseGame);
 
     if (!slate.length) {
+      document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:league==='1'?'nfl':'ncaaf'}}));
       $('status').textContent = 'NO GAMES RETURNED';
       showMessage(
         'No games were returned for this date. This could mean there are no games scheduled, or your data plan does not include this season.'
@@ -812,6 +814,7 @@ async function load() {
     }
 
     $('status').textContent = 'GAME DATA RECEIVED';
+    document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:league==='1'?'nfl':'ncaaf'}}));
     games.innerHTML = '';
 
     slate.forEach(game => {
@@ -846,6 +849,7 @@ async function choose(game) {
     if (link) { link.classList.remove('is-unavailable'); link.setAttribute('aria-disabled','false'); link.tabIndex = 0; link.textContent = label; }
   }
   $('matchup').textContent = window.Unit501SharedUI.matchup(game.a, game.h);
+  document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:game.league==='1'?'nfl':'ncaaf',away:game.a,home:game.h}}));
 
   // Do not invent a betting line when current odds are unavailable.
   $('spread').value = '';
@@ -873,6 +877,7 @@ async function choose(game) {
   $('cover').textContent = '—';
   $('over').textContent = '—';
   $('win').textContent = '—';
+  for (const id of ['outright-pick','underdog-outlook','win-both','upset-history']) $(id).textContent = '—';
 
   $('note').textContent =
     'Enter the current FanDuel spread and total to run a simulation.';
@@ -941,6 +946,26 @@ function sim() {
   $('cover').textContent = percent(result.calibrated.cover??result.cover);
   $('over').textContent = percent(result.calibrated.over??result.over);
   $('win').textContent = percent(result.calibrated.win??result.win);
+  const outlook=Unit501TeamModel.outcome(prediction,spread);
+  const teamName=side=>side==='away'?selected.a:selected.h;
+  $('outright-pick').textContent=outlook.winner?
+    `UNIT501 projects ${teamName(outlook.winner)} to win outright by ${Math.abs(outlook.margin).toFixed(1)} points${outlook.upset?' — UNDERDOG UPSET PICK':''}.`:
+    'Projected scores are tied — no outright winner selected.';
+  if(!outlook.underdog){
+    $('underdog-outlook').textContent='Pick’em line — neither team is a spread underdog.';
+  }else{
+    const dog=teamName(outlook.underdog),dogLine=Math.abs(spread);
+    $('underdog-outlook').textContent=`${dog} +${dogLine}: `+(outlook.upset?'projected to win outright.':
+      outlook.underdogCoverOnly?'projected to cover, but lose outright.':
+      !outlook.winner?'projected to tie the game and cover; no outright win projected.':
+      !outlook.cover?'projected to lose outright and push the spread.':'projected to lose outright and fail to cover.');
+  }
+  const calibratedWin=result.calibrated.win;
+  const awayWin=calibratedWin??result.win;
+  const homeWin=calibratedWin!==null?1-calibratedWin:Math.max(0,1-result.win-result.tie);
+  $('win-both').textContent=`${selected.a} win ${percent(awayWin)} · ${selected.h} win ${percent(homeWin)} · `+
+    (calibratedWin!==null?`win percentages calibrated among non-tied scores; raw tied-score frequency ${percent(result.tie)}.`:
+      `tied scores ${percent(result.tie)} · raw simulation frequencies.`);
   const strength = prediction.schedule;
   const scheduleNote = strength.applied
     ? prediction.pace?.applied ? 'Schedule strength corrections are included in scoring per drive, using opponents’ other pre-kickoff games with conservative limits. Cross-division strength remains experimental.'
@@ -976,6 +1001,21 @@ function sim() {
       Unit501ForecastArchive.save(localStorage,snapshot);
     }catch{ latestForecast=null; }
   }
+  try{
+    const snapshots=Unit501ForecastArchive.read(localStorage).snapshots.filter(s=>
+      String(s.game?.league)===String(selected.league)&&String(s.game?.season)===String(selected.season));
+    const history=Unit501ForecastDashboard.upsetHistory(snapshots);
+    const panel=$('upset-history');panel.replaceChildren();
+    for(const g of history.groups){
+      const line=document.createElement('p');
+      line.textContent=`${g.league==='1'?'NFL':'College'} ${g.season} · ${g.modelVersion}: ${g.projectedUpsets} outright underdog picks in ${g.forecasts} saved forecasts with a nonzero spread. ${g.completed} completed: ${g.actualUpsets} actual upsets, ${g.calledUpsets} called, ${g.missedUpsets} missed; ${g.falseAlarms} upset picks lost, ${g.actualTies} final ties. ${g.pending} pending results.`;
+      panel.append(line);
+    }
+    const note=document.createElement('p');
+    note.textContent=(history.groups.length?'':'No eligible saved pregame forecasts with an underdog line yet. ')+
+      `Uses the spread entered with the first saved forecast on this browser, not a verified closing line or full-season history. ${history.missingLine} missing lines, ${history.pickem} pick’em games and ${history.excluded} invalid or duplicate snapshots excluded. Manual scenarios are included under their saved model version. Missing results are pending, not losses; no betting profit is inferred.`;
+    panel.append(note);
+  }catch{$('upset-history').textContent='Saved upset history could not be verified. Existing forecasts are retained.';}
   document.dispatchEvent(new Event('unit501:simulation-completed'));
   return true;
 }

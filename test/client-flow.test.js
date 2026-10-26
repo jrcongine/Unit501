@@ -37,6 +37,19 @@ function harness(storage=new Map(),extras=false) {
   const u=new URL(url,'http://localhost');let response;
   if(u.pathname==='/api/health')response={ok:true,liveData:true};
   else if(u.pathname==='/api/games')response={response:[game]};
+  else if(u.pathname==='/api/league-pulse'){
+   const league=u.searchParams.get('league')||'nfl';
+   const teams=Array.from({length:league==='ncaaf'?138:['nba','mlb'].includes(league)?30:32},(_,i)=>({
+    id:String(i+1),name:i===0?'Team A':i===1?'Team B':'League Team '+(i+1),
+    providerName:i===0?'Team A':i===1?'Team B':'League Team '+(i+1),
+    record:'5-2',rank:i+1,score:95-i*1.1,trend:i%2?'down':'up',trendLabel:i%2?'Declining':'Ascending',streakLabel:i%2?'L2':'W2'
+   }));
+   response={league,checkedAt:new Date().toISOString(),power:{available:true,season:2026,count:teams.length,
+    top:teams.slice(0,10),middle:teams.slice(10,-10),bottom:teams.slice(-10),teams,
+    basis:'Current season standings; display only.'},
+    headlines:{available:true,items:[{title:'Verified league update',url:'https://www.espn.com/nfl/story/_/id/1',
+     source:'ESPN',publishedAt:new Date().toISOString(),category:'League update'}]}};
+  }
   else if(u.pathname==='/api/rankings')response={state:++polls===1?'loading':'ready',completed:2,total:32,data};
   else if(u.pathname==='/api/fanduel')response={available:true,awaySpread:7.5,total:48.5,spreadUpdated:Date.now(),totalUpdated:Date.now()};
   else if(u.pathname==='/api/team-games')response={response:[1,2].map(id=>({...game,game:{...game.game,id,date:{timestamp:stamp-id*86400-1000},status:{short:'FT',long:'Finished'}}}))};
@@ -49,11 +62,33 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
 }
+test('league-wide power tiers and headlines appear after loading NFL and selected teams show overall ranks in Game Lab',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ const panel=h.nodes.get('league-pulse');
+ assert.equal(panel.hidden,false);
+ assert.match(h.nodes.get('league-pulse-power').textContent,/Top 10 · Contenders/);
+ assert.match(h.nodes.get('league-pulse-power').textContent,/Middle of the Pack/);
+ assert.match(h.nodes.get('league-pulse-power').textContent,/Bottom 10 · Bottom Feeders/);
+ assert.match(h.nodes.get('league-pulse-headlines').textContent,/Verified league update/);
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();
+ const matchup=h.nodes.get('league-pulse-matchup').textContent;
+ assert.match(matchup,/Overall Power Ranks/);
+ assert.match(matchup,/#1 of 32/);
+ assert.match(matchup,/#2 of 32/);
+ assert.match(matchup,/Not a historical pregame rating/);
+ const scoring=h.nodes.get('team-context').textContent;
+ assert.match(scoring,/Scoring is ready|completed games before this matchup|Building rankings/);
+ h.run('Unit501LeaguePulse.show("mlb")');await h.settle();
+ assert.equal(h.nodes.get('league-pulse-league').value,'mlb');
+ assert.match(h.nodes.get('league-pulse-power').textContent,/Top 10/);
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/#1 of 32/);
+});
+
 test('player ratings start compact, with both rosters and replacement controls available on demand',async()=>{
   const h=harness(new Map(),true);await h.settle();
   h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
@@ -754,4 +789,72 @@ test('prop board automatically highlights a current same-position replacement op
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Expanded role opportunity.*Regular contributor ruled out/);
  const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
  assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
+});
+
+test('Game Lab names outright upset picks, separates cover-only, and clears stale picks',async()=>{
+ const h=harness();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.run('$("venueMode").value="neutral"; $("spread").value="10.5"; $("total").value="48.5"; $("awayRating").value="4"; $("homeRating").value="0"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team A to win outright.*UNDERDOG UPSET PICK/);
+ assert.match(h.nodes.get('underdog-outlook').textContent,/Team A \+10.5: projected to win outright/);
+ assert.match(h.nodes.get('win-both').textContent,/Team A win.*Team B win.*tied scores/);
+ h.run('$("awayRating").value="-4"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright/);
+ assert.doesNotMatch(h.nodes.get('outright-pick').textContent,/UPSET PICK/);
+ assert.match(h.nodes.get('underdog-outlook').textContent,/cover, but lose outright/);
+ h.run('$("spread").value="-10.5"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright.*UNDERDOG UPSET PICK/);
+ h.run('$("awayRating").value="0"; sim()');
+ assert.match(h.nodes.get('outright-pick').textContent,/no outright winner/);
+ h.run('$("spread").value="0"; sim()');
+ assert.match(h.nodes.get('underdog-outlook').textContent,/Pick’em line/);
+ await h.nodes.get('spread').dispatchEvent({type:'input'});
+ for(const id of ['outright-pick','underdog-outlook','win-both'])assert.equal(h.nodes.get(id).textContent,'—');
+});
+
+test('refreshing league rankings withdraws old Game Lab ranks when the source fails',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/#1 of 32/);
+ const request=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(String(url).startsWith('/api/league-pulse'))throw Error('Provider unavailable');
+  return request(url);
+ };
+ h.run('Unit501LeaguePulse.show("nfl")');await h.settle();
+ assert.doesNotMatch(h.nodes.get('league-pulse-matchup').textContent,/#1 of 32/);
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/when the current standings are verified/);
+ assert.match(h.nodes.get('league-pulse-status').textContent,/could not load/);
+});
+
+test('expanded-role scenarios adjust only the selected player and reset on a new matchup',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ const control=h.nodes.get('player-workload-scenario');
+ assert.deepEqual(control.children.map(c=>c.value),['100','125','150','200','75','50','25','0']);
+ const walk=root=>[root,...root.children.flatMap(c=>typeof c==='object'?walk(c):[])];
+ const table=()=>walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr');
+ const rows=()=>table().filter(n=>n.textContent.includes('Rushing attempts')&&n.textContent.includes('RB 1'));
+ assert.equal(rows().length,1);
+ const baseline=rows()[0].children[4].textContent;
+ const selected=h.nodes.get('predict-player').value;
+ control.value='150';control.onchange();
+ assert.match(rows()[0].textContent,/150% workload/);
+ const adjusted=rows()[0].children[4].textContent;
+ assert.equal(Number.parseFloat(adjusted),Number.parseFloat(baseline)*1.5);
+ assert.match(h.nodes.get('player-scenario-controls').textContent,/manual assumptions/);
+ // Selecting a teammate keeps that teammate at the recorded baseline.
+ const other=h.nodes.get('predict-player').children.find(c=>c.value&&c.value!==selected);
+ assert.ok(other);h.nodes.get('predict-player').value=other.value;
+ await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('player-workload-scenario').value,'100');
+ h.nodes.get('predict-player').value=selected;
+ await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('player-workload-scenario').value,'150');
+ h.game.game.id=1000; // The fixture slate must also include the newly selected game.
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('player-scenario-controls').hidden,true);
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('player-workload-scenario').value,'100');
 });

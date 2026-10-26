@@ -673,14 +673,14 @@ cell.append(details);
     const roleNote=document.createElement('p');roleNote.textContent='Role review highlights the player; their projection still uses recorded history. Season averages can lag a new or larger role.';
     scenarioControls.append(roleNote);
     const scenarioLabel = document.createElement('label');
-    scenarioLabel.textContent = 'Expected workload scenario (% of normal): ';
+    scenarioLabel.textContent = 'Workload scenario (% of recorded baseline): ';
     const scenario = document.createElement('select');
     scenario.id='player-workload-scenario';
     scenario.setAttribute('aria-label', 'Expected workload scenario');
-    for (const percent of [100, 75, 50, 25, 0]) {
+    for (const percent of [100, 125, 150, 200, 75, 50, 25, 0]) {
       const option = document.createElement('option');
       option.value = String(percent);
-      option.textContent = percent + '%';
+      option.textContent = percent + '%' + (percent===100?' — recorded baseline':percent>100?' — larger role':' — reduced role');
       scenario.appendChild(option);
     }
     scenario.value = String(workloadScenarios.get(record.id) ?? 100);
@@ -691,7 +691,7 @@ cell.append(details);
     scenarioLabel.appendChild(scenario);
     scenarioControls.appendChild(scenarioLabel);
     const scenarioNote = document.createElement('p');
-    scenarioNote.textContent = 'Your scenario scales this player’s stats linearly, not their chance of playing. It does not redistribute touches or adjust team scores. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
+    scenarioNote.textContent = '100% keeps the recorded baseline. For a new starter or expanded role, 125%, 150% and 200% model 25%, 50% and 100% more workload. These are manual assumptions, not an automatic promotion or a chance of playing. This scales this player’s props linearly without redistributing teammates’ touches or changing team scores. Avoid adding another increase for work already transferred in a confirmed replacement scenario. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
     scenarioControls.appendChild(scenarioNote);
     // Manual player scenario switches affect only the selected player's props, not team scores.
     const powerPanel=document.createElement('div');

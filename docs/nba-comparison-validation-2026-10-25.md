@@ -1,7 +1,9 @@
 # NBA moneyline and sportsbook comparison — October 25, 2026
 
-Prepared as a separate branch from current main, independent of PR #142 and the
-account draft. Default NBA calls and football predictions are unchanged.
+Initially prepared as a separate main-based branch. The release candidate also
+incorporates PR #142 to verify their combined behavior; its README conflict was
+resolved by preserving both feature descriptions. The account draft remains
+separate. Default NBA calls and football predictions are unchanged.
 
 The comparison button loads FanDuel, DraftKings and BetMGM moneylines, spreads
 and totals using one on-demand league odds request. The endpoint verifies the
@@ -15,8 +17,10 @@ past tipoff disappear locally, without polling the paid provider. Failed refresh
 retain only still-fresh quotes. Old matchup requests cannot populate the new
 selection. Missing books and markets remain explicit.
 
-Validation: 448 Node tests passed across this independent main-based branch;
-17 focused NBA odds/client checks passed. Headless Chromium fixture checks
+Validation: the initial main-based branch passed 448 Node tests and 17 focused
+NBA odds/client checks. The combined #142 + #143 candidate passed all 462 Node
+tests with zero failures. Desktop and phone fixture checks were repeated on
+the combined candidate. Headless Chromium fixture checks
 loaded the actual application HTML, CSS and scripts at 1280px and 390px widths.
 The comparison rendered with no page-level horizontal overflow; its table
 scrolls within its panel. Screenshots were inspected and timestamps compacted

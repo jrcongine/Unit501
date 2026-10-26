@@ -88,6 +88,48 @@ The 16-box paid API conservation cap is unchanged. nflverse supplies the
 dataset as-is and does not sponsor or endorse UNIT 501. Data license and upstream
 rights for commercial distribution should be reviewed separately before sale.
 
+## Around the League: current power board & headlines (five sports)
+
+UNIT 501's existing pages include a league-wide **Power Rankings & Headlines**
+section directly **after the game slate** (not a separate tab). Loading the
+football slate selects **NFL** or **college football (FBS)**; loading the NBA
+slate selects **NBA**. The league selector in the same panel also covers
+**MLB** and **NHL**, and selecting those sports in the existing War Room pick
+feed loads their league pulse on the same football page. The selected football
+or NBA teams' overall ranks also appear at the top of Game Lab.
+
+Power rankings are an **original, experimental UNIT 501 Power Index**, not
+official ESPN/league rankings. This displays full 32-team NFL/NHL, 30-team
+NBA/MLB and 138-verified-program 2026 FBS season boards when the current
+standings are complete and consistent. Rankings use 55% season win/points
+percentage and 45% season scoring margin normalized by sport-specific
+scales; these are simple **descriptive** measures, not an adjusted
+strength-of-schedule, injury or wagering prediction model. NHL results
+account for overtime standings points. The layout separates **Top 10
+Contenders**, a collapsible **Middle of the Pack** and **Bottom 10**.
+The ↑, ↓ and → arrows refer ONLY to the current consecutive win/loss streak
+(2+ for ascending/declining; otherwise steady), **not** a team's actual
+rank change from the previous week. The UI clearly explains this distinction.
+MLB ranks use *regular-season* results and are not postseason power ratings.
+Early-season small samples can be unstable and should not be treated as picks.
+
+Current headlines are sourced from ESPN's public per-sport news metadata,
+displaying only the original headline, source link, publication time and
+a topic label; **the article contents are never republished**. A headline
+about an injury, coach, trade or lineup never automatically becomes an
+official team/player availability status or changes any projection.
+The server caches news for up to 10 minutes and power standings for up to
+15 minutes with no extra paid API-Sports requests. All five leagues can
+show an explicit unavailable state rather than inventing missing rankings,
+news or player impact. An explicitly selected historical game never uses
+these current standings in the scoring or player projection engine.
+
+**Commercial-data review required before public monetization:** Publicly
+reachable ESPN endpoints are *not* proof of rights to redistribute league
+standings or headlines commercially. Verify and obtain the necessary
+license/permission or replace the sources with licensed equivalents before
+promoting this feature into a paid offering. No ESPN endorsement is claimed.
+
 ## Current football extensions
 FanDuel game/prop matching, historical team ranks, roster/injury review, NFL/FBS production ratings and confirmed replacement scenarios, venue/wind scenarios, season/usage prop projections and historical replay. See the audit for remaining work.
 
@@ -285,3 +327,35 @@ These are bookmaker quotes, not UNIT501 predictions or a recommendation. Market
 source timestamps remain separate, and prices at different spread/total lines
 are never labeled as directly comparable best bets. On phones, the table
 scrolls sideways with the sportsbook name kept visible.
+
+## Outright underdog picks and saved upset history
+
+Football Game Lab now names the projected outright winner, separately identifies
+an underdog projected to win versus one projected to cover while losing, and
+shows both teams' simulated win frequencies. Spread sign identifies the market
+underdog; the spread does not force the score forecast to favor either team.
+Winner classification uses unrounded forecasts, so rounded displayed scores
+can occasionally appear tied despite a small projected edge. Raw ties remain
+separate; calibrated win frequencies condition on non-tied scores. Overtime is
+not modeled. The former manual “Upset” control is labeled “Narrow margin by
+10%”: it preserves the winner and is not an upset detector.
+
+The expandable saved-history summary checks first pregame score snapshots and
+the spread captured with those snapshots. It counts outright underdog picks,
+actual upsets, called/missed upsets, unsuccessful upset picks, final ties and
+pending outcomes. Leagues, seasons and archived model versions remain separate.
+Selected wagers and player props are excluded, as are duplicate games, invalid
+or late forecasts, missing lines and pick’em lines. A cover-only projection
+never counts as an outright upset pick. Results must already be matched in the
+browser archive; this display starts no new provider polling. No complete-season
+or lifetime upset record can be inferred from missing browser history, and an
+entered spread is not authenticated as the sportsbook closing line.
+
+Player workload scenarios support 0–200% of the recorded projection baseline.
+100% preserves that baseline; 125%, 150% and 200% are explicit larger-role
+scenarios for reviewing new starters or increased usage. They scale only the
+selected player's props, remain manual, and do not redistribute teammates'
+workload or change team scores. Scenarios reset when changing matchups, remain
+separate per player, and are excluded from the automatic research queue when
+not at 100%. Confirmed replacement transfers are applied first; adding another
+increase for that same transferred work can double-count it.

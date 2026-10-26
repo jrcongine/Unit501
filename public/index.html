@@ -76,6 +76,7 @@
 </div>
 <p class="war-muted">Covers, WagerTalk, Boyd's Bets and Pickswise public selections are checked automatically for NFL, college football and MLB. Only explicit selections are shown; any unverified analyst or kickoff is labeled as such. A missing feed does not count as a pick. Source prices are not live FanDuel quotes. This feed covers the selected league, not just your Game Lab matchup. No automatic board votes.</p>
 <p id="war-feed-status" role="status" aria-live="polite">Open the War Room to load public picks.</p>
+<p class="war-muted"><a href="#league-pulse">View that league’s overall power rankings and current headlines below the slate</a> · NFL, college football, NBA, MLB and NHL, without changing pages.</p>
 <div id="war-feed" class="war-feed-grid"></div>
 <nav class="war-sources" aria-label="Outside handicapper sources">
 <a href="https://www.covers.com/picks" target="_blank" rel="noopener noreferrer">Covers ↗</a>
@@ -108,11 +109,25 @@
 
 <div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
 <section id="games" class="grid" aria-label="Available matchups"></section>
+<section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
+  <div class="league-pulse-heading">
+    <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
+    <div class="league-pulse-actions"><label for="league-pulse-league">League
+      <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
+      </label><button id="league-pulse-refresh" type="button">Refresh updates</button></div>
+  </div>
+  <p id="league-pulse-status" role="status" aria-live="polite">Load a slate to see league updates, or choose another league.</p>
+  <div class="league-pulse-columns">
+    <section aria-label="Overall league power index"><h3>League-wide Power Rankings</h3><div id="league-pulse-power"></div></section>
+    <section aria-label="Current league headlines"><h3>📰 Around the League</h3><div id="league-pulse-headlines"></div></section>
+  </div>
+</section>
 
 <section id="lab" class="card hidden">
 
 <span class="section-kicker">02 / RUN THE NUMBERS</span>
 <h2 id="matchup">Game Lab</h2>
+<section id="league-pulse-matchup" class="league-pulse-matchup" aria-label="Selected teams' overall league power ranks"></section>
 
 <div class="inputs">
 
@@ -181,7 +196,7 @@
 <p id="matchup-context-status"></p>
 <section aria-label="Game scenario">
 <label for="gameMode">Game mode</label>
-<select id="gameMode"><option value="normal">Normal 0%</option><option value="upset">Upset −10%</option><option value="primetime">Primetime +10%</option></select>
+<select id="gameMode"><option value="normal">Normal margin</option><option value="upset">Narrow margin by 10% (manual)</option><option value="primetime">Widen margin by 10% (manual)</option></select>
 <p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
 </section>
 <section class="upset-alert-panel" aria-label="Upset Alert"><h3>⚠ Upset Alert</h3>
@@ -212,6 +227,17 @@
 <div><small>Away win</small><b id="win">—</b></div>
 
 </div>
+
+<section class="outcome-summary" aria-label="Outright winner and underdog outlook" aria-live="polite">
+<h3>Outright winner &amp; underdog outlook</h3>
+<p id="outright-pick">Run a simulation to see the projected winner.</p>
+<p id="underdog-outlook">—</p>
+<p id="win-both">—</p>
+<small>Winner uses the unrounded score forecast. An underdog covering the spread is different from winning outright. Simulation frequencies are model estimates; tied scores are separate and overtime is not modeled.</small>
+<details><summary>Has UNIT501 called an upset? Saved forecast history</summary>
+<div id="upset-history">Run a simulation to check saved pregame forecasts.</div>
+</details>
+</section>
 
 <p id="availability-score-status" role="status" style="color:#e8b95b"></p>
 <p id="note"></p>
@@ -255,6 +281,7 @@
 <script src="line-watch.js"></script>
 <script src="market-pulse.js"></script>
 <script src="weather-model.js"></script>
+<script src="league-pulse.js"></script>
 <script src="unit501-shared-ui.js"></script>
 <script src="app.js"></script>
 
