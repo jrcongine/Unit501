@@ -42,6 +42,12 @@
 <div id="nba-book-comparison" class="nba-head-to-head"></div>
 <p class="war-muted">Sportsbook prices, not UNIT501 picks. Comparison loads only when requested and may use additional odds-feed credits. Confirm the exact line and price in your sportsbook.</p>
 </section>
+<section class="nba-model-status" aria-label="NBA official injury report">
+<h3>🏥 NBA injury report</h3><button id="nba-injuries-refresh" type="button">Refresh injuries</button>
+<p id="nba-injuries-status" role="status">Select a game to check injuries.</p>
+<div id="nba-injuries-list" aria-live="polite"></div>
+<a id="nba-official-injuries" href="https://official.nba.com/nba-injury-report-2026-27-season/" target="_blank" rel="noopener noreferrer">Open official NBA report ↗</a>
+</section>
 <section aria-label="NBA pregame team comparison" id="nba-team-context" class="nba-context">
 <h3>Pregame matchup comparison</h3>
 <p class="war-muted">Completed games from the same season stage before this matchup only. Descriptive statistics, not predictions.</p>
@@ -62,7 +68,7 @@
 <div class="nba-lab-grid">
 
 
-<div><h3>Injuries & rotations</h3><p class="nba-disabled">Pending minutes and availability data</p></div>
+<div><h3>Injuries & rotations</h3><p class="nba-disabled">Automatic score and rotation adjustments are pending.</p></div>
 <div><h3>Historical accuracy</h3><p class="nba-disabled">Accuracy not established — team estimates are experimental</p></div>
 </div>
 </details>
