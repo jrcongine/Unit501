@@ -66,6 +66,11 @@ injuryModeChanged();
 // Context flag only. A Sunday kickoff or neutral site does not establish an upset probability.
 function updateUpsetAlert(game) {
   const target=$('upset-alert-status');
+  const panel=$('upset-alert-panel');
+  const title=$('upset-alert-title');
+  // Enabled means the check runs; only an actual context flag turns amber.
+  panel.dataset.alertState='idle';
+  title.textContent='Upset Alert';
   if (!$('upsetAlertEnabled').checked) {
     target.textContent='Upset review alerts OFF. No effect on simulations.';
     return;
@@ -81,6 +86,10 @@ function updateUpsetAlert(game) {
   const neutral=$('venueMode').value==='neutral';
   const flags=[daytimeSunday?'Sunday daytime matchup — check favorites carefully.':'',
     neutral?'Neutral site — standard home-field advantage removed.':''].filter(Boolean);
+  if (flags.length) {
+    panel.dataset.alertState='active';
+    title.textContent='⚠ Upset Alert';
+  }
   target.textContent=flags.length?'⚠ Upset review: '+flags.join(' ')+' No automatic score or upset-probability change.':
     'No Sunday daytime or selected neutral-site flags. No automatic score adjustment.';
 }
@@ -687,6 +696,7 @@ function clearSelection() {
   pulseSplitsSequence++;
   pulseSplits=null;pulseObservations=null;pulseManual=false;
   selected = null;
+  updateUpsetAlert(null);
   $('lab').classList.add('hidden');
   $('player-lab').classList.add('hidden');
   for (const [id, label] of [['quick-lab','🎯 Game Lab · select game'],['quick-player','📊 Player props · select game']]) {
