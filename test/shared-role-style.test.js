@@ -29,3 +29,11 @@ test('warm alert badges use dark high-contrast text and styles are shared with N
  assert.ok(contrast(badge[1],badge[2])>=7,'alert badge must be readable');
  assert.match(nba,/<link rel="stylesheet" href="style\.css">/);
 });
+
+test('visible prop table separates distinct players but keeps their market rows together',()=>{
+ const projections=fs.readFileSync(path.join(__dirname,'../public/predictions.js'),'utf8');
+ assert.match(projections,/let previousPlayerId = null;/);
+ assert.match(projections,/previousPlayerId !== null && row\.record\.id !== previousPlayerId/);
+ assert.match(projections,/tr\.classList\.add\('prop-player-group-start'\)/);
+ assert.match(css,/#saved-line-comparisons tbody tr\.prop-player-group-start > td\{\s*border-top:8px solid #15283d;/);
+});
