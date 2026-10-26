@@ -47,6 +47,13 @@
   }
   const context=el('p','UNIT 501 Power Index · current '+board.season+' season · '+board.teams.length+' teams · '+board.basis,'league-pulse-note');
   const formula=el('p','Calculated from season results and points scored versus points allowed. ↑/↓/→ = win/loss streak momentum, NOT movement in rank. Display only; it does not affect predictions.','league-pulse-explainer');
+  if(data.league==='ncaaf'){
+   power.append(context,formula,
+    group('🏆 Top 25 · FBS Power Index',board.teams.slice(0,25),true),
+    group('26–50 · Next Tier',board.teams.slice(25,50),false),
+    group('51–'+board.teams.length+' · Rest of FBS',board.teams.slice(50),false));
+   return;
+  }
   power.append(context,formula,
    group('🏆 Top 10 · Contenders',board.top,true),
    group('⚔ Middle of the Pack',board.middle,false),
