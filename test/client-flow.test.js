@@ -767,7 +767,7 @@ test('selected-player controls precede comparisons and role reviews highlight ev
  assert.equal(h.nodes.get('player-power-controls').parentNode,controls);
  assert.equal(h.nodes.get('prime-time-enhance').parentNode.parentNode.parentNode,controls);
  const role=h.nodes.get('player-role-review');role.value='primary';await role.dispatchEvent({type:'change'});
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/Primary option.*Your role review/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/WHY HIGHLIGHTED.*Primary option.*Your role review/);
  const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
  assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
  h.nodes.get('player-role-review').value='';await h.nodes.get('player-role-review').dispatchEvent({type:'change'});
@@ -786,7 +786,7 @@ test('prop board automatically highlights a current same-position replacement op
  injuryUsage:{available:true,gameId:game.id,kickoff:game.kickoff,checkedAt:now,league:game.league,season:game.season,rows:[{id:'9',position:'RB',role:'recent regular contributor'}]}}]};
  h.context.Unit501Availability={snapshot:()=>data,assess:()=>({blocked:false,state:'available'}),describe:()=> 'Available'};
  await h.context.document.dispatchEvent({type:'unit501:availability-updated'});
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/Expanded role opportunity.*Regular contributor ruled out/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/WHY HIGHLIGHTED.*Expanded role opportunity.*Regular contributor ruled out/);
  const find=(n,c)=>[...(n.children||[])].flatMap(x=>typeof x==='string'?[]:[...(x.className===c?[x]:[]),...find(x,c)]);
  assert.ok(find(h.nodes.get('saved-line-comparisons'),'prop-role-alert').length>0);
 });
