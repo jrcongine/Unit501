@@ -36,12 +36,15 @@ test('every prop row is separated, including consecutive markets for one player'
  assert.match(css,/#saved-line-comparisons tbody tr \+ tr > td\{\s*border-top:8px solid #15283d;/);
  assert.match(projections,/if\(row\.role\.active\)tr\.className='prop-role-alert'/);
 });
-test('why-highlighted callout has bold red headline, separate blush fill and strong contrast',()=>{
+test('role alert directly names the reason with a bold red heading on blush background',()=>{
  const projections=fs.readFileSync(path.join(__dirname,'../public/predictions.js'),'utf8');
- assert.match(projections,/eyebrow\.textContent='WHY HIGHLIGHTED'/);
+ assert.doesNotMatch(projections,/WHY HIGHLIGHTED|prop-role-why/);
+ assert.match(projections,/label\.textContent=alert\.label/);
+ assert.match(projections,/badge\.append\(label,detail\)/);
  assert.match(projections,/detail\.textContent=alert\.detail/);
- assert.match(css,/\.prop-role-why\{[^}]*background:#921d30;color:#fff;font-size:12px;font-weight:950/);
+ assert.doesNotMatch(css,/\.prop-role-why\{/);
  assert.match(css,/\.prop-role-badge\{[^}]*background:#fff0ec/);
- assert.ok(contrast('#921d30','#ffffff')>=7,'headline needs high contrast');
- assert.ok(contrast('#fff0ec','#192b40')>=7,'reason background needs high contrast');
+ assert.match(css,/\.prop-role-badge strong\{[^}]*color:#8b1e2d;font-size:16px;font-weight:900/);
+ assert.ok(contrast('#fff0ec','#8b1e2d')>=7,'heading should be easy to read');
+ assert.ok(contrast('#fff0ec','#192b40')>=7,'body text should be easy to read');
 });

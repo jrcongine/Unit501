@@ -311,9 +311,8 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 }
 /* A warm blush callout distinguishes the REASON from the ivory table row.
    White-on-dark-red title stays readable, without coloring the whole row red. */
-.prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:9px;border:2px solid #c66b78;border-radius:9px;background:#fff0ec;min-width:180px;max-width:250px;display:grid;gap:5px;box-shadow:inset 4px 0 #921d30}
-.prop-role-why{display:inline-block;justify-self:start;padding:5px 8px;border-radius:5px;background:#921d30;color:#fff;font-size:12px;font-weight:950;letter-spacing:.05em;line-height:1.2}
-.prop-role-badge strong{display:block;color:#8b1e2d;font-size:15px;font-weight:900;line-height:1.25}
+.prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:10px;border:2px solid #c66b78;border-radius:9px;background:#fff0ec;min-width:180px;max-width:250px;display:grid;gap:6px;box-shadow:inset 4px 0 #921d30}
+.prop-role-badge strong{display:block;color:#8b1e2d;font-size:16px;font-weight:900;line-height:1.25}
 .prop-role-detail{display:block;color:#20364b;font-size:12px;line-height:1.45}
 
 
