@@ -33,7 +33,8 @@ test('warm alert badges use dark high-contrast text and styles are shared with N
 test('every prop row is separated, including consecutive markets for one player',()=>{
  const projections=fs.readFileSync(path.join(__dirname,'../public/predictions.js'),'utf8');
  assert.doesNotMatch(projections,/let previousPlayerId = null;/);
- assert.match(css,/#saved-line-comparisons tbody tr \+ tr > td\{\s*border-top:8px solid #15283d;/);
+ assert.match(css,/#saved-line-comparisons tbody td\{border-bottom:0 !important\}/);
+ assert.match(css,/#saved-line-comparisons tbody tr \+ tr > td\{border-top:5px solid #15283d !important\}/);
  assert.match(projections,/if\(row\.role\.active\)tr\.className='prop-role-alert'/);
 });
 test('role alert directly names the reason with a bold red heading on blush background',()=>{
