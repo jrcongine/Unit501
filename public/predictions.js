@@ -131,10 +131,13 @@
   }
   function roleBadges(parent,role){
     for(const alert of role.alerts){
-      const badge=document.createElement('p');badge.className='prop-role-badge';
+      const badge=document.createElement('div');badge.className='prop-role-badge';
+      const eyebrow=document.createElement('span');
+      eyebrow.className='prop-role-why';eyebrow.textContent='WHY HIGHLIGHTED';
       const label=document.createElement('strong');label.textContent=alert.label;
-      const detail=document.createElement('span');detail.textContent=' — '+alert.detail;
-      badge.append(label,detail);parent.append(badge);
+      const detail=document.createElement('span');
+      detail.className='prop-role-detail';detail.textContent=alert.detail;
+      badge.append(eyebrow,label,detail);parent.append(badge);
     }
   }
   function renderComparisons() {
