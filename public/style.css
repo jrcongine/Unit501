@@ -309,10 +309,12 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 #saved-line-comparisons tbody tr + tr > td{
   border-top:8px solid #15283d;
 }
-.prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:8px 9px;border:1px solid #d4b24c;border-radius:8px;background:#fffdf4;min-width:180px;max-width:250px;display:grid;gap:4px}
-.prop-role-why{display:inline-block;justify-self:start;padding:3px 7px;border-radius:5px;background:#18384f;color:#fff;font-size:10px;font-weight:900;letter-spacing:.075em;line-height:1.25}
-.prop-role-badge strong{display:block;color:#59430b;font-size:14px;line-height:1.2}
-.prop-role-detail{display:block;color:#20364b;font-size:12px;line-height:1.4}
+/* A warm blush callout distinguishes the REASON from the ivory table row.
+   White-on-dark-red title stays readable, without coloring the whole row red. */
+.prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:9px;border:2px solid #c66b78;border-radius:9px;background:#fff0ec;min-width:180px;max-width:250px;display:grid;gap:5px;box-shadow:inset 4px 0 #921d30}
+.prop-role-why{display:inline-block;justify-self:start;padding:5px 8px;border-radius:5px;background:#921d30;color:#fff;font-size:12px;font-weight:950;letter-spacing:.05em;line-height:1.2}
+.prop-role-badge strong{display:block;color:#8b1e2d;font-size:15px;font-weight:900;line-height:1.25}
+.prop-role-detail{display:block;color:#20364b;font-size:12px;line-height:1.45}
 
 
 /* Embedded five-league UNIT 501 Pulse: on the slate, never a separate tab. */
