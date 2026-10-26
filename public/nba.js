@@ -21,7 +21,18 @@
  let activeContext=null;
  const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
  const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
+ function renderProjection(){
+  const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
+  detail.textContent='';
+  if(!activeContext){output.textContent='Estimate unavailable until matching team history loads.';return;}
+  const {game,data}=activeContext;
+  const result=window.Unit501NBAModel.project(game,data,formWindow.value);
+  if(!result.available){output.textContent=result.reason;return;}
+  output.textContent=game.away+' '+result.away.toFixed(1)+' · '+game.home+' '+result.home.toFixed(1)+' | Total '+result.total.toFixed(1)+' | '+game.home+' spread '+signed(result.homeSpread);
+  detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation;
+ }
  function renderHeadToHead(){
+  renderProjection();
   headToHead.replaceChildren();
   if(!activeContext)return;
   const {data,game}=activeContext;
@@ -87,6 +98,7 @@
  async function loadContext(game){
   const token=++contextRequest;
   comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
+  renderProjection();
   contextStatus.textContent='Checking earlier NBA team scores…';
   try{
    const query=new URLSearchParams({date:dateInput.value,game:String(game.id)});
@@ -106,6 +118,7 @@
   }catch{
    if(token!==contextRequest)return;
    comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
+   renderProjection();
    contextStatus.textContent='NBA team history unavailable from the selected source; no projections were generated.';
   }
  }
@@ -116,7 +129,7 @@ function choose(game){
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
    formWindow.value='recent5';
-   byId('nba-prediction').textContent='Unavailable: no validated NBA score model yet.';
+   byId('nba-prediction-detail').textContent='';
    loadContext(game);
    lab.classList.remove('hidden');
    players.classList.remove('hidden');
@@ -148,7 +161,7 @@ function choose(game){
    }
    if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:'nba'}}));
    status.textContent=data.games.length+' NBA game(s) loaded · updated '+new Date(data.checkedAt).toLocaleTimeString()+
-    '. '+(data.source||'NBA feed')+(data.fallback?' (fallback)':'')+' · NBA projections are not active.';
+    '. '+(data.source||'NBA feed')+(data.fallback?' (fallback)':'')+' · Experimental team estimates available with sufficient history.';
   }catch(error){
    if(serial!==request)return;
    games.replaceChildren();
@@ -165,6 +178,8 @@ function choose(game){
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});
  });
+ // Withdraw pregame estimates at tipoff without another provider call.
+ setInterval(renderProjection,30000);
  // Monitoring is explicitly enabled and only runs while this page is visible.
  const alertToggle=byId('nba-alert-enable'),alertStatus=byId('nba-alert-status'),alertList=byId('nba-alert-list');
  const track=window.Unit501NBAAlerts.createTracker();

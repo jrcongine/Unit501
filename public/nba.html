@@ -5,7 +5,7 @@
 <nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
 <section class="card nba-intro"><h2>NBA matchup dashboard</h2>
-<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed; Unit 501 projections are not active yet.</p>
+<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed. Experimental team score estimates use the selected scoring-history window. Player projections are still pending.</p>
 <p>Choose a game to compare both teams. Missing data stays unavailable; small samples are labeled.</p></section>
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
@@ -52,12 +52,15 @@
 <p class="war-muted">Rest uses Central calendar dates and completed same-stage games. It does not measure travel, player minutes or lineup availability. History is the provider's returned sample; full schedule coverage is not independently verified.</p>
 <div id="nba-team-comparison" class="nba-comparison"></div>
 </section>
-<details class="nba-model-status"><summary>Model & market status</summary>
+<section class="nba-model-status" aria-label="Experimental NBA team projection"><h3>UNIT 501 · Experimental score estimate</h3>
+<p id="nba-prediction" role="status" aria-live="polite">Choose a matchup to estimate its score.</p>
+<p id="nba-prediction-detail" class="war-muted"></p></section>
+<details class="nba-model-status"><summary>Player model & accuracy status</summary>
 <div class="nba-lab-grid">
-<div><h3>Projected score</h3><p id="nba-prediction" class="nba-disabled">Not available — NBA model not calibrated</p></div>
+
 
 <div><h3>Injuries & rotations</h3><p class="nba-disabled">Pending minutes and availability data</p></div>
-<div><h3>Historical accuracy</h3><p class="nba-disabled">Requires archived pregame NBA predictions</p></div>
+<div><h3>Historical accuracy</h3><p class="nba-disabled">Accuracy not established — team estimates are experimental</p></div>
 </div>
 </details>
 <button id="nba-clear" type="button" class="war-secondary">Back to NBA slate</button>
@@ -73,4 +76,4 @@
 <p class="war-muted">Quotes must have paired Over/Under lines and source updates within 30 minutes. Loading props uses the odds feed; filters reuse loaded quotes. Missing markets stay unavailable.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>
+</main><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba.js"></script><script src="nba-markets.js"></script></body></html>

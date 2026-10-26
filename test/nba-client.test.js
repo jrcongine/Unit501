@@ -24,7 +24,7 @@ function harness(){
  {id:900,away:'Cleveland Cavaliers',awayId:7,home:'Boston Celtics',homeId:8,tipoff:'2026-10-24T23:30:00Z',stage:2,status:'Scheduled',awayScore:null,homeScore:null}];
  const history=(id,other,count)=>Array.from({length:count},(_,i)=>({id:id*100+i,stage:2,season:2026,league:'standard',date:{start:`2026-10-${String(10+i).padStart(2,'0')}T23:00:00Z`},status:{short:3},teams:{visitors:{id,name:'Team'},home:{id:other,name:'Opponent'}},scores:{visitors:{points:100+i},home:{points:90}}}));
  const data=g=>({gameId:g.id,away:{...summarize(history(g.awayId,19,7),g.awayId,g),name:g.away},home:{...summarize(history(g.homeId,20,2),g.homeId,g),name:g.home},message:'Historical comparison'});
- const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:()=>1,clearTimeout(){}};
+ const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:()=>1,setInterval:()=>1,clearTimeout(){}};
  context.CustomEvent=class{constructor(type,options={}){this.type=type;this.detail=options.detail;}};
  context.Event=class{constructor(type){this.type=type;}};
  context.window=context;
@@ -45,7 +45,7 @@ function harness(){
   return {ok:true,json:async()=>u.pathname==='/api/nba/games'?{games,checkedAt:new Date().toISOString()}:data(games.find(g=>g.id===Number(u.searchParams.get('game'))))};
  };
  vm.createContext(context);
- for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
+ for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba-model.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const load=async()=>{await nodes.get('nba-load').events.click();await settle();};
  const choose=async i=>{nodes.get('nba-games').children[i].events.click();await settle();await settle();};
@@ -93,4 +93,27 @@ test('NBA context failures clear old numbers and preserve an explicit unavailabl
  assert.equal(h.nodes.get('nba-team-comparison').textContent,'');
  assert.match(h.nodes.get('nba-team-context-status').textContent,/unavailable/);
  h.nodes.get('nba-form-window').events.change();assert.equal(h.nodes.get('nba-head-to-head').textContent,'');
+});
+
+test('NBA estimates render selected-window scores, clear on switch, and reject late history',async()=>{
+ const h=harness();
+ for(const g of h.games){g.tipoff=new Date(Date.now()+86400000).toISOString();g.statusCode=1;}
+ const old=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(!String(url).startsWith('/api/nba/context'))return old(url);
+  const g=h.games.find(g=>String(url).includes('game='+g.id));
+  const data=h.data(g);Object.assign(data,{tipoff:g.tipoff,stage:g.stage});
+  for(const [side,id] of [[data.away,g.awayId],[data.home,g.homeId]]){
+   side.id=id;side.season={games:10,pointsFor:120,pointsAgainst:100};
+   side.recent5={games:5,pointsFor:110,pointsAgainst:100};
+  }
+  return {ok:true,json:async()=>data};
+ };
+ await h.load();await h.choose(0);
+ assert.match(h.nodes.get('nba-prediction').textContent,/Chicago Bulls 105.0.*Total 210.0/);
+ const calls=h.requests.length;h.nodes.get('nba-form-window').value='season';h.nodes.get('nba-form-window').events.change();
+ assert.match(h.nodes.get('nba-prediction').textContent,/Total 220.0/);assert.equal(h.requests.length,calls);
+ h.context.fetch=async()=>({ok:false,json:async()=>({})});await h.choose(1);
+ assert.doesNotMatch(h.nodes.get('nba-prediction').textContent,/220.0|Chicago/);
+ assert.equal(h.nodes.get('nba-prediction-detail').textContent,'');
 });

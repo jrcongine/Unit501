@@ -53,12 +53,12 @@ test('both sport pages load one shared UI helper; football simulation remains sp
  const football=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
  const basketball=fs.readFileSync(path.join(__dirname,'../public/nba.js'),'utf8');
  assert.match(base,/<script src="unit501-shared-ui.js"><\/script>\s*<script src="app.js"><\/script>/);
- assert.match(nba,/<script src="unit501-shared-ui.js"><\/script><script src="nba-alerts.js"><\/script><script src="nba.js"><\/script>/);
+ assert.match(nba,/<script src="unit501-shared-ui.js"><\/script><script src="nba-alerts.js"><\/script><script src="nba-model.js"><\/script><script src="nba.js"><\/script>/);
  assert.match(football,/Unit501SharedUI\.gameCard/);
  assert.match(basketball,/shared\.gameCard/);
  assert.match(nba,/id="nba-lab"/);
  assert.match(nba,/id="nba-player-lab"/);
- assert.match(nba,/no validated NBA score model yet|NBA model not calibrated/);
+ assert.match(nba,/Experimental score estimate/);
  assert.doesNotMatch(basketball,/Unit501TeamModel\.project/);
  assert.doesNotMatch(nba,/<option value="1">NFL<\/option>/);
 });
