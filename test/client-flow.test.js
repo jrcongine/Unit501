@@ -876,3 +876,34 @@ test('college board opens Top 25, collapses the remaining FBS tiers and retains 
  h.run(`$("league").value="2"; choose(parseGame(${JSON.stringify(g)}))`);await h.settle();
  assert.match(h.nodes.get('league-pulse-matchup').textContent,/#138 of 138/);
 });
+
+test('college rankings explain verified schedule strength and explicitly label unadjusted fallback',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ const request=h.context.fetch;let adjusted=true;
+ h.context.fetch=async url=>{
+  const response=await request(url);
+  if(!String(url).startsWith('/api/league-pulse'))return response;
+  const data=await response.json();
+  if(adjusted){
+   data.power.provider='API-Sports results / ESPN standings';
+   data.power.explanation='FBS wins and losses adjusted for opponent strength. The index is not a win probability.';
+   data.power.scheduleAdjustment={applied:true};
+   data.power.teams.forEach((t,i)=>{t.scheduleRank=i+1;t.fbsRecord='4-2';});
+  }else{
+   data.power.basis='Unadjusted record/scoring-margin index';
+   data.power.scheduleAdjustment={applied:false,reason:'Season results and standings do not yet agree.'};
+  }
+  return {ok:true,json:async()=>data};
+ };
+ await h.run('Unit501LeaguePulse.show("ncaaf")');
+ assert.match(h.nodes.get('league-pulse-power').textContent,/opponent strength.*not a win probability/);
+ assert.match(h.nodes.get('league-pulse-power').textContent,/FBS 4-2 · schedule #1/);
+ assert.match(h.nodes.get('league-pulse-status').textContent,/API-Sports results/);
+ const g=structuredClone(h.game);g.league.id=2;
+ h.run(`$("league").value="2"; choose(parseGame(${JSON.stringify(g)}))`);await h.settle();
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/FBS 4-2 · schedule #1/);
+ adjusted=false;await h.run('Unit501LeaguePulse.show("ncaaf")');
+ assert.match(h.nodes.get('league-pulse-power').textContent,/Unadjusted record\/scoring-margin index/);
+ assert.match(h.nodes.get('league-pulse-power').textContent,/do not yet agree/);
+ assert.doesNotMatch(h.nodes.get('league-pulse-power').textContent,/FBS 4-2 · schedule/);
+});

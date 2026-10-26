@@ -86,7 +86,7 @@ function buildPowerBoard(raw,league,year,at){
   const record=league==='nhl'?wins+'-'+losses+'-'+ot:wins+'-'+losses+(ties?'-'+ties:'');
   teams.set(id,{id,name:key,providerName:name,record,games:played,wins,losses,margin:+margin.toFixed(2),
     score,trend,trendLabel,streak:Number.isInteger(streak)?streak:0,
-    streakLabel:String(textStat(stats,'streak')).slice(0,10),diff});
+    streakLabel:String(textStat(stats,'streak')).slice(0,10),diff,pointsFor,pointsAgainst});
  }
  if(teams.size!==config.teams)return null;
  const sorted=[...teams.values()].sort((a,b)=>b.score-a.score||b.margin-a.margin||b.wins-a.wins||a.name.localeCompare(b.name));
@@ -122,7 +122,7 @@ function parseHeadlines(data,league,now){
  }
  return articles.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,8);
 }
-function createLeaguePulse({request,now=Date.now,ttl=15*60000}={}){
+function createLeaguePulse({request,collegeSchedule,now=Date.now,ttl=15*60000}={}){
  const fetchJSON=request||(async url=>{
   const response=await fetch(url,{signal:AbortSignal.timeout(12000),headers:{Accept:'application/json'}});
   if(!response.ok)throw Error('Public source unavailable');
@@ -131,14 +131,14 @@ function createLeaguePulse({request,now=Date.now,ttl=15*60000}={}){
   return response.json();
  });
  const cache=new Map();
- async function resource(key,url,format,age){
+ async function resource(key,url,format,age,fetcher=fetchJSON,retryDelay=Math.min(60000,age)){
   const last=cache.get(key),current=now();
   if(last&&current-last.at<age)return last.pending;
   const item={at:current};
-  item.pending=Promise.resolve().then(()=>fetchJSON(url)).then(data=>format(data,current)).catch(()=>{
-   // Permit a retry after one minute when an external source fails;
-   // do not serve an old snapshot as if it were current.
-   item.at=now()-age+Math.min(60000,age);
+  item.pending=Promise.resolve().then(()=>fetcher(url)).then(data=>format(data,current)).catch(()=>{
+   // Public sources retry after one minute; the metered college schedule
+   // waits its full cache interval. Never relabel an old snapshot as current.
+   item.at=now()-age+retryDelay;
    return null;
   });
   cache.set(key,item);
@@ -155,8 +155,19 @@ function createLeaguePulse({request,now=Date.now,ttl=15*60000}={}){
    resource('power:'+league+':'+year,standingsURL,(data,when)=>buildPowerBoard(data,league,year,when),ttl),
    resource('news:'+league,headlinesURL,(data,when)=>parseHeadlines(data,league,when),Math.min(ttl,10*60000))
   ]);
+  let board=power;
+  if(league==='ncaaf'&&power?.available){
+   const result=typeof collegeSchedule==='function'&&String(year)===fbs.season?await resource('college-results:'+year,String(year),data=>{
+    if(!Array.isArray(data?.response)||(data.errors&&Object.keys(data.errors).length)||Number(data.paging?.total||1)>1)throw Error('Incomplete season results');
+    return data;
+   },ttl,()=>collegeSchedule(year),ttl):null;
+   const adjusted=result?require('./college-strength').buildCollegeStrength(power,result,now()):
+    {available:false,reason:'Schedule-adjusted results are unavailable; the record/scoring-margin index is unadjusted.'};
+   board=adjusted.available?adjusted.board:{...power,scheduleAdjustment:{applied:false,reason:adjusted.reason},
+    basis:'Unadjusted record/scoring-margin index; schedule strength is not verified. Display only, not a betting projection.'};
+  }
   return {league,name:config.name,season:year,checkedAt:new Date(now()).toISOString(),
-   power:power||{available:false,message:'League-wide verified standings are unavailable. No overall ranking was invented.'},
+   power:board||{available:false,message:'League-wide verified standings are unavailable. No overall ranking was invented.'},
    headlines:{available:Array.isArray(news)&&news.length>0,items:Array.isArray(news)?news:[],
     source:'ESPN',message:Array.isArray(news)&&news.length?'Article headlines and original links only. Read the source before acting on reports.':'Current league headlines could not be verified.'}};
  };

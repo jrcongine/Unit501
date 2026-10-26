@@ -101,17 +101,19 @@ or NBA teams' overall ranks also appear at the top of Game Lab.
 Power rankings are an **original, experimental UNIT 501 Power Index**, not
 official ESPN/league rankings. This displays full 32-team NFL/NHL, 30-team
 NBA/MLB and 138-verified-program 2026 FBS season boards when the current
-standings are complete and consistent. Rankings use 55% season win/points
-percentage and 45% season scoring margin normalized by sport-specific
-scales; these are simple **descriptive** measures, not an adjusted
-strength-of-schedule, injury or wagering prediction model. NHL results
+standings are complete and consistent. Pro-league boards and the explicitly
+unadjusted college fallback use 55% season win/points percentage and 45%
+season scoring margin normalized by sport-specific scales. The college
+schedule-strength candidate described below instead uses verified FBS results
+and opponent strength. These are **descriptive** measures, not injury or
+wagering prediction models. NHL results
 account for overtime standings points. The layout separates **Top 10
 Contenders**, a collapsible **Middle of the Pack** and **Bottom 10** for pro
 leagues. College football opens **Top 25 · FBS Power Index** by default, with
 collapsed **26–50 · Next Tier** and **51–138 · Rest of FBS** sections. All FBS
 teams retain their overall ranks for selected matchups in Game Lab. This is a
-layout change; the underlying record/scoring-margin index still does not adjust
-for schedule strength and is not the AP or CFP poll.
+layout change and is not the AP or CFP poll. The schedule-strength candidate
+below applies only when all of its source-completeness gates pass.
 The ↑, ↓ and → arrows refer ONLY to the current consecutive win/loss streak
 (2+ for ascending/declining; otherwise steady), **not** a team's actual
 rank change from the previous week. The UI clearly explains this distinction.
@@ -124,7 +126,9 @@ a topic label; **the article contents are never republished**. A headline
 about an injury, coach, trade or lineup never automatically becomes an
 official team/player availability status or changes any projection.
 The server caches news for up to 10 minutes and power standings for up to
-15 minutes with no extra paid API-Sports requests. All five leagues can
+15 minutes without paid API-Sports requests for those base sources. The
+college strength candidate additionally uses one metered season schedule per
+15-minute college cache. All five leagues can
 show an explicit unavailable state rather than inventing missing rankings,
 news or player impact. An explicitly selected historical game never uses
 these current standings in the scoring or player projection engine.
@@ -364,3 +368,24 @@ workload or change team scores. Scenarios reset when changing matchups, remain
 separate per player, and are excluded from the automatic research queue when
 not at 100%. Confirmed replacement transfers are applied first; adding another
 increase for that same transferred work can double-count it.
+
+## College schedule-strength candidate
+
+When complete current-season results reconcile with the standings for all 138
+FBS programs, college Power Index uses FBS wins/losses adjusted jointly for
+opponent strength. It applies equal priors and an explicit ridge penalty of 1,
+without a scoring-margin bonus, school/conference offsets, injuries or home
+advantage. FCS games remain in the displayed overall record but are excluded
+from the rating. Each team also shows its FBS-only record and played-schedule
+rank. This experimental results index is not an official poll or win probability
+and does not alter any score or player-prop projection.
+
+The adjustment requires two FBS games per team, a connected FBS schedule, and
+exact game-count/record/point-differential agreement between the existing
+API-Sports season schedule and ESPN standings. It reuses the football meter
+and shared schedule cache, with at most one extra season request per 15-minute
+college cache; failures wait the same full interval. No player/box-score calls
+are added. Failed or incomplete verification preserves an explicitly labeled
+**unadjusted** record/margin board. Current live college coverage and predictive
+improvement remain unverified. Method, evidence and limitations are documented
+in `docs/college-strength-candidate-2026-10-25.md`.
