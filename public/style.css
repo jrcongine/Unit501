@@ -160,6 +160,20 @@ input[type=checkbox],input[type=radio]{min-height:18px;width:19px;height:19px;ac
 #lab details>summary::after,#player-lab details>summary::after{content:"＋";float:right;font-weight:900;color:#fff;padding-left:8px}
 #lab details[open]>summary::after,#player-lab details[open]>summary::after{content:"−"}
 #lab details[open]>summary,#player-lab details[open]>summary{background:#214158;border-bottom:1px solid #42657a}
+/* White top-level injury/roster headline bars with dark text, in both states. */
+#lab #injury-scoring-panel>summary,
+#lab #maintenance-panel>summary,
+#lab #injury-scoring-panel[open]>summary,
+#lab #maintenance-panel[open]>summary{
+  background:linear-gradient(100deg,#ffffff,#edf2f7);
+  color:#152332;
+  font-weight:900;
+  border-bottom-color:#cbd5e1;
+}
+#lab #injury-scoring-panel>summary::after,
+#lab #maintenance-panel>summary::after{
+  color:#152332;
+}
 #lab>details> :not(summary),#player-lab>details> :not(summary){margin-left:15px;margin-right:15px}
 #lab>details>div,#player-lab>details>div{padding:8px 0 12px}
 #lab>p,#player-lab>p{color:#c0d0df;line-height:1.55}
