@@ -8,6 +8,7 @@ let latestForecast = null;
 let gameQuotes = null;
 function invalidateSimulation(message) {
   latestForecast=null;
+  $('outright-pick').classList.remove('automatic-upset-pick');
   window.Unit501Availability?.scoring?.(null);
   previewAutomaticInjuries();
   $('availability-score-status').textContent='';
@@ -927,8 +928,9 @@ function sim() {
   $('win').textContent = percent(result.calibrated.win??result.win);
   const outlook=Unit501TeamModel.outcome(prediction,spread);
   const teamName=side=>side==='away'?selected.a:selected.h;
+  $('outright-pick').classList.toggle('automatic-upset-pick',outlook.upset);
   $('outright-pick').textContent=outlook.winner?
-    `UNIT501 projects ${teamName(outlook.winner)} to win outright by ${Math.abs(outlook.margin).toFixed(1)} points${outlook.upset?' — UNDERDOG UPSET PICK':''}.`:
+    `${outlook.upset?'⚠ UPSET ALERT · ':''}UNIT501 projects ${teamName(outlook.winner)} to win outright by ${Math.abs(outlook.margin).toFixed(1)} points${outlook.upset?' — UNDERDOG UPSET PICK':''}.`:
     'Projected scores are tied — no outright winner selected.';
   if(!outlook.underdog){
     $('underdog-outlook').textContent='Pick’em line — neither team is a spread underdog.';

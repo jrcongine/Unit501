@@ -13,7 +13,9 @@
  const fresh=at=>Number.isFinite(at)&&at<=Date.now()+60000&&Date.now()-at<=1800000&&selected&&Date.parse(selected.tipoff)>Date.now();
  function card(title,lines,at){const c=node('section','', 'nba-quote-card');c.append(node('h4',title));for(const line of lines)c.append(node('p',line));if(at)c.append(node('small','Source update: '+ui.timeCentral(new Date(at).toISOString())));gameBoard.append(c);}
  function renderGames(){
-  gameBoard.replaceChildren();if(!selected||!quotes)return;
+  gameBoard.replaceChildren();
+  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
+  if(!selected||!quotes)return;
   const s=quotes.spread,t=quotes.total;
   if(s&&fresh(s.updatedAt))card('Spread',[selected.away+' '+signed(s.away)+' ('+signed(s.awayPrice)+')',selected.home+' '+signed(s.home)+' ('+signed(s.homePrice)+')'],s.updatedAt);
   else card('Spread',['No current paired spread available. Refresh game lines.']);
@@ -106,9 +108,14 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){sequence++;selected=null;quotes=null;props=null;comparison=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
+ function clear(){sequence++;selected=null;quotes=null;
+ if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
+ props=null;comparison=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
- root.Unit501NBAMarkets={clear,select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;compare.disabled=false;compareStatus.textContent='Click Compare to check FanDuel, DraftKings and BetMGM; no comparison request has been made yet.';propStatus.textContent='Click Load FanDuel player props for points, rebounds, assists and threes. No player-stat projections yet.';load('game');tick();}};
+ root.Unit501NBAMarkets={clear,spreadFor(game){
+  const s=quotes?.spread;
+  return selected&&String(selected.id)===String(game.id)&&selected.tipoff===game.tipoff&&s&&fresh(s.updatedAt)&&Number.isFinite(s.away)&&Number.isFinite(s.home)&&Math.abs(s.away+s.home)<1e-9?s.away:null;
+ },select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;compare.disabled=false;compareStatus.textContent='Click Compare to check FanDuel, DraftKings and BetMGM; no comparison request has been made yet.';propStatus.textContent='Click Load FanDuel player props for points, rebounds, assists and threes. No player-stat projections yet.';load('game');tick();}};
  refresh.addEventListener('click',()=>load('game'));loadProps.addEventListener('click',()=>load('props'));
  market.addEventListener('change',renderProps);search.addEventListener('input',renderProps);
  compare.addEventListener('click',loadComparison);

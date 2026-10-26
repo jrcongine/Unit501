@@ -24,11 +24,18 @@
  function renderProjection(){
   const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
   detail.textContent='';
+  const alert=byId('nba-upset-pick');alert.hidden=true;alert.textContent='';
   if(!activeContext){output.textContent='Estimate unavailable until matching team history loads.';return;}
   const {game,data}=activeContext;
   const result=window.Unit501NBAModel.project(game,data,formWindow.value);
   if(!result.available){output.textContent=result.reason;return;}
   output.textContent=game.away+' '+result.away.toFixed(1)+' · '+game.home+' '+result.home.toFixed(1)+' | Total '+result.total.toFixed(1)+' | '+game.home+' spread '+signed(result.homeSpread);
+  const line=window.Unit501NBAMarkets?.spreadFor?.(game);
+  const outlook=shared.upsetOutlook(result,line);
+  if(outlook?.upset){
+   alert.hidden=false;alert.className='automatic-upset-pick';
+   alert.textContent='⚠ UPSET ALERT · '+(outlook.winner==='away'?game.away:game.home)+' projected to win outright as the spread underdog.';
+  }
   detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation;
  }
  function renderHeadToHead(){
@@ -178,6 +185,7 @@ function choose(game){
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
    games.scrollIntoView?.({behavior:'smooth',block:'start'});
  });
+ document.addEventListener('unit501:nba-lines-updated',renderProjection);
  // Withdraw pregame estimates at tipoff without another provider call.
  setInterval(renderProjection,30000);
  // Monitoring is explicitly enabled and only runs while this page is visible.

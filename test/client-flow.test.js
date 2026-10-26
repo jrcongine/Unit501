@@ -8,7 +8,7 @@ const path=require('node:path');
 function harness(storage=new Map(),extras=false) {
  const nodes=new Map(),timers=[],created=[];
  class Node {
-  constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};this.dataset={};this.style={};this.validity={badInput:false};this._value='';this._text='';this.isConnected=true;this.classList={add(){},remove(){},toggle(){}};}
+  constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};this.dataset={};this.style={};this.validity={badInput:false};this._value='';this._text='';this.isConnected=true;this.className='';const has=n=>this.className.split(/\s+/).includes(n);const change=(n,yes)=>{const names=new Set(this.className.split(/\s+/).filter(Boolean));yes?names.add(n):names.delete(n);this.className=[...names].join(' ');};this.classList={add:n=>change(n,true),remove:n=>change(n,false),contains:has,toggle:(n,yes)=>change(n,yes??!has(n))};}
   set id(v){this._id=v;nodes.set(v,this);}get id(){return this._id;}
   set value(v){this._value=String(v);}get value(){return this._value;}
   set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(c=>typeof c==='string'?c:c.textContent).join('');}
@@ -797,12 +797,14 @@ test('Game Lab names outright upset picks, separates cover-only, and clears stal
  const h=harness();await h.settle();
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="neutral"; $("spread").value="10.5"; $("total").value="48.5"; $("awayRating").value="4"; $("homeRating").value="0"; sim()');
- assert.match(h.nodes.get('outright-pick').textContent,/Team A to win outright.*UNDERDOG UPSET PICK/);
+ assert.match(h.nodes.get('outright-pick').textContent,/UPSET ALERT.*Team A to win outright.*UNDERDOG UPSET PICK/);
+ assert.equal(h.nodes.get('outright-pick').classList.contains('automatic-upset-pick'),true);
  assert.match(h.nodes.get('underdog-outlook').textContent,/Team A \+10.5: projected to win outright/);
  assert.match(h.nodes.get('win-both').textContent,/Team A win.*Team B win.*tied scores/);
  h.run('$("awayRating").value="-4"; sim()');
  assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright/);
  assert.doesNotMatch(h.nodes.get('outright-pick').textContent,/UPSET PICK/);
+ assert.equal(h.nodes.get('outright-pick').classList.contains('automatic-upset-pick'),false);
  assert.match(h.nodes.get('underdog-outlook').textContent,/cover, but lose outright/);
  h.run('$("spread").value="-10.5"; sim()');
  assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright.*UNDERDOG UPSET PICK/);

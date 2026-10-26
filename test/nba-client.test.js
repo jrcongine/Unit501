@@ -117,3 +117,24 @@ test('NBA estimates render selected-window scores, clear on switch, and reject l
  assert.doesNotMatch(h.nodes.get('nba-prediction').textContent,/220.0|Chicago/);
  assert.equal(h.nodes.get('nba-prediction-detail').textContent,'');
 });
+
+test('NBA upset highlight follows the projected winner and current underdog line automatically',async()=>{
+ const h=harness();await h.load();
+ h.context.Unit501NBAModel.project=()=>({available:true,away:110,home:108,total:218,homeSpread:2,awayGames:6,homeGames:6,explanation:''});
+ let spread=3.5;
+ h.context.Unit501NBAMarkets={select(){},clear(){},spreadFor:()=>spread};
+ await h.choose(0);
+ const alert=h.nodes.get('nba-upset-pick');
+ assert.equal(alert.hidden,false);assert.match(alert.textContent,/UPSET ALERT.*Chicago Bulls.*win outright/);
+ const calls=h.requests.length;
+ spread=-3.5;
+ h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
+ assert.equal(alert.hidden,true);assert.equal(alert.textContent,'');
+ spread=null;
+ h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
+ assert.equal(alert.hidden,true);assert.equal(h.requests.length,calls);
+ h.context.Unit501NBAModel.project=()=>({available:false,reason:'Game started'});
+ spread=3.5;
+ h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
+ assert.equal(alert.hidden,true);
+});
