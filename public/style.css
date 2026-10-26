@@ -296,12 +296,15 @@ a{color:#97e3fc}
 
 .player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
 .player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
-/* Light cream for rows with verified role/usage alerts.
-   Target tbody explicitly so this wins over zebra-striped even rows. */
-tbody tr.prop-role-alert{background:#f6efc8;color:#17283b}
-tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
-tbody tr.prop-role-alert details{color:#25445d !important}
-.prop-role-badge{color:#28384b;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fff8da;min-width:180px}
+/* Shared, high-contrast role/usage highlights for any sport.
+   Keep the TABLE ROW dark, so all data remains readable in the dark UI.
+   Only the compact alert badge uses warm cream, with dark text. */
+tbody tr.prop-role-alert{background:#213b52;color:#f7fafc}
+tbody tr.prop-role-alert td,
+tbody tr.prop-role-alert td label{color:#f7fafc}
+tbody tr.prop-role-alert td:first-child{border-left:4px solid #e4be64}
+tbody tr.prop-role-alert details{color:#f7fafc !important}
+.prop-role-badge{color:#192b40;line-height:1.4;font-size:13px;margin:8px 0;padding:8px;border:1px solid #d4b24c;border-radius:8px;background:#fff4ce;min-width:180px}
 .prop-role-badge strong{display:block;color:#59430b}
 
 
