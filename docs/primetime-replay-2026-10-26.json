@@ -1,0 +1,123 @@
+{
+  "method": "Research replay of existing manual +/-10% margin scenarios, preserving projected totals. NFL regular-season archive 2024 and 2025. Pre-kickoff data at least 24 hours old; first 30 eligible forecasts and same-kickoff peers excluded. Evening = Thursday/Sunday/Monday kickoff 6pm or later Central; Sunday day = Sunday 6am–5:59pm Central. Kickoff-time proxy, not verified TV scheduling. Favorite means model-projected winner, not sportsbook favorite. No betting lines, player prop outcomes, injuries, weather, college or wagering returns.",
+  "results": [
+    {
+      "season": "2024",
+      "evening": {
+        "baseline": {
+          "games": 39,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 6,
+          "closeProjectionBlowouts": 4,
+          "scoreMAE": 7.5346445270497115,
+          "totalMAE": 11.23652071632774,
+          "totalBias": -0.9555559356141282,
+          "marginMAE": 9.378377453952355,
+          "favoriteGames": 39,
+          "favoriteMarginBias": 1.4534736985604495
+        },
+        "scenario": {
+          "games": 39,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 6,
+          "closeProjectionBlowouts": 3,
+          "scoreMAE": 7.545027328599649,
+          "totalMAE": 11.23652071632774,
+          "totalBias": -0.9555559356141282,
+          "marginMAE": 9.480317763450156,
+          "favoriteGames": 39,
+          "favoriteMarginBias": 1.9731800427754702
+        },
+        "modelFavoriteWins": 24,
+        "modelFavoriteLosses": 15
+      },
+      "sundayDay": {
+        "baseline": {
+          "games": 138,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 27,
+          "closeProjectionBlowouts": 18,
+          "scoreMAE": 7.4726947939675155,
+          "totalMAE": 10.433743912195963,
+          "totalBias": -1.8312082589015437,
+          "marginMAE": 10.468077081777675,
+          "favoriteGames": 138,
+          "favoriteMarginBias": -1.4812447490430012
+        },
+        "scenario": {
+          "games": 138,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 27,
+          "closeProjectionBlowouts": 18,
+          "scoreMAE": 7.479767566640512,
+          "totalMAE": 10.433743912195963,
+          "totalBias": -1.8312082589015437,
+          "marginMAE": 10.46326322896417,
+          "favoriteGames": 138,
+          "favoriteMarginBias": -2.0671782451531953
+        },
+        "modelFavoriteWins": 98,
+        "modelFavoriteLosses": 40
+      }
+    },
+    {
+      "season": "2025",
+      "evening": {
+        "baseline": {
+          "games": 44,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 7,
+          "closeProjectionBlowouts": 5,
+          "scoreMAE": 7.358370668612806,
+          "totalMAE": 10.949863615450523,
+          "totalBias": 1.5385030324892943,
+          "marginMAE": 10.422722472805598,
+          "favoriteGames": 44,
+          "favoriteMarginBias": 2.625086385333384
+        },
+        "scenario": {
+          "games": 44,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 7,
+          "closeProjectionBlowouts": 5,
+          "scoreMAE": 7.375295772082282,
+          "totalMAE": 10.949863615450523,
+          "totalBias": 1.5385030324892943,
+          "marginMAE": 10.464994720086157,
+          "favoriteGames": 44,
+          "favoriteMarginBias": 3.055776842048542
+        },
+        "modelFavoriteWins": 24,
+        "modelFavoriteLosses": 20
+      },
+      "sundayDay": {
+        "baseline": {
+          "games": 155,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 32,
+          "closeProjectionBlowouts": 16,
+          "scoreMAE": 7.603684016668388,
+          "totalMAE": 10.491548890229629,
+          "totalBias": 0.10250171104944113,
+          "marginMAE": 10.545411468225748,
+          "favoriteGames": 155,
+          "favoriteMarginBias": -0.4521279265101437
+        },
+        "scenario": {
+          "games": 155,
+          "projectedBlowouts": 0,
+          "actualBlowouts": 32,
+          "closeProjectionBlowouts": 17,
+          "scoreMAE": 7.620745377470584,
+          "totalMAE": 10.491548890229629,
+          "totalBias": 0.10250171104944113,
+          "marginMAE": 10.562725364925956,
+          "favoriteGames": 155,
+          "favoriteMarginBias": -0.9823990048268707
+        },
+        "modelFavoriteWins": 101,
+        "modelFavoriteLosses": 54
+      }
+    }
+  ]
+}
