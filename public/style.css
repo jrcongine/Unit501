@@ -149,7 +149,9 @@ input[type=checkbox],input[type=radio]{min-height:18px;width:19px;height:19px;ac
 .section-heading p{margin:3px 0 0;color:var(--muted);font-size:14px}
 .section-kicker{display:block;font-size:11px;font-weight:900;letter-spacing:.11em;color:#8ddded}
 .game{position:relative;min-height:105px;padding:15px 122px 14px 17px;cursor:pointer;border-left:4px solid #2bb1d2;transition:border-color .16s,background .16s,transform .16s}
-.game b{display:block;font-size:16px;line-height:1.35;color:#effbff}
+/* White matchup header on every shared football/basketball slate card.
+   The existing card body and blue Game Lab action remain dark. */
+.game .game-title{display:block;max-width:100%;padding:10px 13px;border-radius:9px;background:#f7f9fc;color:#152332;font-size:17px;font-weight:900;line-height:1.35;overflow-wrap:anywhere}
 .game p{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.45}
 .game .open-game{position:absolute;right:14px;top:50%;transform:translateY(-50%);padding:7px 10px;border:1px solid #437d96;border-radius:9px;color:#a5edff;background:#14374a;font-size:12px;font-weight:800;white-space:nowrap}
 .game:hover,.game:focus-visible{border-color:#62dbf0;background:#1d3747;transform:translateY(-1px)}
@@ -304,11 +306,10 @@ tbody tr.prop-role-alert td label{color:#13263a}
 tbody tr.prop-role-alert .prop-shortlist-label{color:#13263a;font-weight:850}
 tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
 tbody tr.prop-role-alert details{color:#284057 !important}
-/* Thick navy separator between EVERY prop row, including different
-   stat markets for the same player; no separator above the first row. */
-#saved-line-comparisons tbody tr + tr > td{
-  border-top:8px solid #15283d;
-}
+/* One slimmer separator between every pair of prop rows.
+   Suppress the legacy inline cell-bottom border to prevent double lines. */
+#saved-line-comparisons tbody td{border-bottom:0 !important}
+#saved-line-comparisons tbody tr + tr > td{border-top:5px solid #15283d !important}
 /* A warm blush callout distinguishes the REASON from the ivory table row.
    White-on-dark-red title stays readable, without coloring the whole row red. */
 .prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:10px;border:2px solid #c66b78;border-radius:9px;background:#fff0ec;min-width:180px;max-width:250px;display:grid;gap:6px;box-shadow:inset 4px 0 #921d30}

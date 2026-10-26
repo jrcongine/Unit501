@@ -32,6 +32,8 @@ test('shared cards preserve football and basketball keyboard selection',()=>{
  container.append(gameOne,gameTwo);
  assert.equal(gameOne.children[0].textContent,'Chicago Bears @ Green Bay Packers');
  assert.equal(gameTwo.children[0].textContent,'Chicago Bulls @ Milwaukee Bucks');
+ assert.equal(gameOne.children[0].className,'game-title');
+ assert.equal(gameTwo.children[0].className,'game-title');
  assert.equal(gameOne.attrs.role,'button');
  assert.equal(gameTwo.attrs['aria-pressed'],'false');
  gameOne.handlers.click();
@@ -61,4 +63,13 @@ test('both sport pages load one shared UI helper; football simulation remains sp
  assert.match(nba,/Experimental score estimate/);
  assert.doesNotMatch(basketball,/Unit501TeamModel\.project/);
  assert.doesNotMatch(nba,/<option value="1">NFL<\/option>/);
+});
+
+test('all game cards have white matchup bars with contrasting dark text and clear game details',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../public/style.css'),'utf8');
+ const nbaCss=fs.readFileSync(path.join(__dirname,'../public/nba.css'),'utf8');
+ assert.match(css,/\.game \.game-title\{[^}]*background:#f7f9fc;color:#152332/);
+ assert.match(css,/\.game p\{[^}]*color:var\(--muted\)/);
+ assert.match(css,/\.game \.open-game\{[^}]*background:#14374a/);
+ assert.match(nbaCss,/\.nba-game \.open-game\{[^}]*top:auto;bottom:12px/);
 });

@@ -29,7 +29,7 @@
    if(!doc||!container||typeof onSelect!=='function')throw Error('Game card requires document, container and selection callback');
    const card=doc.createElement('div');
    card.className=cardClass;
-   const title=doc.createElement('b');title.textContent=matchup(away,home);
+   const title=doc.createElement('b');title.className='game-title';title.textContent=matchup(away,home);
    const details=doc.createElement('p');details.textContent=String(detailText||'');
    const action=doc.createElement('span');action.className='open-game';action.textContent=actionLabel;
    action.setAttribute('aria-hidden','true');
