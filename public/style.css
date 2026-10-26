@@ -111,8 +111,21 @@ header>div>small{color:var(--teal)}
 .quick-nav a.nav-player{border-color:#6e589e;background:#302945;color:#e5d6ff}
 .quick-nav a:not(.is-unavailable):hover{transform:translateY(-1px);filter:brightness(1.15)}
 .quick-nav a.is-unavailable{background:#161f2a;border-color:#2b394a;color:#90a1b3;cursor:default;pointer-events:none}
-/* Bright white labels on the three colored shortcuts, including when disabled; keep dark text on white War Room/NBA shortcuts. */
-.quick-nav a.nav-slate,.quick-nav a.nav-lab,.quick-nav a.nav-player{color:#fff}
+/* Match the white War Room/NBA button faces for these three shortcuts too.
+   Keep each shortcut's border accent and preserve disabled click behavior. */
+.quick-nav a.nav-slate,
+.quick-nav a.nav-lab,
+.quick-nav a.nav-player,
+.quick-nav a.nav-slate.is-unavailable,
+.quick-nav a.nav-lab.is-unavailable,
+.quick-nav a.nav-player.is-unavailable{
+  background:#f7f9fc;
+  color:#152332;
+}
+.quick-nav a.nav-slate{border-color:#d3dce7}
+.quick-nav a.nav-slate.is-unavailable,
+.quick-nav a.nav-lab.is-unavailable,
+.quick-nav a.nav-player.is-unavailable{opacity:.65}
 .quick-help{font-size:13px;color:var(--muted);margin:4px 1px 19px}
 .controls{border-left:4px solid var(--teal);background:#15283a}
 .controls>div{min-width:0}
