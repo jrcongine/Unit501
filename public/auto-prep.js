@@ -12,11 +12,11 @@
  autoLabel.append(automatic,' Prepare projections and simulation when I select a game');
  const ratingsLabel=document.createElement('label');
  const ratings=document.createElement('input');ratings.type='checkbox';ratings.checked=false;ratings.id='auto-prep-ratings';
- ratingsLabel.append(ratings,' Also build league-wide player ratings (slower; requires many reports)');
+ ratingsLabel.append(ratings,' Build Full League Rankings');
  const start=document.createElement('button');start.type='button';start.id='auto-prep-now';start.textContent='Prepare selected game now';
  const status=document.createElement('p');status.id='auto-prep-status';status.setAttribute('role','status');
  const help=document.createElement('p');help.textContent='FanDuel lines, team context, injury reports and weather already refresh on game selection. Prep also starts player projections and runs Game Lab once current lines, scoring and both teams’ injury coverage are ready. If feeds are missing it waits rather than inventing inputs. No picks are selected or bets placed.';
- panel.append(heading,autoLabel,ratingsLabel,start,status,help);matchup.after(panel);
+ panel.append(heading,autoLabel,ratingsLabel,start,status);matchup.after(panel);
  let token=0,prepared=null,simulated=null,ratingStarted=null,edited=false;
  function preserveEdits(event){if(event.target===automatic||event.target===ratings)return;edited=true;status.textContent='Inputs changed. Run Game Lab when ready, or choose Prepare selected game now.';}
  lab.addEventListener('input',preserveEdits);
