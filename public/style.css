@@ -323,3 +323,4 @@ a{color:#97e3fc}
 #lab .outcome-summary h3{margin:0 0 10px;color:#bcecff}
 #lab .outcome-summary p{margin:8px 0;overflow-wrap:anywhere}
 #lab #outright-pick{font-weight:800;font-size:1.1em}
+#lab .outcome-summary>small{display:block;font-size:12px;font-weight:400;letter-spacing:0;line-height:1.5;color:#b8ccda}
