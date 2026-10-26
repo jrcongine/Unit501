@@ -43,5 +43,11 @@
    card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate();}});
    return card;
  }
- return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection});
+ function upsetOutlook(prediction,awaySpread){
+   if(!prediction?.available||![prediction.away,prediction.home,awaySpread].every(Number.isFinite))return null;
+   const winner=prediction.away>prediction.home?'away':prediction.home>prediction.away?'home':null;
+   const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
+   return {winner,underdog,upset:!!underdog&&winner===underdog};
+ }
+ return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook});
 });

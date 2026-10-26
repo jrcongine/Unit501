@@ -115,3 +115,13 @@ test('late NBA comparison response cannot populate a different matchup',async()=
  assert.match(h.nodes.get('nba-comparison-status').textContent,/no comparison request has been made/);
  assert.equal(h.nodes.get('nba-compare-odds').disabled,false);
 });
+
+test('upset classification only receives fresh paired spread for the selected matchup',async()=>{
+ const h=harness();await h.select();
+ const market=h.context.Unit501NBAMarkets;
+ assert.equal(market.spreadFor(h.game),3.5);
+ assert.equal(market.spreadFor({...h.game,id:'other'}),null);
+ assert.equal(market.spreadFor({...h.game,tipoff:'2026-10-25T01:00:00Z'}),null);
+ h.advance(1800001);assert.equal(market.spreadFor(h.game),null);
+ market.clear();assert.equal(market.spreadFor(h.game),null);
+});

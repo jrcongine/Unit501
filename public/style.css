@@ -375,3 +375,5 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 #lab .outcome-summary p{margin:8px 0;overflow-wrap:anywhere}
 #lab #outright-pick{font-weight:800;font-size:1.1em}
 #lab .outcome-summary>small{display:block;font-size:12px;font-weight:400;letter-spacing:0;line-height:1.5;color:#b8ccda}
+
+.automatic-upset-pick{background:#fff0dc!important;color:#951b19!important;border-left:5px solid #d74329;padding:12px 14px;font-size:18px;font-weight:800;line-height:1.5;border-radius:6px}
