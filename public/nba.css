@@ -5,7 +5,9 @@
 .nba-inputs input{min-width:160px;flex:1}
 .nba-inputs button{background:#26445b}
 .nba-games{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:14px 0}
-.nba-game{background:#151e2c;border:1px solid #38485f;border-radius:12px;padding:16px}
+.nba-game{background:#151e2c;border:1px solid #38485f;border-radius:12px;padding:16px 16px 62px}
+/* Compact NBA cards should not place their action over the white game title. */
+.nba-game .open-game{top:auto;bottom:12px;right:12px;transform:none}
 .nba-game h3{font-size:17px;margin:0 0 12px}
 .nba-game p{font-size:14px;margin:8px 0;color:#d1dce9}
 .nba-score{font-weight:800;color:#fbe0ab}
