@@ -45,3 +45,6 @@
 .nba-prop-filters{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.nba-prop-filters label{display:grid;gap:6px}.nba-prop-filters input{max-width:280px}
 #nba-prop-lines .nba-form-table td{font-size:14px;font-weight:500;white-space:nowrap}
 .nba-book-table{min-width:860px}.nba-book-table td{font-size:14px;white-space:nowrap}.nba-book-table small{display:block;font-size:10px;font-weight:400;letter-spacing:0;color:#b5c9dc;margin-top:5px}.nba-book-table thead th:first-child,.nba-book-table tbody th{position:sticky;left:0;background:#102b3b;z-index:1}
+section.nba-model-status{padding:16px;border:1px solid #426374;border-radius:12px;background:#102431}
+#nba-prediction{font-size:20px;font-weight:750;line-height:1.6;color:#b9f1e1;overflow-wrap:anywhere}
+#nba-prediction-detail{font-size:13px;line-height:1.5}
