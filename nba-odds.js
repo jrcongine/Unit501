@@ -1,16 +1,17 @@
 'use strict';
 // NBA-only bookmaker quotes. These are market lines, not Unit 501 forecasts.
 const SPORT='basketball_nba';
+const BOOKS=Object.freeze({fanduel:'FanDuel',draftkings:'DraftKings',betmgm:'BetMGM'});
 const MARKETS={player_points:'Points',player_rebounds:'Rebounds',player_assists:'Assists',player_threes:'Threes made'};
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const team=s=>({laclippers:'losangelesclippers',lalakers:'losangeleslakers'}[normalize(s)]||normalize(s));
 const price=n=>Number.isInteger(n)&&Math.abs(n)>=100;
 const half=n=>Number.isFinite(n)&&Number.isInteger(n*2);
 function matches(e,g){return e?.sport_key===SPORT&&team(e.away_team)===team(g.away)&&team(e.home_team)===team(g.home)&&Math.abs(Date.parse(e.commence_time)-Date.parse(g.tipoff))<=15*60000;}
-function bookFor(e){const books=(Array.isArray(e?.bookmakers)?e.bookmakers:[]).filter(b=>b.key==='fanduel');return books.length===1?books[0]:null;}
+function bookFor(e,key='fanduel'){const books=(Array.isArray(e?.bookmakers)?e.bookmakers:[]).filter(b=>b.key===key);return books.length===1?books[0]:null;}
 function fresh(m,b,now){const at=Date.parse(m.last_update||b.last_update);return Number.isFinite(at)&&at<=now+60000&&now-at<=1800000?at:null;}
-function gameLines(e,now=Date.now()){
- const book=bookFor(e);let spread=null,total=null;
+function gameLines(e,now=Date.now(),bookKey='fanduel'){
+ const book=bookFor(e,bookKey);let spread=null,total=null,moneyline=null;
  for(const kind of ['spreads','totals']){
   const markets=(Array.isArray(book?.markets)?book.markets:[]).filter(m=>m.key===kind);if(markets.length!==1)continue;
   const m=markets[0],at=fresh(m,book,now),rows=m.outcomes;
@@ -23,7 +24,15 @@ function gameLines(e,now=Date.now()){
    if(over&&under&&half(over.point)&&over.point>0&&under.point===over.point)total={line:over.point,over:over.price,under:under.price,updatedAt:at};
   }
  }
- return {spread,total};
+ const markets=(Array.isArray(book?.markets)?book.markets:[]).filter(m=>m.key==='h2h');
+ if(markets.length===1){
+  const m=markets[0],at=fresh(m,book,now),rows=m.outcomes;
+  if(at!==null&&Array.isArray(rows)&&rows.length===2&&rows.every(r=>price(r.price))){
+   const away=rows.filter(r=>r.name===e.away_team),home=rows.filter(r=>r.name===e.home_team);
+   if(away.length===1&&home.length===1)moneyline={away:away[0].price,home:home[0].price,updatedAt:at};
+  }
+ }
+ return {spread,total,moneyline};
 }
 function playerLines(e,now=Date.now()){
  const book=bookFor(e),props=[];
@@ -57,16 +66,22 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   if(cache.size>200)cache.delete(cache.keys().next().value);return pending;
  }
  return async function get(game,kind='game'){
-  if(!['game','props'].includes(kind)||!Number.isSafeInteger(game?.id)||!game.away||!game.home||!Number.isFinite(Date.parse(game.tipoff)))throw Error('Verified NBA matchup required.');
-  const base={gameId:game.id,tipoff:game.tipoff,bookmaker:'FanDuel',fetchedAt:now(),spread:null,total:null,props:[],coverage:[]};
+  if(!['game','props','comparison'].includes(kind)||!Number.isSafeInteger(game?.id)||!game.away||!game.home||!Number.isFinite(Date.parse(game.tipoff)))throw Error('Verified NBA matchup required.');
+  const base={gameId:game.id,tipoff:game.tipoff,bookmaker:kind==='comparison'?'Multiple':'FanDuel',fetchedAt:now(),spread:null,total:null,props:[],coverage:[],...(kind==='comparison'?{books:[]}: {})};
   if(game.status!=='Scheduled'||Date.parse(game.tipoff)<=now())return {...base,available:false,message:'Pregame NBA quotes are only available before tipoff for scheduled games.'};
   if(!key()?.trim())return {...base,available:false,message:'NBA FanDuel quotes require the existing odds-provider connection to be configured.'};
   let e;
-  if(kind==='game'){
-   const events=await request('odds',{bookmakers:'fanduel',markets:'spreads,totals',oddsFormat:'american'});
+  if(kind==='game'||kind==='comparison'){
+   const events=await request('odds',{bookmakers:kind==='comparison'?Object.keys(BOOKS).join(','):'fanduel',markets:kind==='comparison'?'h2h,spreads,totals':'spreads,totals',oddsFormat:'american'});
    if(!Array.isArray(events))throw Error('NBA odds event list was invalid.');
-   const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique FanDuel NBA matchup matched both teams and tipoff.'};
-   e=found[0];const lines=gameLines(e,now());return {...base,...lines,available:Boolean(lines.spread||lines.total),message:lines.spread||lines.total?'FanDuel pregame lines loaded.':'No fresh paired FanDuel spread or total was returned.'};
+   const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique NBA sportsbook matchup matched both teams and tipoff.'};
+   e=found[0];
+   if(kind==='comparison'){
+    const books=Object.entries(BOOKS).map(([key,name])=>({key,name,...gameLines(e,now(),key)}));
+    return {...base,books,available:books.some(b=>b.moneyline||b.spread||b.total),
+     message:'Pregame sportsbook comparison checked. Each market is timestamped separately; missing or stale prices remain unavailable.'};
+   }
+   const lines=gameLines(e,now());return {...base,...lines,available:Boolean(lines.spread||lines.total),message:lines.spread||lines.total?'FanDuel pregame lines loaded.':'No fresh paired FanDuel spread or total was returned.'};
   }
   const events=await request('events');if(!Array.isArray(events))throw Error('NBA prop event list was invalid.');
   const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique NBA prop matchup matched both teams and tipoff.'};
@@ -76,4 +91,4 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   return {...base,props,coverage,available:props.length>0,message:props.length?'FanDuel player lines loaded.':'No fresh paired FanDuel player props were returned for this game.'};
  };
 }
-module.exports={createNBAOdds,matches,gameLines,playerLines,MARKETS};
+module.exports={createNBAOdds,matches,gameLines,playerLines,MARKETS,BOOKS};

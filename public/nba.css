@@ -44,3 +44,4 @@
 .nba-quote-card{padding:14px;border:1px solid #35505d;border-radius:10px;background:#10202e}.nba-quote-card h4{color:#91d9ef;margin:0 0 10px}.nba-quote-card p{font-size:17px;font-weight:700}.nba-quote-card small{font-size:11px;letter-spacing:0;font-weight:500}
 .nba-prop-filters{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.nba-prop-filters label{display:grid;gap:6px}.nba-prop-filters input{max-width:280px}
 #nba-prop-lines .nba-form-table td{font-size:14px;font-weight:500;white-space:nowrap}
+.nba-book-table{min-width:860px}.nba-book-table td{font-size:14px;white-space:nowrap}.nba-book-table small{display:block;font-size:10px;font-weight:400;letter-spacing:0;color:#b5c9dc;margin-top:5px}.nba-book-table thead th:first-child,.nba-book-table tbody th{position:sticky;left:0;background:#102b3b;z-index:1}

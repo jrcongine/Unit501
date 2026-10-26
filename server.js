@@ -90,14 +90,14 @@ const server = http.createServer(async (req, res) => {
       try{return send(res,200,await nbaGames(date));}
       catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:e.code==='NBA_PLAN_ACCESS'?e.message:'NBA schedule unavailable. Verify NBA provider access and try again.',code:e.code==='NBA_PLAN_ACCESS'?e.code:'NBA_UNAVAILABLE'});}
     }
-    if(['/api/nba/odds','/api/nba/props'].includes(u.pathname)){
+    if(['/api/nba/odds','/api/nba/props','/api/nba/comparison'].includes(u.pathname)){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
       if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid NBA date and game ID required.'});
       try{
         const slate=await nbaGames(date),game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
-        return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':'game'));
+        return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
       }catch(e){return send(res,503,{error:e.message});}
     }
     if(u.pathname==='/api/nba/context'){

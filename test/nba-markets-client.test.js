@@ -61,3 +61,57 @@ test('late NBA game and prop requests are discarded after switching matchups',as
  assert.doesNotMatch(h.nodes.get('nba-game-odds').textContent,/Clippers|Bulls/);
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A/);
 });
+
+function comparisonData(h,g=h.game){
+ const lines=h.data(g,false);
+ return {...lines,bookmaker:'Multiple',books:[
+  {key:'fanduel',name:'FanDuel',moneyline:{away:150,home:-175,updatedAt:lines.spread.updatedAt},spread:lines.spread,total:lines.total},
+  {key:'draftkings',name:'DraftKings',moneyline:{away:160,home:-180,updatedAt:lines.spread.updatedAt},spread:null,total:null},
+  {key:'betmgm',name:'BetMGM',moneyline:null,spread:null,total:lines.total}
+ ]};
+}
+test('NBA comparison loads only on request, displays both moneylines and book-specific markets, and expires without polling',async()=>{
+ const h=harness();await h.select();
+ assert.equal(h.calls.length,1);assert.equal(h.nodes.get('nba-book-comparison').textContent,'');
+ h.context.fetch=async url=>{h.calls.push(url);return {ok:true,json:async()=>comparisonData(h)};};
+ await h.nodes.get('nba-compare-odds').events.click();
+ assert.equal(h.calls.length,2);assert.match(h.calls[1],/\/api\/nba\/comparison\?/);
+ const text=h.nodes.get('nba-book-comparison').textContent;
+ assert.match(text,/Clippers moneyline.*Bulls moneyline/);
+ assert.match(text,/FanDuel.*\+150.*-175.*DraftKings.*\+160.*-180.*BetMGM/);
+ assert.match(text,/Unavailable/);assert.match(text,/Updated/);
+ h.advance(1800001);h.timers.at(-1)();
+ assert.doesNotMatch(h.nodes.get('nba-book-comparison').textContent,/\+150|\+160|225.5/);
+ assert.equal(h.calls.length,2);
+});
+test('NBA comparison failures preserve only fresh quotes and reject mismatched or duplicate books',async()=>{
+ const h=harness();await h.select();const data=comparisonData(h);
+ h.context.fetch=async()=>({ok:true,json:async()=>data});
+ await h.nodes.get('nba-compare-odds').events.click();
+ h.context.fetch=async()=>({ok:false,json:async()=>({error:'Quota unavailable'})});
+ await h.nodes.get('nba-compare-odds').events.click();
+ assert.match(h.nodes.get('nba-comparison-status').textContent,/Quota unavailable/);
+ assert.match(h.nodes.get('nba-book-comparison').textContent,/\+150/);
+ for(const bad of [{...data,gameId:900},{...data,tipoff:'2026-10-25T23:00:00Z'},
+   {...data,books:[...data.books,data.books[0]]},{...data,books:[{key:'unknown'}]}]){
+  h.context.fetch=async()=>({ok:true,json:async()=>bad});
+  await h.nodes.get('nba-compare-odds').events.click();
+  assert.match(h.nodes.get('nba-comparison-status').textContent,/could not be verified/);
+ }
+ h.advance(1800001);h.context.fetch=async()=>({ok:false,json:async()=>({error:'unavailable'})});
+ await h.nodes.get('nba-compare-odds').events.click();
+ assert.doesNotMatch(h.nodes.get('nba-book-comparison').textContent,/\+150/);
+ h.context.Unit501NBAMarkets.clear();assert.equal(h.nodes.get('nba-book-comparison').textContent,'');
+ assert.equal(h.nodes.get('nba-compare-odds').disabled,true);
+});
+test('late NBA comparison response cannot populate a different matchup',async()=>{
+ const h=harness();await h.select();const old=comparisonData(h);let release;
+ h.context.fetch=()=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>old});});
+ const pending=h.nodes.get('nba-compare-odds').events.click();
+ const next={...h.game,id:900,away:'Cavaliers',home:'Celtics'};
+ h.context.fetch=async()=>({ok:true,json:async()=>h.data(next,false)});
+ await h.select(next);release();await pending;await h.settle();
+ assert.equal(h.nodes.get('nba-book-comparison').textContent,'');
+ assert.match(h.nodes.get('nba-comparison-status').textContent,/no comparison request has been made/);
+ assert.equal(h.nodes.get('nba-compare-odds').disabled,false);
+});
