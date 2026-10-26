@@ -7,7 +7,8 @@
  const compare=$('nba-compare-odds'),compareStatus=$('nba-comparison-status'),compareBoard=$('nba-book-comparison');
  if(!gameBoard||!propBoard||!ui)return;
  let selected=null,date='',sequence=0,gameTask=0,propTask=0,quotes=null,props=null,timer=null;
- let comparisonTask=0,comparison=null;
+ let comparisonTask=0,comparison=null,injuries=null;
+ const normalizedName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
  const fresh=at=>Number.isFinite(at)&&at<=Date.now()+60000&&Date.now()-at<=1800000&&selected&&Date.parse(selected.tipoff)>Date.now();
@@ -30,7 +31,13 @@
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   for(const label of ['Player','Stat','Line','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');
-  for(const p of rows){const row=node('tr','');for(const value of [p.name,p.label,p.line,signed(p.over),signed(p.under),ui.timeCentral(new Date(p.updatedAt).toISOString())])row.append(node('td',value));body.append(row);}
+  for(const p of rows){
+   const matching=injuries&&Number.isFinite(injuries.reportAt)&&injuries.reportAt<=Date.now()+60000&&Date.now()-injuries.reportAt<=7200000?
+    injuries.teams.filter(t=>t.available).flatMap(t=>t.players).filter(player=>normalizedName(player.name)===normalizedName(p.name)):[];
+   const status=matching.length===1?matching[0].status:null;
+   const row=node('tr','',status==='Out'?'nba-injury-out':'');
+   for(const value of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,signed(p.over),signed(p.under),ui.timeCentral(new Date(p.updatedAt).toISOString())])row.append(node('td',value));body.append(row);
+  }
   table.append(node('caption',rows.length+' fresh FanDuel prop line(s) · bookmaker quotes, not projections'),body);propBoard.append(table);
  }
  function renderComparison(){
@@ -110,9 +117,13 @@
  }
  function clear(){sequence++;selected=null;quotes=null;
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
- props=null;comparison=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
+ props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
- root.Unit501NBAMarkets={clear,linesFor(game){
+ root.Unit501NBAMarkets={clear,setInjuries(game,report){
+  if(!selected||String(selected.id)!==String(game?.id)||selected.tipoff!==game.tipoff)return;
+  injuries=report&&String(report.gameId)===String(selected.id)&&report.tipoff===selected.tipoff&&Array.isArray(report.teams)?report:null;
+  renderProps();
+ },linesFor(game){
   if(!selected||String(selected.id)!==String(game?.id)||selected.tipoff!==game.tipoff)return {};
   const spread=quotes?.spread,total=quotes?.total;
   return {awaySpread:spread&&fresh(spread.updatedAt)&&Number.isFinite(spread.away)&&Number.isFinite(spread.home)&&Math.abs(spread.away+spread.home)<1e-9?spread.away:null,

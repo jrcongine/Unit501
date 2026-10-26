@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {summarize}=require('../nba-context');
 function harness(){
- const nodes=new Map(),requests=[];
+ const nodes=new Map(),requests=[],intervals=[];
  class Element{
   constructor(tag){this.tag=tag;this.children=[];this.events={};this.className='';this.attrs={};this.value='';this._text='';
    const change=(name,add)=>{const set=new Set(this.className.split(/\s+/).filter(Boolean));add?set.add(name):set.delete(name);this.className=[...set].join(' ');};
@@ -24,7 +24,7 @@ function harness(){
  {id:900,away:'Cleveland Cavaliers',awayId:7,home:'Boston Celtics',homeId:8,tipoff:'2026-10-24T23:30:00Z',stage:2,status:'Scheduled',awayScore:null,homeScore:null}];
  const history=(id,other,count)=>Array.from({length:count},(_,i)=>({id:id*100+i,stage:2,season:2026,league:'standard',date:{start:`2026-10-${String(10+i).padStart(2,'0')}T23:00:00Z`},status:{short:3},teams:{visitors:{id,name:'Team'},home:{id:other,name:'Opponent'}},scores:{visitors:{points:100+i},home:{points:90}}}));
  const data=g=>({gameId:g.id,away:{...summarize(history(g.awayId,19,7),g.awayId,g),name:g.away},home:{...summarize(history(g.homeId,20,2),g.homeId,g),name:g.home},message:'Historical comparison'});
- const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:()=>1,setInterval:()=>1,clearTimeout(){}};
+ const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:()=>1,setInterval:(fn,ms)=>{intervals.push({fn,ms});return intervals.length;},clearTimeout(){}};
  context.CustomEvent=class{constructor(type,options={}){this.type=type;this.detail=options.detail;}};
  context.Event=class{constructor(type){this.type=type;}};
  context.window=context;
@@ -49,7 +49,7 @@ function harness(){
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const load=async()=>{await nodes.get('nba-load').events.click();await settle();};
  const choose=async i=>{nodes.get('nba-games').children[i].events.click();await settle();await settle();};
- return {nodes,requests,context,games,data,load,choose,settle};
+ return {nodes,requests,intervals,context,games,data,load,choose,settle};
 }
 test('NBA slate shows same in-page Top 10, middle, bottom and headlines plus Game Lab ranks',async()=>{
  const h=harness();await h.load();await h.settle();
@@ -179,4 +179,64 @@ test('NBA simulation follows projections and fresh line updates without new requ
  const count=h.requests.length;lines={};h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
  assert.doesNotMatch(h.nodes.get('nba-simulation').textContent,/cover|Over/);
  assert.equal(h.requests.length,count);
+});
+
+test('NBA matchup links to the official report for the selected season without extra calls',async()=>{
+ const h=harness();await h.load();await h.choose(0);
+ assert.equal(h.nodes.get('nba-official-injuries').href,'https://official.nba.com/nba-injury-report-2026-27-season/');
+ const before=h.requests.length;
+ h.games[1].tipoff='2027-01-24T23:30:00Z';await h.choose(1);
+ assert.equal(h.nodes.get('nba-official-injuries').href,'https://official.nba.com/nba-injury-report-2026-27-season/');
+ assert.equal(h.requests.length,before+1);
+});
+
+test('selected NBA game loads official statuses, withdraws stale matchups, and marks unsubmitted teams',async()=>{
+ const h=harness();h.games[0].tipoff=new Date(Date.now()+86400000).toISOString();h.games[0].statusCode=1;
+ const base=h.context.fetch;let reportAt=Date.now();
+ h.context.fetch=async url=>{
+  if(!String(url).startsWith('/api/nba/injuries?'))return base(url);
+  h.requests.push(url);
+  return {ok:true,json:async()=>({gameId:h.games[0].id,tipoff:h.games[0].tipoff,reportAt,teams:[
+   {name:'Chicago Bulls',available:true,players:[{name:'Nic Claxton',status:'Out'},{name:'Noa Essengue',status:'Questionable'}]},
+   {name:'Milwaukee Bucks',available:false,players:[]}]})};
+ };
+ await h.load();await h.choose(0);
+ assert.match(h.nodes.get('nba-injuries-list').textContent,/Chicago Bulls.*Nic Claxton.*Out.*Noa Essengue.*Questionable/);
+ assert.match(h.nodes.get('nba-injuries-list').textContent,/Milwaukee Bucks.*not submitted or unavailable/);
+ assert.match(h.nodes.get('nba-injuries-status').textContent,/Official NBA report/);
+ reportAt=Date.now()-7200001;
+ await h.nodes.get('nba-injuries-refresh').events.click();await h.settle();
+ assert.equal(h.nodes.get('nba-injuries-list').textContent,'');
+ assert.match(h.nodes.get('nba-injuries-status').textContent,/unavailable/);
+ h.nodes.get('nba-clear').events.click();assert.equal(h.nodes.get('nba-injuries-list').textContent,'');
+});
+
+test('late NBA injury results cannot overwrite the newly selected game',async()=>{
+ const h=harness();for(const g of h.games){g.tipoff=new Date(Date.now()+86400000).toISOString();g.statusCode=1;}
+ const original=h.context.fetch;let release;
+ h.context.fetch=url=>{
+  if(!String(url).startsWith('/api/nba/injuries?'))return original(url);
+  if(String(url).includes('game=899'))return new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({gameId:899,tipoff:h.games[0].tipoff,reportAt:Date.now(),teams:[{name:'Old Team',available:true,players:[]},{name:'Old Opponent',available:true,players:[]}]})});});
+  return Promise.resolve({ok:true,json:async()=>({gameId:900,tipoff:h.games[1].tipoff,reportAt:Date.now(),teams:[{name:'Cleveland Cavaliers',available:true,players:[]},{name:'Boston Celtics',available:true,players:[]}]})});
+ };
+ await h.load();await h.choose(0);await h.choose(1);release();await h.settle();await h.settle();
+ assert.match(h.nodes.get('nba-injuries-list').textContent,/Cleveland Cavaliers/);
+ assert.doesNotMatch(h.nodes.get('nba-injuries-list').textContent,/Old Team/);
+});
+
+test('NBA injury reports refresh only while the game page is visible and pregame',async()=>{
+ const h=harness();h.games[0].tipoff=new Date(Date.now()+86400000).toISOString();h.games[0].statusCode=1;
+ const base=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(!String(url).startsWith('/api/nba/injuries?'))return base(url);
+  h.requests.push(url);
+  return {ok:true,json:async()=>({gameId:h.games[0].id,tipoff:h.games[0].tipoff,reportAt:Date.now(),teams:[{name:'Chicago Bulls',available:true,players:[]},{name:'Milwaukee Bucks',available:true,players:[]}]})};
+ };
+ await h.load();await h.choose(0);
+ const timer=h.intervals.find(i=>i.ms===15*60000);assert.ok(timer);
+ const calls=()=>h.requests.filter(x=>String(x).startsWith('/api/nba/injuries?')).length;
+ assert.equal(calls(),1);
+ h.context.document.hidden=true;timer.fn();await h.settle();assert.equal(calls(),1);
+ h.context.document.hidden=false;timer.fn();await h.settle();await h.settle();assert.equal(calls(),2);
+ h.games[0].tipoff=new Date(Date.now()-1000).toISOString();timer.fn();await h.settle();assert.equal(calls(),2);
 });

@@ -134,3 +134,16 @@ test('NBA simulation reuses only fresh, matching market lines',async()=>{
  h.advance(1800001);
  assert.equal(market.linesFor(h.game).awaySpread,null);assert.equal(market.linesFor(h.game).total,null);
 });
+
+test('official injury statuses highlight matching props and withdraw on expiry or mismatch',async()=>{
+ const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();
+ const market=h.context.Unit501NBAMarkets;
+ const report={gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[
+  {available:true,players:[{name:'Player A',status:'Out'}]},{available:true,players:[]}]};
+ market.setInjuries(h.game,report);assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+ market.setInjuries({...h.game,id:900},null);assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+ report.teams[1].players.push({name:'Player A',status:'Out'});market.setInjuries(h.game,report);
+ assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+ report.teams[1].players=[];market.setInjuries(h.game,report);h.advance(7200001);h.timers.at(-1)();
+ assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+});

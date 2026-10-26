@@ -5,7 +5,7 @@
  const dateInput=byId('nba-date'),status=byId('nba-status'),games=byId('nba-games'),load=byId('nba-load');
  const lab=byId('nba-lab'),players=byId('nba-player-lab');
  if(!dateInput||!games||!status||!load||!shared||!lab||!players)return;
- let request=0,contextRequest=0;
+ let request=0,contextRequest=0,injuryRequest=0,injuryGame=null,injuryReport=null;
  const contextStatus=byId('nba-team-context-status'),comparison=byId('nba-team-comparison');
  const node=(tag,value,className)=>{
   const element=document.createElement(tag);
@@ -143,15 +143,60 @@
    contextStatus.textContent='NBA team history unavailable from the selected source; no projections were generated.';
   }
  }
+ function clearInjuries(message='Select a game to check injuries.'){
+  ++injuryRequest;injuryReport=null;window.Unit501NBAMarkets?.setInjuries?.(injuryGame,null);byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent=message;
+ }
+ function showInjuries(report){
+  const list=byId('nba-injuries-list');list.replaceChildren();
+  for(const team of report.teams){
+   const card=node('section','', 'nba-team-history');card.append(node('h4',team.name));
+   if(!team.available)card.append(node('p','Report not submitted or unavailable.','nba-sample-note'));
+   else if(!team.players.length)card.append(node('p','No players listed in this report.'));
+   else for(const player of team.players){
+    const line=node('p',player.name+' · '+player.status,player.status==='Out'?'nba-injury-out':'');card.append(line);
+   }
+   list.append(card);
+  }
+  byId('nba-injuries-status').textContent='Official NBA report · '+new Date(report.reportAt).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT · Updates every 15 minutes while this page is visible.';
+ }
+ async function loadInjuries(game){
+  clearInjuries('Checking official NBA injury report…');injuryGame=game;
+  if(!game||game.statusCode!==1||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=Date.now()){
+   byId('nba-injuries-status').textContent='Injury reports available for scheduled pregame matchups.';return;
+  }
+  const serial=injuryRequest;
+  try{
+   const query=new URLSearchParams({date:dateInput.value,game:String(game.id)});if(game.provider)query.set('provider',game.provider);
+   const response=await fetch('/api/nba/injuries?'+query,{signal:AbortSignal.timeout(30000)}),data=await response.json();
+   if(serial!==injuryRequest||injuryGame!==game)return;
+   const at=Number(data.reportAt);
+   if(!response.ok||String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||!Number.isFinite(at)||at>Date.now()+60000||Date.now()-at>7200000||
+     !Array.isArray(data.teams)||data.teams.length!==2||data.teams.some(t=>!t||typeof t.name!=='string'||typeof t.available!=='boolean'||!Array.isArray(t.players)||
+      t.players.some(p=>typeof p.name!=='string'||!['Out','Doubtful','Questionable','Probable','Available'].includes(p.status))))throw Error('Report unavailable');
+   injuryReport=data;showInjuries(data);window.Unit501NBAMarkets?.setInjuries?.(game,data);
+  }catch{
+   if(serial!==injuryRequest||injuryGame!==game)return;
+   byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent='Official report unavailable for this matchup. Open the NBA report to check.';
+  }
+ }
+ byId('nba-injuries-refresh').addEventListener('click',()=>{if(injuryGame)loadInjuries(injuryGame);});
+ // Refresh only the selected pregame matchup while the page is visible.
+ setInterval(()=>{if(!document.hidden&&injuryGame&&injuryGame.statusCode===1&&Date.parse(injuryGame.tipoff)>Date.now())loadInjuries(injuryGame);},15*60000);
 function choose(game){
    window.Unit501NBAMarkets?.select(game,dateInput.value);
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
+   const tip=new Date(game.tipoff);
+   if(Number.isFinite(tip.valueOf())){
+    const season=tip.getUTCFullYear()-(tip.getUTCMonth()<6?1:0);
+    if(season>=2000&&season<=2100)byId('nba-official-injuries').href='https://official.nba.com/nba-injury-report-'+season+'-'+String((season+1)%100).padStart(2,'0')+'-season/';
+   }
    if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home}}));
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
    formWindow.value='recent5';
    byId('nba-prediction-detail').textContent='';
    loadContext(game);
+   loadInjuries(game);
    lab.classList.remove('hidden');
    players.classList.remove('hidden');
    lab.scrollIntoView?.({behavior:'smooth',block:'start'});
@@ -159,7 +204,7 @@ function choose(game){
  async function refresh(){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
-  ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
+  ++contextRequest;activeContext=null;injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(30000)});
@@ -193,7 +238,7 @@ function choose(game){
  load.addEventListener('click',refresh);
  dateInput.addEventListener('change',refresh);
  byId('nba-clear').addEventListener('click',()=>{
-   ++contextRequest;activeContext=null;window.Unit501NBAMarkets?.clear();
+   ++contextRequest;activeContext=null;injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
    lab.classList.add('hidden');players.classList.add('hidden');
    if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-clear'));
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}
@@ -201,7 +246,10 @@ function choose(game){
  });
  document.addEventListener('unit501:nba-lines-updated',renderProjection);
  // Withdraw pregame estimates at tipoff without another provider call.
- setInterval(renderProjection,30000);
+ setInterval(()=>{
+  renderProjection();
+  if(injuryReport&&(Date.now()-injuryReport.reportAt>7200000||Date.parse(injuryGame?.tipoff)<=Date.now()))clearInjuries('Report expired. Refresh injuries or open the official report.');
+ },30000);
  // Monitoring is explicitly enabled and only runs while this page is visible.
  const alertToggle=byId('nba-alert-enable'),alertStatus=byId('nba-alert-status'),alertList=byId('nba-alert-list');
  const track=window.Unit501NBAAlerts.createTracker();

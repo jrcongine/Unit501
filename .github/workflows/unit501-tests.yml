@@ -18,6 +18,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Install dependencies
+        run: npm ci --omit=optional
       - name: Run regression tests
         run: npm test
       - name: Check public War Room feeds (informational)
