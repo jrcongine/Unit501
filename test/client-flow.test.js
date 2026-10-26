@@ -910,33 +910,11 @@ test('college rankings explain verified schedule strength and explicitly label u
  assert.doesNotMatch(h.nodes.get('league-pulse-power').textContent,/FBS 4-2 · schedule/);
 });
 
-test('upset panel is neutral until a genuine Sunday or neutral-site review flag appears',async()=>{
+test('removed upset checkbox and panel stay absent while automatic preparation remains available',async()=>{
  const h=harness();await h.settle();
- const panel=h.nodes.get('upset-alert-panel'),heading=h.nodes.get('upset-alert-title');
- const status=h.nodes.get('upset-alert-status');
- const enabled=h.nodes.get('upsetAlertEnabled'),venue=h.nodes.get('venueMode');
- enabled.checked=true;venue.value='home';
- const monday=Date.parse('2026-10-26T19:15:00Z');
- const sunday=Date.parse('2026-10-25T18:00:00Z');
- h.run('updateUpsetAlert({kickoff:'+monday+'})');
- assert.equal(panel.dataset.alertState,'idle');
- assert.equal(heading.textContent,'Upset Alert');
- assert.match(status.textContent,/No Sunday daytime or selected neutral-site flags/);
- h.run('updateUpsetAlert({kickoff:'+sunday+'})');
- assert.equal(panel.dataset.alertState,'active');
- assert.match(heading.textContent,/⚠ Upset Alert/);
- assert.match(status.textContent,/Sunday daytime matchup/);
- venue.value='neutral';
- h.run('updateUpsetAlert({kickoff:'+monday+'})');
- assert.equal(panel.dataset.alertState,'active');
- assert.match(status.textContent,/Neutral site/);
- enabled.checked=false;
- h.run('updateUpsetAlert({kickoff:'+sunday+'})');
- assert.equal(panel.dataset.alertState,'idle');
- assert.equal(heading.textContent,'Upset Alert');
- assert.match(status.textContent,/OFF/);
- enabled.checked=true;venue.value='home';
- h.run('updateUpsetAlert(null)');
- assert.equal(panel.dataset.alertState,'idle');
- assert.match(status.textContent,/Select a matchup/);
+ for(const id of ['upsetAlertEnabled','upset-alert-panel','upset-alert-title','upset-alert-status']){
+  assert.equal(h.nodes.has(id),false);
+ }
+ assert.equal(h.run('typeof updateUpsetAlert'),'undefined');
+ assert.ok(h.nodes.get('venueMode'));
 });
