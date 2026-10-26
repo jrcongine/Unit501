@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm ci --omit=optional
+        run: npm ci
       - name: Run regression tests
         run: npm test
       - name: Check public War Room feeds (informational)

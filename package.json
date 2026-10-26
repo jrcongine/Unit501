@@ -7,6 +7,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "0.1.100",
     "pdfjs-dist": "^5.6.205"
   }
 }
