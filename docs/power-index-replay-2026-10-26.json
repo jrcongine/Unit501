@@ -1,0 +1,59 @@
+{
+  "method": "Research-only fixed incremental margin correction: 0.1 points per home-minus-away NFL Power Index point, bounded to +/-6. Rebuild the production display formula using only results at least 24 hours earlier. Exclude first 30 eligible games and same-kickoff peers. No coefficient tuning, current standings, bookmaker lines, injury/weather or wagering returns. NFL evidence only.",
+  "results": [
+    {
+      "season": "2024",
+      "baseline": {
+        "games": 206,
+        "projectedBlowouts": 0,
+        "actualBlowouts": 38,
+        "closeProjectionBlowouts": 24,
+        "scoreMAE": 7.439322121515626,
+        "totalMAE": 10.493267704962674,
+        "totalBias": -1.8627342225014596,
+        "marginMAE": 10.127556155044404,
+        "favoriteGames": 206,
+        "favoriteMarginBias": -0.5676312098080321
+      },
+      "candidate": {
+        "games": 206,
+        "projectedBlowouts": 8,
+        "actualBlowouts": 38,
+        "closeProjectionBlowouts": 17,
+        "scoreMAE": 7.491503899616605,
+        "totalMAE": 10.493267704962674,
+        "totalBias": -1.8627342225014596,
+        "marginMAE": 10.403600509214767,
+        "favoriteGames": 206,
+        "favoriteMarginBias": 1.4846956690232855
+      }
+    },
+    {
+      "season": "2025",
+      "baseline": {
+        "games": 210,
+        "projectedBlowouts": 0,
+        "actualBlowouts": 39,
+        "closeProjectionBlowouts": 21,
+        "scoreMAE": 7.487248928295805,
+        "totalMAE": 10.643898702206416,
+        "totalBias": 0.6367931851731136,
+        "marginMAE": 10.435971493282047,
+        "favoriteGames": 210,
+        "favoriteMarginBias": 0.49200518202226845
+      },
+      "candidate": {
+        "games": 210,
+        "projectedBlowouts": 2,
+        "actualBlowouts": 39,
+        "closeProjectionBlowouts": 16,
+        "scoreMAE": 7.554065020237314,
+        "totalMAE": 10.643898702206416,
+        "totalBias": 0.6367931851731136,
+        "marginMAE": 10.614097574363791,
+        "favoriteGames": 210,
+        "favoriteMarginBias": 2.4273018634571506
+      }
+    }
+  ]
+}
