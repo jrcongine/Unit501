@@ -45,6 +45,11 @@
       const rows=(inactive.rows||[]).filter(p=>String(p.id)===String(playerId)&&String(p.teamId)===String(teamId)&&p.status==='Inactive');
       if(rows.length===1)return {blocked:true,state:'unavailable',reason:rows[0].emergency?'Official NFL emergency third quarterback: restricted game-day eligibility. Normal full-game projection and line comparison withheld.':'Official NFL final game-day inactive list: projection and line comparison withheld; not treated as a zero-yard under.',source:inactive.url};
     }
+    // A confirmed IR roster entry takes precedence over a replacement starter
+    // announcement: the player is unavailable, not merely a healthy nonstarter.
+    if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
+        /\binjured reserve\b/.test(normalize(roster.group)))
+      return {blocked:true,state:'unavailable',reason:'Provider roster lists injured reserve. Projection withheld until the roster changes; this is not a confirmed game-day inactive list.'};
     const starters=team.starters;
     if(roster?.position==='QB' && team.roster?.available && fresh(team.roster.checkedAt,3600000) &&
        String(starters?.gameId)===String(game.id) && starters?.kickoff===game.kickoff && fresh(starters.checkedAt,900000)) {
@@ -52,9 +57,7 @@
       if(named.length===1 && String(named[0].id)!==String(playerId))
         return {blocked:true,state:'nonstarter',reason:`${named[0].publisher} announced ${named[0].name} as starting QB for this matchup. Normal full-game props for another QB are withheld; this does not mean the player is injured or inactive.`};
     }
-    if (team.roster?.available && fresh(team.roster.checkedAt, 3600000) && roster &&
-        /\binjured reserve\b/.test(normalize(roster.group)))
-      return {blocked:true,state:'unavailable',reason:'Provider roster lists injured reserve. Projection withheld until the roster changes; this is not a confirmed game-day inactive list.'};
+
     const official = team.official;
     const officialRows = official?.available && String(official.gameId) === String(game.id) && official.kickoff === game.kickoff &&
       fresh(official.checkedAt,900000) ? official.rows.filter(p => String(p.id) === String(playerId) && String(p.teamId) === String(teamId)) : [];
