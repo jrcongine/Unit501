@@ -327,3 +327,12 @@ never counts as an outright upset pick. Results must already be matched in the
 browser archive; this display starts no new provider polling. No complete-season
 or lifetime upset record can be inferred from missing browser history, and an
 entered spread is not authenticated as the sportsbook closing line.
+
+Player workload scenarios support 0–200% of the recorded projection baseline.
+100% preserves that baseline; 125%, 150% and 200% are explicit larger-role
+scenarios for reviewing new starters or increased usage. They scale only the
+selected player's props, remain manual, and do not redistribute teammates'
+workload or change team scores. Scenarios reset when changing matchups, remain
+separate per player, and are excluded from the automatic research queue when
+not at 100%. Confirmed replacement transfers are applied first; adding another
+increase for that same transferred work can double-count it.

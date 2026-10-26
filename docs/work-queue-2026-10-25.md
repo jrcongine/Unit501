@@ -34,3 +34,13 @@ Continue the existing application and preserve its features and data.
 These changes are draft work. Do not describe them as deployed until verified
 in production. No claim about the user's lifetime upset record is supported
 without access to their saved browser forecasts.
+
+## NFL follow-up
+
+The draft already places selected-player controls above the comparison table
+and flags manual role reviews, current starter evidence, observed usage
+increases and supported same-position absence opportunities. Workload scenarios
+previously only reduced the baseline. Added explicit 125%, 150% and 200%
+manual larger-role choices, with individual-player scope, matchup reset and
+warnings about overlapping confirmed replacement transfers. They do not
+automatically change a player's role or team scores.

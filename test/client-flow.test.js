@@ -826,3 +826,35 @@ test('refreshing league rankings withdraws old Game Lab ranks when the source fa
  assert.match(h.nodes.get('league-pulse-matchup').textContent,/when the current standings are verified/);
  assert.match(h.nodes.get('league-pulse-status').textContent,/could not load/);
 });
+
+test('expanded-role scenarios adjust only the selected player and reset on a new matchup',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ const control=h.nodes.get('player-workload-scenario');
+ assert.deepEqual(control.children.map(c=>c.value),['100','125','150','200','75','50','25','0']);
+ const walk=root=>[root,...root.children.flatMap(c=>typeof c==='object'?walk(c):[])];
+ const table=()=>walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr');
+ const rows=()=>table().filter(n=>n.textContent.includes('Rushing attempts')&&n.textContent.includes('RB 1'));
+ assert.equal(rows().length,1);
+ const baseline=rows()[0].children[4].textContent;
+ const selected=h.nodes.get('predict-player').value;
+ control.value='150';control.onchange();
+ assert.match(rows()[0].textContent,/150% workload/);
+ const adjusted=rows()[0].children[4].textContent;
+ assert.equal(Number.parseFloat(adjusted),Number.parseFloat(baseline)*1.5);
+ assert.match(h.nodes.get('player-scenario-controls').textContent,/manual assumptions/);
+ // Selecting a teammate keeps that teammate at the recorded baseline.
+ const other=h.nodes.get('predict-player').children.find(c=>c.value&&c.value!==selected);
+ assert.ok(other);h.nodes.get('predict-player').value=other.value;
+ await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('player-workload-scenario').value,'100');
+ h.nodes.get('predict-player').value=selected;
+ await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('player-workload-scenario').value,'150');
+ h.game.game.id=1000; // The fixture slate must also include the newly selected game.
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ assert.equal(h.nodes.get('player-scenario-controls').hidden,true);
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(h.nodes.get('player-workload-scenario').value,'100');
+});

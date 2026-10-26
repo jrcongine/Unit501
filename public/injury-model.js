@@ -106,8 +106,8 @@
     return 'Report unavailable';
   }
   function workloadProjection(baseline, percent) {
-    if (!Number.isFinite(baseline) || !Number.isFinite(percent) || percent < 0 || percent > 100)
-      throw new Error('Workload must be between 0 and 100 percent.');
+    if (!Number.isFinite(baseline) || !Number.isFinite(percent) || percent < 0 || percent > 200)
+      throw new Error('Workload scenario must be between 0 and 200 percent of the baseline.');
     return baseline * percent / 100;
   }
   function teamSummary(data, game, teamId, now = Date.now()) {
