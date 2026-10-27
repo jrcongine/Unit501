@@ -15,5 +15,5 @@ jobs:
           node-version: '22'
       - name: Replay historical player box scores
         run: |
-          node nba-collect-history.js 2025 2 /tmp/games.json
-          node nba-player-backtest.js /tmp/games.json 12
+          node nba-collect-history.js 2024 2 /tmp/games.json
+          node nba-player-backtest.js /tmp/games.json 24
