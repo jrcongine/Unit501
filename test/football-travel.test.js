@@ -6,6 +6,11 @@ test('straight-line distance is approximate and rejects invalid coordinates',()=
  assert.ok(Math.abs(miles({latitude:0,longitude:0},{latitude:0,longitude:1})-69)<1);
  assert.equal(miles({latitude:91,longitude:0},{latitude:0,longitude:1}),null);
 });
+test('ESPN scoreboard queries use the game date in Eastern time, including late games',()=>{
+ const {espnDate}=require('../game-venue');
+ assert.equal(espnDate(Date.parse('2026-10-28T00:00:00Z')),'20261027');
+ assert.equal(espnDate(Date.parse('2026-11-02T02:00:00Z')),'20261101');
+});
 test('matches venue queries to the correct prior sides and shares the current venue lookup',async()=>{
  const urls=[];const travel=create(async url=>{urls.push(url);const q=new URL(url,'https://example.test').searchParams;return {ok:true,json:async()=>({available:true,name:q.get('home')+' field',latitude:q.get('home')==='Host'?1:0,longitude:0,locationPrecision:'stadium'})};});
  const game={league:'2',season:'2026',kickoff:200000, a:'Visitors',h:'Host'};
