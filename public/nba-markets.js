@@ -64,6 +64,9 @@
     if(index===3&&prediction.available){
      const gap=prediction.projection-p.line;
      cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
+     for(const split of (root.Unit501NBARotationContext?.compare(history,p,injuries,selected,Date.now())||[]).slice(0,2)){
+      cell.append(node('small',`${split.name} didn't play: ${split.without.value.toFixed(1)} in ${split.without.games} games (${split.without.minutes.toFixed(1)} min) · played: ${split.with.value.toFixed(1)} in ${split.with.games} (${split.with.minutes.toFixed(1)} min). Past games only.`, 'nba-line-history'));
+     }
      cell.append(node('small',prediction.method+' · recent average '+prediction.average.toFixed(1),'nba-line-history'));
      if(prediction.projectedMinutes!==null){
       const label=node('label','Minutes ', 'nba-minutes-control'),input=node('input');
