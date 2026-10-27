@@ -14,6 +14,8 @@ const nbaGames = nbaSources.games;
 const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:publicNBA});
 const nbaContext = nbaSources.context;
 const ncaab = require('./ncaab-feed').createNCAAB();
+const ncaabMarkets=require('./ncaab-markets').createMarkets();
+const ncaabPlayers=require('./ncaab-players').createPlayers({feed:ncaab});
 const nbaTravel = require('./nba-travel').createNBATravel({publicFeed:publicNBA});
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
@@ -124,6 +126,17 @@ const server = http.createServer(async (req, res) => {
       const date=u.searchParams.get('date');
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid date required.'});
       try{return send(res,200,await ncaab.games(date));}catch{return send(res,503,{error:'College basketball schedule unavailable.'});}
+    }
+    if(['/api/ncaab/odds','/api/ncaab/props','/api/ncaab/injuries','/api/ncaab/player-history'].includes(u.pathname)){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid date and game required.'});
+      try{const slate=await ncaab.games(date),game=slate.games.find(g=>g.id===id);if(!game)return send(res,404,{error:'Game not found on this slate.'});
+       if(!game.timeKnown||game.status!=='Scheduled'||Date.parse(game.tipoff)<=Date.now())return send(res,400,{error:'Confirmed upcoming game required.'});
+       if(u.pathname.endsWith('/odds'))return send(res,200,await ncaabMarkets(game,'game'));
+       if(u.pathname.endsWith('/props'))return send(res,200,await ncaabMarkets(game,'props'));
+       if(u.pathname.endsWith('/injuries'))return send(res,200,await ncaabPlayers.injuries(game));
+       return send(res,200,await ncaabPlayers.history(game));
+      }catch{return send(res,503,{error:'Data source unavailable for this matchup.'});}
     }
     if(u.pathname==='/api/ncaab/context'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
