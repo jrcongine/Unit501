@@ -157,6 +157,7 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
  let text=h.nodes.get('nba-prop-lines').textContent;
  assert.match(text,/Player A.*Points.*20\.5.*23\.5.*2.*0.*0.*2/);
  assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*1.*1.*0.*2/);
+ assert.match(text,/Last 2: 25 · 22 \(newest first\)/);
  const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
  text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
  sort.value='most';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));
