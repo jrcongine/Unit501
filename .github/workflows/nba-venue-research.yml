@@ -1,0 +1,23 @@
+name: NBA venue source research
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect a real NBA matchup venue
+        run: |
+          node - <<'NODE'
+          (async()=>{
+           const base='https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
+           const b=await (await fetch(base+'/scoreboard?dates=20261027&limit=1000')).json();
+           const e=(b.events||[])[0];if(!e)throw Error('No event');
+           const d=await (await fetch(base+'/summary?event='+e.id)).json();
+           const c=d.header?.competitions?.[0];
+           console.log(JSON.stringify({id:e.id,date:e.date,scoreVenue:e.competitions?.[0]?.venue,season:d.header?.season,competitionDate:c?.date,competitors:c?.competitors?.map(t=>({id:t.id,homeAway:t.homeAway})),summaryVenue:d.gameInfo?.venue}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
