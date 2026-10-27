@@ -43,6 +43,21 @@ function extractBox(data,prior,teamId,season,stage){
  if(!output.length)throw Error('NBA box score has no verified player appearances');
  return output;
 }
+// Only explicit didNotPlay rows are treated as absent; a missing player row
+// may reflect a trade, roster change or incomplete source rather than injury.
+function extractInactive(data,teamId,active){
+ const team=data?.boxscore?.players?.filter(t=>String(t.team?.id)===String(teamId));
+ const rows=team?.[0]?.statistics?.[0]?.athletes;
+ if(team?.length!==1||!Array.isArray(rows))return [];
+ const seen=new Set(active.map(p=>p.id)),out=[];
+ for(const row of rows){
+  if(row.didNotPlay!==true)continue;
+  const id=String(row.athlete?.id||''),name=String(row.athlete?.displayName||'').trim();
+  if(!/^\d{1,12}$/.test(id)||!name||name.length>100||seen.has(id))continue;
+  seen.add(id);out.push({id,name});
+ }
+ return out;
+}
 function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
  const cache=new Map();
  async function box(id){
@@ -73,9 +88,15 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
    if(games.length<2)return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};
    try{
     for(const game of games){const result=results.get(String(game.id));if(!result||result.error)throw Error('Missing NBA box score');
-     for(const row of extractBox(result.data,game,side.id,season,match.stage)){
+     const active=extractBox(result.data,game,side.id,season,match.stage);
+     for(const row of active){
       const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
-      const player=old||{id:row.id,name:row.name,available:true,results:[]};if(row.available===false)player.available=false;player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
+      const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};if(row.available===false)player.available=false;player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
+     }
+     for(const row of extractInactive(result.data,side.id,active)){
+      const old=players.get(row.id);if(old&&old.name!==row.name)continue;
+      const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};
+      player.inactive.push({gameId:game.id,tipoff:game.tipoff});players.set(row.id,player);
      }
     }
     return {name:side.name,available:true,games:games.length,players:[...players.values()]};
@@ -84,4 +105,4 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
   return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:'ESPN completed NBA box scores',teams};
  };
 }
-module.exports={METRICS,stat,minutes,extractBox,createPlayerHistory};
+module.exports={METRICS,stat,minutes,extractBox,extractInactive,createPlayerHistory};
