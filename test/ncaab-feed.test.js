@@ -6,6 +6,7 @@ const selected=convert(event(10,'2026-11-04T01:00:00Z',{status:'Scheduled'}));
 test('college conversion does not treat scheduled zero scores or TBD tipoffs as confirmed',()=>{
  const g=convert(event(1,'2026-11-04T01:00:00Z',{status:'Scheduled',timeKnown:false,scoreA:0,scoreH:0}));
  assert.equal(g.timeKnown,false);assert.equal(g.awayScore,null);assert.equal(g.homeScore,null);
+ const unknown=event(4,'2026-11-04T01:00:00Z',{status:'Scheduled'});delete unknown.timeValid;delete unknown.competitions[0].timeValid;assert.equal(convert(unknown).timeKnown,false);
  assert.equal(convert({...event(1,'2026-11-04T01:00:00Z'),competitions:[]}),null);
 });
 test('college form excludes future, same-game, unverified scores and conflicting duplicates',()=>{
