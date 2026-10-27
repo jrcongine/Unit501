@@ -12,7 +12,7 @@ jobs:
         run: |
           node - <<'NODE'
           (async()=>{
-            const page=await (await fetch('https://conferenceusa.com/sports/2025/8/23/FB_0823254134.aspx')).text();
+            const page=await (await fetch('https://kickoffstatus.com/games/2026-10-27-delaware-at-western-kentucky/')).text(); console.log('PAGE',page.slice(0,45000)); return;
             const matches=[...page.matchAll(/https:\/\/faktorsports\.com\/[^"'\s<>]+/gi)].map(x=>x[0].replaceAll('&amp;','&'));
             console.log('IFRAMES',JSON.stringify(matches));
             if(!matches.length)throw Error('No official iframe found');
