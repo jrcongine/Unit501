@@ -14,7 +14,7 @@ jobs:
           node - <<'NODE'
           const {resolveVenue}=require('./game-venue');
           (async()=>{
-            for(const [date,away,home] of [['20261028','Sam Houston','Missouri State'],['20261015','Western Kentucky','Sam Houston']]){
+            for(const [date,away,home] of [['20261027','Sam Houston','Missouri State'],['20261014','Western Kentucky','Sam Houston']]){
               const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates='+date+'&limit=1000&groups=80');
               const j=await r.json();
               const options=(j.events||[]).flatMap(e=>(e.competitions||[]).filter(c=>(c.competitors||[]).some(t=>t.homeAway==='home'&&JSON.stringify(t.team).toLowerCase().includes(home.toLowerCase()))&&(c.competitors||[]).some(t=>t.homeAway==='away'&&JSON.stringify(t.team).toLowerCase().includes(away.toLowerCase()))));
