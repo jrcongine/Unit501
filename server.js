@@ -48,7 +48,11 @@ async function api(endpoint){
   return data;
 }
 const getRankings = require('./rankings').createRankings(api, {
-  publicNFL:require('./nfl-public-yardage').createPublicNFLYardage()
+  publicNFL:require('./nfl-public-yardage').createPublicNFLYardage(),
+  // Reuse the configured persistent data volume when present. Otherwise the
+  // rankings module retains its temporary-directory default.
+  cacheDir:process.env.UNIT501_TEAM_BOX_CACHE_DIR || (process.env.UNIT501_LINE_HISTORY_FILE
+    ? path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'team-boxes-v1') : undefined)
 });
 const getBettingSplits=require('./betting-splits').createSplits();
 const getLeaguePulse=require('./league-pulse').createLeaguePulse({
