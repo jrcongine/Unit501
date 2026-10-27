@@ -31,7 +31,7 @@ function createNBATravel({publicFeed,fetcher=fetch,now=Date.now}={}){
   let matches=await search(city);
   // Some city geocoders omit NYC boroughs; use the city center and retain the
   // explicit approximate-city label instead of inventing arena coordinates.
-  if(!matches.length&&key(city)==='brooklyn'&&state==='NY')matches=await search('New York');
+  if(matches.length!==1&&key(city)==='brooklyn'&&state==='NY')matches=await search('New York');
   if(matches.length!==1)throw Error('NBA venue city is ambiguous');
   return {name:v.fullName,city,state,latitude:matches[0].latitude,longitude:matches[0].longitude};
  }
