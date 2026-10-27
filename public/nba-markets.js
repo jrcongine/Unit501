@@ -43,9 +43,10 @@
    return {p,status,prediction};
   });
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
-  if(sort?.value==='most'||sort?.value==='least')rows.sort((a,b)=>{
+  if(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap')rows.sort((a,b)=>{
    if(a.prediction.available!==b.prediction.available)return a.prediction.available?-1:1;
    if(!a.prediction.available)return a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
+   if(sort.value==='gap')return Math.abs(b.prediction.projection-b.p.line)-Math.abs(a.prediction.projection-a.p.line)||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
    const direction=sort.value==='most'?-1:1;
    return direction*(a.prediction.above-b.prediction.above)||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
   });
@@ -61,6 +62,8 @@
      cell.append(node('strong','Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1),'nba-minutes-trend'));
     }
     if(index===3&&prediction.available){
+     const gap=prediction.projection-p.line;
+     cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
      cell.append(node('small',prediction.method+' · recent average '+prediction.average.toFixed(1),'nba-line-history'));
      if(prediction.projectedMinutes!==null){
       const label=node('label','Minutes ', 'nba-minutes-control'),input=node('input');
