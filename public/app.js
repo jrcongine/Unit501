@@ -6,6 +6,7 @@ let scoringContext = null;
 let forecastContext = null;
 let latestForecast = null;
 let gameQuotes = null;
+const footballTravel=window.Unit501FootballTravel?.create();
 function invalidateSimulation(message) {
   latestForecast=null;
   $('outright-pick').classList.remove('automatic-upset-pick');
@@ -520,7 +521,13 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     for(const g of games.slice(0,5)){if(!Number.isFinite(g.scored)||!Number.isFinite(g.allowed))continue;const badge=document.createElement('span');const value=g.scored>g.allowed?'W':g.scored<g.allowed?'L':'T';badge.className='football-form-'+value.toLowerCase();badge.textContent=value;badge.title=g.opponent+' · '+g.scored+'–'+g.allowed;form.append(badge);}card.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Last '+Math.min(games.length,5)+' recorded results';details.append(summary);
     for(const g of games.slice(0,5)){const line=document.createElement('p');const when=new Date(g.kickoff).toLocaleDateString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric'});line.textContent=when+' · '+(g.side==='away'?'at ':'vs ')+g.opponent+' · '+(g.scored===null||g.allowed===null?'Score unavailable':g.scored+'–'+g.allowed);details.append(line);}card.append(details);
-    const travel=document.createElement('p');travel.textContent='Travel distance and travel method unavailable from this game history.';card.append(travel);formGrid.append(card);
+    const travel=document.createElement('p');travel.textContent=games.length?'Checking distance between game venues…':'Previous game venue unavailable.';card.append(travel);formGrid.append(card);
+    if(games.length&&window.Unit501FootballTravel){
+      footballTravel.estimate(game,name,games[0]).then(result=>{
+        if(selected!==game||!card.isConnected)return;
+        travel.textContent=result?`About ${result.miles} miles straight-line from last game venue to this venue${result.cityPrecision?' (city estimate)':''}. Actual route and travel method unknown.`:'Distance between game venues unavailable.';
+      });
+    }
   }
   const formTitle=document.createElement('h3');formTitle.textContent='Recent form & rest';teamContext.append(formTitle,formGrid);
   const formNote=document.createElement('p');formNote.textContent='Based on returned completed games; full schedule coverage is not independently verified. Rest does not include travel or player availability.';teamContext.append(formNote);
