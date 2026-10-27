@@ -1,0 +1,22 @@
+name: CUSA report research
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Inspect official source structure
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const page=await (await fetch('https://conferenceusa.com/sports/2025/8/23/FB_0823254134.aspx')).text();
+            const matches=[...page.matchAll(/https:\/\/faktorsports\.com\/[^"'\s<>]+/gi)].map(x=>x[0].replaceAll('&amp;','&'));
+            console.log('IFRAMES',JSON.stringify(matches));
+            if(!matches.length)throw Error('No official iframe found');
+            const r=await fetch(matches[0]);const html=await r.text();
+            console.log('STATUS',r.status,'BODY',html.slice(0,25000));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
