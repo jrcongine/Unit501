@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>College Basketball Beta — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"></head>
+<body><main>
+<nav class="quick-nav" aria-label="Sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war">🏀 NBA</a><a href="ncaab.html" class="nav-lab" aria-current="page">🏀 College basketball</a></nav>
+<header><div><small>UNIT 501</small><h1>College Basketball · Beta</h1></div></header>
+<section class="card"><h2>Game slate</h2><label for="ncaab-date">Game date</label><input id="ncaab-date" type="date"><button id="ncaab-load" type="button">Load Slate</button><p id="ncaab-status" role="status">Choose a date and load games.</p><div id="ncaab-games" class="nba-games"></div></section>
+<section id="ncaab-lab" class="card hidden"><h2>Game Lab</h2><h3 id="ncaab-matchup"></h3><p id="ncaab-game-info"></p><p id="ncaab-context-status" role="status"></p>
+<label for="ncaab-scope">Compare form</label><select id="ncaab-scope"><option value="season">Season</option><option value="recent5">Last 5</option><option value="recent10">Last 10</option></select>
+<div id="ncaab-teams" class="nba-comparison"></div>
+<section class="nba-model-status"><h3>Experimental score estimate</h3><p id="ncaab-prediction"></p><p class="war-muted">Uses each team’s scoring and its opponent’s points allowed. Unvalidated research estimate; injuries, pace, home advantage and travel are not adjusted.</p>
+<label for="ncaab-spread">Away spread (enter sportsbook line)</label><input id="ncaab-spread" type="number" step="0.5" placeholder="Optional">
+<label for="ncaab-total">Game total (enter sportsbook line)</label><input id="ncaab-total" type="number" step="0.5" min="1" placeholder="Optional">
+<button id="ncaab-sim" type="button">Run 10,000 simulations</button><p id="ncaab-simulation" role="status"></p><p class="war-muted">Simulation frequencies are experimental and not calibrated betting probabilities. Ties and pushes are separate; overtime is not modeled.</p></section>
+<p class="war-muted">Player props, automatic sportsbook lines, injuries and complete rankings are not yet available for college basketball. No estimate is shown for an unconfirmed tipoff or insufficient history.</p>
+</section><p class="war-muted">Game and team data: ESPN men’s college basketball. Some opponents may be outside Division I.</p>
+</main><script src="ncaab-model.js"></script><script src="ncaab.js"></script></body></html>
