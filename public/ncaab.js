@@ -32,7 +32,7 @@
  load.addEventListener('click',async()=>{
   const task=++serial;selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
-   for(const game of games){const button=node('button',`${game.away} at ${game.home} · ${game.timeKnown?central(game.tipoff):'TBD'} · ${game.status}`,'nba-game-card');button.type='button';button.addEventListener('click',()=>choose(game));list.append(button);}
+   for(const game of games){const button=node('button',`${game.away} at ${game.home} · ${game.timeKnown?central(game.tipoff):'TBD'} · ${game.status}`,'ncaab-game-card');button.type='button';button.addEventListener('click',()=>choose(game));list.append(button);}
   }catch{if(task===serial)status.textContent='College basketball slate unavailable. Check the date and try again.';}finally{if(task===serial)load.disabled=false;}
  });
  scope.addEventListener('change',render);
