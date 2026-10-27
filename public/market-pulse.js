@@ -11,6 +11,7 @@
   const number=kind==='spread'?signed:n=>n.toFixed(1);
   const label=kind==='spread'?'Away spread':'Game total';
   if(!delta){
+   if(observation.changes>0)return {label,text:'First observed '+number(firstLine)+' → '+number(line)+' · returned after '+observation.changes+' changes',tone:'flat'};
    if(!Number.isFinite(observation.firstAt)||!Number.isFinite(observation.lastAt)||observation.lastAt<=observation.firstAt)
     return {label,text:'First observed '+number(firstLine)+' · waiting for another observation',tone:'unknown'};
    return {label,text:'First observed '+number(firstLine)+' · unchanged since first observation',tone:'flat'};

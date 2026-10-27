@@ -12,6 +12,10 @@
  const normalizedName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
+ const historyText=(h,line,at)=>{
+  const observed=root.Unit501LineWatch?.fromServer(h,line,at);
+  return observed?root.Unit501LineWatch.describe(observed)+' · '+root.Unit501LineWatch.detail(observed):'Line history unavailable';
+ };
  const fresh=at=>Number.isFinite(at)&&at<=Date.now()+60000&&Date.now()-at<=1800000&&selected&&Date.parse(selected.tipoff)>Date.now();
  function card(title,lines,at){const c=node('section','', 'nba-quote-card');c.append(node('h4',title));for(const line of lines)c.append(node('p',line));if(at)c.append(node('small','Source update: '+ui.timeCentral(new Date(at).toISOString())));gameBoard.append(c);}
  function renderGames(){
@@ -19,10 +23,12 @@
   if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
   if(!selected||!quotes)return;
   const s=quotes.spread,t=quotes.total;
-  if(s&&fresh(s.updatedAt))card('Spread',[selected.away+' '+signed(s.away)+' ('+signed(s.awayPrice)+')',selected.home+' '+signed(s.home)+' ('+signed(s.homePrice)+')'],s.updatedAt);
+  if(s&&fresh(s.updatedAt))card('Spread',[selected.away+' '+signed(s.away)+' ('+signed(s.awayPrice)+')',selected.home+' '+signed(s.home)+' ('+signed(s.homePrice)+')',historyText(quotes.history?.spread,s.away,s.updatedAt)],s.updatedAt);
   else card('Spread',['No current paired spread available. Refresh game lines.']);
-  if(t&&fresh(t.updatedAt))card('Game total',['Over '+t.line+' ('+signed(t.over)+')','Under '+t.line+' ('+signed(t.under)+')'],t.updatedAt);
+  if(t&&fresh(t.updatedAt))card('Game total',['Over '+t.line+' ('+signed(t.over)+')','Under '+t.line+' ('+signed(t.under)+')',historyText(quotes.history?.total,t.line,t.updatedAt)],t.updatedAt);
   else card('Game total',['No current paired total available. Refresh game lines.']);
+  const ml=quotes.moneyline;
+  if(ml&&fresh(ml.updatedAt))card('Moneyline',[selected.away+' '+signed(ml.away),historyText(quotes.history?.awayMoneyline,ml.away,ml.updatedAt),selected.home+' '+signed(ml.home),historyText(quotes.history?.homeMoneyline,ml.home,ml.updatedAt)],ml.updatedAt);
  }
  function renderProps(){
   propBoard.replaceChildren();if(!selected||!props)return;
@@ -47,7 +53,11 @@
   const body=node('tbody','');
   for(const {p,status,prediction} of rows){
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
-   for(const value of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason])row.append(node('td',value));
+   for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
+    const cell=node('td',value);
+    if(index===2)cell.append(node('small',historyText(p.history,p.line,p.updatedAt),'nba-line-history'));
+    row.append(cell);
+   }
    for(const [field,other] of [['above','below'],['below','above'],['equal',null]]){
     const cell=node('td',prediction.available?prediction[field]:'—',prediction.available&&other&&prediction[field]>prediction[other]?'nba-prop-strong':'nba-prop-count');row.append(cell);
    }
@@ -139,7 +149,7 @@
     props=data;renderProps();loadPlayerHistory(game,serial);
    }
    const coverage=kind==='props'?(data.coverage||[]).map(m=>m.label+': '+m.lines).join(' · '):'';
-   status.textContent=(data.message||'NBA FanDuel quotes checked.')+(coverage?' '+coverage+'.':'')+' Cached up to five minutes; source quotes expire after 30 minutes or at tipoff.';
+   status.textContent=(data.message||'NBA FanDuel quotes checked.')+(coverage?' '+coverage+'.':'')+' '+(data.tracking?.message||'Shared tracking status unavailable.')+' Quotes expire after 30 minutes or at tipoff.';
   }catch(error){
    if(serial!==sequence||task!==(kind==='game'?gameTask:propTask))return;
    status.textContent=error.message+' Any previously loaded fresh quotes are retained.';

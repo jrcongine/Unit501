@@ -627,16 +627,17 @@ test('missing auto-injury feed coverage leaves baseline visible but does not fre
  assert.match(h.nodes.get('auto-injury-status').textContent,/unavailable|not loaded|incomplete/i);
 });
 
-test('observed FanDuel changes appear in Game Lab only after newer valid price timestamps',async()=>{
+test('Game Lab uses server history across devices rather than browser-local history',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  const scope=h.run('selected'),key='unit501:observed-fanduel:v1:'+scope.league+':'+scope.season+':'+scope.id+':game:total';
- assert.equal(JSON.parse(h.storage.get(key)).firstLine,48.5);
+ assert.equal(h.storage.has(key),false);
  const old=h.context.fetch;
+ const at=Date.now()+10;
  h.context.fetch=async url=>String(url).startsWith('/api/fanduel')?
-   {ok:true,json:async()=>({available:true,awaySpread:7.5,total:47.5,spreadUpdated:Date.now(),totalUpdated:Date.now()+10})}:old(url);
+   {ok:true,json:async()=>({available:true,awaySpread:7.5,total:47.5,spreadUpdated:at,totalUpdated:at,history:{total:{scope:'server',persisted:true,firstLine:48.5,firstAt:at-60000,line:47.5,lastAt:at,delta:-1,changed:true,observations:2,changes:1}}})}:old(url);
  const btn=h.created.find(x=>x.textContent==='Refresh FanDuel lines');
  await btn.dispatchEvent({type:'click'});await h.settle();
- const x=JSON.parse(h.storage.get(key));assert.equal(x.firstLine,48.5);assert.equal(x.lastLine,47.5);
+ assert.equal(h.storage.has(key),false);
  const line=h.created.find(x=>x.tag==='p'&&x.textContent.includes('since first observed'));
  assert.ok(line);assert.match(line.textContent,/since first observed 48.5/);
 });

@@ -12,6 +12,20 @@ const nbaSources = require('./nba-public').createNBASources({primaryGames:requir
 const nbaGames = nbaSources.games;
 const nbaContext = nbaSources.context;
 const nbaOdds = require('./nba-odds').createNBAOdds();
+let lineHistory;
+try {
+  lineHistory = require('./line-history').createHistory({
+    file: process.env.UNIT501_LINE_HISTORY_FILE || '',
+    enabled: process.env.UNIT501_LINE_HISTORY_BACKGROUND === '1',
+    dailyBudget: Number(process.env.UNIT501_LINE_HISTORY_DAILY_CREDITS || 240)
+  });
+} catch {
+  console.error('Line history storage could not be loaded; background tracking disabled. Existing file preserved.');
+  lineHistory = require('./line-history').createHistory();
+}
+require('./odds-monitor').setObserver(lineHistory.noteQuota);
+const trackedOdds = require('./tracked-odds').createTrackedOdds({history: lineHistory,
+  footballLines: fanduel.getLines, footballProps: require('./fanduel-props').getProps, nbaOdds});
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
 const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA});
 const injurySlate = require('./nba-slate-cache').createSlateCache(nbaGames);
@@ -87,6 +101,7 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    if(u.pathname==='/api/line-history/status')return send(res,200,trackedOdds.status());
     if(u.pathname==='/api/league-pulse'){
       const league=u.searchParams.get('league')||'nfl';
       if(!Object.hasOwn(require('./league-pulse').LEAGUES,league))return send(res,400,{error:'Choose NFL, college football, NBA, MLB or NHL.'});
@@ -110,7 +125,7 @@ const server = http.createServer(async (req, res) => {
         const slate=await nbaGames(date),game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
-        return send(res,200,await nbaOdds(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
+        return send(res,200,await trackedOdds.nba(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
       }catch(e){return send(res,503,{error:e.message});}
     }
     if(u.pathname==='/api/nba/player-history'){
@@ -224,7 +239,7 @@ const server = http.createServer(async (req, res) => {
           !Number.isFinite(query.kickoff) || query.kickoff <= 0) {
         return send(res, 400, { error: 'Valid league, teams and kickoff required' });
       }
-      return send(res, 200, await (u.pathname === '/api/fanduel-props' ? require('./fanduel-props').getProps(query) : fanduel.getLines(query)));
+      return send(res, 200, await trackedOdds.football(query, u.pathname === '/api/fanduel-props' ? 'props' : 'game'));
     }
 // Get player statistics for a game
 
@@ -469,6 +484,8 @@ if (u.pathname === '/api/team-games') {
 server.listen(PORT, () => {
 
   console.log('UNIT 501 running on port ' + PORT);
+  trackedOdds.start();
+  console.log('Line history: ' + JSON.stringify(trackedOdds.status()));
   // Heavy full-league roster sweeps are opt-in, and never run on startup.
   if(process.env.API_SPORTS_KEY && process.env.UNIT501_ENABLE_ROSTER_SWEEPS==='1')rosterMaintenance.start();
   else rosterMaintenance.pause();

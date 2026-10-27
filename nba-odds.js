@@ -55,6 +55,7 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   const ck=path+JSON.stringify(params),old=cache.get(ck);if(old&&now()-old.at<300000)return old.pending;
   const pending=(async()=>{
    let response;try{response=await fetcher('https://api.the-odds-api.com/v4/sports/'+SPORT+'/'+path+'?'+new URLSearchParams({...params,apiKey:key().trim()}),{signal:AbortSignal.timeout(12000)});}catch{throw Error('NBA FanDuel feed could not be reached. Try again later.');}
+   require('./odds-monitor').observe(response);
    if(!response.ok){
     const payload=await response.json().catch(()=>null);
     if(payload?.error_code==='INVALID_MARKET')throw Error('NBA odds provider rejected a requested basketball market.');
@@ -72,7 +73,7 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   if(!key()?.trim())return {...base,available:false,message:'NBA FanDuel quotes require the existing odds-provider connection to be configured.'};
   let e;
   if(kind==='game'||kind==='comparison'){
-   const events=await request('odds',{bookmakers:kind==='comparison'?Object.keys(BOOKS).join(','):'fanduel',markets:kind==='comparison'?'h2h,spreads,totals':'spreads,totals',oddsFormat:'american'});
+   const events=await request('odds',{bookmakers:kind==='comparison'?Object.keys(BOOKS).join(','):'fanduel',markets:'h2h,spreads,totals',oddsFormat:'american'});
    if(!Array.isArray(events))throw Error('NBA odds event list was invalid.');
    const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique NBA sportsbook matchup matched both teams and tipoff.'};
    e=found[0];
