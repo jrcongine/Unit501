@@ -14,7 +14,34 @@ test('NBA player estimate withholds OUT, stale, mismatched, ambiguous and insuff
  assert.equal(project(data(),q,{...game,id:6},null,now).available,false);
  assert.equal(project(data(),q,game,null,Date.parse(game.tipoff)).available,false);
  const duplicate=data();duplicate.teams[1].players=[structuredClone(duplicate.teams[0].players[0])];assert.equal(project(duplicate,q,game,null,now).available,false);
- const partial=data();partial.teams[1].available=false;assert.equal(project(partial,q,game,null,now).available,false);
+ const partial=data();partial.teams[1].available=false;assert.equal(project(partial,q,game,null,now).available,true);
+ partial.teams[0].available=false;assert.equal(project(partial,q,game,null,now).available,false);
  const fewer=data();fewer.teams[0].players[0].results[1].player_points=null;fewer.teams[0].players[0].results[2].player_points=null;assert.equal(project(fewer,q,game,null,now).available,false);
  const future=data();future.teams[0].players[0].results[0].tipoff=game.tipoff;assert.equal(project(future,q,game,null,now).available,false);
+});
+
+
+test('NBA minutes estimate responds to rotation scenarios without changing recorded results',()=>{
+ const d=data();d.teams[0].players[0].results.forEach((r,i)=>{r.minutes=[28,32,10][i];r.player_points=r.minutes/2;});
+ const baseline=project(d,q,game,null,now),manual=project(d,q,game,null,now,{minutes:36});
+ assert.equal(baseline.method,'recency and minutes');assert.equal(manual.projection,18);
+ assert.equal(manual.projectedMinutes,36);assert.equal(manual.method,'manual minutes');
+ assert.equal(manual.above,baseline.above);assert.equal(manual.below,baseline.below);
+ assert.equal(manual.equal,baseline.equal);assert.equal(manual.average,baseline.average);
+ for(const minutes of [0,-1,49,NaN,Infinity,'30'])assert.equal(project(d,q,game,null,now,{minutes}).available,false);
+ assert.equal(project(data(),q,game,null,now,{minutes:30}).available,false);
+});
+
+test('NBA minutes trends are chronological and never label a confirmed starting role',()=>{
+ const d=data();d.teams[0].players[0].results=Array.from({length:5},(_,i)=>({gameId:i+1,tipoff:`2026-10-${24-i*2}T20:00:00Z`,minutes:i<2?32:20,player_points:i<2?16:10})).reverse();
+ const r=project(d,q,game,null,now);assert.equal(r.minuteChange.direction,'up');assert.equal(r.minuteChange.recent,32);assert.equal(r.minuteChange.previous,20);
+ assert.ok(r.projection>12);assert.ok(r.projectedMinutes<=48);assert.equal(r.games,5);
+ const future=data();future.teams[0].players[0].results[0].tipoff='2026-10-26T21:00:00Z';
+ assert.equal(project(future,q,game,null,now).available,false);
+});
+
+
+test('NBA props withhold players with an unverified appearance even when other results are valid',()=>{
+ const d=data();d.teams[0].players[0].available=false;
+ assert.equal(project(d,q,game,null,now).available,false);
 });

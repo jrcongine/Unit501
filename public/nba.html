@@ -13,7 +13,7 @@
 <section class="card"><h2>First-half deficit watch</h2>
 <label><input id="nba-alert-enable" type="checkbox"> Watch for a team down 20+ before halftime</label>
 <button id="nba-alert-permission" type="button">Enable browser notifications</button>
-<p id="nba-alert-status" role="status">Off. Watches today's games while this page is open and visible. Current-season NBA data required.</p>
+<p id="nba-alert-status" role="status">Off. Watches today's games while this tab is open, including in the background. Browser throttling can delay checks; current-season NBA data required.</p>
 <div id="nba-alert-list" aria-live="polite"></div></section>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
@@ -76,7 +76,7 @@
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
 <span class="section-kicker">03 / PLAYER MARKETS</span><h2>FanDuel player props</h2>
-<p>Player projections and recent results use up to five completed games.</p>
+<p>Player estimates use up to ten completed team games, recent playing time and production per minute. Adjust a player’s minutes to explore a rotation change; clear the input to restore the estimate.</p>
 <button id="nba-load-props" type="button">Load FanDuel player props</button>
 <p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>
 <div class="nba-prop-filters"><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label>
@@ -84,7 +84,7 @@
 <label for="nba-prop-sort">Sort <select id="nba-prop-sort"><option value="name">Player</option><option value="most">Most Covers</option><option value="least">Least Covers</option></select></label></div>
 <p id="nba-player-history-status" role="status" class="war-muted"></p>
 <div id="nba-prop-lines" class="nba-head-to-head"></div>
-<p class="war-muted">Projections use ESPN’s returned recent-game results and assume the player plays. Two to four games is a small sample. Injury status and role can change.</p>
+<p class="war-muted">Estimates assume the player plays. Recent minutes changes describe past appearances, not confirmed promotions. Opponent matchups and injury replacement minutes are not automatically adjusted. Two to four games is a small sample; accuracy is not established.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
 </main><script src="line-watch.js"></script><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba.js"></script><script src="nba-player-model.js"></script><script src="nba-markets.js"></script></body></html>

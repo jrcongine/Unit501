@@ -93,6 +93,13 @@
    const label=rest.sameDay?'Same-day game':rest.backToBack?'Back to back':rest.fullDaysOff+' full day(s) off';
    card.append(node('p',label+(rest.threeInFour?' · Third game in four days':''),rest.backToBack||rest.sameDay?'nba-rest-flag':'nba-rest-normal'));
    card.append(node('p',rest.gamesLast7Days+' completed game(s) in the previous seven days · '+rest.gapHours+' hours between tipoffs','war-muted'));
+   if(rest.schedule){
+    const schedule=rest.schedule,venue=value=>value==='away'?'road':'home';
+    card.append(node('p','Schedule: '+venue(schedule.previous)+' → '+venue(schedule.current)+
+     (schedule.consecutive>1?' · '+(schedule.minimum?'at least ':'')+schedule.consecutive+' consecutive '+venue(schedule.current)+' games':''),'nba-rest-normal'));
+    if(schedule.previousArena&&schedule.currentArena)card.append(node('p',schedule.previousArena===schedule.currentArena?
+     'Same listed arena as the previous game.':'Previous arena: '+schedule.previousArena+' · Next: '+schedule.currentArena,'war-muted'));
+   }
   }else card.append(node('p','Rest unverified: '+(rest?.reason||'Earlier schedule unavailable.'),'war-muted'));
   if(side.lastPlayedAt)card.append(node('p','Previous scored game: '+shared.timeCentral(side.lastPlayedAt),'war-muted'));
   const form=node('div','', 'nba-form-strip');form.setAttribute('aria-label','Last five recorded results, newest first');
@@ -250,22 +257,28 @@ function choose(game){
   renderProjection();
   if(injuryReport&&(Date.now()-injuryReport.reportAt>7200000||Date.parse(injuryGame?.tipoff)<=Date.now()))clearInjuries('Report expired. Refresh injuries or open the official report.');
  },30000);
- // Monitoring is explicitly enabled and only runs while this page is visible.
+ // Monitoring is explicitly enabled and can continue in an open background tab.
  const alertToggle=byId('nba-alert-enable'),alertStatus=byId('nba-alert-status'),alertList=byId('nba-alert-list');
  const track=window.Unit501NBAAlerts.createTracker();
- let watching=false,watchTimer=null;
+ let watching=false,watchTimer=null,watchGeneration=0;
  byId('nba-alert-permission').addEventListener('click',async()=>{
   if(!('Notification' in window)){alertStatus.textContent='Browser notifications unavailable here; alerts still appear on this page.';return;}
   try{const permission=await Notification.requestPermission();alertStatus.textContent=permission==='granted'?'Browser notifications enabled. Turn on the watch to begin.':'Notifications not enabled; alerts still appear on this page.';}catch{alertStatus.textContent='Browser notifications unavailable; alerts still appear on this page.';}
  });
  async function watch(){
-  if(!alertToggle.checked||watching||document.hidden)return;
+  if(!alertToggle.checked||watching)return;
   watching=true;
+  const generation=watchGeneration;
   try{
-   const response=await fetch('/api/nba/games?date='+shared.dateCentral(),{signal:AbortSignal.timeout(30000)});
+   const response=await fetch('/api/nba/live-watch',{signal:AbortSignal.timeout(30000)});
    const data=await response.json();
-   if(!alertToggle.checked)return;
-   if(!response.ok){alertToggle.checked=false;throw Error(data.error||'NBA data unavailable; watch stopped.');}
+   if(!alertToggle.checked||generation!==watchGeneration)return;
+   if(!response.ok){
+    if(response.status===401||response.status===403){alertToggle.checked=false;alertStatus.textContent='Sign in again to resume the watch.';return;}
+    throw Error((data.error||'NBA scores unavailable.')+' Watch will retry.');
+   }
+   const checked=Date.parse(data.checkedAt);
+   if(!Array.isArray(data.games)||!Number.isFinite(checked)||checked>Date.now()+60000||Date.now()-checked>180000)throw Error('Live scores are stale or unavailable; alert watch will retry.');
    for(const alert of track(data.games)){
     const message=alert.team+' down '+alert.deficit+' in Q'+alert.period+' · '+alert.score;
     alertList.prepend(node('p',message));
@@ -273,16 +286,22 @@ function choose(game){
      try{new Notification('Unit 501: first-half deficit',{body:message,tag:'nba-'+alert.id+'-'+alert.team});}catch{/* Inline alert remains visible. */}
     }
    }
-   alertStatus.textContent='Watching today · checked '+new Date(data.checkedAt).toLocaleTimeString()+'. One alert per trailing team per game. This is a score alert, not a comeback prediction.';
-  }catch(error){alertStatus.textContent=error.message;}
-  finally{watching=false;if(alertToggle.checked)watchTimer=setTimeout(watch,60000);}
+   alertStatus.textContent='Watching today · checked '+new Date(data.checkedAt).toLocaleTimeString()+'. Keep this tab open; browser throttling may delay checks. One alert per trailing team per game.';
+  }catch(error){if(alertToggle.checked&&generation===watchGeneration)alertStatus.textContent=error.message;}
+  finally{
+   watching=false;
+   if(alertToggle.checked){
+    clearTimeout(watchTimer);
+    watchTimer=setTimeout(watch,generation===watchGeneration?60000:0);
+   }
+  }
  }
  alertToggle.addEventListener('change',()=>{
+  ++watchGeneration;
   clearTimeout(watchTimer);
   if(alertToggle.checked)watch();else alertStatus.textContent='Watch off.';
  });
  document.addEventListener('visibilitychange',()=>{
-  clearTimeout(watchTimer);
-  if(!document.hidden&&alertToggle.checked)watch();
+  if(!document.hidden&&alertToggle.checked&&!watching){clearTimeout(watchTimer);watch();}
  });
 })();

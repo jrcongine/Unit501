@@ -32,8 +32,11 @@ function extractBox(data,prior,teamId,season,stage){
   if(row.didNotPlay)continue;
   const id=String(row.athlete?.id||''),name=String(row.athlete?.displayName||'').trim(),stats=row.stats;
   if(!/^\d{1,12}$/.test(id)||!name||name.length>100||!Array.isArray(stats))throw Error('NBA player identity unavailable');
-  const min=minutes(stats[keys.indexOf('minutes')]);if(min===null)throw Error('NBA minutes unavailable');if(min===0)continue;
   if(seen.has(id))throw Error('Duplicate NBA player box score');seen.add(id);
+  const min=minutes(stats[keys.indexOf('minutes')]);
+  // Quarantine a malformed appearance without hiding unrelated verified players.
+  if(min===null){output.push({id,name,available:false,minutes:null,values:{}});continue;}
+  if(min===0)continue;
   const values=Object.fromEntries(Object.entries(METRICS).map(([market,key])=>[market,stat(stats[keys.indexOf(key)],market==='player_threes')]));
   output.push({id,name,minutes:min,values});
  }
@@ -60,7 +63,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
   const slate=await publicFeed.games(date),matches=slate.games.filter(g=>g.statusCode===1&&teamCode(g.away)===teamCode(selected.away)&&teamCode(g.home)===teamCode(selected.home)&&teamCode(g.away)&&teamCode(g.home)&&Math.abs(Date.parse(g.tipoff)-Date.parse(selected.tipoff))<=15*60000&&g.stage===selected.stage);
   if(matches.length!==1||slate.season!==season)throw Error('Public NBA matchup could not be verified');
   const match=matches[0],context=await publicFeed.context(match,season);
-  const sides=[context.away,context.home],historical=sides.map(s=>s?.available&&s.coverage?.conflictingGames===0&&Array.isArray(s.recentGames)?s.recentGames.slice(0,5):[]);
+  const sides=[context.away,context.home],historical=sides.map(s=>s?.available&&s.coverage?.conflictingGames===0&&Array.isArray(s.recentGames)?s.recentGames.slice(0,10):[]);
   const jobs=new Map();for(const games of historical)for(const g of games)jobs.set(String(g.id),g.id);
   // Bound public-source concurrency for each matchup; all viewers share cached games.
   const ids=[...jobs.values()],results=new Map();let next=0;
@@ -72,7 +75,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
     for(const game of games){const result=results.get(String(game.id));if(!result||result.error)throw Error('Missing NBA box score');
      for(const row of extractBox(result.data,game,side.id,season,match.stage)){
       const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
-      const player=old||{id:row.id,name:row.name,results:[]};player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
+      const player=old||{id:row.id,name:row.name,available:true,results:[]};if(row.available===false)player.available=false;player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
      }
     }
     return {name:side.name,available:true,games:games.length,players:[...players.values()]};

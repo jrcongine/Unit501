@@ -35,7 +35,7 @@ function summarize(raw,teamId,selectedGame,season=inferSeason(selectedGame?.tipo
    continue;
   }
   const record={id:g.id,tipoff:g.tipoff,opponent:asVisitor?g.home:g.away,opponentId:asVisitor?g.homeId:g.awayId,
-   for:asVisitor?g.awayScore:g.homeScore,against:asVisitor?g.homeScore:g.awayScore,venue:asVisitor?'away':'home'};
+   for:asVisitor?g.awayScore:g.homeScore,against:asVisitor?g.homeScore:g.awayScore,venue:asVisitor?'away':'home',arena:g.arena};
   const previous=played.get(g.id);
   if(previous&&JSON.stringify(previous)!==JSON.stringify(record)){conflicts.add(g.id);entries.delete(g.id);continue;}
   if(conflicts.has(g.id))continue;
@@ -62,6 +62,11 @@ function summarize(raw,teamId,selectedGame,season=inferSeason(selectedGame?.tipo
   rest={available:true,previousTipoff:previous.tipoff,previousDate:calendarDay(previous.tipoff),gapHours:round((cutoff-Date.parse(previous.tipoff))/3600000),
    calendarDays:days,fullDaysOff:Math.max(0,days-1),backToBack:days===1,sameDay:days===0,gamesLast7Days:seven,threeInFour:four>=2,
    note:'Calendar days use Central Time; rest context does not measure travel or player minutes.'};
+  const currentVenue=Number(teamId)===selectedGame.awayId?'away':'home';
+  const preceding=[...completed].reverse();let consecutive=0;
+  for(const item of preceding){if(item.venue!==currentVenue)break;consecutive++;}
+  rest.schedule={previous:previous.venue,current:currentVenue,consecutive:consecutive+1,
+   minimum:consecutive===completed.length,previousArena:previous.arena||null,currentArena:selectedGame.arena||null};
  }else if(conflicts.size)rest={available:false,reason:'Conflicting game records prevent a reliable rest comparison.'};
  return {available:prior.length>0,sample:prior.length,season:summary(prior),
    recent5:summary(prior.slice(-5)),recent10:summary(prior.slice(-10)),

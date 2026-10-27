@@ -11,6 +11,7 @@ const outsidePicks = require('./outside-picks').createFeed();
 const publicNBA = require('./nba-public').createPublicNBA();
 const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:publicNBA});
 const nbaGames = nbaSources.games;
+const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:publicNBA});
 const nbaContext = nbaSources.context;
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
@@ -112,6 +113,11 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/nba/live-watch'){
+      // Live monitoring uses the shared public scoreboard, never paid NBA or odds credits.
+      try{return send(res,200,await nbaLiveWatch());}
+      catch{return send(res,503,{error:'Live NBA scores unavailable. Try again shortly.'});}
     }
     if(u.pathname==='/api/nba/games'){
       const date=u.searchParams.get('date');

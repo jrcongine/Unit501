@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {summarize}=require('../nba-context');
 function harness(){
- const nodes=new Map(),requests=[],intervals=[];
+ const nodes=new Map(),requests=[],intervals=[],timeouts=new Map();let timerId=0;
  class Element{
   constructor(tag){this.tag=tag;this.children=[];this.events={};this.className='';this.attrs={};this.value='';this._text='';
    const change=(name,add)=>{const set=new Set(this.className.split(/\s+/).filter(Boolean));add?set.add(name):set.delete(name);this.className=[...set].join(' ');};
@@ -24,7 +24,7 @@ function harness(){
  {id:900,away:'Cleveland Cavaliers',awayId:7,home:'Boston Celtics',homeId:8,tipoff:'2026-10-24T23:30:00Z',stage:2,status:'Scheduled',awayScore:null,homeScore:null}];
  const history=(id,other,count)=>Array.from({length:count},(_,i)=>({id:id*100+i,stage:2,season:2026,league:'standard',date:{start:`2026-10-${String(10+i).padStart(2,'0')}T23:00:00Z`},status:{short:3},teams:{visitors:{id,name:'Team'},home:{id:other,name:'Opponent'}},scores:{visitors:{points:100+i},home:{points:90}}}));
  const data=g=>({gameId:g.id,away:{...summarize(history(g.awayId,19,7),g.awayId,g),name:g.away},home:{...summarize(history(g.homeId,20,2),g.homeId,g),name:g.home},message:'Historical comparison'});
- const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:()=>1,setInterval:(fn,ms)=>{intervals.push({fn,ms});return intervals.length;},clearTimeout(){}};
+ const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:(fn,ms)=>{const id=++timerId;timeouts.set(id,{fn,ms});return id;},setInterval:(fn,ms)=>{intervals.push({fn,ms});return intervals.length;},clearTimeout(id){timeouts.delete(id);}};
  context.CustomEvent=class{constructor(type,options={}){this.type=type;this.detail=options.detail;}};
  context.Event=class{constructor(type){this.type=type;}};
  context.window=context;
@@ -49,7 +49,7 @@ function harness(){
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const load=async()=>{await nodes.get('nba-load').events.click();await settle();};
  const choose=async i=>{nodes.get('nba-games').children[i].events.click();await settle();await settle();};
- return {nodes,requests,intervals,context,games,data,load,choose,settle};
+ return {nodes,requests,intervals,timeouts,context,games,data,load,choose,settle};
 }
 test('NBA slate shows same in-page Top 10, middle, bottom and headlines plus Game Lab ranks',async()=>{
  const h=harness();await h.load();await h.settle();
@@ -239,4 +239,46 @@ test('NBA injury reports refresh only while the game page is visible and pregame
  h.context.document.hidden=true;timer.fn();await h.settle();assert.equal(calls(),1);
  h.context.document.hidden=false;timer.fn();await h.settle();await h.settle();assert.equal(calls(),2);
  h.games[0].tipoff=new Date(Date.now()-1000).toISOString();timer.fn();await h.settle();assert.equal(calls(),2);
+});
+
+test('first-half watch checks an open background tab and rejects stale scores',async()=>{
+ const h=harness();let stamp=new Date().toISOString();
+ const live={id:9,statusCode:2,period:2,halftime:false,home:'Home',away:'Away',homeScore:60,awayScore:40};
+ h.context.fetch=async()=>({ok:true,json:async()=>({games:[live],checkedAt:stamp})});
+ h.context.document.hidden=true;const toggle=h.nodes.get('nba-alert-enable');toggle.checked=true;toggle.events.change();await h.settle();
+ assert.match(h.nodes.get('nba-alert-list').textContent,/Away down 20/);
+ toggle.checked=false;toggle.events.change();stamp=new Date(Date.now()-600000).toISOString();toggle.checked=true;toggle.events.change();await h.settle();
+ assert.match(h.nodes.get('nba-alert-status').textContent,/stale or unavailable/);
+});
+
+
+test('disabled NBA watch ignores an in-flight failure and schedules no more checks',async()=>{
+ const h=harness();let reject;
+ h.context.fetch=()=>new Promise((resolve,no)=>{reject=no;});
+ const toggle=h.nodes.get('nba-alert-enable');toggle.checked=true;toggle.events.change();
+ toggle.checked=false;toggle.events.change();reject(new Error('Delayed network error'));await h.settle();
+ assert.equal(h.nodes.get('nba-alert-status').textContent,'Watch off.');
+ assert.equal(h.timeouts.size,0);
+});
+
+test('restarting NBA watch discards old scores and starts exactly one fresh check',async()=>{
+ const h=harness();let release;
+ const live={id:9,statusCode:2,period:2,halftime:false,home:'Home',away:'Away',homeScore:60,awayScore:40};
+ h.context.fetch=()=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({games:[live],checkedAt:new Date().toISOString()})});});
+ const toggle=h.nodes.get('nba-alert-enable');toggle.checked=true;toggle.events.change();
+ toggle.checked=false;toggle.events.change();toggle.checked=true;toggle.events.change();
+ release();await h.settle();assert.equal(h.nodes.get('nba-alert-list').children.length,0);
+ assert.equal(h.timeouts.size,1);
+ const [id,timer]=[...h.timeouts.entries()][0];assert.equal(timer.ms,0);h.timeouts.delete(id);
+ h.context.fetch=async()=>({ok:true,json:async()=>({games:[live],checkedAt:new Date().toISOString()})});
+ await timer.fn();assert.match(h.nodes.get('nba-alert-list').textContent,/Away down 20/);
+ assert.equal(h.timeouts.size,1);assert.equal([...h.timeouts.values()][0].ms,60000);
+});
+
+
+test('NBA watch retries a temporary scoreboard failure instead of silently stopping',async()=>{
+ const h=harness();h.context.fetch=async()=>({ok:false,status:503,json:async()=>({error:'Scoreboard unavailable.'})});
+ const toggle=h.nodes.get('nba-alert-enable');toggle.checked=true;toggle.events.change();await h.settle();
+ assert.equal(toggle.checked,true);assert.match(h.nodes.get('nba-alert-status').textContent,/Watch will retry/);
+ assert.equal(h.timeouts.size,1);
 });

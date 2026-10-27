@@ -56,3 +56,9 @@ section.nba-model-status{padding:16px;border:1px solid #426374;border-radius:12p
 
 .nba-prop-count,.nba-prop-strong{font-weight:800;text-align:center}
 .nba-prop-strong{background:#e7f7e9;color:#173f29}
+
+#nba-prop-lines tbody tr{border-bottom:3px solid #50627a}
+#nba-prop-lines td:first-child{white-space:normal;min-width:145px}
+.nba-minutes-trend{display:block;background:#fff0d6;color:#702800;padding:7px;border-radius:5px;margin-top:7px;font-size:12px}
+.nba-minutes-control{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px}
+.nba-minutes-control input{width:76px;padding:6px;font-size:13px}

@@ -42,3 +42,17 @@ test('missing box score withholds only its affected team',async()=>{
  const data=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
  assert.equal(data.teams[0].available,false);assert.equal(data.teams[1].available,true);
 });
+
+
+test('one malformed minutes row withholds only that player, not the whole team',async()=>{
+ const f=feeds(),base=f.fetcher;
+ f.fetcher=async url=>{
+  const r=await base(url),d=await r.json();
+  if(String(url).endsWith('event=1'))d.boxscore.players[0].statistics[0].athletes.push({athlete:{id:'888',displayName:'Unknown minutes'},didNotPlay:false,stats:['--','0','0','0','0-0']});
+  return {ok:true,headers:new Headers(),json:async()=>d};
+ };
+ const result=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
+ assert.equal(result.teams[0].available,true);
+ assert.equal(result.teams[0].players.find(p=>p.name==='Player A').available,true);
+ assert.equal(result.teams[0].players.find(p=>p.name==='Unknown minutes').available,false);
+});

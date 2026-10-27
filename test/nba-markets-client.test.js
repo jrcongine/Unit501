@@ -180,3 +180,23 @@ test('late player history cannot replace the new matchup projection',async()=>{
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A.*12\.0/);
  assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/99\.0/);
 });
+
+
+test('NBA minutes controls update estimates locally and clear when changing matchups',async()=>{
+ const h=harness(),original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const response=await original(url);
+  if(!String(url).startsWith('/api/nba/player-history?'))return response;
+  const d=await response.json();for(const t of d.teams)for(const p of t.players)for(const r of p.results)r.minutes=30;
+  return {ok:true,json:async()=>d};
+ };
+ await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
+ const board=h.nodes.get('nba-prop-lines'),flatten=n=>[n,...n.children.flatMap(flatten)];
+ let input=flatten(board).find(n=>n.type==='number');assert.ok(input);assert.equal(input.placeholder,'30.0');
+ const calls=h.calls.length;input.value='40';input.events.change();
+ assert.match(board.textContent,/manual minutes/);assert.equal(h.calls.length,calls);
+ input=flatten(board).find(n=>n.type==='number');assert.equal(input.value,40);
+ input.value='';input.events.change();assert.doesNotMatch(board.textContent,/manual minutes/);
+ await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
+ assert.doesNotMatch(board.textContent,/manual minutes/);
+});

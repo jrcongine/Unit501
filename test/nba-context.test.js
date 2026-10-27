@@ -129,3 +129,15 @@ test('conflicting duplicate finals and wrong-season rows cannot create form or r
  assert.equal(s.rest.available,false);
  const reversed=summarize([conflict,old1,older],5,selected);assert.equal(reversed.sample,0);
 });
+
+
+test('NBA schedule context distinguishes road sequences and returns only listed arenas',()=>{
+ const first={...old1,arena:{name:'First arena'}},second={...safelyFinished,arena:{name:'Second arena'}};
+ const s=summarize([first,second],5,{...selected,arena:'Next arena'});
+ assert.equal(s.rest.schedule.previous,'away');assert.equal(s.rest.schedule.current,'away');
+ assert.equal(s.rest.schedule.consecutive,3);assert.equal(s.rest.schedule.minimum,true);
+ assert.equal(s.rest.schedule.previousArena,'Second arena');assert.equal(s.rest.schedule.currentArena,'Next arena');
+ const home=summarize([first,old2],5,selected);
+ assert.equal(home.rest.schedule.previous,'home');assert.equal(home.rest.schedule.current,'away');assert.equal(home.rest.schedule.consecutive,1);
+ assert.equal(home.rest.schedule.currentArena,null);
+});
