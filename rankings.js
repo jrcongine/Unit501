@@ -177,7 +177,6 @@ function createRankings(api, options = {}) {
       const selectedGame = g => [g.teams?.away || g.teams?.visitors, g.teams?.home].some(team => [query.away,query.home].includes(String(team?.id)));
       past.sort((a,b) => Number(selectedGame(b)) - Number(selectedGame(a)));
       const boxGames=boxLimit===Infinity?past:past.slice(0,boxLimit);
-      const selectedCount=boxGames.filter(selectedGame).length;
       const detailCoverage={requested:boxGames.length,eligible:past.length,
         limited:boxGames.length<past.length};
       // Fetch full scoring schedules for selected teams' non-FBS opponents.
@@ -243,11 +242,10 @@ function createRankings(api, options = {}) {
         if (!/^\d+$/.test(id)) continue;
         boxes.set(id, await box(id));
         job.completed++;
-        if (job.completed === selectedCount) {
-          // Publish the selected teams' complete averages while national coverage loads.
-          job.data = decorate(summary(boxes));
-          job.data.validation=validation;
-        }
+        // Publish each fetched box immediately, so a slow request cannot hide
+        // yardage from games that already completed successfully.
+        job.data = decorate(summary(boxes));
+        job.data.validation=validation;
       }
       job.data = decorate(summary(boxes));
       job.data.validation=validation;
