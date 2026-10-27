@@ -24,3 +24,9 @@ test('unverified box scores are skipped rather than producing fabricated results
  assert.equal(result.teamGames,0);assert.equal(result.skipped,4);assert.equal(result.metrics.player_points.samples,0);
  await assert.rejects(replay([...games,games[0]],2025),/Duplicate/);
 });
+test('later results cannot change earlier player estimates',async()=>{
+ const original=fixture(),changed=fixture();
+ for(const id of [19,20])changed.responses.get(id).boxscore.players[0].statistics[0].athletes[0].stats[1]='90';
+ const run=({games,responses})=>replay(games,2025,{limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+ assert.deepEqual(await run(original),await run(changed));
+});
