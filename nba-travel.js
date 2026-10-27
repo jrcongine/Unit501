@@ -24,8 +24,14 @@ function createNBATravel({publicFeed,fetcher=fetch,now=Date.now}={}){
   const v=data.gameInfo?.venue,city=v?.address?.city,state=v?.address?.state;
   if(!v?.fullName||!city||!state||typeof city!=='string'||city.length>100||typeof state!=='string'||state.length>40)throw Error('NBA venue location unavailable');
   const expected=states[state]||state;
-  const geo=await read('https://geocoding-api.open-meteo.com/v1/search?'+new URLSearchParams({name:city,count:'100',language:'en',format:'json'}));
-  const matches=(geo.results||[]).filter(p=>['US','CA'].includes(p.country_code)&&key(p.name)===key(city)&&key(p.admin1)===key(expected)&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude));
+  async function search(location){
+   const geo=await read('https://geocoding-api.open-meteo.com/v1/search?'+new URLSearchParams({name:location,count:'100',language:'en',format:'json'}));
+   return (geo.results||[]).filter(p=>['US','CA'].includes(p.country_code)&&key(p.name)===key(location)&&key(p.admin1)===key(expected)&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude));
+  }
+  let matches=await search(city);
+  // Some city geocoders omit NYC boroughs; use the city center and retain the
+  // explicit approximate-city label instead of inventing arena coordinates.
+  if(!matches.length&&key(city)==='brooklyn'&&state==='NY')matches=await search('New York');
   if(matches.length!==1)throw Error('NBA venue city is ambiguous');
   return {name:v.fullName,city,state,latitude:matches[0].latitude,longitude:matches[0].longitude};
  }
