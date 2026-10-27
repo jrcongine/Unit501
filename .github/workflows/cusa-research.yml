@@ -8,15 +8,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Inspect official source structure
+      - uses: actions/checkout@v4
+      - name: Check current game notes
         run: |
           node - <<'NODE'
+          const {parseNotes}=require('./college-injury-notes');
           (async()=>{
-            const page=await (await fetch('https://kickoffstatus.com/games/2026-10-27-delaware-at-western-kentucky/')).text(); console.log('PAGE',page.slice(0,45000)); return;
-            const matches=[...page.matchAll(/https:\/\/faktorsports\.com\/[^"'\s<>]+/gi)].map(x=>x[0].replaceAll('&amp;','&'));
-            console.log('IFRAMES',JSON.stringify(matches));
-            if(!matches.length)throw Error('No official iframe found');
-            const r=await fetch(matches[0]);const html=await r.text();
-            console.log('STATUS',r.status,'BODY',html.slice(0,25000));
+            const r=await fetch('https://kickoffstatus.com/games/2026-10-27-delaware-at-western-kentucky/');
+            if(!r.ok)throw Error('Source unavailable');
+            const game={game:{date:{timestamp:Date.parse('2026-10-27T23:00:00Z')/1000}},teams:{away:{name:'Delaware'},home:{name:'Western Kentucky'}}};
+            const x=parseNotes(await r.text(),game,'2026',Date.now());
+            console.log(JSON.stringify(x));
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
