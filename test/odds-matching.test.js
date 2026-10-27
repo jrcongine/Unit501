@@ -41,3 +41,10 @@ test('encoded Hawaii apostrophe matches the same school for game and prop odds',
  assert.equal(teamMatches('Hawai&#39;i','Hawaii',true),true);
  assert.equal(teamMatches('Hawai&#x27;i','Arizona State',true),false);
 });
+test('Sam Houston State Bearkats odds match Sam Houston against Missouri State',()=>{
+ const query={away:'Sam Houston',home:'Missouri State',league:'2',kickoff:q.kickoff};
+ const event={away_team:'Sam Houston State Bearkats',home_team:'Missouri State Bears',commence_time:new Date(q.kickoff).toISOString(),bookmakers:[{key:'fanduel',last_update:new Date(now).toISOString(),markets:[{key:'spreads',outcomes:[{name:'Sam Houston State Bearkats',point:5.5},{name:'Missouri State Bears',point:-5.5}]},{key:'totals',outcomes:[{name:'Over',point:52.5},{name:'Under',point:52.5}]}]}]};
+ assert.equal(matches(event,query),true);assert.equal(require('../fanduel-props').matches(event,query),true);
+ assert.equal(selectLines([event],query,now).awaySpread,5.5);assert.equal(selectLines([event],query,now).total,52.5);
+ assert.equal(teamMatches('Sam Houston State Bearkats','Missouri State',true),false);
+});
