@@ -20,7 +20,7 @@ function summarize(rows,id,selected,now=Date.now()){
  for(const row of rows){
   const g=convert(row);if(!g||g.season!==selected.season||g.stage!==2||g.status!=='Final'||g.id===selected.id||!g.timeKnown||Date.parse(g.tipoff)+5*3600000>=cutoff||g.awayScore===null||g.homeScore===null)continue;
   const away=g.awayId===id,home=g.homeId===id;if(away===home)continue;
-  const item={id:g.id,tipoff:g.tipoff,opponent:away?g.home:g.away,scored:away?g.awayScore:g.homeScore,allowed:away?g.homeScore:g.awayScore,venue:g.neutral?'neutral':away?'away':'home'};
+  const item={id:g.id,tipoff:g.tipoff,opponent:away?g.home:g.away,opponentId:away?g.homeId:g.awayId,scored:away?g.awayScore:g.homeScore,allowed:away?g.homeScore:g.awayScore,venue:g.neutral?'neutral':away?'away':'home'};
   const old=entries.get(g.id);if(old&&JSON.stringify(old)!==JSON.stringify(item)){conflicts.add(g.id);entries.delete(g.id);continue;}
   if(!conflicts.has(g.id))entries.set(g.id,item);
  }
