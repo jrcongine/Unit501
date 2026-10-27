@@ -41,6 +41,7 @@
    }
   }
   return {available:true,projection,average,projectedMinutes,minuteChange,method,games:values.length,
+   recentValues:values.slice(0,5),
    above:values.filter(n=>n>quote.line).length,below:values.filter(n=>n<quote.line).length,equal:values.filter(n=>n===quote.line).length,
    thin:values.length<5};
  }
