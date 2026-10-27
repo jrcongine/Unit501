@@ -200,7 +200,7 @@ function choose(game){
    if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home}}));
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
-   formWindow.value='recent5';
+   formWindow.value='season';
    byId('nba-prediction-detail').textContent='';
    loadContext(game);
    loadInjuries(game);

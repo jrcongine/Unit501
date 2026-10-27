@@ -70,9 +70,9 @@ test('NBA form controls update actual rendered comparisons without extra provide
  const h=harness();await h.load();await h.choose(0);
  assert.equal(h.nodes.get('nba-lab').classList.contains('hidden'),false);
  assert.match(h.nodes.get('nba-team-comparison').textContent,/Chicago Bulls.*Recent form.*At home.*On the road/);
- assert.match(h.nodes.get('nba-head-to-head').textContent,/Last 5.*104.0/);
+ assert.match(h.nodes.get('nba-head-to-head').textContent,/Season.*103.0/);
  const calls=h.requests.length,filter=h.nodes.get('nba-form-window');
- filter.value='season';filter.events.change();assert.match(h.nodes.get('nba-head-to-head').textContent,/Season.*103.0/);
+ filter.value='recent5';filter.events.change();assert.match(h.nodes.get('nba-head-to-head').textContent,/Last 5.*104.0/);
  filter.value='venue';filter.events.change();assert.match(h.nodes.get('nba-head-to-head').textContent,/Road team away.*One or both teams have no qualifying games/);
  assert.equal(h.requests.length,calls);
  h.nodes.get('nba-clear').events.click();assert.equal(h.nodes.get('nba-lab').classList.contains('hidden'),true);
@@ -110,9 +110,9 @@ test('NBA estimates render selected-window scores, clear on switch, and reject l
   return {ok:true,json:async()=>data};
  };
  await h.load();await h.choose(0);
- assert.match(h.nodes.get('nba-prediction').textContent,/Chicago Bulls 105.0.*Total 210.0/);
- const calls=h.requests.length;h.nodes.get('nba-form-window').value='season';h.nodes.get('nba-form-window').events.change();
- assert.match(h.nodes.get('nba-prediction').textContent,/Total 220.0/);assert.equal(h.requests.length,calls);
+ assert.match(h.nodes.get('nba-prediction').textContent,/Chicago Bulls 110.0.*Total 220.0/);
+ const calls=h.requests.length;h.nodes.get('nba-form-window').value='recent5';h.nodes.get('nba-form-window').events.change();
+ assert.match(h.nodes.get('nba-prediction').textContent,/Total 210.0/);assert.equal(h.requests.length,calls);
  h.context.fetch=async()=>({ok:false,json:async()=>({})});await h.choose(1);
  assert.doesNotMatch(h.nodes.get('nba-prediction').textContent,/220.0|Chicago/);
  assert.equal(h.nodes.get('nba-prediction-detail').textContent,'');
@@ -166,7 +166,7 @@ test('NBA simulation follows projections and fresh line updates without new requ
  h.context.fetch=async url=>{
   if(String(url).startsWith('/api/nba/context?')){
    const d=h.data(h.games[0]);d.tipoff=h.games[0].tipoff;d.stage=h.games[0].stage;d.away.id=h.games[0].awayId;d.home.id=h.games[0].homeId;d.home.recentGames=Array.from({length:5},(_,i)=>({for:100+i*3,against:106+i}));
-   d.home.recent5={games:5,pointsFor:106,pointsAgainst:108};
+   d.home.recent5={games:5,pointsFor:106,pointsAgainst:108};d.home.season={games:5,pointsFor:106,pointsAgainst:108};
    return {ok:true,json:async()=>d};
   }
   return original(url);

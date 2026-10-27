@@ -20,7 +20,9 @@ async function collect(season, stage=2, fetcher=fetch) {
  await Promise.all(Array.from({length:4},async()=>{while(next<ids.length){
   const index=next++,id=ids[index];
   const data=await read(`/teams/${id}/schedule?season=${season+1}&seasontype=${stage}`);
-  if(Number(data.team?.id)!==id||Number(data.season?.year)!==season+1||Number(data.season?.type)!==stage||!Array.isArray(data.events)||data.events.length>150)
+  // ESPN's top-level season can describe the current season even for historical requests.
+  // The individual event season is checked by convert instead.
+  if(Number(data.team?.id)!==id||!Array.isArray(data.events)||data.events.length===0||data.events.length>150)
    throw Error('NBA team schedule could not be verified');
   results[index]=data.events.map(event=>{
    const game=convert(event,season,stage);
