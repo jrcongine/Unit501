@@ -5,6 +5,7 @@ function createAvailability(api, now = Date.now) {
   const quarterbacks=require('./quarterback-impact').createQuarterbackImpact(api,now);
   const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now);
   const college = require('./college-availability').createCollegeAvailability(api,now);
+  const collegeNotes = require('./college-injury-notes').createCollegeInjuryNotes(api,now);
   const official = require('./official-injuries').createOfficialInjuries(api,now,undefined,require('./depth-charts').createDepthCharts(now));
   async function read(path, ttl) {
     const old = cache.get(path);
@@ -45,7 +46,7 @@ function createAvailability(api, now = Date.now) {
       injuries.rows=injuries.rows.filter(p=>!p.teamId || p.teamId===id);
       return {id,roster,injuries};
     }));
-    await Promise.all([official(q,teams),college(q,teams)]);
+    await Promise.all([official(q,teams),college(q,teams),collegeNotes(q,teams)]);
     const rosterOwnership=await ownershipTask;
     let qbTimer;
     const qbTask=Promise.race([

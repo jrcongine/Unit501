@@ -183,6 +183,14 @@
       if(rows.length){
         const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));if(p.out)item.classList.add('injury-confirmed-out');list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
       }else teamCard.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
+      const notes=t.unofficialNotes;
+      if(notes&&String(notes.gameId)===String(game.id)&&notes.kickoff===game.kickoff&&Number.isFinite(notes.checkedAt)&&notes.checkedAt<=Date.now()&&Date.now()-notes.checkedAt<=900000&&Array.isArray(notes.rows)&&notes.rows.length){
+        teamCard.append(node('p','Unofficial injury notes · verify before betting'));
+        const list=node('ul','');
+        for(const p of notes.rows)list.append(node('li',`${p.name} (${p.position}) — ${String(p.status).toUpperCase()} · reported ${p.date}`));
+        teamCard.append(list);
+        const link=node('a','View source and updates');link.href=notes.url;link.target='_blank';link.rel='noopener';teamCard.append(link);
+      }
       teamGrid.append(teamCard);
     }
     panel.append(teamGrid,full);
