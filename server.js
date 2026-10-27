@@ -13,6 +13,7 @@ const nbaSources = require('./nba-public').createNBASources({primaryGames:requir
 const nbaGames = nbaSources.games;
 const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:publicNBA});
 const nbaContext = nbaSources.context;
+const ncaab = require('./ncaab-feed').createNCAAB();
 const nbaTravel = require('./nba-travel').createNBATravel({publicFeed:publicNBA});
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
@@ -118,6 +119,19 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/ncaab/games'){
+      const date=u.searchParams.get('date');
+      if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid date required.'});
+      try{return send(res,200,await ncaab.games(date));}catch{return send(res,503,{error:'College basketball schedule unavailable.'});}
+    }
+    if(u.pathname==='/api/ncaab/context'){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid date and game required.'});
+      try{const slate=await ncaab.games(date),game=slate.games.find(g=>g.id===id);
+       if(!game)return send(res,404,{error:'Game not found on this slate.'});
+       return send(res,200,await ncaab.context(game));
+      }catch{return send(res,503,{error:'College basketball team history unavailable.'});}
     }
     if(u.pathname==='/api/nba/live-watch'){
       // Live monitoring uses the shared public scoreboard, never paid NBA or odds credits.
