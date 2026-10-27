@@ -3,6 +3,10 @@ const {fbsName}=require('./team-identity');
 const catalog=require('./public/venue-weather');
 const key=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const cache=new Map();
+function espnDate(kickoff){
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(kickoff).map(p=>[p.type,p.value]));
+ return parts.year+parts.month+parts.day;
+}
 async function json(url){const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Venue source unavailable');return r.json();}
 function identity(name,league,season){return key(league==='2'?(fbsName({name},season)||name):name);}
 function matchEvent(events,q){
@@ -17,7 +21,7 @@ function matchEvent(events,q){
 }
 async function resolveVenue(q){
  const cacheKey=JSON.stringify(q),old=cache.get(cacheKey);if(old&&Date.now()-old.at<3600000)return old.data;
- const sport=q.league==='1'?'nfl':'college-football',date=new Date(q.kickoff).toISOString().slice(0,10).replace(/-/g,'');
+ const sport=q.league==='1'?'nfl':'college-football',date=espnDate(q.kickoff);
  const board=await json(`https://site.api.espn.com/apis/site/v2/sports/football/${sport}/scoreboard?dates=${date}&limit=1000${q.league==='2'?'&groups=80':''}`);
  const matches=matchEvent(board.events||[],q);if(matches.length!==1)return {available:false,message:'No unique venue match for these teams and kickoff.'};
  const {competition:c,event}=matches[0];
@@ -51,4 +55,4 @@ async function resolveVenue(q){
  const data={available:true,...venue,neutralSite:c.neutralSite===true,source:'ESPN matchup venue',sourceUrl:`https://www.espn.com/${sport}/game/_/gameId/${event.id}`};
  cache.set(cacheKey,{at:Date.now(),data});if(cache.size>500)cache.delete(cache.keys().next().value);return data;
 }
-module.exports={resolveVenue,matchEvent};
+module.exports={resolveVenue,matchEvent,espnDate};
