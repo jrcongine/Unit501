@@ -34,6 +34,8 @@ test('public NBA history matches the selected matchup and shares completed box s
  const [a,b]=await Promise.all([get(selected,'2026-10-26',2026),get(selected,'2026-10-26',2026)]);
  assert.deepEqual(a,b);assert.equal(f.getCalls(),4);assert.ok(a.teams.every(t=>t.available));
  assert.equal(a.teams[0].players[0].results.length,2);assert.equal(a.teams[0].players[0].results[0].player_threes,2);
+ assert.equal(a.teams[0].players.find(p=>p.name==='Bench DNP').inactive.length,2);
+ assert.equal(a.teams[0].players.find(p=>p.name==='Bench DNP').results.length,0);
  await get(selected,'2026-10-26',2026);assert.equal(f.getCalls(),4);
  await assert.rejects(get({...selected,away:'New York Knicks'},'2026-10-26',2026),/matchup/);
 });

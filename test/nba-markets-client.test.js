@@ -18,7 +18,7 @@ function harness(){
    {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:25},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:22}]}]},
    {available:true,players:[{name:'Player B',results:[{gameId:3,tipoff:'2026-10-23T00:00:00Z',player_rebounds:10},{gameId:4,tipoff:'2026-10-21T00:00:00Z',player_rebounds:8}]}]}]})};
   return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
- vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,context,calls,timers,game,data,settle,select:async(g=game)=>{context.Unit501NBAMarkets.select(g,'2026-10-24');await settle();},advance:ms=>{clock+=ms;}};
 }
@@ -157,6 +157,7 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
  let text=h.nodes.get('nba-prop-lines').textContent;
  assert.match(text,/Player A.*Points.*20\.5.*23\.5.*2.*0.*0.*2/);
  assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*1.*1.*0.*2/);
+ assert.match(text,/Last 2: 25 · 22 \(newest first\)/);
  const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
  text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
  sort.value='most';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));
@@ -165,6 +166,19 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
  h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[{available:true,players:[{name:'Player A',status:'Out'}]},{available:true,players:[]}]});
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*Points.*20\.5.*OUT/);
  assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*23\.5/);
+});
+
+test('an OUT teammate shows verified past splits without changing the player projection',async()=>{
+ const h=harness();await h.select();const clock=Date.parse('2026-10-24T20:00:00Z');
+ const rows=[1,2,3,4].map((id)=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,minutes:30}));
+ h.context.fetch=async url=>({ok:true,json:async()=>String(url).startsWith('/api/nba/player-history?')?{
+  gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:clock,teams:[
+   {available:true,players:[{id:'1',name:'Player A',results:rows},{id:'2',name:'Player C',results:rows.slice(0,2),inactive:[{gameId:3},{gameId:4}]}]},
+   {available:true,players:[]}]}:h.data(h.game,true)});
+ await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
+ const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.0/);
+ h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{available:true,players:[{name:'Player C',status:'Out'}]},{available:true,players:[]}]});
+ const after=h.nodes.get('nba-prop-lines').textContent;assert.match(after,/Player A.*15\.0/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
 });
 
 test('late player history cannot replace the new matchup projection',async()=>{
