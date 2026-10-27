@@ -45,7 +45,7 @@ function createCollegeInjuryNotes(api,now=Date.now,fetcher=fetch){
    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(kickoff).map(p=>[p.type,p.value]));
    const url=ROOT+'/games/'+parts.year+'-'+parts.month+'-'+parts.day+'-'+slug(away)+'-at-'+slug(home)+'/';
    let entry=cache.get(url);if(!entry||now()-entry.at>=15*60000){
-    entry={at:now(),pending:(async()=>{const r=await fetcher(url,{signal:AbortSignal.timeout(8000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>1000000)throw Error('Notes unavailable');return r.text();})()};cache.set(url,entry);entry.pending.catch(()=>{if(cache.get(url)===entry)cache.delete(url);});
+    entry={at:now(),pending:(async()=>{const r=await fetcher(url,{signal:AbortSignal.timeout(8000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>1000000)throw Error('Notes unavailable');return r.text();})()};cache.set(url,entry);if(cache.size>200)cache.delete(cache.keys().next().value);entry.pending.catch(()=>{if(cache.get(url)===entry)cache.delete(url);});
    }
    const data=parseNotes(await entry.pending,g,q.season,now());
    for(const t of teams){const side=String(t.id)===q.away?'away':String(t.id)===q.home?'home':null;if(side)t.unofficialNotes={rows:data[side],updatedAt:data.updatedAt,checkedAt:now(),gameId:q.game,kickoff,url};}
