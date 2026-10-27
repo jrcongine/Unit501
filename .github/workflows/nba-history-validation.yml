@@ -15,8 +15,7 @@ jobs:
           node-version: '22'
       - name: Collect completed NBA season and evaluate
         run: |
-          node -e "fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/1/schedule?season=2025&seasontype=2').then(r=>r.json()).then(x=>console.log(JSON.stringify({team:x.team,season:x.season,events:x.events?.length,first:x.events?.[0]?.season})))"
-          node nba-collect-history.js 2024 2 /tmp/nba-history.json
+          node nba-collect-history.js 2025 2 /tmp/nba-history.json
           node nba-backtest.js /tmp/nba-history.json recent5 > /tmp/recent5.json
           node nba-backtest.js /tmp/nba-history.json season > /tmp/season.json
           node -e "for (const name of ['recent5','season']) {const v=require('/tmp/'+name+'.json'); console.log(JSON.stringify({scope:name,evaluated:v.evaluated,skipped:v.skipped,metrics:v.metrics}));}"
