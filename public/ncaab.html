@@ -8,9 +8,11 @@
 <label for="ncaab-scope">Compare form</label><select id="ncaab-scope"><option value="season">Season</option><option value="recent5">Last 5</option><option value="recent10">Last 10</option></select>
 <div id="ncaab-teams" class="nba-comparison"></div>
 <section class="nba-model-status"><h3>Experimental score estimate</h3><p id="ncaab-prediction"></p><p class="war-muted">Uses each team’s scoring and its opponent’s points allowed. Unvalidated research estimate; injuries, pace, home advantage and travel are not adjusted.</p>
-<label for="ncaab-spread">Away spread (enter sportsbook line)</label><input id="ncaab-spread" type="number" step="0.5" placeholder="Optional">
-<label for="ncaab-total">Game total (enter sportsbook line)</label><input id="ncaab-total" type="number" step="0.5" min="1" placeholder="Optional">
-<button id="ncaab-sim" type="button">Run 10,000 simulations</button><p id="ncaab-simulation" role="status"></p><p class="war-muted">Simulation frequencies are experimental and not calibrated betting probabilities. Ties and pushes are separate; overtime is not modeled.</p></section>
-<p class="war-muted">Player props, automatic sportsbook lines, injuries and complete rankings are not yet available for college basketball. No estimate is shown for an unconfirmed tipoff or insufficient history. Returned schedules have not been independently checked for complete coverage.</p>
+<label for="ncaab-spread">Away spread</label><input id="ncaab-spread" type="number" step="0.5" placeholder="Optional">
+<label for="ncaab-total">Game total</label><input id="ncaab-total" type="number" step="0.5" min="1" placeholder="Optional">
+<p id="ncaab-odds-status" role="status">Select a game for FanDuel lines.</p><button id="ncaab-sim" type="button">Run 10,000 simulations</button><p id="ncaab-simulation" role="status"></p><p class="war-muted">Simulation frequencies are experimental and not calibrated betting probabilities. Ties and pushes are separate; overtime is not modeled.</p></section>
+<section class="nba-model-status"><h3>Player availability</h3><p id="ncaab-injury-status" role="status"></p><div id="ncaab-injuries" class="nba-comparison"></div><p class="war-muted">ESPN reports may be incomplete or delayed. An empty report does not mean everyone is healthy. Injury reports do not automatically adjust the score model.</p></section>
+<section class="nba-model-status"><h3>FanDuel player props</h3><button id="ncaab-load-props" type="button">Load player props</button><p id="ncaab-props-status" role="status">Load props for the selected game.</p><div id="ncaab-props"></div><p class="war-muted">Experimental projections use recent completed appearances and are not validated betting probabilities. Player lines may not be offered for every game.</p></section>
+<p class="war-muted">Complete rankings are not yet available. No estimate is shown for an unconfirmed tipoff or insufficient history. Returned schedules have not been independently checked for complete coverage.</p>
 </section><p class="war-muted">Game and team data: ESPN men’s college basketball. Some opponents may be outside Division I.</p>
-</main><script src="ncaab-model.js"></script><script src="ncaab.js"></script></body></html>
+</main><script src="nba-player-model.js"></script><script src="ncaab-model.js"></script><script src="ncaab.js"></script></body></html>
