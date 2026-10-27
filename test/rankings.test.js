@@ -207,6 +207,30 @@ test('complete scoring is published before the first yardage box finishes',async
  }finally{release();await fs.rm(cacheDir,{recursive:true,force:true});}
 });
 
+test('selected team yardage appears as each box finishes, without waiting for another box',async()=>{
+ const {games,boxes}=fixture();let release,started;
+ const gate=new Promise(r=>{release=r;}),waiting=new Promise(r=>{started=r;});
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'unit501-partial-'));
+ const api=async endpoint=>{
+  if(endpoint.startsWith('/games?'))return {response:games};
+  const id=endpoint.split('=')[1];
+  if(id==='2'){started();await gate;}
+  return {response:boxes.get(id)||[]};
+ };
+ try{
+  const job=createRankings(api,{delayMs:0,cacheDir:folder,boxLimit:2})(query);
+  await waiting;
+  assert.equal(job.state,'loading');assert.equal(job.completed,1);
+  assert.equal(job.data.teams.find(t=>t.id==='1').metrics.rushFor.games,1);
+  assert.equal(job.data.teams.find(t=>t.id==='2').metrics.rushFor.games,0);
+  assert.equal(job.data.coverage.rushFor.ranked,false);
+  release();const deadline=Date.now()+10000;
+  while(job.state==='loading'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
+  assert.equal(job.state,'ready');
+  assert.equal(job.data.teams.find(t=>t.id==='2').metrics.rushFor.games,1);
+ }finally{release();await fs.rm(folder,{recursive:true,force:true});}
+});
+
 test('default Game Lab limits outbound detailed boxes while preserving national scoring',async()=>{
  const {games,boxes}=fixture();
  const calls=[];
