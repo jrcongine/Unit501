@@ -1,0 +1,29 @@
+name: NBA box score rotation research
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check real box-score participation rows
+        run: |
+          node nba-collect-history.js 2025 2 /tmp/nba.json
+          node - <<'NODE'
+          const {normalizeGame}=require('./nba-feed');
+          const {extractBox,extractInactive}=require('./nba-player-history');
+          (async()=>{
+            const games=require('/tmp/nba.json').response.map(normalizeGame).filter(g=>g&&g.statusCode===3&&g.stage===2&&g.awayScore!==null&&g.homeScore!==null).slice(-3);
+            for(const g of games){
+              const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event='+g.id);if(!r.ok)throw Error('Box unavailable');const data=await r.json();
+              for(const id of [g.awayId,g.homeId]){
+                const away=id===g.awayId,p={id:g.id,tipoff:g.tipoff,opponentId:away?g.homeId:g.awayId,venue:away?'away':'home',for:away?g.awayScore:g.homeScore,against:away?g.homeScore:g.awayScore};
+                const rows=extractBox(data,p,id,2025,2),dnp=extractInactive(data,id,rows);
+                console.log(JSON.stringify({game:g.id,team:id,active:rows.length,explicitDNP:dnp.length}));
+              }
+            }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
