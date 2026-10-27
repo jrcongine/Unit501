@@ -13,6 +13,7 @@ const nbaSources = require('./nba-public').createNBASources({primaryGames:requir
 const nbaGames = nbaSources.games;
 const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:publicNBA});
 const nbaContext = nbaSources.context;
+const nbaTravel = require('./nba-travel').createNBATravel({publicFeed:publicNBA});
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
 try {
@@ -138,6 +139,16 @@ const server = http.createServer(async (req, res) => {
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
         return send(res,200,await trackedOdds.nba(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
       }catch(e){return send(res,503,{error:e.message});}
+    }
+    if(u.pathname==='/api/nba/travel'){
+      const date=u.searchParams.get('date'),id=u.searchParams.get('game');
+      if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid NBA date and game ID required.'});
+      try{
+        const slate=await injurySlate(date),game=slate.games.find(g=>String(g.id)===id);
+        if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
+        if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate.'});
+        return send(res,200,await nbaTravel(game,date,slate.season));
+      }catch{return send(res,503,{error:'NBA travel context unavailable.'});}
     }
     if(u.pathname==='/api/nba/player-history'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
