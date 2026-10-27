@@ -556,6 +556,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
         const coverage = data.coverage?.[key];
         rank.textContent = displayMetric.rank === null
           ? (data.scope.includes('FBS rankings') && !team.fbsName ? ' • Outside FBS ranking pool'
+            : data.detailCoverage?.limited && !key.startsWith('points') ? ' • National rank unavailable (limited coverage)'
             : coverage ? ` • Rank unavailable (${coverage.complete}/${coverage.expected} teams complete)` : ' • Rank unavailable')
           : ` • #${displayMetric.rank} of ${displayMetric.pool}${verifiedMetric ? ' (nflverse)' : team.fbsName ? ' FBS' : ''}`;
         if (displayMetric.rank !== null) rank.style.color = displayMetric.rank <= Math.ceil(displayMetric.pool / 4) ? '#83e2ba' : displayMetric.rank > Math.floor(displayMetric.pool * .75) ? '#ffc184' : '#c5cede';
