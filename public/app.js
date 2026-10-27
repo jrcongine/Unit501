@@ -504,6 +504,26 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     info.textContent=reasons.join(' ');
     teamContext.append(info);
   }
+  // Recent results and rest are descriptive, based only on returned completed games.
+  const formGrid=document.createElement('div');formGrid.className='football-form-grid';
+  const dateKey=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+  for(const [id,name] of [[game.awayId,game.a],[game.homeId,game.h]]){
+    const team=data.teams.find(t=>String(t.id)===String(id));
+    const games=(team?.recentGames||[]).filter(g=>Number.isFinite(g.kickoff)&&g.kickoff<game.kickoff).sort((a,b)=>b.kickoff-a.kickoff);
+    const card=document.createElement('section');card.className='football-form-card';
+    const heading=document.createElement('h4');heading.textContent=name;card.append(heading);
+    const rest=document.createElement('p');
+    if(games.length){const day=key=>Date.parse(key+'T00:00:00Z');const days=Math.max(0,Math.round((day(dateKey(game.kickoff))-day(dateKey(games[0].kickoff)))/86400000)-1);rest.textContent=days+' full day(s) off since last recorded game';}
+    else rest.textContent='Rest unavailable: no previous completed game returned.';
+    card.append(rest);
+    const form=document.createElement('div');form.className='football-form-results';
+    for(const g of games.slice(0,5)){if(!Number.isFinite(g.scored)||!Number.isFinite(g.allowed))continue;const badge=document.createElement('span');const value=g.scored>g.allowed?'W':g.scored<g.allowed?'L':'T';badge.className='football-form-'+value.toLowerCase();badge.textContent=value;badge.title=g.opponent+' · '+g.scored+'–'+g.allowed;form.append(badge);}card.append(form);
+    const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Last '+Math.min(games.length,5)+' recorded results';details.append(summary);
+    for(const g of games.slice(0,5)){const line=document.createElement('p');const when=new Date(g.kickoff).toLocaleDateString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric'});line.textContent=when+' · '+(g.side==='away'?'at ':'vs ')+g.opponent+' · '+(g.scored===null||g.allowed===null?'Score unavailable':g.scored+'–'+g.allowed);details.append(line);}card.append(details);
+    const travel=document.createElement('p');travel.textContent='Travel distance and travel method unavailable from this game history.';card.append(travel);formGrid.append(card);
+  }
+  const formTitle=document.createElement('h3');formTitle.textContent='Recent form & rest';teamContext.append(formTitle,formGrid);
+  const formNote=document.createElement('p');formNote.textContent='Based on returned completed games; full schedule coverage is not independently verified. Rest does not include travel or player availability.';teamContext.append(formNote);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';
   for (const [id,name] of [[game.awayId,game.a],[game.homeId,game.h]]) {
@@ -1067,3 +1087,37 @@ $('maintenance-panel').addEventListener('toggle',async()=>{
 
 document.addEventListener('unit501:team-context-updated',previewAutomaticInjuries);
 document.addEventListener('unit501:lineup-updated',previewAutomaticInjuries);
+
+// On-demand comparison for the currently selected football matchup.
+{
+ const button=$('football-compare'),status=$('football-compare-status'),board=$('football-compare-board');
+ let serial=0,timer;
+ const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
+ const signed=n=>n>0?'+'+n:String(n);
+ function reset(){serial++;clearTimeout(timer);board.replaceChildren();button.disabled=false;status.textContent=selected?'Click Compare to check the three sportsbooks.':'Select a matchup to compare pregame lines.';}
+ document.addEventListener('unit501:selection-changed',reset);
+ function render(game,data){
+  board.replaceChildren();if(!data.books?.length){board.append(node('p',data.message||'No quotes available.'));return;}
+  const table=node('table',''),head=node('thead',''),header=node('tr','');
+  for(const name of ['Sportsbook',game.a+' moneyline',game.h+' moneyline',game.a+' spread',game.h+' spread','Over','Under']){const th=node('th',name);th.scope='col';header.append(th);}head.append(header);table.append(head);
+  const body=node('tbody',''),now=Date.now();
+  for(const book of data.books){
+   const row=node('tr',''),name=node('th',book.name);name.scope='row';row.append(name);const m=book.moneyline,s=book.spread,t=book.total;
+   for(const [value,at] of [[m&&signed(m.away),m?.updatedAt],[m&&signed(m.home),m?.updatedAt],[s&&signed(s.away)+' ('+signed(s.awayPrice)+')',s?.updatedAt],[s&&signed(s.home)+' ('+signed(s.homePrice)+')',s?.updatedAt],[t&&t.line+' ('+signed(t.over)+')',t?.updatedAt],[t&&t.line+' ('+signed(t.under)+')',t?.updatedAt]]){
+    const fresh=Number.isFinite(at)&&at<=now+60000&&now-at<=1800000&&now<game.kickoff;
+    const td=node('td',fresh?value:'Unavailable');if(fresh)td.append(node('small','Updated '+new Date(at).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',timeZoneName:'short'})));row.append(td);
+   }body.append(row);
+  }table.append(body);board.append(table);
+  const deadlines=data.books.flatMap(b=>[b.moneyline?.updatedAt,b.spread?.updatedAt,b.total?.updatedAt]).filter(Number.isFinite).map(at=>at+1800001).filter(at=>at>now);deadlines.push(game.kickoff);
+  clearTimeout(timer);const next=Math.min(...deadlines.filter(at=>at>now));if(Number.isFinite(next))timer=setTimeout(()=>{if(selected===game)render(game,data);},Math.min(next-now,2147483647));
+ }
+ button.addEventListener('click',async()=>{
+  if(!selected)return;const game=selected,task=++serial;button.disabled=true;status.textContent='Loading sportsbook comparison…';board.replaceChildren();
+  try{const q=new URLSearchParams({league:game.league,away:game.a,home:game.h,kickoff:game.kickoff});const r=await fetch('/api/football/comparison?'+q,{signal:AbortSignal.timeout(20000)}),data=await r.json();
+   if(task!==serial||selected!==game)return;if(!r.ok)throw Error(data.error||'Comparison unavailable.');
+   if(data.league!==game.league||data.away!==game.a||data.home!==game.h||data.kickoff!==game.kickoff||!Array.isArray(data.books))throw Error('Matchup could not be verified.');
+   render(game,data);status.textContent=(data.message||'Comparison checked.')+' Quotes expire after 30 minutes or at kickoff; cached up to five minutes.';
+  }catch(e){if(task===serial&&selected===game)status.textContent=e.message;}
+  finally{if(task===serial)button.disabled=false;}
+ });
+}

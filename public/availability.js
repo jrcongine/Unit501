@@ -181,7 +181,7 @@
       teamCard.append(node('h3',t.id===game.awayId?game.a:game.h));
       const rows=[...concerns.values()];
       if(rows.length){
-        const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
+        const list=node('ul','');for(const p of rows){const item=node('li',p.name+' — '+(p.out?'OUT — impact unresolved':p.status));if(p.out)item.classList.add('injury-confirmed-out');list.append(item);concernLabels.push({...p,teamId:t.id,node:item});}teamCard.append(list);
       }else teamCard.append(node('p',fresh?'No injury concerns listed.':'No current injury report confirmed.'));
       teamGrid.append(teamCard);
     }

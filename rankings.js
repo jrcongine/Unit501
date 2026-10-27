@@ -33,7 +33,7 @@ function readPace(row) {
 }
 function summarize(games, boxes, query, roster) {
   const teams = new Map(roster.map(team => [String(team.id), {
-    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [], homeVenues: {},
+    id: String(team.id), name: team.name, fbsName: fbsName(team, query.season), games: 0, opponents: [], recentGames: [], homeVenues: {},
     metrics: Object.fromEntries(metrics.map(([key]) => [key, {sum:0, games:0}])),
     pace:{games:0,drives:0,opponentDrives:0,plays:0,playGames:0}
   }]));
@@ -52,6 +52,7 @@ function summarize(games, boxes, query, roster) {
       team.games++;
       const venue = String(game.game?.venue?.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
       if (side === 'home' && venue) team.homeVenues[venue] = (team.homeVenues[venue] || 0) + 1;
+      team.recentGames.push({kickoff:time(game), opponent:String(opponent?.name || 'Opponent'), side, scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
       team.opponents.push({id:String(opponent?.id || ''),
         scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
       const ownStats = readYards(uniqueRow(own.id));
@@ -72,6 +73,7 @@ function summarize(games, boxes, query, roster) {
     }
   }
   const result = [...teams.values()];
+  for (const team of result) team.recentGames.sort((a,b)=>b.kickoff-a.kickoff);
   for (const team of result) for (const [key] of metrics) {
     const item = team.metrics[key];
     item.average = item.games ? item.sum / item.games : null;

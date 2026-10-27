@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const path = require('path');
 const fanduel = require('./fanduel');
+const footballComparison = require('./football-comparison').createComparison();
 const outsidePicks = require('./outside-picks').createFeed();
 const publicNBA = require('./nba-public').createPublicNBA();
 const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:publicNBA});
@@ -231,7 +232,7 @@ const server = http.createServer(async (req, res) => {
       }
       return send(res,200,getRankings(query));
     }
-    if (u.pathname === '/api/fanduel' || u.pathname === '/api/fanduel-props') {
+    if (u.pathname === '/api/fanduel' || u.pathname === '/api/fanduel-props' || u.pathname === '/api/football/comparison') {
       const query = Object.fromEntries(u.searchParams);
       query.kickoff = Number(query.kickoff);
       if (!fanduel.sports[query.league] || !query.away || !query.home ||
@@ -239,6 +240,7 @@ const server = http.createServer(async (req, res) => {
           !Number.isFinite(query.kickoff) || query.kickoff <= 0) {
         return send(res, 400, { error: 'Valid league, teams and kickoff required' });
       }
+      if (u.pathname === '/api/football/comparison') return send(res, 200, await footballComparison(query));
       return send(res, 200, await trackedOdds.football(query, u.pathname === '/api/fanduel-props' ? 'props' : 'game'));
     }
 // Get player statistics for a game
