@@ -9,7 +9,8 @@ function source({missing=false,conflict=false,badTeam=false}={}){return async ur
  else {const id=Number(match[1]);let e=[event(id)];
   if(id===2&&missing)e=[];
   if(id===2&&conflict){e=[event(id)];e[0].competitions[0].competitors[1].score.value=111;}
-  data={team:{id},season:{year:2026,type:2},events:e};}
+  // ESPN sometimes returns current-season metadata alongside historical events.
+  data={team:{id},season:{year:2027,type:2},events:e};}
  return {ok:true,json:async()=>data};
 };}
 test('public history collector verifies teams, deduplicates games and produces backtest-compatible data',async()=>{
