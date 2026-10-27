@@ -9,14 +9,18 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect college basketball data
+      - name: Validate college basketball live source
         run: |
           node - <<'NODE'
+          const {createNCAAB}=require('./ncaab-feed');
           (async()=>{
-           const root='https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball';
-           const ts=await (await fetch(root+'/teams/12/schedule?season=2026&seasontype=2')).json();console.log('SCHEDULE',JSON.stringify({team:ts.team?.id,season:ts.season,count:ts.events?.length,sample:ts.events?.[0]})); for(const date of []){
-            const data=await (await fetch(root+'/scoreboard?dates='+date+'&groups=50&limit=500')).json();
-            const e=data.events?.[0];console.log(JSON.stringify({date,count:data.events?.length,leagues:data.leagues?.map(x=>({id:x.id,slug:x.slug,abbr:x.abbreviation})),sample:e&&{id:e.id,date:e.date,season:e.season,competition:e.competitions?.[0]}}));
-           }
+           const feed=createNCAAB();
+           const slate=await feed.games('2026-11-02');
+           console.log(JSON.stringify({date:slate.date,count:slate.games.length,tbd:slate.games.filter(g=>!g.timeKnown).length,first:slate.games[0]}));
+           const historic=await feed.games('2026-02-14');
+           const game=historic.games.find(g=>g.timeKnown&&g.stage===2&&g.status==='Final');
+           if(!game)throw Error('No completed historical matchup');
+           const context=await feed.context(game);
+           console.log(JSON.stringify({game:game.away+' at '+game.home,awayGames:context.away.games,homeGames:context.home.games,awayLast:context.away.recentGames[0],homeLast:context.home.recentGames[0]}));
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
