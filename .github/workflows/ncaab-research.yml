@@ -14,7 +14,7 @@ jobs:
           node - <<'NODE'
           (async()=>{
            const root='https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball';
-           for(const date of ['20261102','20261109','20260320']){
+           const ts=await (await fetch(root+'/teams/12/schedule?season=2026&seasontype=2')).json();console.log('SCHEDULE',JSON.stringify({team:ts.team?.id,season:ts.season,count:ts.events?.length,sample:ts.events?.[0]})); for(const date of []){
             const data=await (await fetch(root+'/scoreboard?dates='+date+'&groups=50&limit=500')).json();
             const e=data.events?.[0];console.log(JSON.stringify({date,count:data.events?.length,leagues:data.leagues?.map(x=>({id:x.id,slug:x.slug,abbr:x.abbreviation})),sample:e&&{id:e.id,date:e.date,season:e.season,competition:e.competitions?.[0]}}));
            }
