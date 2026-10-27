@@ -85,6 +85,18 @@ test('late NBA matchup responses cannot replace the newly selected team comparis
  assert.doesNotMatch(h.nodes.get('nba-head-to-head').textContent,/Chicago Bulls/);
  assert.match(h.nodes.get('nba-team-comparison').textContent,/Boston Celtics/);
 });
+test('NBA travel renders matching city estimates and discards late responses from a prior game',async()=>{
+ const h=harness();for(const g of h.games){g.tipoff=new Date(Date.now()+86400000).toISOString();g.statusCode=1;}
+ await h.load();const base=h.context.fetch;let release;
+ h.context.fetch=url=>{
+  if(String(url).includes('/api/nba/travel?')&&String(url).includes('game=899'))return new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({gameId:899,tipoff:h.games[0].tipoff,away:{available:true,miles:190,previousCity:'Brooklyn',currentCity:'Boston'},home:{available:false}})});});
+  if(String(url).includes('/api/nba/travel?'))return Promise.resolve({ok:true,json:async()=>({gameId:900,tipoff:h.games[1].tipoff,away:{available:true,miles:300,previousCity:'Cleveland',currentCity:'Boston'},home:{available:false}})});
+  return base(url);
+ };
+ await h.choose(0);await h.choose(1);await h.settle();release();await h.settle();await h.settle();
+ const text=h.nodes.get('nba-team-comparison').textContent;
+ assert.match(text,/300 miles straight-line.*Cleveland.*Boston/);assert.doesNotMatch(text,/190 miles/);
+});
 test('NBA context failures clear old numbers and preserve an explicit unavailable state',async()=>{
  const h=harness();await h.load();await h.choose(0);
  h.context.fetch=async()=>({ok:false,json:async()=>({error:'unavailable'})});
