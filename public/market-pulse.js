@@ -10,7 +10,11 @@
   const {firstLine,line}=observation,delta=Math.round((line-firstLine)*100)/100;
   const number=kind==='spread'?signed:n=>n.toFixed(1);
   const label=kind==='spread'?'Away spread':'Game total';
-  if(!delta)return {label,text:'First observed '+number(firstLine)+' · unchanged',tone:'flat'};
+  if(!delta){
+   if(!Number.isFinite(observation.firstAt)||!Number.isFinite(observation.lastAt)||observation.lastAt<=observation.firstAt)
+    return {label,text:'First observed '+number(firstLine)+' · waiting for another observation',tone:'unknown'};
+   return {label,text:'First observed '+number(firstLine)+' · unchanged since first observation',tone:'flat'};
+  }
   const toward=kind==='spread'?(delta>0?home:away):(delta>0?'Over':'Under');
   const arrow=delta>0?'↑':'↓';
   return {label,text:number(firstLine)+' → '+number(line)+' ('+arrow+' '+Math.abs(delta).toFixed(1)+'; toward '+toward+')',tone:delta>0?'up':'down',toward};
