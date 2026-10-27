@@ -1,0 +1,19 @@
+name: NBA player replay research
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Replay historical player box scores
+        run: |
+          node nba-collect-history.js 2025 2 /tmp/games.json
+          node nba-player-backtest.js /tmp/games.json 12
