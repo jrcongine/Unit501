@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {matches,createMarkets}=require('./ncaab-markets');
-const {injuries,extract}=require('./ncaab-players');
+const {matches,createMarkets}=require('../ncaab-markets');
+const {injuries,extract}=require('../ncaab-players');
 const now=Date.parse('2026-11-01T18:00:00Z'),game={id:'123',awayId:'1',homeId:'2',away:'Duke Blue Devils',home:'Clemson Tigers',tipoff:'2026-11-02T18:00:00Z',status:'Scheduled',timeKnown:true};
 const event={id:'e1',sport_key:'basketball_ncaab',away_team:game.away,home_team:game.home,commence_time:game.tipoff,bookmakers:[{key:'fanduel',last_update:new Date(now).toISOString(),markets:[{key:'spreads',outcomes:[{name:game.away,point:-3.5,price:-110},{name:game.home,point:3.5,price:-110}]},{key:'totals',outcomes:[{name:'Over',point:150.5,price:-110},{name:'Under',point:150.5,price:-110}]}]}]};
 test('unique exact matchup and fresh paired sportsbook lines',async()=>{assert(matches(event,game));assert(!matches({...event,home_team:'Duke Blue Devils'},game));assert(!matches({...event,commence_time:'2026-11-03T18:00:00Z'},game));let calls=0;const get=createMarkets({now:()=>now,key:()=> 'secret',fetcher:async()=>({ok:true,headers:{get:()=>null},json:async()=>{calls++;return [event];}})});let out=await get(game,'game');assert.equal(out.spread.away,-3.5);assert.equal(out.total.line,150.5);await get(game,'game');assert.equal(calls,1);});
