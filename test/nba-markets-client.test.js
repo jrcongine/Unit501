@@ -160,6 +160,7 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
  const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
  text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
  sort.value='most';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));
+ sort.value='gap';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));assert.match(text,/Projection vs line: \+3\.0/);assert.match(text,/Projection vs line: -0\.5/);
  assert.equal(h.calls.length,count);
  h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[{available:true,players:[{name:'Player A',status:'Out'}]},{available:true,players:[]}]});
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*Points.*20\.5.*OUT/);
