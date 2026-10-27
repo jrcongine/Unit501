@@ -75,7 +75,7 @@ test('three-book comparison is on demand, shares one league request, and keeps b
  const urls=[],feed=createNBAOdds({now:()=>now,key:()=> 'test-key',fetcher:async url=>{urls.push(url);return {ok:true,json:async()=>[events]};}});
  const ordinary=await feed(game);assert.equal(urls.length,1);
  assert.equal(new URL(urls[0]).searchParams.get('bookmakers'),'fanduel');
- assert.equal(new URL(urls[0]).searchParams.get('markets'),'spreads,totals');
+ assert.equal(new URL(urls[0]).searchParams.get('markets'),'h2h,spreads,totals');
  assert.equal(ordinary.bookmaker,'FanDuel');
  const [a,b]=await Promise.all([feed(game,'comparison'),feed(game,'comparison')]);
  assert.deepEqual(a,b);assert.equal(urls.length,2);

@@ -11,6 +11,14 @@ test('contradictory or duplicate spreads cannot become a simulated line',()=>{
  e[0].bookmakers[0].markets.push(e[0].bookmakers[0].markets[1]);
  assert.equal(selectLines(e,q,now).total,null);
 });
+test('football moneylines require fresh unique paired outcomes and unique books',()=>{
+ const e=fixture(),m={key:'h2h',outcomes:[{name:'Away',price:140},{name:'Home',price:-165}]};
+ e[0].bookmakers[0].markets.push(m);
+ assert.deepEqual(selectLines(e,q,now).moneyline,{away:140,home:-165,updatedAt:now});
+ m.outcomes.push({name:'Home',price:-165});assert.equal(selectLines(e,q,now).moneyline,null);
+ m.outcomes.pop();m.last_update=new Date(now-1800001).toISOString();assert.equal(selectLines(e,q,now).moneyline,null);
+ delete m.last_update;e[0].bookmakers.push(e[0].bookmakers[0]);assert.equal(selectLines(e,q,now).moneyline,null);
+});
 test('game lines trim keys, explain quota failures safely and retry after a failure',async()=>{
  const oldFetch=global.fetch,oldKey=process.env.ODDS_API_KEY;let calls=0;
  process.env.ODDS_API_KEY=' fixture ';

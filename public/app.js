@@ -110,9 +110,12 @@ function renderMarketPulse(){
     const display=window.Unit501MarketPulse?.movement(kind,observed,game.a,game.h);
     pulseCard(movement,label,
       pulseManual?'Manual line entered — movement paused':display?.text||'No observed FanDuel line yet.',
-      observed?.persisted===false?'History kept for this visit only; browser storage unavailable.':
-      'First verified quote seen on this browser, not necessarily sportsbook opening line.',
+      window.Unit501LineWatch?.detail(observed)||'Shared line history unavailable.',
       pulseManual?'flat':display?.tone||'flat');
+  }
+  for(const [key,label] of [['awayMoneyline',game.a+' moneyline'],['homeMoneyline',game.h+' moneyline']]){
+    const observed=pulseObservations?.game===game?pulseObservations[key]:null;
+    if(observed&&!pulseManual)pulseCard(movement,label,window.Unit501LineWatch.describe(observed),window.Unit501LineWatch.detail(observed));
   }
   const snapshot=window.Unit501MarketPulse?.splits(pulseSplits?.game===game?pulseSplits.data:null,game);
   for(const [kind,title] of [['spread','Spread: teams'],['total','Total: Over / Under']]){
@@ -176,6 +179,9 @@ async function loadFanDuel() {
   const task = ++oddsSequence;
   gameQuotes=null;
   const edits = lineEdits;
+  pulseObservations=null;
+  if($('line-tracking-status'))$('line-tracking-status').textContent='';
+  renderMarketPulse();
   refreshOdds.disabled = true;
   oddsStatus.textContent = 'Loading FanDuel spread and total…';
   invalidateSimulation('Refreshing lines…');
@@ -186,6 +192,7 @@ async function loadFanDuel() {
     const data = await response.json();
     if (task !== oddsSequence || selected !== game || edits !== lineEdits) return;
     if (!response.ok || data.error) throw new Error(data.error || 'FanDuel feed unavailable.');
+    if($('line-tracking-status'))$('line-tracking-status').textContent=data.tracking?.message||'Shared tracking status unavailable.';
     if (!data.available) { oddsStatus.textContent = data.message; return; }
     gameQuotes={game,data};
     pulseManual=false;
@@ -195,8 +202,7 @@ async function loadFanDuel() {
       if (Number.isFinite(data[key])) {
         $(id).value = data[key];
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
-        const observed=window.Unit501LineWatch?.observeBrowser(
-          [game.league,game.season,game.id,'game',key].join(':'),data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
+        const observed=window.Unit501LineWatch?.fromServer(data.history?.[id],data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
         if(pulseObservations?.game===game)pulseObservations[id]=observed;
         const movement=observed?.changed?` • since first observed ${observed.firstLine} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:'';
         messages.push(`${id === 'spread' ? game.a + ' spread' : 'Total'} ${data[key]} (updated ${time} CT)${movement}`);
@@ -205,6 +211,10 @@ async function loadFanDuel() {
         messages.push(`${id} unavailable — enter manually`);
       }
     }
+    for(const [name,side] of [['awayMoneyline','away'],['homeMoneyline','home']]){
+      pulseObservations[name]=window.Unit501LineWatch?.fromServer(data.history?.[name],data.moneyline?.[side],data.moneyline?.updatedAt);
+    }
+    if($('line-tracking-status'))$('line-tracking-status').textContent=data.tracking?.message||'Shared tracking status unavailable.';
     oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
     renderMarketPulse();
     $('note').textContent = 'Review the lines and ratings, then run the simulation.';

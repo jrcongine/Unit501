@@ -13,6 +13,7 @@ async function request(path, params = {}) {
     try {
       const query = new URLSearchParams({...params,apiKey:process.env.ODDS_API_KEY.trim()});
       const res = await fetch(`https://api.the-odds-api.com/v4/sports/${path}?${query}`,{signal:AbortSignal.timeout(12000)});
+      require('./odds-monitor').observe(res);
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
         throw errorForResponse(res.status,payload);

@@ -55,9 +55,7 @@
           const key = lineKey(record, def);
           const entry = readLine(key);
           if (entry.value !== '') continue;
-          const movement=window.Unit501LineWatch?.observeBrowser(
-            [game.league,game.season,game.id,record.teamId,record.playerId,def.key].join(':'),
-            quote.line,quote.updatedAt);
+          const movement=window.Unit501LineWatch?.fromServer(quote.history,quote.line,quote.updatedAt);
           enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',
             over:quote.over,under:quote.under,movement});
           count++;
@@ -69,7 +67,7 @@
       const detail = coverage.length ? ` ${covered}/${coverage.length} modeled markets returned usable lines.${missing.length ? ' No usable lines returned for: '+missing.join(', ')+'.' : ''}` : '';
       const unmatched=[...new Set(data.props.filter(q=>choices.filter(p=>playerName(p.name)===playerName(q.name)).length!==1).map(q=>q.name))];
       const matchingDetail=` ${data.props.length} usable quotes returned by the feed.${unmatched.length?' Unmatched or ambiguous player names: '+unmatched.join(', ')+'.':''}`;
-      propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${count} player lines filled. Manual entries are kept. Feed requests are cached for five minutes.`;
+      propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${count} player lines filled. ${data.tracking?.message||'Shared tracking status unavailable.'}`;
       showPlayer();
     } catch (e) {
       if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' Existing fresh quotes were kept; you can also enter lines manually.';
@@ -422,9 +420,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
         `${above} / ${below} / ${equal} (${row.values.length} games)`,
         row.workloadHistory.text];
       const observed=row.entry.source==='auto'?row.entry.movement:null;
-      const movement=observed?(observed.changed?
-        `First observed ${observed.firstLine} → ${observed.line} (${observed.delta>0?'+':''}${observed.delta.toFixed(1)})`:
-        `First observed ${observed.firstLine}; no detected change`):'No automatic line history';
+      const movement=observed?window.Unit501LineWatch.describe(observed)+' · '+window.Unit501LineWatch.detail(observed):'No automatic line history';
       fields.push(movement);
       const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';

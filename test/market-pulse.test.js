@@ -14,6 +14,7 @@ test('spread and total direction state market movement without inventing bettor 
  assert.match(movement('total',{firstLine:50.5,line:50.5,firstAt:100,lastAt:100},game.a,game.h).text,/waiting for another observation/);
  assert.match(movement('total',{firstLine:50.5,line:50.5},game.a,game.h).text,/waiting for another observation/);
  assert.match(movement('total',{firstLine:50.5,line:50.5,firstAt:100,lastAt:200},game.a,game.h).text,/unchanged since first observation/);
+ assert.match(movement('total',{firstLine:50.5,line:50.5,firstAt:100,lastAt:200,changes:2},game.a,game.h).text,/returned after 2 changes/);
  assert.match(movement('total',null,game.a,game.h).text,/No verified/);
 });
 test('betting market pulse only uses scoped, fresh sourced percentages and names their origin',()=>{

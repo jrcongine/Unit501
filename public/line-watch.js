@@ -33,7 +33,29 @@
   let storage;try{storage=root.localStorage;}catch{}
   return observe(storage,scope,line,sourceAt,now);
  }
- const api={observe,observeBrowser};
+ function fromServer(history,line,sourceAt,now=Date.now()){
+  if(!history||history.scope!=='server'||history.line!==line||history.lastAt!==sourceAt||
+    ![history.firstLine,history.firstAt,history.lastAt,history.delta,history.observations,history.changes].every(Number.isFinite)||
+    history.firstAt>history.lastAt||history.lastAt>now+60000||now-history.lastAt>1800000||
+    history.firstAt<0||!Number.isInteger(history.observations)||!Number.isInteger(history.changes)||
+    history.observations<1||history.changes<0||history.changes>=history.observations||
+    history.changed!==(history.line!==history.firstLine)||
+    Math.abs(history.delta-(history.line-history.firstLine))>0.001)return null;
+  return history;
+ }
+ function describe(h){
+  if(!h)return 'Line history unavailable';
+  const label='First '+h.firstLine;
+  if(h.changed)return label+' → '+h.line+' ('+(h.delta>0?'+':'')+h.delta+')';
+  if(h.changes>0)return label+' → '+h.line+' · returned after '+h.changes+' changes';
+  return label+(h.observations>1?' · unchanged across recorded updates':' · waiting for another update');
+ }
+ function detail(h){
+  if(!h)return 'No verified history for this quote.';
+  const time=at=>new Date(at).toLocaleString('en-US',{timeZone:'America/Chicago',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'});
+  return (h.persisted?'Shared saved history':'Server memory only')+' · first '+time(h.firstAt)+' · latest '+time(h.lastAt)+' CT. First observed, not a confirmed opener.';
+ }
+ const api={observe,observeBrowser,fromServer,describe,detail};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.Unit501LineWatch=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
