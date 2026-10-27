@@ -48,7 +48,7 @@ function createNBATravel({publicFeed,fetcher=fetch,now=Date.now}={}){
     const prior={id:previous.id,tipoff:previous.tipoff,stage:match.stage,awayId:previous.venue==='away'?side.id:previous.opponentId,homeId:previous.venue==='home'?side.id:previous.opponentId};
     const from=await venue(prior,season),distance=miles(from,current);if(distance===null)throw Error('Distance unavailable');
     return {available:true,miles:distance,previous:from.name,current:current.name,previousCity:from.city,currentCity:current.city};
-   }catch{return {available:false};}
+   }catch(error){return {available:false,reason:error.message};}
   }));
   return {gameId:selected.id,tipoff:selected.tipoff,away:sides[0],home:sides[1],source:'ESPN venues and Open-Meteo city coordinates'};
  };
