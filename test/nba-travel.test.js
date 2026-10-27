@@ -26,3 +26,13 @@ test('unverified NBA games and unknown previous schedules do not invent travel',
  await assert.rejects(get({...match,home:'New York Knicks'},'2026-10-26',2026),/matchup/);
  await assert.rejects(get({...match,statusCode:2},'2026-10-26',2026),/Pregame/);
 });
+test('Brooklyn may use verified New York city-center coordinates when borough lookup is absent',async()=>{
+ const f=make();f.records[100].city='Brooklyn';f.records[100].state='NY';const base=f.fetcher;
+ const get=createNBATravel({publicFeed:f.publicFeed,now:()=>now,fetcher:async url=>{
+  const u=new URL(url);if(u.hostname==='geocoding-api.open-meteo.com'){
+   const city=u.searchParams.get('name');if(city==='Brooklyn')return {ok:true,json:async()=>({results:[]})};
+   if(city==='New York')return {ok:true,json:async()=>({results:[{name:'New York',admin1:'New York',country_code:'US',latitude:40.7,longitude:-74}]})};
+  }return base(url);
+ }});
+ const result=await get(match,'2026-10-26',2026);assert.equal(result.away.available,true);assert.equal(result.away.previousCity,'Brooklyn');assert.ok(result.away.miles>100);
+});
