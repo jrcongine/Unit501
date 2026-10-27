@@ -12,7 +12,7 @@ function convert(e){
  const stage=Number(e.seasonType?.type??e.season?.type),season=Number(e.season?.year);
  if(!status||![1,2,3].includes(stage)||!Number.isInteger(season)||!Number.isFinite(Date.parse(tipoff))||!/^\d{1,12}$/.test(String(a.team?.id||''))||!/^\d{1,12}$/.test(String(h.team?.id||''))||String(a.team.id)===String(h.team.id)||!a.team.displayName||!h.team.displayName)return null;
  return {id:String(e.id),awayId:String(a.team.id),homeId:String(h.team.id),away:a.team.displayName,home:h.team.displayName,tipoff,status,stage,season,
-  timeKnown:c.timeValid!==false&&e.timeValid!==false,neutral:c.neutralSite===true,venue:c.venue?.fullName||null,
+  timeKnown:(c.timeValid===true||e.timeValid===true)&&c.timeValid!==false&&e.timeValid!==false,neutral:c.neutralSite===true,venue:c.venue?.fullName||null,
   awayScore:status==='Final'||status==='Live'?number(a.score):null,homeScore:status==='Final'||status==='Live'?number(h.score):null};
 }
 function summarize(rows,id,selected,now=Date.now()){
