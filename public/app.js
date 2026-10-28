@@ -513,6 +513,20 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     const games=(team?.recentGames||[]).filter(g=>Number.isFinite(g.kickoff)&&g.kickoff<game.kickoff).sort((a,b)=>b.kickoff-a.kickoff);
     const card=document.createElement('section');card.className='football-form-card';
     const heading=document.createElement('h4');heading.textContent=name;card.append(heading);
+    // Full-season W-L comes from verified league standings, never the sampled recent games.
+    const seasonRecord=document.createElement('span');seasonRecord.className='football-season-record';
+    seasonRecord.textContent=' · Season W–L unavailable';heading.append(seasonRecord);
+    const pulseLeague=game.league==='1'?'nfl':'ncaaf';
+    fetch('/api/league-pulse?league='+pulseLeague,{signal:AbortSignal.timeout(12000)})
+      .then(r=>r.ok?r.json():null).then(result=>{
+        if(selected!==game||!heading.isConnected)return;
+        const standing=result?.power?.available&&Array.isArray(result.power.teams)
+          ?result.power.teams.find(t=>String(t.id)===String(id)):null;
+        if(standing&&/^\\d+-\\d+(?:-\\d+)?$/.test(String(standing.record||''))){
+          seasonRecord.textContent=' ('+standing.record+')';
+        }
+      }).catch(()=>{});
+
     const rest=document.createElement('p');
     const schedule=window.Unit501FootballTravel?.schedule(games,game.kickoff);
     restByTeam.set(String(id),schedule);
