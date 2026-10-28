@@ -522,7 +522,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
         if(selected!==game||!heading.isConnected)return;
         const standing=result?.power?.available&&Array.isArray(result.power.teams)
           ?result.power.teams.find(t=>String(t.id)===String(id)):null;
-        if(standing&&/^\\d+-\\d+(?:-\\d+)?$/.test(String(standing.record||''))){
+        if(standing&&/^\d+-\d+(?:-\d+)?$/.test(String(standing.record||''))){
           seasonRecord.textContent=' ('+standing.record+')';
         }
       }).catch(()=>{});
