@@ -40,7 +40,7 @@
     'league-pulse-trend trend-'+team.trend);
   form.title='Form based on consecutive wins/losses, not ranking movement';
   const logo=teamLogo(team,league);
-  result.append(rank,...(logo?[logo]:[]),title,record,score,form);
+  result.append(rank,logo||el('span',null,'league-pulse-logo-placeholder'),title,record,score,form);
   return result;
  }
  function group(label,teams,open,league){
@@ -94,10 +94,13 @@
    const labels={injury:'INJURY REPORT',transfer:'TRANSFER',coaching:'COACHING',rankings:'RANKINGS',analysis:'GAME ANALYSIS',update:'LEAGUE UPDATE'};
    const item=el('li',null,'league-pulse-story league-pulse-'+type);
    const symbol=el('span',symbols[type],'league-pulse-story-symbol');symbol.setAttribute('aria-hidden','true');
-   const candidates=(data.power?.teams||[]).filter(t=>{
-    const names=[t.name,t.providerName].filter(Boolean).map(v=>String(v).toLowerCase());
-    return names.some(name=>name.length>=5&&new RegExp('(^|[^a-z])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\   const symbol=el('span',symbols[type],'league-pulse-story-symbol');symbol.setAttribute('aria-hidden','true');')+'([^a-z]|$)','i').test(title));
-   });
+   const titleKey=norm(title);
+   const candidates=(data.power?.teams||[]).filter(t=>
+    [t.name,t.providerName].filter(Boolean).some(name=>{
+     const key=norm(name);
+     return key.length>=6&&titleKey.includes(key);
+    })
+   );
    const logo=candidates.length===1?teamLogo(candidates[0],data.league):null;
    if(logo){symbol.textContent='';symbol.append(logo);}
    const content=el('div',null,'league-pulse-story-content');
