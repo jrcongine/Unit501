@@ -431,3 +431,32 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .league-pulse-logo,.league-pulse-logo-placeholder{width:28px;height:28px;object-fit:contain;display:block}
 .league-pulse-story-symbol .league-pulse-logo{width:40px;height:40px;object-fit:contain}
 @media(max-width:520px){.league-pulse-team{grid-template-columns:27px 25px minmax(70px,1fr) 42px 46px;gap:3px}.league-pulse-team .league-pulse-trend{grid-column:3 / -1}.league-pulse-logo,.league-pulse-logo-placeholder{width:24px;height:24px}}
+
+/* Shared War Room consensus spotlight: silver, muted violet, dark text */
+.war-feed-source.war-consensus{max-height:none;overflow:visible;padding:12px;border:2px solid #7953ad;border-radius:13px;background:#e9eaf0;color:#202938;align-self:start;box-shadow:0 5px 18px #0002}
+.war-consensus-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.war-consensus-icon{display:grid;place-items:center;flex:none;width:42px;height:42px;background:#7543ac;color:#fff;border-radius:10px;font-size:27px;font-weight:900;line-height:1}
+.war-consensus-heading-text{min-width:0}
+.war-consensus .war-consensus-heading h4{position:static;background:transparent;color:#202938;font-size:17px;margin:0;padding:0;font-weight:850}
+.war-consensus-heading small{display:block;color:#697386;font-size:12px}
+.war-consensus-card{background:#fafafd;border:1px solid #d4d4df;border-radius:10px;padding:12px;margin:10px 0;color:#263141}
+.war-consensus-top{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #dedee7;padding-bottom:10px;margin-bottom:10px}
+.war-consensus-details{min-width:0}
+.war-consensus-pick{font-size:16px;font-weight:850;color:#202938;overflow-wrap:anywhere}
+.war-consensus-matchup{font-size:12px;color:#646e80;margin:4px 0 0}
+.war-consensus-metrics{display:flex;gap:6px;flex:none}
+.war-consensus-metric{min-width:76px;padding:6px 9px;border-radius:9px;background:#e3e6ec;text-align:center}
+.war-consensus-metric-picks{background:#e4daef}
+.war-consensus-metric strong{display:block;font-size:22px;line-height:1.2;color:#263141}
+.war-consensus-metric-picks strong{color:#68409a}
+.war-consensus-metric small{font-size:10px;color:#4c5667}
+.war-consensus-source-name{font-size:11px;text-transform:uppercase;letter-spacing:.055em;color:#694595;font-weight:850;margin:8px 0 4px}
+.war-consensus-link,.war-feed-source a.war-consensus-link{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;border-radius:6px;color:#303949;text-decoration:none;font-size:12px;line-height:1.3;transition:background .15s}
+.war-consensus-link:nth-of-type(even){background:#f0f1f6}
+.war-consensus-link:hover,.war-feed-source a.war-consensus-link:hover{background:#e7dff1;color:#36254e;text-decoration:underline}
+.war-consensus-link:focus-visible{outline:2px solid #7953ad;outline-offset:2px}
+.war-consensus-analyst{font-weight:750;flex:1}
+.war-consensus-selection{color:#626b79;text-align:right;overflow-wrap:anywhere}
+.war-consensus-external{color:#7e8190;font-size:15px}
+.war-consensus-empty{color:#586375;font-size:13px}
+@media(max-width:580px){.war-consensus-top{align-items:stretch;flex-direction:column}.war-consensus-metrics{align-self:flex-start}.war-consensus-link{flex-wrap:wrap}.war-consensus-selection{text-align:left}}
