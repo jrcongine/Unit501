@@ -25,13 +25,14 @@
   if(manual&&(!Number.isFinite(options.minutes)||options.minutes<1||options.minutes>48))
    return {available:false,reason:'Enter 1–48 minutes'};
   if(manual&&!hasMinutes)return {available:false,reason:'Minutes history unavailable'};
-  let projection=average,projectedMinutes=null,minuteChange=null,method='recent average';
+  let projection=average,baseline=average,projectedMinutes=null,minuteChange=null,method='recent average';
   if(hasMinutes){
    // Weight recent appearances more heavily; use the same weights for rate and minutes.
    const weights=sample.map((_,i)=>Math.pow(0.85,i));
    const totalWeight=weights.reduce((a,b)=>a+b,0);
    const weightedMinutes=sample.reduce((sum,r,i)=>sum+r.minutes*weights[i],0);
    const rate=sample.reduce((sum,r,i)=>sum+r[quote.market]*weights[i],0)/weightedMinutes;
+   baseline=rate*Math.min(48,weightedMinutes/totalWeight);
    projectedMinutes=manual?options.minutes:Math.min(48,weightedMinutes/totalWeight);
    projection=rate*projectedMinutes;method=manual?'manual minutes':'recency and minutes';
    if(sample.length>=5){
@@ -40,7 +41,7 @@
     if(Math.abs(recent-previous)>=5)minuteChange={recent,previous,direction:recent>previous?'up':'down'};
    }
   }
-  return {available:true,projection,average,projectedMinutes,minuteChange,method,games:values.length,
+  return {available:true,projection,baseline,delta:projection-baseline,average,projectedMinutes,minuteChange,method,games:values.length,
    recentValues:values.slice(0,5),
    above:values.filter(n=>n>quote.line).length,below:values.filter(n=>n<quote.line).length,equal:values.filter(n=>n===quote.line).length,
    thin:values.length<5};

@@ -58,3 +58,10 @@ test('one malformed minutes row withholds only that player, not the whole team',
  assert.equal(result.teams[0].players.find(p=>p.name==='Player A').available,true);
  assert.equal(result.teams[0].players.find(p=>p.name==='Unknown minutes').available,false);
 });
+
+test('contradictory or duplicate DNP identities cannot become absence evidence',()=>{
+ for(const makeRow of [rows=>({...rows[0],didNotPlay:true}),rows=>({...rows[1]}),()=>({athlete:{id:'',displayName:'Unknown'},didNotPlay:true})]){
+  const x=payload(teamGames[0][0],4),rows=x.boxscore.players[0].statistics[0].athletes;
+  rows.push(makeRow(rows));assert.throws(()=>extractBox(x,teamGames[0][0],4,2026,2));
+ }
+});

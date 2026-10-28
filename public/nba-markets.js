@@ -9,7 +9,7 @@
  if(!gameBoard||!propBoard||!ui)return;
  let selected=null,date='',sequence=0,gameTask=0,propTask=0,quotes=null,props=null,timer=null;
  let comparisonTask=0,comparison=null,injuries=null,history=null,historyTask=0;
- const minuteOverrides=new Map();
+ const minuteOverrides=new Map(),injuryScenarios=new Map();
  const normalizedName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
@@ -34,14 +34,22 @@
  }
  function renderProps(){
   propBoard.replaceChildren();if(!selected||!props)return;
+  for(const [name,scenario] of injuryScenarios){
+   const current=root.Unit501NBARotationContext?.compare(history,scenario.quote,injuries,selected,Date.now())||[];
+   if(!current.some(s=>JSON.stringify(s)===scenario.evidence))injuryScenarios.delete(name);
+  }
   const query=search.value.trim().toLowerCase();
   const source=(props.props||[]).filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query)));
   const rows=source.map(p=>{
    const matching=injuries&&Number.isFinite(injuries.reportAt)&&injuries.reportAt<=Date.now()+60000&&Date.now()-injuries.reportAt<=7200000?
     injuries.teams.filter(t=>t.available).flatMap(t=>t.players).filter(player=>normalizedName(player.name)===normalizedName(p.name)):[];
    const status=matching.length===1?matching[0].status:null;
-   const prediction=root.Unit501NBAPlayerModel?.project(history,p,selected,status,Date.now(),{minutes:minuteOverrides.get(normalizedName(p.name))})||{available:false,reason:'—'};
-   return {p,status,prediction};
+   const name=normalizedName(p.name),splits=root.Unit501NBARotationContext?.compare(history,p,injuries,selected,Date.now())||[];
+   const scenario=injuryScenarios.get(name);
+   if(scenario&&status==='Out')injuryScenarios.delete(name);
+   const minutes=injuryScenarios.has(name)?scenario.minutes:minuteOverrides.get(name);
+   const prediction=root.Unit501NBAPlayerModel?.project(history,p,selected,status,Date.now(),{minutes})||{available:false,reason:'—'};
+   return {p,status,prediction,splits,scenario:injuryScenarios.get(name),minutes};
   });
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
   if(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap')rows.sort((a,b)=>{
@@ -54,7 +62,7 @@
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   for(const label of ['Player','Stat','Line','Projection','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');
-  for(const {p,status,prediction} of rows){
+  for(const {p,status,prediction,splits,scenario,minutes} of rows){
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
    for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
     const cell=node('td',value);
@@ -66,21 +74,33 @@
      const gap=prediction.projection-p.line;
      cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
      if(Array.isArray(prediction.recentValues)&&prediction.recentValues.length)cell.append(node('small','Last '+prediction.recentValues.length+': '+prediction.recentValues.join(' · ')+' (newest first)','nba-line-history'));
-     for(const split of (root.Unit501NBARotationContext?.compare(history,p,injuries,selected,Date.now())||[]).slice(0,2)){
-      cell.append(node('small',`${split.name} didn't play: ${split.without.value.toFixed(1)} in ${split.without.games} games (${split.without.minutes.toFixed(1)} min) · played: ${split.with.value.toFixed(1)} in ${split.with.games} (${split.with.minutes.toFixed(1)} min). Past games only.`, 'nba-line-history'));
+     for(const split of splits.slice(0,2)){
+      cell.append(node('small',`${split.name} didn't play: ${split.without.value.toFixed(1)} in ${split.without.games} games (${split.without.minutes.toFixed(1)} min) · played: ${split.with.value.toFixed(1)} in ${split.with.games} (${split.with.minutes.toFixed(1)} min). Past games only; DNP reasons may differ.`, 'nba-line-history'));
+      if(prediction.projectedMinutes!==null&&split.without.minutes>=1&&split.without.minutes<=48){
+       const button=node('button',`Try ${split.without.minutes.toFixed(1)} minutes without ${split.name}`);button.type='button';
+       button.addEventListener('click',()=>{
+        const current=root.Unit501NBARotationContext?.compare(history,p,injuries,selected,Date.now())||[];
+        if(!current.some(s=>s.name===split.name&&s.without.minutes===split.without.minutes)){renderProps();return;}
+        const name=normalizedName(p.name);minuteOverrides.delete(name);injuryScenarios.set(name,{name:split.name,minutes:split.without.minutes,quote:p,evidence:JSON.stringify(split)});renderProps();
+       });cell.append(button);
+      }
+     }
+     if(minutes!==undefined){
+      cell.append(node('small',`${scenario?'Teammate absence minutes scenario':'Manual minutes scenario'} · baseline ${prediction.baseline.toFixed(1)} · change ${prediction.delta>=0?'+':''}${prediction.delta.toFixed(1)}. Uses overall scoring/stat rate; not a confirmed rotation.`, 'nba-line-history'));
+      const reset=node('button','Reset minutes');reset.type='button';reset.addEventListener('click',()=>{const name=normalizedName(p.name);minuteOverrides.delete(name);injuryScenarios.delete(name);renderProps();});cell.append(reset);
      }
      cell.append(node('small',prediction.method+' · recent average '+prediction.average.toFixed(1),'nba-line-history'));
      if(prediction.projectedMinutes!==null){
       const label=node('label','Minutes ', 'nba-minutes-control'),input=node('input');
       input.type='number';input.min='1';input.max='48';input.step='0.5';input.placeholder=prediction.projectedMinutes.toFixed(1);
-      input.value=minuteOverrides.get(normalizedName(p.name))??'';
+      input.value=minutes??'';
       input.setAttribute('aria-label',p.name+' projected minutes');
       input.addEventListener('change',()=>{
        const name=normalizedName(p.name),value=input.value.trim();
-       if(!value){minuteOverrides.delete(name);renderProps();return;}
-       const minutes=Number(value);
-       if(!Number.isFinite(minutes)||minutes<1||minutes>48){input.value=minuteOverrides.get(name)??'';return;}
-       minuteOverrides.set(name,minutes);renderProps();
+       if(!value){minuteOverrides.delete(name);injuryScenarios.delete(name);renderProps();return;}
+       const enteredMinutes=Number(value);
+       if(!Number.isFinite(enteredMinutes)||enteredMinutes<1||enteredMinutes>48){input.value=minutes??'';return;}
+       injuryScenarios.delete(name);minuteOverrides.set(name,enteredMinutes);renderProps();
       });label.append(input);cell.append(label);
      }
     }
@@ -185,7 +205,7 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){minuteOverrides.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
+ function clear(){minuteOverrides.clear();injuryScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}

@@ -170,15 +170,28 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
 
 test('an OUT teammate shows verified past splits without changing the player projection',async()=>{
  const h=harness();await h.select();const clock=Date.parse('2026-10-24T20:00:00Z');
- const rows=[1,2,3,4].map((id)=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,minutes:30}));
+ const rows=[1,2,3,4].map((id)=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,minutes:id<3?20:40}));
  h.context.fetch=async url=>({ok:true,json:async()=>String(url).startsWith('/api/nba/player-history?')?{
   gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:clock,teams:[
-   {available:true,players:[{id:'1',name:'Player A',results:rows},{id:'2',name:'Player C',results:rows.slice(0,2),inactive:[{gameId:3},{gameId:4}]}]},
-   {available:true,players:[]}]}:h.data(h.game,true)});
+   {name:'LA Clippers',available:true,players:[{id:'1',name:'Player A',results:rows},{id:'2',name:'Player C',results:rows.slice(0,2),inactive:rows.slice(2).map(r=>({gameId:r.gameId,tipoff:r.tipoff}))}]},
+   {name:'Chicago Bulls',available:true,players:[]}]}:h.data(h.game,true)});
  await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
- const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.0/);
- h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{available:true,players:[{name:'Player C',status:'Out'}]},{available:true,players:[]}]});
- const after=h.nodes.get('nba-prop-lines').textContent;assert.match(after,/Player A.*15\.0/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
+ const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.8/);
+ h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{name:'LA Clippers',available:true,players:[{name:'Player C',status:'Out'}]},{name:'Chicago Bulls',available:true,players:[]}]});
+ const after=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(after,/minutes scenario/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
+ assert.match(after,/Player A.*15\.8/);
+ const board=h.nodes.get('nba-prop-lines'),flatten=n=>[n,...n.children.flatMap(flatten)];
+ const button=()=>flatten(board).find(n=>n.textContent==='Try 40.0 minutes without Player C');
+ assert.ok(button());const calls=h.calls.length;button().events.click();
+ assert.match(board.textContent,/Player A.*20\.0/);
+ assert.match(board.textContent,/Teammate absence minutes scenario · baseline 15\.8 · change \+4\.2/);
+ assert.match(board.textContent,/0 4 0 4/);assert.equal(h.calls.length,calls);
+ flatten(board).find(n=>n.textContent==='Reset minutes').events.click();
+ assert.match(board.textContent,/Player A.*15\.8/);assert.doesNotMatch(board.textContent,/minutes scenario/);
+ button().events.click();
+ h.context.Unit501NBAMarkets.setInjuries(h.game,null);
+ assert.match(board.textContent,/Player A.*15\.8/);assert.doesNotMatch(board.textContent,/minutes scenario/);
+
 });
 
 test('late player history cannot replace the new matchup projection',async()=>{

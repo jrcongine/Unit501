@@ -29,10 +29,10 @@ function extractBox(data,prior,teamId,season,stage){
  const output=[],seen=new Set();
  for(const row of athletes){
   if(typeof row.didNotPlay!=='boolean')throw Error('NBA participation unavailable');
-  if(row.didNotPlay)continue;
   const id=String(row.athlete?.id||''),name=String(row.athlete?.displayName||'').trim(),stats=row.stats;
-  if(!/^\d{1,12}$/.test(id)||!name||name.length>100||!Array.isArray(stats))throw Error('NBA player identity unavailable');
+  if(!/^\d{1,12}$/.test(id)||!name||name.length>100||(!row.didNotPlay&&!Array.isArray(stats)))throw Error('NBA player identity unavailable');
   if(seen.has(id))throw Error('Duplicate NBA player box score');seen.add(id);
+  if(row.didNotPlay)continue;
   const min=minutes(stats[keys.indexOf('minutes')]);
   // Quarantine a malformed appearance without hiding unrelated verified players.
   if(min===null){output.push({id,name,available:false,minutes:null,values:{}});continue;}
@@ -94,7 +94,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
       const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};if(row.available===false)player.available=false;player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
      }
      for(const row of extractInactive(result.data,side.id,active)){
-      const old=players.get(row.id);if(old&&old.name!==row.name)continue;
+      const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
       const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};
       player.inactive.push({gameId:game.id,tipoff:game.tipoff});players.set(row.id,player);
      }
