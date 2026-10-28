@@ -170,15 +170,82 @@ test('NBA props show recent baselines, cover counts, sorting and OUT suppression
 
 test('an OUT teammate shows verified past splits without changing the player projection',async()=>{
  const h=harness();await h.select();const clock=Date.parse('2026-10-24T20:00:00Z');
- const rows=[1,2,3,4].map((id)=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,minutes:30}));
+ const rows=[1,2,3,4].map((id)=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,minutes:id<3?20:40}));
  h.context.fetch=async url=>({ok:true,json:async()=>String(url).startsWith('/api/nba/player-history?')?{
   gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:clock,teams:[
-   {available:true,players:[{id:'1',name:'Player A',results:rows},{id:'2',name:'Player C',results:rows.slice(0,2),inactive:[{gameId:3},{gameId:4}]}]},
-   {available:true,players:[]}]}:h.data(h.game,true)});
+   {name:'LA Clippers',available:true,players:[{id:'1',name:'Player A',results:rows},{id:'2',name:'Player C',results:rows.slice(0,2),inactive:rows.slice(2).map(r=>({gameId:r.gameId,tipoff:r.tipoff}))}]},
+   {name:'Chicago Bulls',available:true,players:[]}]}:h.data(h.game,true)});
  await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
- const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.0/);
- h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{available:true,players:[{name:'Player C',status:'Out'}]},{available:true,players:[]}]});
- const after=h.nodes.get('nba-prop-lines').textContent;assert.match(after,/Player A.*15\.0/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
+ const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.8/);
+ h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{name:'LA Clippers',available:true,players:[{name:'Player C',status:'Out'}]},{name:'Chicago Bulls',available:true,players:[]}]});
+ const after=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(after,/minutes scenario/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
+ assert.match(after,/Player A.*15\.8/);
+ const board=h.nodes.get('nba-prop-lines'),flatten=n=>[n,...n.children.flatMap(flatten)];
+ const button=()=>flatten(board).find(n=>n.textContent==='Try 40.0 minutes without Player C');
+ assert.ok(button());const calls=h.calls.length;button().events.click();
+ assert.match(board.textContent,/Player A.*20\.0/);
+ assert.match(board.textContent,/Teammate absence minutes scenario · baseline 15\.8 · change \+4\.2/);
+ assert.match(board.textContent,/0 4 0 4/);assert.equal(h.calls.length,calls);
+ flatten(board).find(n=>n.textContent==='Reset minutes').events.click();
+ assert.match(board.textContent,/Player A.*15\.8/);assert.doesNotMatch(board.textContent,/minutes scenario/);
+ button().events.click();
+ h.context.Unit501NBAMarkets.setInjuries(h.game,null);
+ assert.match(board.textContent,/Player A.*15\.8/);assert.doesNotMatch(board.textContent,/minutes scenario/);
+
+});
+
+async function scenarioHarness(reportAge=0){
+ const h=harness();await h.select();const clock=Date.parse('2026-10-24T20:00:00Z');
+ const rows=[1,2,3,4].map(id=>({gameId:id,tipoff:`2026-10-${18+id}T00:00:00Z`,player_points:id<3?10:20,player_rebounds:id<3?5:10,minutes:id<3?20:40}));
+ h.history={gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:clock,teams:[
+  {name:'LA Clippers',available:true,players:[{name:'Player A',results:rows},{name:'Player C',results:rows.slice(0,2),inactive:rows.slice(2).map(r=>({gameId:r.gameId,tipoff:r.tipoff}))}]},
+  {name:'Chicago Bulls',available:true,players:[]}]};
+ h.report={gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock-reportAge,teams:[
+  {name:'LA Clippers',available:true,players:[{name:'Player C',status:'Out'}]},
+  {name:'Chicago Bulls',available:true,players:[]}]};
+ h.context.fetch=async url=>{h.calls.push(url);const data=h.data(h.game,true);data.props[1].name='Player A';
+  return {ok:true,json:async()=>String(url).startsWith('/api/nba/player-history?')?h.history:data};};
+ await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
+ h.context.Unit501NBAMarkets.setInjuries(h.game,h.report);
+ h.board=h.nodes.get('nba-prop-lines');const flatten=n=>[n,...n.children.flatMap(flatten)];
+ h.inputs=()=>flatten(h.board).filter(n=>n.type==='number');
+ h.button=text=>flatten(h.board).find(n=>n.textContent===text);
+ return h;
+}
+test('NBA absence scenario expires locally and cannot be reapplied from an old control',async()=>{
+ const h=await scenarioHarness(7190000),calls=h.calls.length;
+ const oldButton=h.button('Try 40.0 minutes without Player C');oldButton.events.click();
+ assert.deepEqual(h.inputs().map(n=>n.value),[40,40]);
+ h.advance(10001);h.timers.at(-1)();
+ assert.doesNotMatch(h.board.textContent,/minutes scenario|Try 40/);
+ assert.deepEqual(h.inputs().map(n=>n.value),['','']);
+ assert.match(h.board.textContent,/Points 20\.5.*?15\.8Projection/);
+ oldButton.events.click();assert.doesNotMatch(h.board.textContent,/minutes scenario/);
+ // A refreshed report must not silently restore an expired selection.
+ h.report.reportAt+=10001;h.context.Unit501NBAMarkets.setInjuries(h.game,h.report);
+ assert.ok(h.button('Try 40.0 minutes without Player C'));
+ assert.deepEqual(h.inputs().map(n=>n.value),['','']);assert.equal(h.calls.length,calls);
+});
+test('NBA shared player minutes survive filters, reset together and detach from injury evidence when edited',async()=>{
+ const h=await scenarioHarness(),calls=h.calls.length;
+ h.button('Try 40.0 minutes without Player C').events.click();
+ assert.deepEqual(h.inputs().map(n=>n.value),[40,40]);
+ assert.match(h.board.textContent,/Points 20\.5.*?20\.0Projection/);
+ assert.match(h.board.textContent,/Rebounds 9\.5.*?10\.0Projection/);
+ const filter=h.nodes.get('nba-prop-market');filter.value='player_rebounds';filter.events.change();
+ assert.deepEqual(h.inputs().map(n=>n.value),[40]);
+ h.button('Reset minutes').events.click();filter.value='';filter.events.change();
+ assert.deepEqual(h.inputs().map(n=>n.value),['','']);
+ h.button('Try 40.0 minutes without Player C').events.click();
+ const input=h.inputs()[1];input.value='36';input.events.change();
+ assert.deepEqual(h.inputs().map(n=>n.value),[36,36]);
+ h.context.Unit501NBAMarkets.setInjuries(h.game,null);
+ assert.deepEqual(h.inputs().map(n=>n.value),[36,36]);
+ assert.match(h.board.textContent,/Manual minutes scenario/);
+ assert.doesNotMatch(h.board.textContent,/Teammate absence minutes scenario/);
+ assert.equal(h.calls.length,calls);
+ await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
+ assert.deepEqual(h.inputs().map(n=>n.value),['','']);
 });
 
 test('late player history cannot replace the new matchup projection',async()=>{
