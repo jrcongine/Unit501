@@ -16,13 +16,45 @@
       const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(35000)});
       if(!response.ok)throw Error('Unavailable');const data=await response.json();if(version!==request)return;
       if(!Array.isArray(data.sources))throw Error('Invalid feed');
-      const summary=el('section',null,'war-feed-source');
-      summary.append(el('h4','Most repeated selections'));
-      if(!data.consensus?.length)summary.append(el('p','No verified matching selections across the loaded picks. Undated picks and different lines are not combined.','war-muted'));
+      const summary=el('section',null,'war-feed-source war-consensus');
+      const heading=el('div',null,'war-consensus-heading');
+      const icon=el('span','▥','war-consensus-icon');icon.setAttribute('aria-hidden','true');
+      const headingText=el('div',null,'war-consensus-heading-text');
+      headingText.append(el('h4','Most repeated selections'),el('small','Picks mentioned by multiple analysts'));
+      heading.append(icon,headingText);summary.append(heading);
+      if(!data.consensus?.length)summary.append(el('p','No verified matching selections across the loaded picks. Undated picks and different lines are not combined.','war-consensus-empty'));
       for(const pick of data.consensus||[]){
-        const card=el('article',null,'war-record');
-        card.append(el('strong',pick.pick+' · '+pick.count+' named selections'),el('p',pick.matchup+' · '+pick.date));
-        for(const member of pick.sources){const link=el('a',member.source+' — '+member.author+': '+member.pick);link.href=member.url;link.target='_blank';link.rel='noopener noreferrer';const line=el('p');line.append(link);card.append(line);}
+        const card=el('article',null,'war-consensus-card');
+        const publishers=[...new Set((pick.sources||[]).map(m=>m.source).filter(Boolean))];
+        const top=el('div',null,'war-consensus-top');
+        const details=el('div',null,'war-consensus-details');
+        details.append(el('strong',bettingText(pick.pick),'war-consensus-pick'),el('p',pick.matchup+' · '+pick.date,'war-consensus-matchup'));
+        const metrics=el('div',null,'war-consensus-metrics');
+        for(const [n,label,kind] of [[pick.count,'Named selections','picks'],[publishers.length,'Sources','sources']]){
+          const metric=el('div',null,'war-consensus-metric war-consensus-metric-'+kind);
+          metric.append(el('strong',String(n)),el('small',label));metrics.append(metric);
+        }
+        top.append(details,metrics);card.append(top);
+        const groups=new Map();
+        for(const member of pick.sources||[]){
+          const name=member.source||'Other source';
+          if(!groups.has(name))groups.set(name,[]);
+          groups.get(name).push(member);
+        }
+        for(const [publisher,members] of groups){
+          const group=el('div',null,'war-consensus-publisher');
+          group.append(el('div',publisher,'war-consensus-source-name'));
+          for(const member of members){
+            const link=el('a',null,'war-consensus-link');
+            link.href=member.url;link.target='_blank';link.rel='noopener noreferrer';
+            link.title='Open original pick from '+publisher;
+            link.append(el('span',member.author||'Unnamed analyst','war-consensus-analyst'),
+              el('span',bettingText(member.pick||pick.pick),'war-consensus-selection'),
+              el('span','↗','war-consensus-external'));
+            group.append(link);
+          }
+          card.append(group);
+        }
         summary.append(card);
       }
       list.append(summary);
