@@ -15,8 +15,17 @@
   if(className)node.className=className;
   return node;
  }
+ const logoSports={nfl:'nfl',ncaaf:'ncaa',nba:'nba',mlb:'mlb',nhl:'nhl'};
+ function teamLogo(team,league){
+  if(!team||!/^[0-9]{1,7}$/.test(String(team.id||''))||!logoSports[league])return null;
+  const img=el('img',null,'league-pulse-logo');
+  img.src='https://a.espncdn.com/i/teamlogos/'+logoSports[league]+'/500/'+team.id+'.png';
+  img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';
+  img.onerror=()=>img.remove();
+  return img;
+ }
  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- function row(team){
+ function row(team,league){
   const result=el('li',null,'league-pulse-team');
   const rank=el('strong','#'+team.rank,'league-pulse-rank');
   const title=el('span',team.name,'league-pulse-name');
@@ -30,16 +39,17 @@
   const form=el('span',team.trend==='up'?'↑ '+team.trendLabel:team.trend==='down'?'↓ '+team.trendLabel:'→ '+team.trendLabel,
     'league-pulse-trend trend-'+team.trend);
   form.title='Form based on consecutive wins/losses, not ranking movement';
-  result.append(rank,title,record,score,form);
+  const logo=teamLogo(team,league);
+  result.append(rank,...(logo?[logo]:[]),title,record,score,form);
   return result;
  }
- function group(label,teams,open){
+ function group(label,teams,open,league){
   const details=el('details',null,'league-pulse-group');
   details.open=open;
   const summary=el('summary',label+' ('+teams.length+')');
   const list=el('ol',null,'league-pulse-list');
   list.start=teams.length&&Number.isFinite(teams[0].rank)?teams[0].rank:1;
-  for(const t of teams)list.append(row(t));
+  for(const t of teams)list.append(row(t,league));
   details.append(summary,list);
   return details;
  }
@@ -54,15 +64,15 @@
   if(board.scheduleAdjustment?.applied===false)formula.append(el('span',' '+board.scheduleAdjustment.reason));
   if(data.league==='ncaaf'){
    power.append(context,formula,
-    group('🏆 Top 25 · FBS Power Index',board.teams.slice(0,25),true),
-    group('26–50 · Next Tier',board.teams.slice(25,50),false),
-    group('51–'+board.teams.length+' · Rest of FBS',board.teams.slice(50),false));
+    group('🏆 Top 25 · FBS Power Index',board.teams.slice(0,25),true,data.league),
+    group('26–50 · Next Tier',board.teams.slice(25,50),false,data.league),
+    group('51–'+board.teams.length+' · Rest of FBS',board.teams.slice(50),false,data.league));
    return;
   }
   power.append(context,formula,
-   group('🏆 Top 10 · Contenders',board.top,true),
-   group('⚔ Middle of the Pack',board.middle,false),
-   group('🧊 Bottom 10 · Bottom Feeders',board.bottom,true));
+   group('🏆 Top 10 · Contenders',board.top,true,data.league),
+   group('⚔ Middle of the Pack',board.middle,false,data.league),
+   group('🧊 Bottom 10 · Bottom Feeders',board.bottom,true,data.league));
  }
  function renderNews(data){
   news.replaceChildren();
@@ -84,6 +94,12 @@
    const labels={injury:'INJURY REPORT',transfer:'TRANSFER',coaching:'COACHING',rankings:'RANKINGS',analysis:'GAME ANALYSIS',update:'LEAGUE UPDATE'};
    const item=el('li',null,'league-pulse-story league-pulse-'+type);
    const symbol=el('span',symbols[type],'league-pulse-story-symbol');symbol.setAttribute('aria-hidden','true');
+   const candidates=(data.power?.teams||[]).filter(t=>{
+    const names=[t.name,t.providerName].filter(Boolean).map(v=>String(v).toLowerCase());
+    return names.some(name=>name.length>=5&&new RegExp('(^|[^a-z])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\   const symbol=el('span',symbols[type],'league-pulse-story-symbol');symbol.setAttribute('aria-hidden','true');')+'([^a-z]|$)','i').test(title));
+   });
+   const logo=candidates.length===1?teamLogo(candidates[0],data.league):null;
+   if(logo){symbol.textContent='';symbol.append(logo);}
    const content=el('div',null,'league-pulse-story-content');
    const badge=el('span',labels[type],'league-pulse-category');
    const link=el('a',title,'league-pulse-story-link');link.href=h.url;link.target='_blank';link.rel='noopener noreferrer';
