@@ -507,14 +507,20 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   }
   // Recent results and rest are descriptive, based only on returned completed games.
   const formGrid=document.createElement('div');formGrid.className='football-form-grid';
-  const dateKey=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+  const restByTeam=new Map();
   for(const [id,name] of [[game.awayId,game.a],[game.homeId,game.h]]){
     const team=data.teams.find(t=>String(t.id)===String(id));
     const games=(team?.recentGames||[]).filter(g=>Number.isFinite(g.kickoff)&&g.kickoff<game.kickoff).sort((a,b)=>b.kickoff-a.kickoff);
     const card=document.createElement('section');card.className='football-form-card';
     const heading=document.createElement('h4');heading.textContent=name;card.append(heading);
     const rest=document.createElement('p');
-    if(games.length){const day=key=>Date.parse(key+'T00:00:00Z');const days=Math.max(0,Math.round((day(dateKey(game.kickoff))-day(dateKey(games[0].kickoff)))/86400000)-1);rest.textContent=days+' full day(s) off since last recorded game';}
+    const schedule=window.Unit501FootballTravel?.schedule(games,game.kickoff);
+    restByTeam.set(String(id),schedule);
+    if(schedule?.available){
+      rest.textContent=schedule.fullDaysOff+' full day(s) off since last recorded game'+(schedule.shortWeek?' · Short week (less than 7 calendar days between games)':'');
+      if(schedule.shortWeek)rest.className='football-short-week';
+      const workload=document.createElement('p');workload.textContent=schedule.gapHours+' hours between kickoffs · '+schedule.gamesLast14Days+' recorded game(s) in the preceding 14 days';card.append(workload);
+    }
     else rest.textContent='Rest unavailable: no previous completed game returned.';
     card.append(rest);
     const form=document.createElement('div');form.className='football-form-results';
@@ -525,11 +531,19 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     if(games.length&&window.Unit501FootballTravel){
       footballTravel.estimate(game,name,games[0]).then(result=>{
         if(selected!==game||!card.isConnected)return;
-        travel.textContent=result?`About ${result.miles} miles straight-line from last game venue to this venue${result.cityPrecision?' (city estimate)':''}. Actual route and travel method unknown.`:'Distance between game venues unavailable.';
+        travel.textContent=result?`About ${result.miles} miles straight-line from last game venue to this venue${result.cityPrecision?' (city estimate)':''}${result.previous&&result.current?' · '+result.previous+' → '+result.current:''}. Actual route and travel method unknown.`:'Distance between game venues unavailable.';
       });
     }
   }
   const formTitle=document.createElement('h3');formTitle.textContent='Recent form & rest';teamContext.append(formTitle,formGrid);
+  const awayRest=restByTeam.get(String(game.awayId)),homeRest=restByTeam.get(String(game.homeId));
+  const restComparison=document.createElement('p');restComparison.className='football-rest-comparison';
+  if(awayRest?.available&&homeRest?.available){
+    const difference=awayRest.fullDaysOff-homeRest.fullDaysOff;
+    restComparison.textContent=difference===0?'Rest comparison: both teams have '+awayRest.fullDaysOff+' full day(s) off.':'Rest comparison: '+(difference>0?game.a:game.h)+' has '+Math.abs(difference)+' more full day(s) off.';
+    restComparison.textContent+=' Based on recorded games; no automatic score adjustment.';
+  }else restComparison.textContent='Rest comparison unavailable: previous completed games are needed for both teams.';
+  teamContext.append(restComparison);
   const formNote=document.createElement('p');formNote.textContent='Based on returned completed games; full schedule coverage is not independently verified. Rest does not include travel or player availability.';teamContext.append(formNote);
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px';

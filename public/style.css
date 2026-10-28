@@ -399,3 +399,6 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .football-form-w { background:#124a3e; color:#a8f3d4; }
 .football-form-l { background:#593538; color:#ffb0a5; }
 .football-form-t { background:#454b57; color:white; }
+
+.football-short-week { color:#ffc184; font-weight:700; }
+.football-rest-comparison { padding:12px; border-left:3px solid #83e2ba; background:#0c1a29; }
