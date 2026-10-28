@@ -104,6 +104,7 @@ test('UI loads on opening, renders text safely, and rejects obsolete league resp
   const nodes=new Map();
   class Node{constructor(){this.children=[];this.listeners={};this.value='nfl';this.open=false;this._text='';}
     append(...n){this.children.push(...n);}replaceChildren(){this.children=[];this._text='';}
+    setAttribute(name,value){(this.attributes??={})[name]=String(value);}
     set textContent(t){this._text=t;}get textContent(){return this._text+this.children.map(n=>n.textContent).join('');}
     addEventListener(e,fn){this.listeners[e]=fn;}}
   for(const id of ['war-room','war-feed','war-feed-league','war-feed-refresh','war-feed-status'])nodes.set(id,new Node());
