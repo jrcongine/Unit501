@@ -460,3 +460,14 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .war-consensus-external{color:#7e8190;font-size:15px}
 .war-consensus-empty{color:#586375;font-size:13px}
 @media(max-width:580px){.war-consensus-top{align-items:stretch;flex-direction:column}.war-consensus-metrics{align-self:flex-start}.war-consensus-link{flex-wrap:wrap}.war-consensus-selection{text-align:left}}
+
+/* Simple reader-facing historical results and verified season W-L */
+.football-season-record{color:#e7eef7;font-weight:800;font-size:.9em}
+.model-performance{margin:14px 0;padding:13px;border:1px solid #45617c;border-radius:12px;background:#102033}
+.model-performance h3{margin:0 0 12px;color:#f1f6fd;font-size:17px}
+.model-performance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.model-performance-stat{background:#1c3449;border:1px solid #39546a;border-radius:10px;padding:12px 8px;text-align:center}
+.model-performance-stat strong{display:block;color:#fff;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.model-performance-stat span{display:block;margin-top:6px;color:#c7d6e5;font-size:11px}
+.model-performance>p{font-size:12px;color:#bbcbda;margin:12px 0 0}
+@media(max-width:650px){.model-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
