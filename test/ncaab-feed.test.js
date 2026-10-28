@@ -25,3 +25,12 @@ test('college history verifies team identity and never supplies TBD predictions'
  const data=await feed.context(selected);assert.equal(data.away.games,1);assert.equal(data.home.games,1);
  await assert.rejects(feed.context({...selected,timeKnown:false}),/tipoff/);
 });
+
+test('missing or malformed college scores remain unknown and do not enter team form',()=>{
+ for(const value of [null,undefined,'','   ',false,true,[],{},'unavailable',70.5]){
+  const row=event(20,'2026-10-28T01:00:00Z',{scoreA:null});row.competitions[0].competitors[0].score={value};
+  assert.equal(convert(row).awayScore,null);
+  assert.equal(summarize([row],'1',selected,Date.parse('2026-11-03T20:00:00Z')).games,0);
+ }
+ for(const value of [0,'0',70,' 70 '])assert.equal(convert(event(21,'2026-10-28T01:00:00Z',{scoreA:value})).awayScore,Number(value));
+});

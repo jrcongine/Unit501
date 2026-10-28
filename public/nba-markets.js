@@ -15,7 +15,7 @@
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
  const historyText=(h,line,at)=>{
   const observed=root.Unit501LineWatch?.fromServer(h,line,at);
-  return observed?root.Unit501LineWatch.describe(observed)+' · '+root.Unit501LineWatch.detail(observed):'Line history unavailable';
+  return observed?root.Unit501LineWatch.describe(observed)+' · '+root.Unit501LineWatch.detail(observed):'Line history unavailable; movement is unknown.';
  };
  const fresh=at=>Number.isFinite(at)&&at<=Date.now()+60000&&Date.now()-at<=1800000&&selected&&Date.parse(selected.tipoff)>Date.now();
  function card(title,lines,at){const c=node('section','', 'nba-quote-card');c.append(node('h4',title));for(const line of lines)c.append(node('p',line));if(at)c.append(node('small','Source update: '+ui.timeCentral(new Date(at).toISOString())));gameBoard.append(c);}
@@ -30,6 +30,7 @@
   else card('Game total',['No current paired total available. Refresh game lines.']);
   const ml=quotes.moneyline;
   if(ml&&fresh(ml.updatedAt))card('Moneyline',[selected.away+' '+signed(ml.away),historyText(quotes.history?.awayMoneyline,ml.away,ml.updatedAt),selected.home+' '+signed(ml.home),historyText(quotes.history?.homeMoneyline,ml.home,ml.updatedAt)],ml.updatedAt);
+  else card('Moneyline',['No current paired moneyline available. Refresh game lines.']);
  }
  function renderProps(){
   propBoard.replaceChildren();if(!selected||!props)return;

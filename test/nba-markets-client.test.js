@@ -215,3 +215,10 @@ test('NBA minutes controls update estimates locally and clear when changing matc
  await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
  assert.doesNotMatch(board.textContent,/manual minutes/);
 });
+
+test('missing NBA moneyline and history are labeled explicitly',async()=>{
+ const h=harness();await h.select();
+ assert.match(h.nodes.get('nba-game-odds').textContent,/Moneyline.*No current paired moneyline available/);
+ assert.match(h.nodes.get('nba-game-odds').textContent,/Line history unavailable; movement is unknown/);
+ assert.doesNotMatch(h.nodes.get('nba-game-odds').textContent,/unchanged/);
+});

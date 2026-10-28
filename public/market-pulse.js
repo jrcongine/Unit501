@@ -14,7 +14,7 @@
    if(observation.changes>0)return {label,text:'First observed '+number(firstLine)+' → '+number(line)+' · returned after '+observation.changes+' changes',tone:'flat'};
    if(!Number.isFinite(observation.firstAt)||!Number.isFinite(observation.lastAt)||observation.lastAt<=observation.firstAt)
     return {label,text:'First observed '+number(firstLine)+' · waiting for another observation',tone:'unknown'};
-   return {label,text:'First observed '+number(firstLine)+' · unchanged since first observation',tone:'flat'};
+   return {label,text:'First observed '+number(firstLine)+' · unchanged across recorded updates',tone:'flat'};
   }
   const toward=kind==='spread'?(delta>0?home:away):(delta>0?'Over':'Under');
   const arrow=delta>0?'↑':'↓';

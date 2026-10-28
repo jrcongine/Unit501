@@ -4,7 +4,7 @@ const {normalizeGame,validDate,inferSeason}=require('./nba-feed');
 const {summarize}=require('./nba-context');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
 const day=at=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(p=>[p.type,p.value]));return p.year+'-'+p.month+'-'+p.day;};
-const score=value=>{const v=typeof value==='object'&&value!==null?value.value:value;if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isInteger(n)&&n>=0?n:null;};
+const score=value=>{const v=typeof value==='object'&&value!==null?value.value:value;if(typeof v!=='number'&&(typeof v!=='string'||v.trim()===''))return null;const n=Number(v);return Number.isInteger(n)&&n>=0?n:null;};
 function convert(event,season,defaultStage=null){
  if(Number(event?.season?.year)!==season+1||!Array.isArray(event.competitions)||event.competitions.length!==1)return null;
  const c=event.competitions[0],rows=c.competitors||[];

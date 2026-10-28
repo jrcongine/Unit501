@@ -48,3 +48,15 @@ test('successful configured slates, including genuine empty dates, do not invoke
  const broken=createNBASources({primaryGames:async()=>{throw Error();},primaryContext:async()=>{},publicFeed:{games:async()=>{throw Error();}}});
  await assert.rejects(broken.games('2026-10-24'),/Both configured and public/);
 });
+
+test('NBA public and primary feeds preserve unknown scores instead of coercing them to zero',()=>{
+ for(const value of [null,undefined,'','   ',false,true,[],{},'unavailable',110.5]){
+  const e=event(100,'2026-10-22T23:00Z',true);e.competitions[0].competitors[0].score={value};
+  const raw=convert(e,2026);assert.equal(normalizeGame(raw).awayScore,null);
+  raw.scores.visitors.points=value;assert.equal(normalizeGame(raw).awayScore,null);
+ }
+ for(const value of [0,'0',110,' 110 ']){
+  const e=event(100,'2026-10-22T23:00Z',true);e.competitions[0].competitors[0].score={value};
+  assert.equal(normalizeGame(convert(e,2026)).awayScore,Number(value));
+ }
+});
