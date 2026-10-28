@@ -82,7 +82,7 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
     return {...base,books,available:books.some(b=>b.moneyline||b.spread||b.total),
      message:'Pregame sportsbook comparison checked. Each market is timestamped separately; missing or stale prices remain unavailable.'};
    }
-   const lines=gameLines(e,now());return {...base,...lines,available:Boolean(lines.spread||lines.total),message:lines.spread||lines.total?'FanDuel pregame lines loaded.':'No fresh paired FanDuel spread or total was returned.'};
+   const lines=gameLines(e,now());return {...base,...lines,available:Boolean(lines.moneyline||lines.spread||lines.total),message:lines.moneyline||lines.spread||lines.total?'FanDuel pregame lines loaded.':'No fresh paired FanDuel moneyline, spread or total was returned.'};
   }
   const events=await request('events');if(!Array.isArray(events))throw Error('NBA prop event list was invalid.');
   const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique NBA prop matchup matched both teams and tipoff.'};
