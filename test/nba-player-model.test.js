@@ -45,3 +45,16 @@ test('NBA props withhold players with an unverified appearance even when other r
  const d=data();d.teams[0].players[0].available=false;
  assert.equal(project(d,q,game,null,now).available,false);
 });
+
+test('missing NBA projections explain history gaps without implying injury adjustments',()=>{
+ assert.equal(project(null,q,game,'Questionable',now).reason,'Player history unavailable');
+ const missing=data();missing.teams[0].players=[];
+ assert.equal(project(missing,q,game,null,now).reason,'No matched player history');
+ const duplicate=data();duplicate.teams[1].players=[structuredClone(duplicate.teams[0].players[0])];
+ assert.equal(project(duplicate,q,game,null,now).reason,'Player match is ambiguous');
+ const thin=data();thin.teams[0].players[0].results.length=1;
+ assert.equal(project(thin,q,game,null,now).reason,'Fewer than 2 verified games');
+ assert.equal(project(data(),q,game,null,now+1800001).reason,'Verified history unavailable');
+ assert.deepEqual(project(data(),q,game,'Questionable',now),project(data(),q,game,null,now));
+ assert.equal(project(null,q,game,'Out',now).reason,'OUT');
+});

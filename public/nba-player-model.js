@@ -4,20 +4,23 @@
  const markets=new Set(['player_points','player_rebounds','player_assists','player_threes']);
  function project(history,quote,game,status,now=Date.now(),options={}){
   if(status==='Out')return {available:false,reason:'OUT'};
-  if(!history||!game||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||
+  if(!history)return {available:false,reason:'Player history unavailable'};
+  if(!game||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||
    !Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||
    !Array.isArray(history.teams)||history.teams.length!==2||history.teams.some(t=>!Array.isArray(t.players))||
-   !quote||!markets.has(quote.market)||!Number.isFinite(quote.line))return {available:false,reason:'—'};
-  const wanted=key(quote.name);if(!wanted)return {available:false,reason:'—'};
+   !quote||!markets.has(quote.market)||!Number.isFinite(quote.line))return {available:false,reason:'Verified history unavailable'};
+  const wanted=key(quote.name);if(!wanted)return {available:false,reason:'Verified history unavailable'};
   const matches=history.teams.flatMap(t=>t.players.map(p=>({...p,teamAvailable:t.available}))).filter(p=>key(p.name)===wanted);
-  if(matches.length!==1||matches[0].available===false||!matches[0].teamAvailable||!Array.isArray(matches[0].results))return {available:false,reason:'—'};
+  if(matches.length===0)return {available:false,reason:'No matched player history'};
+  if(matches.length!==1)return {available:false,reason:'Player match is ambiguous'};
+  if(matches[0].available===false||!matches[0].teamAvailable||!Array.isArray(matches[0].results))return {available:false,reason:'Verified history unavailable'};
   const results=matches[0].results;
   if(results.length>10||new Set(results.map(r=>String(r.gameId))).size!==results.length||results.some(r=>
-   !/^\d{1,12}$/.test(String(r.gameId||''))||!Number.isFinite(Date.parse(r.tipoff))||Date.parse(r.tipoff)>=Math.min(now,Date.parse(game.tipoff))))return {available:false,reason:'—'};
+   !/^\d{1,12}$/.test(String(r.gameId||''))||!Number.isFinite(Date.parse(r.tipoff))||Date.parse(r.tipoff)>=Math.min(now,Date.parse(game.tipoff))))return {available:false,reason:'Verified history unavailable'};
   const ordered=[...results].sort((a,b)=>Date.parse(b.tipoff)-Date.parse(a.tipoff));
   const sample=ordered.filter(r=>Number.isInteger(r[quote.market])&&r[quote.market]>=0);
   const values=sample.map(r=>r[quote.market]);
-  if(values.length<2)return {available:false,reason:'—'};
+  if(values.length<2)return {available:false,reason:'Fewer than 2 verified games'};
   const average=values.reduce((a,b)=>a+b,0)/values.length;
   // Minutes are observed playing time, not a confirmed starting assignment.
   const hasMinutes=sample.every(r=>Number.isFinite(r.minutes)&&r.minutes>0&&r.minutes<=60);
