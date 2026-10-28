@@ -517,9 +517,9 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     const schedule=window.Unit501FootballTravel?.schedule(games,game.kickoff);
     restByTeam.set(String(id),schedule);
     if(schedule?.available){
-      rest.textContent=schedule.fullDaysOff+' full day(s) off since last recorded game'+(schedule.shortWeek?' · Short week (less than 7 calendar days between games)':'');
+      rest.textContent=schedule.fullDaysOff+' full '+(schedule.fullDaysOff===1?'day':'days')+' off'+(schedule.shortWeek?' · Short week':'');
       if(schedule.shortWeek)rest.className='football-short-week';
-      const workload=document.createElement('p');workload.textContent=schedule.gapHours+' hours between kickoffs · '+schedule.gamesLast14Days+' recorded game(s) in the preceding 14 days';card.append(workload);
+      const workload=document.createElement('p');workload.textContent=(schedule.gapHours/24).toLocaleString('en-US',{maximumFractionDigits:1})+' days between kickoffs · '+schedule.gamesLast14Days+' '+(schedule.gamesLast14Days===1?'game':'games')+' in previous 14 days';card.append(workload);
     }
     else rest.textContent='Rest unavailable: no previous completed game returned.';
     card.append(rest);
@@ -603,67 +603,29 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
   }
   if(data.paceValidation){const check=data.paceValidation,line=document.createElement('p');line.textContent=`Pace model check: ${check.evaluatedGames} later games.${Number.isInteger(check.warmupGames)?` ${check.warmupGames} warm-up predictions; ${check.skipped} games lacked eligible scoring or complete drive coverage.`:''} ${check.evaluatedGames?`Score error ${check.scoreError.toFixed(1)} vs current ${check.baselineScoreError.toFixed(1)}; total error ${check.totalError.toFixed(1)} vs current ${check.baselineTotalError.toFixed(1)}. `:''}${check.accepted?'Drive-based scoring enabled.':'Current scoring retained; the pace candidate has not passed both improvement gates.'} ${check.explanation}`;teamContext.append(line);}
   const validation=data.validation;
-  if(validation) {
-    const details=document.createElement('details');
-    const summary=document.createElement('summary');summary.textContent='Historical model check';
-    const description=document.createElement('p');
-    description.textContent=validation.games
-      ? `${validation.games} replayed games; average score error ${validation.scoreMAE.toFixed(1)} points per team, margin error ${validation.marginMAE.toFixed(1)}, total error ${validation.totalMAE.toFixed(1)}. Total bias ${validation.totalBias>=0?'+':''}${validation.totalBias.toFixed(1)} (positive means projected too high).`
-      : 'Not enough earlier complete scoring history for a model check yet.';
-    const explanation=document.createElement('p');explanation.textContent=validation.explanation;
-    details.append(summary,description,explanation);
-    if(validation.scoreAudit)details.append(Unit501ScoreAuditUI.render(validation.scoreAudit,'Replay scoring audit'));
-    if(validation.legacy){
-      const comparison=document.createElement('p');
-      comparison.textContent=`Previous formula on the same games: score error ${validation.legacy.scoreMAE.toFixed(1)}, margin error ${validation.legacy.marginMAE.toFixed(1)}, total error ${validation.legacy.totalMAE.toFixed(1)}. Lower is better; the new formula is not assumed to win this comparison.`;
-      details.append(comparison);
+  if(validation){
+    const section=document.createElement('section');section.className='model-performance';
+    const heading=document.createElement('h3');heading.textContent='Model Performance';
+    section.append(heading);
+    const grid=document.createElement('div');grid.className='model-performance-grid';
+    const stats=[
+      ['Games tested',validation.games],
+      ['Avg. team score error',validation.scoreMAE],
+      ['Avg. margin error',validation.marginMAE],
+      ['Avg. total error',validation.totalMAE]
+    ];
+    for(const [label,value] of stats){
+      const tile=document.createElement('div');tile.className='model-performance-stat';
+      const number=document.createElement('strong');
+      number.textContent=Number.isFinite(value)?(label==='Games tested'?String(value):value.toFixed(1)):'—';
+      const name=document.createElement('span');name.textContent=label;
+      tile.append(number,name);grid.append(tile);
     }
-    if(validation.laterComparison) {
-      const check=validation.laterComparison;
-      const comparison=document.createElement('p');
-      comparison.textContent=check.games && check.current && check.previous
-        ? `Later-game formula comparison: ${check.games} games after ${check.warmupGames} warm-up predictions. Current vs previous: score error ${check.current.scoreMAE.toFixed(1)} vs ${check.previous.scoreMAE.toFixed(1)}, margin error ${check.current.marginMAE.toFixed(1)} vs ${check.previous.marginMAE.toFixed(1)}, total error ${check.current.totalMAE.toFixed(1)} vs ${check.previous.totalMAE.toFixed(1)}. Lower is better.${check.sufficient ? '' : ' Fewer than 30 later games; evidence remains limited.'}`
-        : 'Later-game formula comparison awaits enough eligible predictions beyond warm-up.';
-      details.append(comparison);
-      const caveat=document.createElement('p');caveat.textContent=check.explanation;details.append(caveat);
+    section.append(grid);
+    if(Number.isFinite(validation.totalBias)){
+      const bias=document.createElement('p');bias.textContent='Total prediction bias: '+(validation.totalBias>=0?'+':'')+validation.totalBias.toFixed(1)+' points';section.append(bias);
     }
-    if(validation.ratingPriorComparison){
-      const rows=validation.ratingPriorComparison;
-      const table=document.createElement('table');
-      const head=document.createElement('tr');
-      for(const label of ['Smoothing games','Replay games','Score error','Margin error','Total error','Total bias']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
-      for(const row of rows){const tr=document.createElement('tr');for(const v of [row.priorGames,row.games,...['scoreMAE','marginMAE','totalMAE','totalBias'].map(k=>Number.isFinite(row[k])?row[k].toFixed(2):'—')]){const td=document.createElement('td');td.textContent=String(v);tr.append(td);}table.append(tr);}
-      details.append(table);
-      const help=document.createElement('p');help.textContent='Less smoothing can widen projected margins. These fixed alternatives use the same later games and pregame histories. Lower error is better; live smoothing remains four games until a separate validation supports a change.';details.append(help);
-    }
-    if(validation.offenseDiagnostics){
-      const diagnostics=validation.offenseDiagnostics;
-      for(const [key,label]of [['belowAverage','Below-average scoring offenses'],['atOrAboveAverage','At-or-above-average scoring offenses']]){
-        const row=diagnostics.overall[key],later=diagnostics.later[key];
-        if(!row?.teamGames)continue;
-        const line=document.createElement('p');
-        line.textContent=`${label}: ${row.teamGames} team-games. Current vs previous score error ${row.scoreMAE.toFixed(1)} vs ${row.legacyScoreMAE.toFixed(1)} points; scoring bias ${row.bias>=0?'+':''}${row.bias.toFixed(1)} vs ${row.legacyBias>=0?'+':''}${row.legacyBias.toFixed(1)}. Later comparison: ${later.teamGames} team-games across ${later.games} matchups.${later.games<30?' Limited later evidence.':''}`;
-        details.append(line);
-      }
-      const note=document.createElement('p');note.textContent=diagnostics.explanation;details.append(note);
-    }
-    if(validation.probabilityGames) {
-      const label=document.createElement('p');label.textContent=`Away-win reliability: ${validation.probabilityGames} later games, Brier score ${validation.brier.toFixed(3)} (lower is better). Small bins remain uncertain.`;details.append(label);
-      const table=document.createElement('table');table.style.width='100%';
-      const header=document.createElement('tr');for(const title of ['Model band','Games','Mean model','Actual away wins']){const cell=document.createElement('th');cell.textContent=title;header.append(cell);}table.append(header);
-      for(const bin of validation.bins.filter(b=>b.games)) {
-        const tr=document.createElement('tr');
-        for(const text of [`${Math.round(bin.lower*100)}–${Math.round(bin.upper*100)}%`,bin.games,`${(bin.predicted*100).toFixed(1)}%`,`${(bin.observed*100).toFixed(1)}%`]){const cell=document.createElement('td');cell.textContent=text;tr.append(cell);}table.append(tr);
-      }details.append(table);
-    }
-    if(validation.probabilityChecks){
-      for(const [market,check]of Object.entries(validation.probabilityChecks)){
-        const label=document.createElement('p');label.textContent=check.games?`${market} calibration: ${check.games} later games (${check.thresholds} evaluated thresholds); Brier ${check.brier.toFixed(3)} vs raw ${check.rawBrier.toFixed(3)}. Lower is better; reference spread/total thresholds are not historical sportsbook lines.`:`${market}: not enough earlier training and later evaluation for calibration yet.`;details.append(label);
-        const table=document.createElement('table');const header=document.createElement('tr');for(const title of ['Calibrated band','Distinct games / checks','Mean probability','Observed']){const cell=document.createElement('th');cell.textContent=title;header.append(cell);}table.append(header);
-        for(const bin of check.bins.filter(b=>b.thresholds)){const row=document.createElement('tr');for(const value of [`${Math.round(bin.lower*100)}–${Math.round(bin.upper*100)}%`,`${bin.games} / ${bin.thresholds}`,`${(bin.predicted*100).toFixed(1)}%`,`${(bin.observed*100).toFixed(1)}%`]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}table.append(row);}details.append(table);
-      }
-    }
-    teamContext.append(details);
+    teamContext.append(section);
   }
 }
 function loadTeamContext(game) {
