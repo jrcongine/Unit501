@@ -10,6 +10,7 @@ test('War Room reloads public sources when the visible open panel has aged five 
   addEventListener(event,fn){(this.listeners[event]??=[]).push(fn);}
   fire(event){for(const fn of this.listeners[event]||[])fn();}
   append(...items){this.children.push(...items);}
+  setAttribute(name,value){(this.attributes??={})[name]=String(value);}
   replaceChildren(...items){this.children=[...items];}
  }
  const names=['war-room','war-feed','war-feed-league','war-feed-status','war-feed-refresh'];
