@@ -27,3 +27,21 @@ test('missing venue is withheld and a later attempt can retry',async()=>{
  assert.equal(await travel.estimate(game,'A',last),null);
  assert.equal(await travel.estimate(game,'A',last),null);assert.equal(calls,4);
 });
+
+test('football rest distinguishes a short week from the normal weekly schedule',()=>{
+ const {schedule}=require('../public/football-travel'),kickoff=Date.parse('2026-11-08T18:00:00Z');
+ const prior=at=>({kickoff:Date.parse(at)});
+ const weekly=schedule([prior('2026-11-01T18:00:00Z')],kickoff);
+ assert.equal(weekly.fullDaysOff,6);assert.equal(weekly.shortWeek,false);assert.equal(weekly.gapHours,168);
+ const short=schedule([prior('2026-11-05T18:00:00Z'),prior('2026-11-01T18:00:00Z')],kickoff);
+ assert.equal(short.fullDaysOff,2);assert.equal(short.shortWeek,true);assert.equal(short.gamesLast14Days,2);
+ assert.equal(schedule([],kickoff).available,false);
+ assert.equal(schedule([{kickoff:null},prior('2026-11-09T18:00:00Z')],kickoff).available,false);
+});
+test('football rest uses Central calendar days across midnight and daylight saving',()=>{
+ const {schedule}=require('../public/football-travel');
+ const rest=schedule([{kickoff:Date.parse('2026-10-25T17:00:00Z')}],Date.parse('2026-11-01T18:00:00Z'));
+ assert.equal(rest.fullDaysOff,6);assert.equal(rest.gapHours,169);assert.equal(rest.shortWeek,false);
+ const sameDay=schedule([{kickoff:Date.parse('2026-10-27T17:00:00Z')}],Date.parse('2026-10-28T01:00:00Z'));
+ assert.equal(sameDay.daysBetween,0);assert.equal(sameDay.fullDaysOff,0);
+});

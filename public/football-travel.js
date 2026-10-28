@@ -7,6 +7,18 @@
   const h=Math.sin(lat/2)**2+Math.cos(rad(a.latitude))*Math.cos(rad(b.latitude))*Math.sin(lon/2)**2;
   return Math.round(3958.7613*2*Math.asin(Math.sqrt(Math.min(1,Math.max(0,h)))));
  }
+ // Calendar rest uses Central dates; elapsed hours still reflect DST changes.
+ function schedule(games,kickoff){
+  if(!Number.isFinite(kickoff))return {available:false};
+  const prior=(Array.isArray(games)?games:[]).filter(g=>Number.isFinite(g?.kickoff)&&g.kickoff>0&&g.kickoff<kickoff).sort((a,b)=>b.kickoff-a.kickoff);
+  if(!prior.length)return {available:false};
+  const day=at=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(p=>[p.type,p.value]));return Date.UTC(+p.year,+p.month-1,+p.day);};
+  const daysBetween=Math.round((day(kickoff)-day(prior[0].kickoff))/86400000);
+  return {available:true,fullDaysOff:Math.max(0,daysBetween-1),daysBetween,
+   gapHours:Math.round((kickoff-prior[0].kickoff)/3600000*10)/10,
+   shortWeek:daysBetween<7,
+   gamesLast14Days:new Set(prior.filter(g=>kickoff-g.kickoff<=14*86400000).map(g=>g.kickoff)).size};
+ }
  function create(fetcher=fetch,now=Date.now){
   const cache=new Map();
   function venue(q){
@@ -29,5 +41,5 @@
   }
   return {estimate};
  }
- const api={miles,create};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501FootballTravel=api;
+ const api={miles,create,schedule};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501FootballTravel=api;
 })(typeof window!=='undefined'?window:globalThis);

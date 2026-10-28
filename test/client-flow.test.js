@@ -62,7 +62,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','football-travel.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -920,4 +920,20 @@ test('removed upset checkbox and panel stay absent while automatic preparation r
  }
  assert.equal(h.run('typeof updateUpsetAlert'),'undefined');
  assert.ok(h.nodes.get('venueMode'));
+});
+
+test('NFL and college show rest differences, short weeks and missing-history states',async()=>{
+ for(const league of [1,2]){
+  const h=harness();await h.settle();h.game.league.id=league;h.nodes.get('league').value=String(league);
+  const kickoff=h.game.game.date.timestamp*1000;
+  h.data.teams[0].recentGames=[{kickoff:kickoff-3*86400000,side:'away',opponent:'Prior host',scored:24,allowed:20}];
+  h.data.teams[1].recentGames=[{kickoff:kickoff-7*86400000,side:'home',opponent:'Prior visitor',scored:20,allowed:24}];
+  h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
+  const text=h.nodes.get('team-context').textContent;
+  assert.match(text,/Short week/);assert.match(text,/72 hours between kickoffs/);
+  assert.match(text,/Team B has 4 more full day\(s\) off/);assert.match(text,/no automatic score adjustment/);
+  h.data.teams[1].recentGames=[];
+  h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
+  assert.match(h.nodes.get('team-context').textContent,/Rest comparison unavailable/);
+ }
 });
