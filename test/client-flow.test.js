@@ -930,7 +930,8 @@ test('NFL and college show rest differences, short weeks and missing-history sta
   h.data.teams[1].recentGames=[{kickoff:kickoff-7*86400000,side:'home',opponent:'Prior visitor',scored:20,allowed:24}];
   h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
   const text=h.nodes.get('team-context').textContent;
-  assert.match(text,/Short week/);assert.match(text,/72 hours between kickoffs/);
+  assert.match(text,/Short week/);assert.match(text,/3 days between kickoffs/);
+  assert.doesNotMatch(text,/hours between kickoffs/);
   assert.match(text,/Team B has 4 more full day\(s\) off/);assert.match(text,/no automatic score adjustment/);
   h.data.teams[1].recentGames=[];
   h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
