@@ -402,3 +402,26 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 
 .football-short-week { color:#ffc184; font-weight:700; }
 .football-rest-comparison { padding:12px; border-left:3px solid #83e2ba; background:#0c1a29; }
+
+
+/* League-wide light editorial news surface (all supported leagues) */
+.league-pulse-columns>section:nth-child(2){background:#d7dce5;color:#122238;border:1px solid #bac5d3;border-radius:13px;padding:12px;align-self:start;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+.league-pulse-columns>section:nth-child(2)>h3{color:#114778;border-color:#adbccb;font-size:19px;margin:2px 0 10px;padding:6px 5px 12px}
+.league-pulse-columns>section:nth-child(2) .league-pulse-note,.league-pulse-columns>section:nth-child(2) .league-pulse-empty{color:#45556d;padding:0 5px}
+.league-pulse-articles{display:grid;gap:6px}
+.league-pulse-story{display:grid;grid-template-columns:50px minmax(0,1fr);column-gap:10px;align-items:center;padding:10px;border:1px solid #d3dae4;border-left:3px solid #9bb2c9;border-radius:9px;background:#eff1f5;box-shadow:0 1px 3px rgba(13,36,66,.07)}
+.league-pulse-story:nth-child(even){background:#e3e7ee}
+.league-pulse-story:hover{background:#f8fafc;border-color:#a2b9ce}
+.league-pulse-story.league-pulse-injury{border-left-color:#d53147}
+.league-pulse-story.league-pulse-injury .league-pulse-category{background:#bb243c;color:white}
+.league-pulse-story.league-pulse-transfer .league-pulse-category{background:#087b51;color:white}
+.league-pulse-story.league-pulse-analysis .league-pulse-category{background:#225db0;color:white}
+.league-pulse-story.league-pulse-coaching .league-pulse-category{background:#265fac;color:white}
+.league-pulse-story.league-pulse-rankings .league-pulse-category{background:#a66605;color:white}
+.league-pulse-story-symbol{width:48px;height:48px;border-radius:8px;background:#10253b;color:#fff;display:grid;place-items:center;font-size:24px;grid-row:1 / span 3}
+.league-pulse-story-content{min-width:0}
+.league-pulse-story-link{color:#10223c;font-size:13px;line-height:1.35}
+.league-pulse-story-link:hover{color:#075795}
+.league-pulse-byline{color:#4c5c71;margin-top:4px;font-size:11px}
+.league-pulse-category{display:inline-block;border-radius:999px;padding:3px 8px;margin:0 5px 4px 0;background:#46637b;color:white;font-size:10px;font-weight:800;letter-spacing:.02em}
+@media(max-width:520px){.league-pulse-columns>section:nth-child(2){padding:9px}.league-pulse-story{grid-template-columns:40px minmax(0,1fr);padding:8px;gap:8px}.league-pulse-story-symbol{width:38px;height:38px;font-size:20px}}
