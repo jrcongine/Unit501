@@ -425,3 +425,9 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .league-pulse-byline{color:#4c5c71;margin-top:4px;font-size:11px}
 .league-pulse-category{display:inline-block;border-radius:999px;padding:3px 8px;margin:0 5px 4px 0;background:#46637b;color:white;font-size:10px;font-weight:800;letter-spacing:.02em}
 @media(max-width:520px){.league-pulse-columns>section:nth-child(2){padding:9px}.league-pulse-story{grid-template-columns:40px minmax(0,1fr);padding:8px;gap:8px}.league-pulse-story-symbol{width:38px;height:38px;font-size:20px}}
+
+/* Compact verified team crests in every league's power index */
+.league-pulse-team{grid-template-columns:30px 30px minmax(85px,1fr) 45px 49px 82px}
+.league-pulse-logo,.league-pulse-logo-placeholder{width:28px;height:28px;object-fit:contain;display:block}
+.league-pulse-story-symbol .league-pulse-logo{width:40px;height:40px;object-fit:contain}
+@media(max-width:520px){.league-pulse-team{grid-template-columns:27px 25px minmax(70px,1fr) 42px 46px;gap:3px}.league-pulse-team .league-pulse-trend{grid-column:3 / -1}.league-pulse-logo,.league-pulse-logo-placeholder{width:24px;height:24px}}
