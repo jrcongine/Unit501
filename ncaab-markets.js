@@ -19,7 +19,7 @@ function createMarkets({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   const events=await request(kind==='props'?'events':'odds',kind==='props'?{}:{bookmakers:'fanduel',markets:'h2h,spreads,totals',oddsFormat:'american'});
   if(!Array.isArray(events))throw Error('Sportsbook event list unavailable.');const found=events.filter(e=>matches(e,game));
   if(found.length!==1)return {...base,message:'No uniquely matched FanDuel game; enter lines manually.'};
-  if(kind!=='props'){const lines=gameLines(found[0],now());return {...base,...lines,available:!!(lines.spread||lines.total),message:lines.spread||lines.total?'Fresh FanDuel game lines loaded.':'No fresh FanDuel game lines available.'};}
+  if(kind!=='props'){const lines=gameLines(found[0],now());return {...base,...lines,available:!!(lines.moneyline||lines.spread||lines.total),message:lines.moneyline||lines.spread||lines.total?'Fresh FanDuel game lines loaded.':'No fresh FanDuel game lines available.'};}
   const e=await request('events/'+encodeURIComponent(found[0].id)+'/odds',{bookmakers:'fanduel',markets:Object.keys(MARKETS).join(','),oddsFormat:'american'});
   if(e.id!==found[0].id||!matches(e,game))throw Error('Sportsbook matchup could not be verified.');
   const props=playerLines(e,now());return {...base,props,available:!!props.length,message:props.length?'Fresh FanDuel player lines loaded.':'No fresh FanDuel player lines returned for this game.'};
