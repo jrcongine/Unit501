@@ -12,9 +12,9 @@ function inferSeason(date){
  return month<7?year-1:year;
 }
 function numberOrNull(value){
- if(value===null||value===undefined||value==='')return null;
+ if(typeof value!=='number'&&(typeof value!=='string'||value.trim()===''))return null;
  const n=Number(value);
- return Number.isFinite(n)&&n>=0?n:null;
+ return Number.isInteger(n)&&n>=0?n:null;
 }
 function normalizeGame(game){
  if(!game||typeof game!=='object')return null;

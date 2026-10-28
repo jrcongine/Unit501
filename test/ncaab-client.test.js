@@ -21,3 +21,9 @@ test('college slate loads, selects a game, displays form and simulates manual li
 test('TBD tipoffs do not request history or create predictions',async()=>{
  const h=setup();h.game.timeKnown=false;await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();assert.match(h.nodes.get('ncaab-context-status').textContent,/not confirmed/);assert.equal(h.requests.length,1);
 });
+
+test('college missing markets and unrecorded movement are disclosed',async()=>{
+ const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.match(h.nodes.get('ncaab-odds-status').textContent,/Spread unavailable.*Total unavailable/);
+ assert.match(fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8'),/Line movement: not recorded for college basketball game lines or player props/);
+});

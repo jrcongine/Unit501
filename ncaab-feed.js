@@ -2,7 +2,7 @@
 // Men's college basketball public schedule and strictly pregame team form.
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball';
 const validDate=require('./nba-feed').validDate;
-const number=v=>{const x=typeof v==='object'&&v!==null?v.value:v;return x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x))&&Number(x)>=0?Number(x):null;};
+const number=v=>{const x=typeof v==='object'&&v!==null?v.value:v;return (typeof x==='number'||typeof x==='string'&&x.trim()!=='')&&Number.isInteger(Number(x))&&Number(x)>=0?Number(x):null;};
 function convert(e){
  if(!e||!/^\d{1,12}$/.test(String(e.id||''))||!Array.isArray(e.competitions)||e.competitions.length!==1)return null;
  const c=e.competitions[0],teams=c.competitors||[],away=teams.filter(t=>t.homeAway==='away'),home=teams.filter(t=>t.homeAway==='home');
