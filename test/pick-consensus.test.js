@@ -1,5 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {consensus}=require('../pick-consensus');
+const {eventIdentity}=require('../consensus-identity');
 const p={league:'nba',eventDate:'2026-10-24',matchup:'Heat vs Hornets',pick:'Under 231.5 -110',author:'A',url:'https://example.com'};
 const source=(id,picks)=>({source:id,name:id,picks});
 test('consensus counts named authors, deduplicates repeats and preserves line differences',()=>{
@@ -8,4 +9,45 @@ test('consensus counts named authors, deduplicates repeats and preserves line di
 });
 test('consensus excludes unknown dates and keeps other games/dates separate',()=>{
  assert.deepEqual(consensus([source('one',[p]),source('two',[{...p,eventDate:null},{...p,eventDate:'2026-10-25'},{...p,matchup:'Bulls vs Hornets'}])]),[]);
+});
+const checkedAt='2026-10-28T19:05:09Z';
+const coversPick={league:'mlb',author:'Josh Inglis',pick:'Jacob Misiorowski u15.5 Outs Recorded (57%)',matchup:'MIL vs TB',eventLabel:'MIL vs TB, Wed, Oct 28 • 8:00 PM ET',url:'https://www.covers.com/picks/mlb#example'};
+const wagerPick={league:'mlb',author:'Ross Benjamin',pick:'Jacob Misiorowski Outs Under 15.5 (-133) Away Listed Pitcher Must Start',matchup:'(959) Milwaukee Brewers at (960) Tampa Bay Rays: Jacob Misiorowski Outs',eventAt:'2026-10-29T00:00:00Z',url:'https://www.wagertalk.com/free-sports-picks/mlb'};
+const example=(c=coversPick,w=wagerPick)=>consensus([{...source('covers',[c]),checkedAt},source('wagertalk',[w])]);
+test('screenshot example groups the same timed pitcher-outs prop and preserves both original selections',()=>{
+ const result=example();assert.equal(result.length,1);assert.equal(result[0].count,2);
+ assert.equal(result[0].pick,'jacob misiorowski under 15.5 outs recorded');assert.equal(result[0].date,'2026-10-28');
+ assert.deepEqual(result[0].sources.map(s=>s.author),['Josh Inglis','Ross Benjamin']);
+ assert.deepEqual(result[0].sources.map(s=>s.pick),[coversPick.pick,wagerPick.pick]);
+ assert.deepEqual(result[0].sources.map(s=>s.url),[coversPick.url,wagerPick.url]);
+});
+test('prop matching rejects other lines, sides, players, games, times and unsupported conditions',()=>{
+ for(const change of [
+  {pick:wagerPick.pick.replace('15.5','16.5')},{pick:wagerPick.pick.replace('Under','Over')},
+  {pick:wagerPick.pick.replaceAll('Jacob Misiorowski','Other Pitcher')},
+  {pick:wagerPick.pick+' First 5 Innings'},
+  {matchup:wagerPick.matchup.replace('Tampa Bay Rays','Boston Red Sox')},
+  {matchup:wagerPick.matchup.replace(': Jacob Misiorowski Outs',': Other Pitcher Outs')},
+  {eventAt:'2026-10-28T18:00:00Z'},{eventAt:'2026-10-30T00:00:00Z'},
+  {eventAt:null,eventDate:'2026-10-28'}, {league:'nba'}, {author:''}
+ ])assert.deepEqual(example(coversPick,{...wagerPick,...change}),[],JSON.stringify(change));
+ assert.deepEqual(example({...coversPick,eventLabel:'MIL vs TB'},wagerPick),[]);
+});
+test('Covers year inference requires a nearby valid date, weekday, time and source check',()=>{
+ const s={source:'covers',checkedAt};
+ assert.deepEqual(eventIdentity(coversPick,s),{date:'2026-10-28',time:'20:00'});
+ for(const eventLabel of ['MIL vs TB, Thu, Oct 28 • 8:00 PM ET','MIL vs TB, Wed, Sep 30 • 8:00 PM ET','MIL vs TB, Wed, Oct 28 • 13:00 PM ET','MIL vs TB, Wed, Oct 28 • 8:70 PM ET'])assert.equal(eventIdentity({...coversPick,eventLabel},s),null);
+ assert.equal(eventIdentity(coversPick,{...s,checkedAt:'unknown'}),null);
+ assert.equal(eventIdentity({...coversPick,eventDate:'2026-10-29'},s),null);
+ assert.deepEqual(eventIdentity({...coversPick,eventLabel:'MIL vs TB, Fri, Jan 1 • 12:00 AM ET'},{...s,checkedAt:'2026-12-31T18:00:00Z'}),{date:'2027-01-01',time:'00:00'});
+});
+test('anonymous rows do not create named consensus',()=>{
+ assert.deepEqual(consensus([source('one',[{...p,author:''}]),source('two',[{...p,author:null}])]),[]);
+});
+test('public-feed pipeline combines the two source formats from the reported example',async()=>{
+ const covers=`<div id="pick-example" data-pick data-tab="active-tabs"><div class="w-100 fw-bold small">${coversPick.pick}</div><a href="https://www.covers.com/writers/josh-inglis">Josh Inglis</a><button data-tracking='{"text":"${coversPick.eventLabel}"}'></button></div>`;
+ const wager=`<section class="free-sports-main what-pros-say-section"><h2><a>Ross Benjamin</a></h2><div class="content-event">${wagerPick.matchup}</div><div class="content-date">October 28, 2026 8:00 PM EDT</div><div class="content-play">${wagerPick.pick}</div></section>`;
+ const feed=require('../outside-picks').createFeed({now:()=>Date.parse(checkedAt),fetcher:async url=>new Response(url.includes('covers.com')?covers:url.includes('wagertalk.com')?wager:'<h1>No picks</h1>')});
+ const result=await feed('mlb');assert.equal(result.consensus.length,1);assert.equal(result.consensus[0].count,2);
+ assert.deepEqual(result.consensus[0].sources.map(s=>s.source),['Covers','WagerTalk']);
 });
