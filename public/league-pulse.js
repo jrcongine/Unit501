@@ -72,12 +72,25 @@
   const list=el('ul',null,'league-pulse-articles');
   for(const h of data.headlines.items){
    if(typeof h.url!=='string'||!h.url.startsWith('https://'))continue;
-   const item=el('li',null,'league-pulse-story');
-   const link=el('a',h.title,'league-pulse-story-link');link.href=h.url;link.target='_blank';link.rel='noopener noreferrer';
+   const category=String(h.category||'League update');
+   const title=String(h.title||'');
+   const categoryText=(category+' '+title).toLowerCase();
+   const type=/injur|surgery|out for|questionable|ruled out/.test(categoryText)?'injury':
+    /transfer|portal/.test(categoryText)?'transfer':
+    /coach|coaching/.test(categoryText)?'coaching':
+    /rank|top 10|top 25/.test(categoryText)?'rankings':
+    /betting|analysis|preview|upset/.test(categoryText)?'analysis':'update';
+   const symbols={injury:'✚',transfer:'⇄',coaching:'♟',rankings:'🏆',analysis:'📊',update:'📰'};
+   const labels={injury:'INJURY REPORT',transfer:'TRANSFER',coaching:'COACHING',rankings:'RANKINGS',analysis:'GAME ANALYSIS',update:'LEAGUE UPDATE'};
+   const item=el('li',null,'league-pulse-story league-pulse-'+type);
+   const symbol=el('span',symbols[type],'league-pulse-story-symbol');symbol.setAttribute('aria-hidden','true');
+   const content=el('div',null,'league-pulse-story-content');
+   const badge=el('span',labels[type],'league-pulse-category');
+   const link=el('a',title,'league-pulse-story-link');link.href=h.url;link.target='_blank';link.rel='noopener noreferrer';
    const time=Date.parse(h.publishedAt),label=Number.isFinite(time)?
     new Date(time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+' CT':'Time unavailable';
-   const meta=el('div',h.source+' · '+label+' · '+h.category+(h.premium?' · Subscriber article':''),'league-pulse-byline');
-   item.append(link,meta);list.append(item);
+   const meta=el('div',h.source+' · '+label+(h.premium?' · Subscriber article':''),'league-pulse-byline');
+   content.append(badge,link,meta);item.append(symbol,content);list.append(item);
   }
   news.append(list,el('p','Headlines link to the original publisher. Injury, coaching and transfer reports are not automatically treated as confirmed player availability.','league-pulse-note'));
  }
