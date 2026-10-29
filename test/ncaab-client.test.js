@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-function setup(){
+function setup(quotes={}){
  const nodes=new Map(),requests=[];
  class E{constructor(){this.children=[];this.events={};this.value='';this._text='';this.classList={add(){},remove(){}};}set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join(' ');}append(...x){this.children.push(...x);}replaceChildren(...x){this._text='';this.children=x;}addEventListener(k,f){this.events[k]=f;}}
  const html=fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8');for(const x of html.matchAll(/id="([^"]+)"/g))nodes.set(x[1],new E());
@@ -8,8 +8,8 @@ function setup(){
  const rec={games:5,scored:80,allowed:70,wins:3,losses:2};const side=(id,name)=>({id,name,season:rec,recent5:rec,recent10:rec,recentGames:Array.from({length:5},(_,i)=>({id:String(i+1),tipoff:new Date(Date.now()-86400000*(i+1)).toISOString(),opponent:'Opponent',scored:80,allowed:70,venue:'home'}))});
  const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date,Intl,URLSearchParams,AbortSignal};context.window=context;
- context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:data};};
- vm.createContext(context);for(const p of ['ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
+ vm.createContext(context);for(const p of ['market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -25,5 +25,14 @@ test('TBD tipoffs do not request history or create predictions',async()=>{
 test('college missing markets and unrecorded movement are disclosed',async()=>{
  const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
  assert.match(h.nodes.get('ncaab-odds-status').textContent,/Spread unavailable.*Total unavailable/);
- assert.match(fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8'),/Line movement: not recorded for college basketball game lines or player props/);
+ assert.match(h.nodes.get('ncaab-line-history').textContent,/No verified FanDuel observations yet/);
+});
+
+test('college quotes show moneylines and recorded movement without labeling them opening lines',async()=>{
+ const h=setup({message:'Loaded',moneyline:{away:125,home:-145},history:{spread:{firstLine:3,line:4,firstAt:1,lastAt:2},total:{firstLine:145,line:145,firstAt:1,lastAt:1}}});
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.match(h.nodes.get('ncaab-odds-status').textContent,/Away \+125 \/ Home -145/);
+ assert.match(h.nodes.get('ncaab-line-history').textContent,/toward Home/);
+ assert.match(h.nodes.get('ncaab-line-history').textContent,/waiting for another observation/);
+ assert.match(h.nodes.get('ncaab-line-history').textContent,/not the sportsbook opening line/);
 });

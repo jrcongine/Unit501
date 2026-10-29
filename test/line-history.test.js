@@ -110,3 +110,26 @@ test('football and NBA routes return shared history while comparison books stay 
   assert.equal((await routes.nba(game, 'comparison')).history, undefined);
   assert.notEqual(f.h.targetKey(nbaTarget(game, 'game')), f.h.targetKey(f.target));
 });
+
+ test('college basketball history persists separately from NBA and routes background refresh to college', async t => {
+  const f=fixture(t), {ncaabTarget,targetKey}=require('../line-history');
+  const game={id:'123',away:'Away',home:'Home',tipoff:new Date(f.target.kickoff).toISOString(),status:'Scheduled',timeKnown:true};
+  const calls=[];
+  const quote=()=>({total:{line:f.now()===Date.parse('2026-10-26T18:00:00Z')?140.5:142.5,updatedAt:f.now()},moneyline:{away:120,home:-140,updatedAt:f.now()}});
+  const tracked=createTrackedOdds({history:f.h,ncaabOdds:async(g,k)=>{calls.push([g.id,k]);return quote();},nbaOdds:async()=>{throw Error('Wrong league');}});
+  assert.equal((await tracked.ncaab(game,'game')).history.total.firstLine,140.5);
+  assert.equal(targetKey(ncaabTarget({...game,timeKnown:false},'game')),null);
+  assert.notEqual(targetKey(ncaabTarget(game,'game')),targetKey(nbaTarget({...game,id:123},'game')));
+  f.h.noteQuota({remaining:1000});f.advance(16*60000);
+  // Background uses the same adapter routing installed by start().
+  let refresh;const h={...f.h,start:fn=>{refresh=fn;}};
+  createTrackedOdds({history:h,ncaabOdds:async(g,k)=>{calls.push([g.id,k]);return quote();}}).start();
+  await f.h.tick(refresh);
+  const restarted=createHistory(f.settings);
+  const result=restarted.capture(ncaabTarget(game,'game'),quote());
+  assert.equal(result.history.total.firstLine,140.5);assert.equal(result.history.total.delta,2);
+  assert.equal(result.history.awayMoneyline.line,120);
+  assert.equal(result.history.total.persisted,true);assert.equal(calls.length,2);
+  const props=restarted.capture(ncaabTarget(game,'props'),{props:[{name:'Player',market:'player_points',line:20.5,updatedAt:f.now()}]});
+  assert.equal(props.props[0].history.firstLine,20.5);
+ });

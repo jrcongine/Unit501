@@ -5,11 +5,12 @@ const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]
 const DAY = 86400000, INTERVAL = 15 * 60000;
 const finite = Number.isFinite;
 function targetKey(t) {
-  if (!t || !['1', '2', 'nba'].includes(t.league) || !['game', 'props'].includes(t.kind) ||
+  if (!t || !['1', '2', 'nba', 'ncaab'].includes(t.league) || !['game', 'props'].includes(t.kind) ||
       typeof t.away !== 'string' || typeof t.home !== 'string' || !normalize(t.away) || !normalize(t.home) ||
       t.away.length > 120 || t.home.length > 120 || !finite(t.kickoff) || t.kickoff <= 0) return null;
   if (t.league === 'nba' && (!Number.isSafeInteger(t.game?.id) || t.game.away !== t.away ||
       t.game.home !== t.home || Date.parse(t.game.tipoff) !== t.kickoff || t.game.status !== 'Scheduled')) return null;
+  if (t.league === 'ncaab' && (!/^\d+$/.test(String(t.game?.id || '')) || !t.game.timeKnown || t.game.away !== t.away || t.game.home !== t.home || Date.parse(t.game.tipoff) !== t.kickoff || t.game.status !== 'Scheduled')) return null;
   return JSON.stringify([t.league, normalize(t.away), normalize(t.home), t.kickoff, t.kind]);
 }
 function createHistory({file = '', now = Date.now, enabled = false, dailyBudget = 240, maxWatches = 24} = {}) {
@@ -104,7 +105,7 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     if (target.kind === 'props') {
       out.props = (result.props || []).map(p => ({...p, history: add('prop:' + normalize(p.name) + ':' + (p.stat || p.market), p.line, p.updatedAt)}));
     } else {
-      const nba = target.league === 'nba';
+      const nba = ['nba', 'ncaab'].includes(target.league);
       out.history = {
         spread: add('spread', nba ? result.spread?.away : result.awaySpread, nba ? result.spread?.updatedAt : Date.parse(result.spreadUpdated)),
         total: add('total', nba ? result.total?.line : result.total, nba ? result.total?.updatedAt : Date.parse(result.totalUpdated)),
@@ -131,7 +132,7 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     if (state.quota.pauseUntil > now()) return 'Background paused after an odds-provider error';
     if (!finite(state.quota.remaining) || !finite(state.quota.at) || now() - state.quota.at > DAY) return 'Background paused: odds allowance needs a fresh check';
     const target = state.watches[key]?.target;
-    const cost = target ? target.kind === 'game' ? 3 : target.league === 'nba' ? 4 : 8 : 3;
+    const cost = target ? target.kind === 'game' ? 3 : ['nba', 'ncaab'].includes(target.league) ? 4 : 8 : 3;
     if (state.quota.remaining - cost < 50) return 'Background paused to preserve odds credits';
     if (state.budget.spent + cost > dailyBudget) return 'Background paused: daily odds-credit limit reached';
     return null;
@@ -153,7 +154,7 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
       // One serial market request per tick; oldest due first, no overlapping sweeps.
       const due = Object.entries(state.watches).filter(([, w]) => w.nextAt <= now()).sort((a, b) => a[1].nextAt - b[1].nextAt);
       for (const [key, w] of due) {
-        const cost = w.target.kind === 'game' ? 3 : w.target.league === 'nba' ? 4 : 8;
+        const cost = w.target.kind === 'game' ? 3 : ['nba', 'ncaab'].includes(w.target.league) ? 4 : 8;
         if (state.budget.spent + cost > dailyBudget || state.quota.remaining - cost < 50) {
           w.error = 'Background paused to preserve odds credits'; w.nextAt = now() + INTERVAL; save(); continue;
         }
@@ -181,4 +182,5 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
 }
 function footballTarget(q, kind) { return {league: String(q.league), kind, away: q.away, home: q.home, kickoff: Number(q.kickoff)}; }
 function nbaTarget(game, kind) { return {league: 'nba', kind, away: game.away, home: game.home, kickoff: Date.parse(game.tipoff), game: {id: game.id, away: game.away, home: game.home, tipoff: game.tipoff, status: game.status}}; }
-module.exports = {createHistory, footballTarget, nbaTarget, targetKey};
+function ncaabTarget(game, kind) { return {...nbaTarget(game, kind), league: 'ncaab', game: {...game}}; }
+module.exports = {createHistory, footballTarget, nbaTarget, ncaabTarget, targetKey};
