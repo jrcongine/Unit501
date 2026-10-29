@@ -7,6 +7,22 @@ let forecastContext = null;
 let latestForecast = null;
 let gameQuotes = null;
 const footballTravel=window.Unit501FootballTravel?.create();
+function renderHomeAdvantage(venue=null) {
+  const display=$('home-advantage-display');
+  if(!display)return;
+  if(venue&&Number.isFinite(venue.appliedMargin)){
+    display.textContent=`Home advantage applied: +${venue.appliedMargin.toFixed(2)} points to home margin.`;
+  }else if($('venueMode').value==='neutral'){
+    display.textContent='Home advantage: +0.0 points (neutral site).';
+  }else if($('homeFieldMode').value==='manual'){
+    const points=Number($('homeContext').value);
+    display.textContent=`Manual home advantage: +${points.toFixed(1)} points${$('venueMode').value==='auto'?' if home venue verified':''} (run simulation to confirm).`;
+  }else if($('variableHomeField').checked&&selected?.league==='1'){
+    display.textContent='Experimental NFL team-specific home advantage enabled; run simulation to see points applied.';
+  }else{
+    display.textContent=`Standard home advantage: +3.0 points to home margin${$('venueMode').value==='auto'?' if home venue verified':''} (run simulation to confirm).`;
+  }
+}
 function invalidateSimulation(message) {
   latestForecast=null;
   $('outright-pick').classList.remove('automatic-upset-pick');
@@ -15,6 +31,7 @@ function invalidateSimulation(message) {
   $('availability-score-status').textContent='';
   for (const id of ['score','cover','over','win','outright-pick','underdog-outlook','win-both','upset-history']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
+  renderHomeAdvantage();
   document.dispatchEvent(new Event('unit501:simulation-invalidated'));
 }
 for (const id of ['spread','total','awayRating','homeRating',
@@ -72,7 +89,7 @@ function describeMatchup(game){
     ['Falcons','Panthers','Saints','Buccaneers'],['Cardinals','Rams','49ers','Seahawks']];
   const division=game.league==='1'&&divisions.some(d=>d.some(n=>game.a?.endsWith(n))&&d.some(n=>game.h?.endsWith(n)));
   const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',hourCycle:'h23'}).format(new Date(game.kickoff)));
-  $('matchup-context-status').textContent=[division?'Division rivalry detected.':'',hour>=19?'Evening kickoff detected (broadcast slot unverified).':'','Context only: no automatic extra points. NFL standard: 2 points; college: 3, at a verified home venue.'].filter(Boolean).join(' ');
+  $('matchup-context-status').textContent=[division?'Division rivalry detected.':'',hour>=19?'Evening kickoff detected (broadcast slot unverified).':'','Context only: no automatic extra points. NFL standard: 3 points; college: 3, at a verified home venue.'].filter(Boolean).join(' ');
 }
 let homeFieldProfiles=null,homeFieldTask=null;
 async function loadHomeField(game){
@@ -869,13 +886,14 @@ async function choose(game) {
   for (const id of ['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss']) $(id).value = 0;
   $('venueMode').value = 'home';
   $('variableHomeField').checked=false;
-  $('homeContext').value=game.league==='1'?2:3;
+  $('homeContext').value=3;
   $('homeFieldMode').value='auto';
   $('gameMode').value='normal';
   $('homeContext').disabled=true;
   $('homeFieldReason').disabled=true;
   $('homeFieldReason').value='';
   describeMatchup(game);
+  renderHomeAdvantage();
   pulseObservations=null;pulseSplits=null;pulseManual=false;
   renderMarketPulse();
   loadMarketSplits();
@@ -949,6 +967,7 @@ function sim() {
     $('note').textContent = prediction.reason;
     return false;
   }
+  renderHomeAdvantage(prediction.venue);
   const result = Unit501TeamModel.simulate(prediction,spread,total);
   const percent = value => (value*100).toFixed(1) + '%';
   const calibratedMarkets=Object.entries({win:'away win',cover:'away cover',over:'over'}).filter(([key])=>result.calibrated[key]!==null).map(([,name])=>name);
