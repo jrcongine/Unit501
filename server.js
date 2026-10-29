@@ -1,6 +1,8 @@
 
 
 const http = require('http');
+const dataHealth = require('./data-health').createHealth();
+const {withRecovery} = require('./provider-retry');
 
 const fs = require('fs');
 
@@ -75,6 +77,7 @@ const API = 'https://v1.american-football.api-sports.io';
 
 function send(res, code, obj, type = 'application/json') {
 
+  if(type === 'application/json' && res.healthURL)dataHealth.observe(res.healthURL,code,obj);
   res.writeHead(code, { 'Content-Type': type });
 
   res.end(type === 'application/json' ? JSON.stringify(obj) : obj);
@@ -89,19 +92,27 @@ async function providerAPI(endpoint) {
 
   }
 
-  return footballMeter.track(endpoint,async(observeHeaders,observeResponse)=>{
-    const r = await fetch(API + endpoint, {
+  return withRecovery(()=>footballMeter.track(endpoint,async(observeHeaders,observeResponse)=>{
+    let r;
+    try { r = await fetch(API + endpoint, {
       signal: AbortSignal.timeout(15000),
       headers: {'x-apisports-key': process.env.API_SPORTS_KEY}
-    });
+    }); } catch(error) {
+      if(error.name==='TimeoutError'||error.name==='TypeError')error.retryable=true;
+      throw error;
+    }
     observeHeaders(r.headers);
     observeResponse(r.status,r.headers);
-    if (!r.ok) throw new Error('Football provider HTTP ' + r.status);
+    if (!r.ok) {
+      const error=new Error('Football provider HTTP ' + r.status);
+      error.retryable=[502,503,504].includes(r.status);
+      throw error;
+    }
     const data=await r.json();
     observeResponse(r.status,r.headers,data);
     if(data?.errors&&Object.keys(data.errors).length)throw new Error('Football provider returned an API error; retries paused briefly.');
     return data;
-  });
+  }));
 
 }
 
@@ -111,6 +122,8 @@ const server = http.createServer(async (req, res) => {
   try {
 
     const u = new URL(req.url, 'http://localhost');
+    res.healthURL=u;
+    if(u.pathname==='/api/data-health')return send(res,200,{...dataHealth.snapshot(),footballUsage:footballMeter.snapshot(),lineHistory:trackedOdds.status()});
     if(u.pathname==='/api/line-history/status')return send(res,200,trackedOdds.status());
     if(u.pathname==='/api/league-pulse'){
       const league=u.searchParams.get('league')||'nfl';
