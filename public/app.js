@@ -254,9 +254,21 @@ teamContext.style.cssText = 'margin:18px 0;padding:14px;border:1px solid #354057
 refreshOdds.after(teamContext);
 const weatherPanel = document.createElement('section');
 weatherPanel.id = 'game-weather';
-weatherPanel.style.cssText =
-  'margin:18px 0;padding:14px;border:1px solid #354057;border-radius:12px';
 teamContext.before(weatherPanel);
+function weatherCondition(code, at) {
+  if(!Number.isInteger(code))return {icon:'🌡️',label:'Forecast'};
+  const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',hourCycle:'h23'}).format(new Date(at)));
+  if(code===0)return {icon:hour>=7&&hour<19?'☀️':'🌙',label:'Clear'};
+  if(code===1)return {icon:hour>=7&&hour<19?'🌤️':'☁️',label:'Mostly clear'};
+  if(code===2)return {icon:'⛅',label:'Partly cloudy'};
+  if(code===3)return {icon:'☁️',label:'Cloudy'};
+  if([45,48].includes(code))return {icon:'🌫️',label:'Fog'};
+  if([51,53,55,56,57].includes(code))return {icon:'🌦️',label:'Drizzle'};
+  if([61,63,65,66,67,80,81,82].includes(code))return {icon:'🌧️',label:'Rain'};
+  if([71,73,75,77,85,86].includes(code))return {icon:'❄️',label:'Snow'};
+  if([95,96,99].includes(code))return {icon:'⛈️',label:'Thunderstorms'};
+  return {icon:'🌡️',label:'Forecast'};
+}
 let weatherWatch = null;
 let weatherTimer;
 function weatherFresh(game) {
@@ -368,52 +380,87 @@ async function loadVenueForecast(game, conditions, roof) {
     }
 
     document.dispatchEvent(new CustomEvent('unit501:weather-updated'));
-    const format = (value, unit) =>
-      Number.isFinite(value) ? `${Math.round(value)}${unit}` : 'Unavailable';
-
-    const timeOptions = {
-      timeZone: 'America/Chicago',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    };
-
-    const forecastTime = new Date(data.forecastTime)
-      .toLocaleString('en-US', timeOptions);
-    const fetchedTime = new Date(data.fetchedAt)
-      .toLocaleString('en-US', timeOptions);
-
-    conditions.textContent =
-      `Forecast near kickoff (${forecastTime} CT): ` +
-      `${format(data.temperatureF, '°F')} • ` +
-      `Wind: ${format(data.windMph, ' mph')} • ` +
-      `Gusts: ${format(data.gustMph, ' mph')} • ` +
-      `Precipitation chance: ${format(data.precipitationChance, '%')} • Amount: ${Number.isFinite(data.precipitationMm)?data.precipitationMm.toFixed(1)+' mm/hour':'Unavailable'}`;
-
-    const hours = Array.isArray(data.gameHours) ? data.gameHours : [];
-    if (hours.length) conditions.textContent += ' • Hourly outlook (kickoff through +3 hours): ' + hours.map(hour =>
-      `${new Date(hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'})} CT: ${format(hour.temperatureF,'°F')}, wind ${format(hour.windMph,' mph')}, gusts ${format(hour.gustMph,' mph')}, precipitation ${format(hour.precipitationChance,'%')}`
-    ).join(' | ');
-    else conditions.textContent += ' • Later game-hour forecasts unavailable.';
-
-    const source = watch.source || document.createElement('p');
+    const fmt=(value,unit='')=>Number.isFinite(value)?`${Math.round(value)}${unit}`:'—';
+    const time=new Date(data.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'});
+    const condition=weatherCondition(data.weatherCode,data.forecastTime);
+    const main=document.createElement('div');
+    main.className='weather-now';
+    const icon=document.createElement('span');
+    icon.className='weather-big-icon';
+    icon.textContent=condition.icon;
+    icon.setAttribute('aria-hidden','true');
+    const temp=document.createElement('strong');
+    temp.className='weather-temp';
+    temp.textContent=fmt(data.temperatureF,'°');
+    const description=document.createElement('div');
+    description.className='weather-now-description';
+    const label=document.createElement('strong');
+    label.textContent=condition.label;
+    const when=document.createElement('span');
+    when.textContent=`Kickoff · ${time} CT`;
+    description.append(label,when);
+    main.append(icon,temp,description);
+    const metrics=document.createElement('div');
+    metrics.className='weather-metrics';
+    for(const [name,value] of [
+      ['Wind',fmt(data.windMph,' mph')],
+      ['Gusts',fmt(data.gustMph,' mph')],
+      ['Rain chance',fmt(data.precipitationChance,'%')]
+    ]){
+      const item=document.createElement('div');
+      const title=document.createElement('span');
+      title.textContent=name;
+      const number=document.createElement('strong');
+      number.textContent=value;
+      item.append(title,number);
+      metrics.append(item);
+    }
+    conditions.replaceChildren(main,metrics);
+    const hoursContainer=weatherPanel.querySelector('#game-weather-hours');
+    const hours=Array.isArray(data.gameHours)?data.gameHours:[];
+    hoursContainer.replaceChildren();
+    if(hours.length){
+      const heading=document.createElement('div');
+      heading.className='weather-hours-title';
+      heading.textContent='During the game';
+      const row=document.createElement('div');
+      row.className='weather-hour-row';
+      for(const hour of hours.slice(0,4)){
+        const card=document.createElement('div');
+        card.className='weather-hour-card';
+        const hourTime=document.createElement('span');
+        hourTime.textContent=new Date(hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric'});
+        const emoji=document.createElement('span');
+        emoji.className='weather-hour-icon';
+        emoji.textContent=weatherCondition(hour.weatherCode,hour.forecastTime).icon;
+        emoji.setAttribute('aria-hidden','true');
+        const degree=document.createElement('strong');
+        degree.textContent=fmt(hour.temperatureF,'°');
+        const extras=document.createElement('span');
+        extras.textContent=`Wind ${fmt(hour.windMph,' mph')} · Rain ${fmt(hour.precipitationChance,'%')}`;
+        card.append(hourTime,emoji,degree,extras);
+        row.append(card);
+      }
+      hoursContainer.append(heading,row);
+      hoursContainer.hidden=false;
+    } else hoursContainer.hidden=true;
+    const impact=weatherPanel.querySelector('#game-weather-impact');
+    const forecast={...data,roof:exposure,kickoff:game.kickoff};
+    const result=window.Unit501WeatherModel?.effect(game,forecast,'score',$('weatherEnabled').checked,Date.now());
+    impact.textContent=!$('weatherEnabled').checked?'Model weather adjustment: Off':
+      result?.applied?`Model weather adjustment: −${((1-result.factor)*100).toFixed(1)}% to both scores (experimental)`:
+      result?.reason?.includes('unverified')?'Model weather adjustment: Not applied (roof unverified)':
+      'Model weather adjustment: None (experimental)';
+    const source=watch.source||document.createElement('p');
+    source.className='weather-source';
     source.replaceChildren();
-    source.style.cssText = 'font-size:.85em;opacity:.8';
-
-    const link = document.createElement('a');
-    link.href = 'https://open-meteo.com/';
-    link.textContent = 'Weather data by Open-Meteo';
-    link.style.color = '#83e2ba';
-
-    source.append(
-      link,
-      ` • Retrieved ${fetchedTime} CT. Cached up to 15 minutes. ` +
-      'Outdoor forecast near the stadium; actual field conditions may differ. ' +
-      (exposure === 'outdoor' ? 'Weather adjustments use wind, precipitation amount and temperature. Each prop shows its adjustment. Experimental estimates; not backtested.' : 'Roof or field exposure is unverified; all forecast values are context only.')
-    );
-    if (!watch.source) conditions.after(source);
-    watch.source = source;
+    const link=document.createElement('a');
+    link.href='https://open-meteo.com/';
+    link.textContent='Open-Meteo forecast';
+    const fetchedTime=new Date(data.fetchedAt).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    source.append(link,` · Updated ${fetchedTime} CT · Cached up to 15 minutes. Stadium-area forecast; field conditions may vary. Forecast model adjustments are experimental, not backtested.`);
+    if(!watch.source)roof.after(source);
+    watch.source=source;
   } catch {
     if (selected === game && conditions.isConnected) {
       conditions.textContent =
@@ -446,10 +493,20 @@ document.addEventListener('unit501:selection-changed', () => {
     selected.venueCity
   ].filter(Boolean).join(' • ') || 'Venue unavailable from the game feed.';
 
-  const conditions = document.createElement('p');
+  const conditions = document.createElement('div');
   conditions.id = 'game-weather-status';
-  conditions.textContent = 'Weather forecast not connected yet.';
-
+  conditions.textContent = 'Loading kickoff forecast…';
+  const hours=document.createElement('div');
+  hours.id='game-weather-hours';
+  hours.hidden=true;
+  const impact=document.createElement('p');
+  impact.id='game-weather-impact';
+  impact.textContent='';
+  const more=document.createElement('details');
+  more.className='weather-more';
+  const moreTitle=document.createElement('summary');
+  moreTitle.textContent='Forecast details & source';
+  more.append(moreTitle);
   const roof = document.createElement('p');
   roof.id = 'game-roof-status';
   const stadium = window.Unit501Venues?.resolve(selected);
@@ -460,10 +517,9 @@ document.addEventListener('unit501:selection-changed', () => {
     conditions.textContent = 'Outside wind and precipitation do not directly affect play inside this enclosed stadium.';
   }
 
-  weatherPanel.append(heading, venue, conditions, roof);
-  if (!isIndoor) {
-  loadVenueForecast(selected, conditions, roof);
-}
+  more.append(roof);
+  weatherPanel.append(heading, venue, conditions, hours, impact, more);
+  if (!isIndoor) loadVenueForecast(selected, conditions, roof);
 });
 let contextSequence = 0;
 let contextTimer;
