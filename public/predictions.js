@@ -269,7 +269,7 @@ const researchNote = document.createElement('p');
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
 orderingNote.textContent = /^(above|below)-(asc|desc)$/.test(board.dataset.sort)
-   ? 'Sorted by percentage of recorded games '+(board.dataset.sort.startsWith('above')?'above':'below')+' the current line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Equal results are non-hits; ties use more games, then player name. Small samples still need review.'
+   ? 'Sorted by percentage '+(board.dataset.sort.startsWith('above')?'above':'below')+' the line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Incomplete stat histories are unverified and rank last. Equal results are non-hits; ties use more recorded games.'
    : ['most-covers','least-covers'].includes(board.dataset.sort)
    ? 'Sorted across visible props by percentage above the current line. Equal results remain separate; ties favor more below-line results for Least Covers, then more recorded games. Historical frequency, not win probability.'
    : board.dataset.sort === 'reviewed-gap'
@@ -369,7 +369,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       if(name==='Recent above / below / equal'){
@@ -415,7 +415,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), String(row.values.length), projection.toFixed(1), median.toFixed(1), String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
         row.workloadHistory.text];
@@ -479,10 +479,17 @@ cell.append(details);
             const item=document.createElement('span');
             item.className='prop-recent-item prop-recent-'+tone+(count===largest&&largest>0?' is-leading':'');
             const number=document.createElement('strong');number.textContent=String(count);
-            const caption=document.createElement('span');caption.textContent=(row.values.length?(100*count/row.values.length).toFixed(1)+'% ': '— ')+label;
+            const caption=document.createElement('span');caption.textContent=label+(row.form.coverage.missing?' · unverified':row.values.length?' · '+(100*count/row.values.length).toFixed(1)+'%':' · —');
             item.append(number,caption);recent.append(item);
           }
           cell.append(recent);
+          if(row.form.coverage.missing){
+            const warning=document.createElement('small');
+            warning.style.cssText='display:block;margin-top:4px;color:#ffc184;font-size:11px';
+            warning.textContent=row.form.coverage.missing+' missing stat '+(row.form.coverage.missing===1?'game':'games')+' — hit % unverified';
+            warning.title='Missing box-score entries may hide zero catches or yards. A recorded-only hit rate is not a season hit rate.';
+            cell.append(warning);
+          }
         } else cell.textContent = value;
         tr.append(cell);
       });
