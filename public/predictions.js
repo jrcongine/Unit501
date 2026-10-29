@@ -245,10 +245,10 @@ addFilter('sort', 'Order', [
   ['reviewed-gap', 'Cleaner data first — biggest difference'],
   ['gap', 'Largest discrepancy overall'],
   ['stat-gap', 'Largest difference within each stat'],
-  ['above-desc', 'Most Above'],
-  ['above-asc', 'Fewest Above'],
-  ['below-desc', 'Most Below'],
-  ['below-asc', 'Fewest Below'],
+  ['above-desc', 'Highest Above %'],
+  ['above-asc', 'Lowest Above %'],
+  ['below-desc', 'Highest Below %'],
+  ['below-asc', 'Lowest Below %'],
   ['most-covers', 'Most Covers'],
   ['least-covers', 'Least Covers'],
   ['sample', 'Most recorded games']
@@ -269,7 +269,7 @@ const researchNote = document.createElement('p');
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
  const orderingNote = document.createElement('p');
 orderingNote.textContent = /^(above|below)-(asc|desc)$/.test(board.dataset.sort)
-   ? 'Sorted by the number of recorded games '+(board.dataset.sort.startsWith('above')?'above':'below')+' the current line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Equal results stay separate; ties use sample size, then player name.'
+   ? 'Sorted by percentage of recorded games '+(board.dataset.sort.startsWith('above')?'above':'below')+' the current line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Equal results are non-hits; ties use more games, then player name. Small samples still need review.'
    : ['most-covers','least-covers'].includes(board.dataset.sort)
    ? 'Sorted across visible props by percentage above the current line. Equal results remain separate; ties favor more below-line results for Least Covers, then more recorded games. Historical frequency, not win probability.'
    : board.dataset.sort === 'reviewed-gap'
@@ -382,7 +382,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
           const active=board.dataset.sort.startsWith(side+'-');
           const ascending=board.dataset.sort===side+'-asc';
           sort.textContent=side[0].toUpperCase()+side.slice(1)+(active?(ascending?' ↑':' ↓'):'');
-          sort.setAttribute('aria-label','Sort by '+side+' count, '+(active&&!ascending?'fewest':'most')+' first');
+          sort.setAttribute('aria-label','Sort by '+side+' percentage, '+(active&&!ascending?'lowest':'highest')+' first');
           sort.setAttribute('aria-pressed',String(active));
           sort.addEventListener('click',()=>{
             board.dataset.sort=active&&!ascending?side+'-asc':side+'-desc';
@@ -417,7 +417,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const equal = row.values.length - above - below;
       const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), String(row.values.length), projection.toFixed(1), median.toFixed(1), String(row.line),
         diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
-        `${above} / ${below} / ${equal} (${row.values.length} games)`,
+        `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
         row.workloadHistory.text];
       const observed=row.entry.source==='auto'?row.entry.movement:null;
       const movement=observed?window.Unit501LineWatch.describe(observed)+' · '+window.Unit501LineWatch.detail(observed):'No automatic line history';
@@ -479,7 +479,7 @@ cell.append(details);
             const item=document.createElement('span');
             item.className='prop-recent-item prop-recent-'+tone+(count===largest&&largest>0?' is-leading':'');
             const number=document.createElement('strong');number.textContent=String(count);
-            const caption=document.createElement('span');caption.textContent=label;
+            const caption=document.createElement('span');caption.textContent=(row.values.length?(100*count/row.values.length).toFixed(1)+'% ': '— ')+label;
             item.append(number,caption);recent.append(item);
           }
           cell.append(recent);
