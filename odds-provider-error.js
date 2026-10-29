@@ -5,7 +5,7 @@ const providerErrors = {
   DEACTIVATED_KEY: 'Odds provider says the key is deactivated. Check the subscription tied to that key.',
   OUT_OF_USAGE_CREDITS: 'Odds provider reports monthly usage credits exhausted. Check remaining credits in your The Odds API account.',
   EXCEEDED_FREQ_LIMIT: 'Odds provider is rate limiting requests. Wait a moment before refreshing.',
-  INVALID_MARKET: 'Odds provider rejected the requested market. Review supported football player-prop markets.'
+  INVALID_MARKET: 'Odds provider rejected the requested market. Review supported markets for the selected sport.'
 };
 function errorForResponse(status, payload) {
   // Never surface URLs, keys, or untrusted provider messages to the UI.
@@ -15,6 +15,8 @@ function errorForResponse(status, payload) {
     status === 429 ? 'Odds provider is rate limiting requests. Try again shortly.' :
     status === 422 ? 'Odds provider rejected one of the requested markets.' :
     'Odds provider could not supply player props. Try again later.';
-  return new Error(`FanDuel feed returned ${status}${Object.hasOwn(providerErrors,code)?' ('+code+')':''}. ${help}`);
+  const error = new Error(`FanDuel feed returned ${status}${Object.hasOwn(providerErrors,code)?' ('+code+')':''}. ${help}`);
+  error.publicMessage = error.message;
+  return error;
 }
 module.exports={errorForResponse};
