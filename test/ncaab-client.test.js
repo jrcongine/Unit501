@@ -10,7 +10,7 @@ function setup(quotes={}){
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date,Intl,URLSearchParams,AbortSignal};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
  vm.createContext(context);for(const p of ['market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
- const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle};
+ const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
  const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();assert.equal(h.nodes.get('ncaab-games').children.length,1);
@@ -35,4 +35,27 @@ test('college quotes show moneylines and recorded movement without labeling them
  assert.match(h.nodes.get('ncaab-line-history').textContent,/toward Home/);
  assert.match(h.nodes.get('ncaab-line-history').textContent,/waiting for another observation/);
  assert.match(h.nodes.get('ncaab-line-history').textContent,/not the sportsbook opening line/);
+});
+
+test('college odds displays server error and old props cannot unlock a newer request',async()=>{
+ const h=setup(),base=h.context.fetch,pending=[];
+ h.context.fetch=async url=>{
+  if(String(url).includes('/odds?'))return {ok:false,json:async()=>({error:'Monthly odds credits exhausted.'})};
+  if(String(url).includes('/props?'))return new Promise(resolve=>pending.push(resolve));
+  return base(url);
+ };
+ await h.nodes.get('ncaab-load').events.click();
+ const select=h.nodes.get('ncaab-games').children[0].events.click;
+ await select();await h.settle();
+ assert.equal(h.nodes.get('ncaab-odds-status').textContent,'Monthly odds credits exhausted.');
+ const button=h.nodes.get('ncaab-load-props'),old=button.events.click();
+ assert.equal(button.disabled,true);
+ await select();assert.equal(button.disabled,false);
+ const current=button.events.click();assert.equal(button.disabled,true);
+ pending[0]({ok:false,json:async()=>({error:'Old failure'})});await old;
+ assert.equal(button.disabled,true);
+ assert.doesNotMatch(h.nodes.get('ncaab-props-status').textContent,/Old failure/);
+ pending[1]({ok:false,json:async()=>({error:'Current quota failure'})});await current;
+ assert.equal(button.disabled,false);
+ assert.equal(h.nodes.get('ncaab-props-status').textContent,'Current quota failure');
 });

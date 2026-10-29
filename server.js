@@ -136,7 +136,7 @@ const server = http.createServer(async (req, res) => {
        if(u.pathname.endsWith('/props'))return send(res,200,await trackedOdds.ncaab(game,'props'));
        if(u.pathname.endsWith('/injuries'))return send(res,200,await ncaabPlayers.injuries(game));
        return send(res,200,await ncaabPlayers.history(game));
-      }catch{return send(res,503,{error:'Data source unavailable for this matchup.'});}
+      }catch(error){return send(res,503,{error:error.publicMessage||'Data source unavailable for this matchup.'});}
     }
     if(u.pathname==='/api/ncaab/context'){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
