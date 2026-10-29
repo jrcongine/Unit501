@@ -20,6 +20,9 @@
       return {games:values.length,hits:values.filter(v=>side==='above'?v>row.line:v<row.line).length};
     };
     const x=result(a),y=result(b);
+    // Do not rank incomplete recorded-game histories ahead of fully verified samples.
+    const miss=r=>Number.isFinite(r.form?.coverage?.missing)?r.form.coverage.missing:0;
+    if(Boolean(miss(a))!==Boolean(miss(b)))return Number(Boolean(miss(a)))-Number(Boolean(miss(b)));
     // No results are unknown, not 0%. Rank these last in either direction.
     if(!x.games||!y.games)return Number(!x.games)-Number(!y.games)||
       a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
