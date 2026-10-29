@@ -23,6 +23,18 @@ function eventIdentity(p,source){
  if(label){if(p.eventDate&&p.eventDate!==label.date)return null;return label;}
  return /^\d{4}-\d{2}-\d{2}$/.test(p.eventDate||'')?{date:p.eventDate,time:null}:null;
 }
+// Convert verified Eastern labels without relying on the server's timezone.
+// A repeated DST hour is ambiguous: do not invent an exact kickoff for it.
+function eventTimestamp(p,source){
+ if(p.eventAt&&Number.isFinite(Date.parse(p.eventAt)))return Date.parse(p.eventAt);
+ const event=coversEvent(p,source);
+ if(!event)return null;
+ const base=Date.parse(event.date+'T'+event.time+':00Z');
+ const matches=[4,5].map(offset=>base+offset*3600000).filter(at=>{
+  const e=eastern(at);return dateKey(e)===event.date&&e.hour+':'+e.minute===event.time;
+ });
+ return matches.length===1?matches[0]:null;
+}
 // Explicit aliases from the reported example. Unreviewed team aliases stay
 // separate; no fuzzy player/team matching or cross-league alias substitution.
 const mlbTeams=new Map([
@@ -45,4 +57,4 @@ function pitcherOuts(p){
  if(teams.length!==2||teams.some(t=>!t)||teams[0]===teams[1])return null;
  return {teams:teams.sort(),pick:player+' '+side+' '+line+' outs recorded'};
 }
-module.exports={eventIdentity,pitcherOuts};
+module.exports={eventIdentity,eventTimestamp,pitcherOuts};

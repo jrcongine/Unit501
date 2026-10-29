@@ -1,6 +1,25 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {consensus}=require('../pick-consensus');
 const {eventIdentity}=require('../consensus-identity');
+const {eventTimestamp}=require('../consensus-identity');
+test('Covers kickoff uses Eastern daylight/standard time and withholds ambiguous DST hours',()=>{
+ const source={source:'covers',checkedAt:'2026-10-29T12:00:00Z'};
+ const pick={eventLabel:'CAR vs GB, Thu, Oct 29 • 8:15 PM ET'};
+ assert.equal(eventTimestamp(pick,source),Date.parse('2026-10-30T00:15:00Z'));
+ assert.equal(eventTimestamp({eventLabel:'CAR vs GB, Mon, Nov 2 • 8:15 PM ET'},source),Date.parse('2026-11-03T01:15:00Z'));
+ assert.equal(eventTimestamp({eventLabel:'CAR vs GB, Sun, Nov 1 • 1:30 AM ET'},source),null);
+ assert.equal(eventTimestamp({eventLabel:'Time unknown'},source),null);
+});
+test('War Room removes started Covers picks even while the source response is cached',async()=>{
+ let now=Date.parse('2026-10-30T00:14:00Z'),calls=0;
+ const html='<div id="pick-test" data-pick data-tab="active-tabs"><div class="w-100 fw-bold small">GB -3.5 (-110)</div><a href="https://www.covers.com/writers/test">Test Author</a><button data-tracking=\'{"text":"CAR vs GB, Thu, Oct 29 • 8:15 PM ET"}\'></button></div>';
+ const feed=require('../outside-picks').createFeed({now:()=>now,fetcher:async url=>{calls++;return new Response(url.includes('covers.com')?html:'<h1>No picks</h1>');}});
+ assert.equal((await feed('nfl')).sources[0].picks.length,1);
+ const initialCalls=calls;
+ now+=60000;
+ assert.equal((await feed('nfl')).sources[0].picks.length,0);
+ assert.equal(calls,initialCalls);
+});
 const p={league:'nba',eventDate:'2026-10-24',matchup:'Heat vs Hornets',pick:'Under 231.5 -110',author:'A',url:'https://example.com'};
 const source=(id,picks)=>({source:id,name:id,picks});
 test('consensus counts named authors, deduplicates repeats and preserves line differences',()=>{

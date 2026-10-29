@@ -94,7 +94,10 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
   return async league=>{
     if(!['nfl','ncaaf','mlb','nba','nhl'].includes(league))throw Error('Unsupported league');
     const sources=await Promise.all(['covers','wagertalk','boyds','pickswise'].map(key=>source(key,league)));
-    const current=sources.map(s=>({...s,picks:s.picks.filter(p=>!p.eventAt || Date.parse(p.eventAt)>now())}));
+    const current=sources.map(s=>({...s,picks:s.picks.filter(p=>{
+      const kickoff=require('./consensus-identity').eventTimestamp(p,s);
+      return kickoff===null || kickoff>now();
+    })}));
     return {league,sources:current,consensus:require('./pick-consensus').consensus(current)};
   };
 }

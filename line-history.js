@@ -104,8 +104,11 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
   }
   function capture(target, result) {
     const key = watch(target), out = {...result}, movements = [];
+    let advanced = false;
     function add(market, line, at) {
+      const previousAt = state.series[key + ':' + market]?.lastAt;
       const value = observation(key, market, line, at, target.kickoff);
+      if (value && (previousAt === undefined || value.lastAt > previousAt)) advanced = true;
       if (value) movements.push(value);
       return value;
     }
@@ -122,9 +125,12 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     }
     const w = state.watches[key];
     if (w) {
-      w.nextAt = nextCheck(w.target.kickoff, now());
-      if (movements.length) { w.lastSuccess = now(); w.error = null; }
-      else w.error = 'No fresh quotes returned';
+      // Only new source observations can reset the polling clock. Re-reading
+      // cached/missing quotes must not indefinitely postpone a due watch.
+      // tick() reserves its next slot before fetching, including failed reads.
+      w.nextAt = advanced ? nextCheck(w.target.kickoff, now()) : Math.min(w.nextAt, nextCheck(w.target.kickoff, now()));
+      if (advanced) { w.lastSuccess = now(); w.error = null; }
+      else if (!movements.length) w.error = 'No fresh quotes returned';
     }
     const persisted = save();
     for (const m of movements) m.persisted = persisted;
