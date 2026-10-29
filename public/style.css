@@ -503,3 +503,13 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 #game-weather .weather-more>p{margin:9px 0 0;font-size:12px;line-height:1.4;color:#bccbd8}
 #game-weather .weather-more .weather-source a{color:#83e2ba}
 @media(max-width:560px){#game-weather{padding:12px}.weather-now{gap:10px}.weather-metrics>div{min-width:85px;flex:1}.weather-hour-card{flex-basis:110px;min-width:110px}}
+
+/* KISS matchup simulation report: important numbers first, diagnostics on demand. */
+#lab #note{margin:12px 0 5px;font-size:13px;line-height:1.5;color:#c8d8e8}
+#lab #simulation-report-details{margin:8px 0 14px;border:1px solid #35516a;border-radius:10px;background:#111f2d}
+#lab #simulation-report-details>summary{display:list-item;list-style:revert;padding:10px 14px;background:#1a3448;color:#e4f2fa;font-size:13px;font-weight:800;cursor:pointer}
+#lab #simulation-report-details>summary::-webkit-details-marker{display:inline-block}
+#lab .simulation-report-content{padding:4px 14px 13px;overflow-wrap:anywhere}
+#lab .simulation-report-content h4{margin:12px 0 6px;font-size:13px;color:#eaf1fc}
+#lab .simulation-report-content p{margin:0;color:#bfcfe0;font-size:12px;line-height:1.6}
+#lab #availability-score-status{color:#f1d7a3}
