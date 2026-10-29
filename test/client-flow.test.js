@@ -957,3 +957,19 @@ test('college matchup labels unverified schedule strength and distinguishes adju
  assert.match(h.nodes.get('league-pulse-matchup').textContent,/Schedule-adjusted FBS Results/);
  assert.doesNotMatch(h.nodes.get('league-pulse-matchup').textContent,/Schedule strength unverified/);
 });
+
+test('pregame checklist follows selection, line edits and refresh clearing without new requests',async()=>{
+ const h=harness(new Map(),true);await h.settle();
+ let requests=0;const fetch=h.context.fetch;h.context.fetch=async(...args)=>{requests++;return fetch(...args);};
+ for(const file of ['pregame-checks.js','pregame-checks-ui.js'])h.run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ assert.ok(h.nodes.get('pregame-checks').classList.contains('hidden'));
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
+ const panel=h.nodes.get('pregame-checks');assert.equal(panel.classList.contains('hidden'),false);
+ assert.match(panel.textContent,/Team rosters · Checked/);assert.match(panel.textContent,/Starting lineup · Unconfirmed/);
+ const before=requests;await h.context.document.dispatchEvent(new h.context.Event('visibilitychange'));assert.equal(requests,before);
+ h.run('gameQuotes={game:selected,data:{awaySpread:3.5,total:45,spreadUpdated:Date.now(),totalUpdated:Date.now()}}');
+ h.nodes.get('spread').value='3.5';h.nodes.get('total').value='45';await h.context.document.dispatchEvent(new h.context.Event('unit501:odds-updated'));assert.match(panel.textContent,/Spread · Checked/);
+ h.nodes.get('spread').value='99';await h.nodes.get('spread').dispatchEvent(new h.context.Event('input'));assert.doesNotMatch(panel.textContent,/Spread · Checked/);
+ h.run('gameQuotes=null;document.dispatchEvent(new Event("unit501:odds-updated"))');assert.match(panel.textContent,/Spread · Unconfirmed/);
+ await h.run('selected=null;document.dispatchEvent(new Event("unit501:selection-changed"))');assert.ok(panel.classList.contains('hidden'));
+});
