@@ -17,6 +17,23 @@
    return new Intl.DateTimeFormat('en-US',{timeZone:TZ,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(ms);
  }
  function matchup(away,home){return String(away)+' @ '+String(home);}
+ function normalizedTeamName(value){
+   return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ }
+ // ESPN standings and API-Sports fixtures use different numeric team ID namespaces.
+ // Match only a unique team name in the same league and season; otherwise withhold.
+ function seasonStanding(report,league,season,teamName){
+   if(!report||report.league!==league||String(report.season)!==String(season)||
+      !report.power?.available||!Array.isArray(report.power.teams)||!teamName)return null;
+   const key=normalizedTeamName(teamName);
+   if(!key)return null;
+   const matches=report.power.teams.filter(team=>
+     normalizedTeamName(team.name)===key||normalizedTeamName(team.providerName)===key);
+   if(matches.length!==1)return null;
+   const standing=matches[0];
+   return /^\d+-\d+(?:-\d+)?$/.test(String(standing.record||''))?standing:null;
+ }
+
  function selection(container,current,classname='game'){
    for(const other of container.querySelectorAll('.'+classname)){
      other.classList.remove('selected');
@@ -49,5 +66,5 @@
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook});
+ return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,seasonStanding});
 });
