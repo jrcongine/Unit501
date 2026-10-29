@@ -113,9 +113,9 @@ test('actual client home-context control changes margin and resets on game selec
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  h.run('$("venueMode").value="home"; sim()');const first=h.nodes.get('score').textContent;
  h.nodes.get('homeFieldMode').value='manual';await h.nodes.get('homeFieldMode').dispatchEvent({type:'change'});h.nodes.get('homeFieldReason').value='Playoff elimination stakes';h.nodes.get('homeContext').value='4';await h.nodes.get('homeContext').dispatchEvent({type:'input'});assert.equal(h.nodes.get('score').textContent,'—');
- h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,first);assert.match(h.nodes.get('note').textContent,/Manual total home advantage/);
+ h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,first);assert.match(h.nodes.get('simulation-report-text').textContent,/Manual total home advantage/);
  h.nodes.get('variableHomeField').checked=true;h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- assert.equal(h.nodes.get('homeContext').value,'2');assert.equal(h.nodes.get('homeFieldMode').value,'auto');assert.equal(h.nodes.get('variableHomeField').checked,false);
+ assert.equal(h.nodes.get('homeContext').value,'3');assert.equal(h.nodes.get('homeFieldMode').value,'auto');assert.equal(h.nodes.get('variableHomeField').checked,false);
 });
 test('team context labels pending yardage and provider coverage gaps without treating them as zero',async()=>{
  const h=harness();await h.settle();
@@ -165,7 +165,7 @@ test('verified league yardage ranks appear without replacing the paid scoring or
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('prop-feed-status').textContent,/3\/8 modeled markets/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/No usable lines returned for: Passing yards/);
@@ -186,7 +186,7 @@ test('open matchup refreshes expired reports, skips hidden tabs and preserves da
  const originalFetch=h.context.fetch;let release,calls=0;
  h.context.fetch=async url=>{if(String(url).startsWith('/api/availability')){calls++;await new Promise(resolve=>{release=resolve;});}return originalFetch(url);};
  const pending=h.nodes.get('refresh-availability').onclick();await h.settle();
- assert.equal(h.run('Unit501Availability.snapshot()'),before);assert.equal(h.nodes.get('score').textContent,'23–25');
+ assert.equal(h.run('Unit501Availability.snapshot()'),before);assert.equal(h.nodes.get('score').textContent,'23–26');
  release();await pending;assert.equal(h.nodes.get('score').textContent,'—'); // Refreshed injury evidence invalidates the prior simulation.
  const clock=Date.now()+900001;h.context.Date=class extends Date{static now(){return clock;}};
  let tick=h.timers.findLast(t=>t.active&&t.delay===60000);assert.ok(tick);
@@ -195,24 +195,24 @@ test('open matchup refreshes expired reports, skips hidden tabs and preserves da
  const refreshing=tick.fn();await h.settle();assert.equal(calls,2);release();await refreshing;
 });
 test('completing an accepted pace model invalidates an older scoring simulation only once',async()=>{
- const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
  for(const t of h.data.teams)t.pace={games:4,drives:40,opponentDrives:40};
  h.data.paceValidation={accepted:true,league:'1',season:'2026',before:h.data.before,evaluatedGames:30,scoreError:8,baselineScoreError:9,totalError:10,baselineTotalError:11,explanation:'Fixture'};
  h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'—');
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
- h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'23–25');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
+ h.run(`showTeamContext(${JSON.stringify(h.data)},selected)`);assert.equal(h.nodes.get('score').textContent,'23–26');
 });
 
 test('actual ratings, roster, replacement, score and prop flows share one scenario and refresh gates it',async()=>{
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('build-player-ratings').onclick();await h.settle();
  const confirm=h.nodes.get('baseline-1:7'),replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7');
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
- h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–25');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'23–26');
  assert.ok(confirm);replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
  const scenario=JSON.parse(h.run('JSON.stringify(window.Unit501Lineups.evaluate())'));assert.equal(scenario.applied,true);assert.equal(scenario.props['1:9'].rushing.extraUsage,20);
- h.run('sim()');assert.equal(h.nodes.get('score').textContent,'22–25');
- h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'22–25');
+ h.run('sim()');assert.equal(h.nodes.get('score').textContent,'21–26');
+ h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'21–26');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  assert.match(h.nodes.get('predict-results').textContent,/0.0 projected/);
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
@@ -222,7 +222,7 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  // An unavailable replacement invalidates transferred output after a report refresh.
  h.context.injuryOut=true;
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'9',teamId:'1',status:'Out',date:new Date().toISOString()}];document.dispatchEvent(new Event('unit501:availability-updated'))");await h.settle();
- assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–25');
+ assert.equal(h.run('window.Unit501Lineups.evaluate().applied'),false);h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
  // A confirmed baseline starter newly reported out loses all normal workload,
  // even if the scenario dropdown previously remained at 100 percent.
  h.run("Unit501Availability.snapshot().teams[0].injuries.rows=[{id:'7',teamId:'1',status:'Out',date:new Date().toISOString()}]");workload.value='100';workload.onchange();
@@ -607,14 +607,14 @@ test('Game Lab automatically scores a confirmed defender absence and cleanly swi
  h.run("invalidateSimulation('Changed')");
  assert.match(h.nodes.get('auto-injury-status').textContent,/ready for next simulation/);
  h.run('sim()');
- assert.match(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
+ assert.match(h.nodes.get('simulation-report-text').textContent,/Automatic experimental injury scenario/);
  assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0.5);
  box.checked=false;await box.dispatchEvent({type:'change'});
  assert.equal(h.nodes.get('homeDefenseLoss').disabled,false);
  assert.equal(h.nodes.get('homeDefenseLoss').value,'0');
  h.run('sim()');
  assert.equal(h.run('latestForecast.inputs.options.injury.homeDefense'),0);
- assert.doesNotMatch(h.nodes.get('note').textContent,/Automatic experimental injury scenario/);
+ assert.doesNotMatch(h.nodes.get('simulation-report-text').textContent,/Automatic experimental injury scenario/);
 });
 
 test('missing auto-injury feed coverage leaves baseline visible but does not freeze an incomplete archived forecast',async()=>{
@@ -708,7 +708,7 @@ test('prop history uses numeric game counts and manual enhance can be switched o
  const table=board.find(n=>n.tag==='table');
  const rows=walk(table).filter(n=>n.tag==='tr').slice(1);
  assert.ok(rows.length>0);
- assert.ok(rows.every(r=>/^\d+$/.test(r.children[3].textContent)));
+ assert.ok(rows.every(r=>/^\d+\/\d+$/.test(r.children[3].textContent)));
  const history=board.filter(n=>n.className==='prop-recent');
  assert.ok(history.length>0);
  assert.ok(history.every(n=>n.children.length===3));
@@ -728,9 +728,9 @@ test('manual game mode invalidates results, reaches simulation, and resets for a
  assert.equal(h.nodes.get('gameMode').value,'normal');h.run('sim()');
  h.nodes.get('gameMode').value='upset';await h.nodes.get('gameMode').dispatchEvent({type:'change'});
  assert.equal(h.nodes.get('score').textContent,'—');h.run('sim()');
- assert.match(h.nodes.get('note').textContent,/Manual upset: projected margin ×0.9/);
+ assert.match(h.nodes.get('simulation-report-text').textContent,/Manual upset: projected margin ×0.9/);
  h.nodes.get('gameMode').value='primetime';await h.nodes.get('gameMode').dispatchEvent({type:'change'});h.run('sim()');
- assert.match(h.nodes.get('note').textContent,/Manual primetime: projected margin ×1.1/);
+ assert.match(h.nodes.get('simulation-report-text').textContent,/Manual primetime: projected margin ×1.1/);
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.equal(h.nodes.get('gameMode').value,'normal');
 });

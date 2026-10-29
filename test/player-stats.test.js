@@ -43,7 +43,7 @@ test('missing team-game calendar entries stay unknown and a sparse recent market
  assert.equal(history.length,5);assert.equal(records.get('90:10904').games.get('5').recYds,undefined);
  const review=project(history,'recYds');assert.equal(review.withheld,true);
  assert.equal(review.coverage.recorded,2);assert.match(review.reason,/not zeros/);
- // A single missing latest record does not discard a much fuller history.
+ // Even one missing game can be an excluded zero and must withhold the estimate.
  const full=project([{gameDate:6},...Array.from({length:5},(_,i)=>({gameDate:i+1,rec:4,recYds:40}))],'recYds');
- assert.equal(full.withheld,undefined);assert.equal(full.coverage.latestMissing,true);
+ assert.equal(full.withheld,true);assert.equal(full.coverage.latestMissing,true);
 });

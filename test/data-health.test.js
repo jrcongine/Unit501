@@ -46,3 +46,13 @@ test('a failed whole War Room request invalidates prior source status',()=>{
  h.observe(url('/api/outside-picks?league=nba'),500,{error:'unavailable'});
  assert.equal(row(h,'nba:covers').status,'failed');assert.equal(row(h,'nba:boyds').status,'failed');
 });
+
+test('basketball histories with missing games or market values are partial, including verified zeros',()=>{
+ for(const sport of ['nba','ncaab']){
+ const h=createHealth(),p={results:[{player_points:0,player_rebounds:0,player_assists:0,player_threes:0}],coverage:{missing:0}};
+ const observe=()=>h.observe(url('/api/'+sport+'/player-history'),200,{teams:[{available:true,players:[p]}]});
+ observe();assert.equal(row(h,sport+':player-history').status,'working');
+ p.coverage.missing=1;observe();assert.equal(row(h,sport+':player-history').status,'partial');
+ p.coverage.missing=0;p.results[0].player_assists=null;observe();assert.equal(row(h,sport+':player-history').status,'partial');
+ }
+});

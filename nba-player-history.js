@@ -36,7 +36,7 @@ function extractBox(data,prior,teamId,season,stage){
   const min=minutes(stats[keys.indexOf('minutes')]);
   // Quarantine a malformed appearance without hiding unrelated verified players.
   if(min===null){output.push({id,name,available:false,minutes:null,values:{}});continue;}
-  if(min===0)continue;
+  if(min===0){output.push({id,name,available:false,minutes:0,values:{}});continue;}
   const values=Object.fromEntries(Object.entries(METRICS).map(([market,key])=>[market,stat(stats[keys.indexOf(key)],market==='player_threes')]));
   output.push({id,name,minutes:min,values});
  }
@@ -57,6 +57,13 @@ function extractInactive(data,teamId,active){
   seen.add(id);out.push({id,name});
  }
  return out;
+}
+function reconcileCoverage(players,games){
+ for(const p of players.values()){
+  const known=new Set([...(p.results||[]),...(p.inactive||[])].map(g=>String(g.gameId)));
+  p.missing=games.filter(g=>!known.has(String(g.id))).map(g=>({gameId:g.id,tipoff:g.tipoff}));
+  p.coverage={total:games.length,played:p.results.length,dnp:(p.inactive||[]).length,missing:p.missing.length};
+ }
 }
 function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
  const cache=new Map();
@@ -99,10 +106,11 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
       player.inactive.push({gameId:game.id,tipoff:game.tipoff});players.set(row.id,player);
      }
     }
+    reconcileCoverage(players,games);
     return {name:side.name,available:true,games:games.length,players:[...players.values()]};
    }catch{return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};}
   });
   return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:'ESPN completed NBA box scores',teams};
  };
 }
-module.exports={METRICS,stat,minutes,extractBox,extractInactive,createPlayerHistory};
+module.exports={METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};

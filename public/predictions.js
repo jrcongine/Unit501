@@ -949,7 +949,9 @@ if (league === '1' && stage !== 'regular season') return false;
           const id = String(g.game?.id || g.id);
           if (!past.has(id)) past.set(id, { date: gameTime(g), teams: new Map() });
           past.get(id).teams.set(teamIds[i], {
-            id: String(opponent?.id || ''), name: opponent?.name || 'Opponent unknown'
+            id: String(opponent?.id || ''), name: opponent?.name || 'Opponent unknown',
+            scored: Number((String(home?.id)===teamIds[i]?g.scores?.home:g.scores?.away)?.total),
+            allowed: Number((String(home?.id)===teamIds[i]?g.scores?.away:g.scores?.home)?.total)
           });
         });
       });
@@ -980,6 +982,7 @@ if (league === '1' && stage !== 'regular season') return false;
         }
       }
       completeCalendar(map,past);
+      Unit501PlayerStats.applyReviewedHistory(map,past,{league,season});
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));

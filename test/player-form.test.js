@@ -61,7 +61,7 @@ test('two latest missing games withhold an old appearance baseline even at half 
 test('missing latest usage does not import older workload into fresh yardage',()=>{
  const {project}=require('../public/player-form');
  const form=project([{gameDate:3,rushYds:15},{gameDate:2,rushYds:100,carries:20},{gameDate:1,rushYds:100,carries:20}],'rushYds');
- assert.equal(form.usage,null);assert.equal(form.baseline,form.weighted);assert.match(form.usageUnavailable,/Latest workload/);
+ assert.equal(form.usage,null);assert.equal(form.baseline,form.weighted);assert.match(form.usageUnavailable,/Workload statistics are incomplete/);
 });
 test('missing latest workload is flagged instead of calling older appearances recent',()=>{
  const {workloadWarning}=require('../public/player-form');
@@ -152,17 +152,13 @@ test('an isolated 229-yard receiving game is dampened when missing workload forc
  assert.equal(model.coverage.latestMissing,true);
  assert.equal(model.values.includes(229),true);
  assert.ok(model.weighted>70,'Raw formula shows an exaggerated yardage estimate');
- assert.equal(model.usage,null);
- assert.equal(model.outlierAdjustment.count,1);
- assert.ok(model.outlierAdjustment.cap<229);
- assert.ok(model.baseline<55,'Fallback estimate limits the one-game spike');
- assert.ok(model.baseline>30,'Fallback is not just an arbitrary zero or median');
- assert.equal(history[3].recYds,229,'Historical game result must not be changed');
- const support=dataSupport({...model,values:model.values,form:model,workload:100,workloadHistory:{missing:6}},null);
- assert.ok(support.needsReview);
- assert.match(support.label,/yardage spike dampened/);
- const checks=reviewChecks({...model,form:model,workload:100,workloadHistory:{missing:6}},{savedAt:Date.now()},null);
- assert.ok(checks.includes('Review outlier-adjusted yardage'));
+ assert.equal(model.withheld,true);
+ assert.equal(model.baseline,undefined,'Incomplete samples must not produce a projection');
+ assert.equal(history[3].recYds,229,'Recorded outcomes remain untouched');
+ const complete=project(history.slice(1),'recYds');
+ assert.equal(complete.outlierAdjustment.count,1);
+ assert.ok(complete.baseline<55);
+
 });
 test('consistent receiving production is not suppressed by spike safeguard',()=>{
  const {project}=require('../public/player-form');

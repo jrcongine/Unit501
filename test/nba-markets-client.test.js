@@ -185,7 +185,7 @@ test('an OUT teammate shows verified past splits without changing the player pro
  assert.ok(button());const calls=h.calls.length;button().events.click();
  assert.match(board.textContent,/Player A.*20\.0/);
  assert.match(board.textContent,/Teammate absence minutes scenario · baseline 15\.8 · change \+4\.2/);
- assert.match(board.textContent,/0 4 0 4/);assert.equal(h.calls.length,calls);
+ assert.match(board.textContent,/0 \(0.0%\) 4 \(100.0%\) 0 \(0.0%\) 4/);assert.equal(h.calls.length,calls);
  flatten(board).find(n=>n.textContent==='Reset minutes').events.click();
  assert.match(board.textContent,/Player A.*15\.8/);assert.doesNotMatch(board.textContent,/minutes scenario/);
  button().events.click();
@@ -288,4 +288,15 @@ test('missing NBA moneyline and history are labeled explicitly',async()=>{
  assert.match(h.nodes.get('nba-game-odds').textContent,/Moneyline.*No current paired moneyline available/);
  assert.match(h.nodes.get('nba-game-odds').textContent,/Line history unavailable; movement is unknown/);
  assert.doesNotMatch(h.nodes.get('nba-game-odds').textContent,/unchanged/);
+});
+
+test('NBA Above sorting compares percentages rather than raw hit counts',async()=>{
+ const h=harness(),base=h.context.fetch;
+ h.context.fetch=async url=>{const r=await base(url);if(!String(url).includes('/player-history?'))return r;
+ const data=await r.json();data.teams[1].players[0].results=Array.from({length:6},(_,i)=>({gameId:10+i,tipoff:`2026-10-${22-i}T00:00:00Z`,player_rebounds:i<3?10:0}));
+ return {ok:true,json:async()=>data};};
+ await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
+ const sort=h.nodes.get('nba-prop-sort');sort.value='most';sort.events.change();let text=h.nodes.get('nba-prop-lines').textContent;
+ assert.ok(text.indexOf('Player A')<text.indexOf('Player B'),'2/2 ranks above 3/6');assert.match(text,/100.0%/);
+ sort.value='least';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
 });

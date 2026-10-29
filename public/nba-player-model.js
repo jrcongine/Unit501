@@ -14,11 +14,13 @@
   if(matches.length===0)return {available:false,reason:'No matched player history'};
   if(matches.length!==1)return {available:false,reason:'Player match is ambiguous'};
   if(matches[0].available===false||!matches[0].teamAvailable||!Array.isArray(matches[0].results))return {available:false,reason:'Verified history unavailable'};
+  if(matches[0].missing?.length||matches[0].coverage?.missing>0)return {available:false,reason:'Missing player games; participation unverified'};
   const results=matches[0].results;
   if(results.length>10||new Set(results.map(r=>String(r.gameId))).size!==results.length||results.some(r=>
    !/^\d{1,12}$/.test(String(r.gameId||''))||!Number.isFinite(Date.parse(r.tipoff))||Date.parse(r.tipoff)>=Math.min(now,Date.parse(game.tipoff))))return {available:false,reason:'Verified history unavailable'};
   const ordered=[...results].sort((a,b)=>Date.parse(b.tipoff)-Date.parse(a.tipoff));
   const sample=ordered.filter(r=>Number.isInteger(r[quote.market])&&r[quote.market]>=0);
+  if(sample.length!==ordered.length)return {available:false,reason:'Incomplete market statistics'};
   const values=sample.map(r=>r[quote.market]);
   if(values.length<2)return {available:false,reason:'Fewer than 2 verified games'};
   const average=values.reduce((a,b)=>a+b,0)/values.length;

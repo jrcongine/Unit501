@@ -40,7 +40,7 @@ function assessment(data,kind,now){
   else if(data.teams.some(t=>t.roster?.available===false||t.injuries?.available===false))status='partial';
   else if(data.teams.every(t=>!(t.players?.length||t.injuries?.rows?.length)))status='empty';
  }
- if(kind==='player-history'&&data.teams?.some(t=>t.available===false))status='partial';
+ if(kind==='player-history'&&data.teams?.some(t=>t.available===false||t.players?.some(p=>p.available===false||p.coverage?.missing>0||p.missing?.length||p.results?.some(r=>['player_points','player_rebounds','player_assists','player_threes'].some(k=>!Number.isInteger(r[k])||r[k]<0)))))status='partial';
  return {status,at};
 }
 function createHealth({now=Date.now}={}){

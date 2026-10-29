@@ -9,7 +9,7 @@ function fixture(){
 }
 test('archive holds both forecasts at one timestamp with identical weather, venue and manual ratings',()=>{
  const {inputs,now}=fixture(),s=capture(inputs,now);
- assert.equal(s.baseline.away,25*.9);assert.equal(s.adjusted.away,21*.9);
+ assert.equal(s.baseline.away,24.5*.9);assert.equal(s.adjusted.away,20.5*.9);
  assert.equal(s.baseline.home,s.adjusted.home);assert.equal(s.baseline.weather.reduction,s.adjusted.weather.reduction);
  assert.equal(s.records[0].forecastAt,now);assert.equal(s.records[0].actual,null);assert.equal(s.records[0].resultKnownAt,null);
  inputs.data.teams[0].metrics.pointsFor.average=999;inputs.availability.current=false;

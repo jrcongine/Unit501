@@ -152,15 +152,15 @@
   function project(history,key) {
     const form=summarize(history,key);
     if(!form)return null;
-    if(form.coverage.latestConsecutiveMissing>=2 || (form.coverage.latestMissing && form.coverage.recorded*2<form.coverage.total))
-      return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, and the latest game is missing it. Projection withheld until current usage can be verified; missing records are not zeros.`};
+    if(form.coverage.missing>0)
+      return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, so the sample is incomplete. Projection withheld until the missing games can be verified; missing records are not zeros.`};
     const usageKey={rushYds:'carries',recYds:'rec',passYds:'attempts'}[key];
     const pairs=usageKey?history.filter(g=>Number.isFinite(g.gameDate)&&Number.isFinite(g[key])&&Number.isFinite(g[usageKey])&&g[usageKey]>0):[];
     let baseline=form.weighted,usage=null,usageUnavailable=null,outlierAdjustment=null;
     if(pairs.length>=2) {
       const touches=summarize(history,usageKey);
-      if(touches.coverage.latestMissing){
-        usageUnavailable='Latest workload statistic is missing. Yardage uses recorded yardage form instead of an older workload estimate; verify current usage.';
+      if(touches.coverage.missing){
+        usageUnavailable='Workload statistics are incomplete. Yardage uses recorded yardage form instead of an older workload estimate; verify current usage.';
       } else {
         const estimate=efficiencySummary(pairs,key,usageKey);
         baseline=touches.weighted*estimate.efficiency;

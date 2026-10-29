@@ -58,3 +58,12 @@ test('missing NBA projections explain history gaps without implying injury adjus
  assert.deepEqual(project(data(),q,game,'Questionable',now),project(data(),q,game,null,now));
  assert.equal(project(null,q,game,'Out',now).reason,'OUT');
 });
+
+test('a single missing market value or player game cannot produce a partial-sample estimate',()=>{
+ for(const market of ['player_points','player_rebounds','player_assists','player_threes']){
+ const d=data(),p=d.teams[0].players[0];p.results.forEach(r=>r[market]=5);p.results[1][market]=null;
+ assert.equal(project(d,{...q,market},game,null,now).available,false);
+ p.results[1][market]=0;assert.equal(project(d,{...q,market},game,null,now).available,true);
+ p.missing=[{gameId:'8'}];assert.equal(project(d,{...q,market},game,null,now).available,false);
+ }
+});

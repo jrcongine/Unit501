@@ -8,3 +8,13 @@ test('unique exact matchup and fresh paired sportsbook lines',async()=>{assert(m
 test('duplicate game cannot produce a line',async()=>{const fetcher=async()=>({ok:true,headers:{get:()=>null},json:async()=>[event,event]});const get=createMarkets({now:()=>now,key:()=> 'secret',fetcher});assert.equal((await get(game,'game')).available,false);});
 const summary={header:{id:'123',competitions:[{date:game.tipoff,status:{type:{completed:true,state:'post'}},competitors:[{id:'1',homeAway:'away',score:'70'},{id:'2',homeAway:'home',score:'65'}]}]},injuries:[{team:{id:'1'},injuries:[{athlete:{displayName:'Test Player'},status:'Out'}]}],boxscore:{players:[{team:{id:'1'},statistics:[{keys:['minutes','points','rebounds','assists','threePointFieldGoalsMade-threePointFieldGoalsAttempted'],athletes:[{athlete:{id:'10',displayName:'Test Player'},didNotPlay:false,stats:['30','15','6','4','2-5']}]}]}]}};
 test('injuries and box scores require verified event and team identities',()=>{assert.equal(injuries(summary,game)[0].players[0].status,'Out');assert.equal(injuries(summary,game)[1].players.length,0);assert.equal(extract(summary,game,'1')[0].player_threes,2);assert.throws(()=>injuries(summary,{...game,homeId:'3'}));assert.throws(()=>extract({...summary,header:{...summary.header,id:'9'}},game,'1'));});
+
+test('college basketball distinguishes actual zeros, DNP and unverified participation',()=>{
+ const copy=()=>structuredClone(summary);
+ const zero=copy();zero.boxscore.players[0].statistics[0].athletes[0].stats=['3','0','0','0','0-0'];
+ assert.equal(extract(zero,game,'1')[0].player_points,0);
+ const dnp=copy();dnp.boxscore.players[0].statistics[0].athletes[0].didNotPlay=true;assert.equal(extract(dnp,game,'1').length,0);
+ const unknown=copy();delete unknown.boxscore.players[0].statistics[0].athletes[0].didNotPlay;assert.throws(()=>extract(unknown,game,'1'),/participation/);
+ const rounded=copy();rounded.boxscore.players[0].statistics[0].athletes[0].stats[0]='0';assert.equal(extract(rounded,game,'1')[0].available,false);
+ const duplicate=copy();duplicate.boxscore.players[0].statistics[0].athletes.push(structuredClone(duplicate.boxscore.players[0].statistics[0].athletes[0]));assert.throws(()=>extract(duplicate,game,'1'),/identity/);
+});

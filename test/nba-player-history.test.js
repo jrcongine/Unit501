@@ -65,3 +65,13 @@ test('contradictory or duplicate DNP identities cannot become absence evidence',
   rows.push(makeRow(rows));assert.throws(()=>extractBox(x,teamGames[0][0],4,2026,2));
  }
 });
+
+test('a missing row is recorded separately from explicit DNP',async()=>{
+ const f=feeds(),base=f.fetcher;f.fetcher=async url=>{
+ const r=await base(url),d=await r.json();if(String(url).endsWith('event=1'))d.boxscore.players[0].statistics[0].athletes.shift();
+ // Keep an unrelated verified appearance so this tests player coverage.
+ d.boxscore.players[0].statistics[0].athletes.push({athlete:{id:'555',displayName:'Other'},didNotPlay:false,stats:['5','0','0','0','0-0']});
+ return {ok:true,headers:new Headers(),json:async()=>d};};
+ const result=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
+ const p=result.teams[0].players.find(p=>p.name==='Player A');assert.equal(p.coverage.missing,1);assert.equal(p.coverage.dnp,0);
+});

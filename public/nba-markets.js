@@ -56,8 +56,8 @@
    if(a.prediction.available!==b.prediction.available)return a.prediction.available?-1:1;
    if(!a.prediction.available)return a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
    if(sort.value==='gap')return Math.abs(b.prediction.projection-b.p.line)-Math.abs(a.prediction.projection-a.p.line)||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
-   const direction=sort.value==='most'?-1:1;
-   return direction*(a.prediction.above-b.prediction.above)||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
+   const field=sort.value==='most'?'above':'below';
+   return b.prediction[field]*a.prediction.games-a.prediction[field]*b.prediction.games||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
   });
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   for(const label of ['Player','Stat','Line','Projection','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
@@ -108,7 +108,7 @@
     row.append(cell);
    }
    for(const [field,other] of [['above','below'],['below','above'],['equal',null]]){
-    const cell=node('td',prediction.available?prediction[field]:'—',prediction.available&&other&&prediction[field]>prediction[other]?'nba-prop-strong':'nba-prop-count');row.append(cell);
+    const cell=node('td',prediction.available?prediction[field]+' ('+(100*prediction[field]/prediction.games).toFixed(1)+'%)':'—',prediction.available&&other&&prediction[field]>prediction[other]?'nba-prop-strong':'nba-prop-count');row.append(cell);
    }
    for(const value of [prediction.available?prediction.games:'—',signed(p.over),signed(p.under),ui.timeCentral(new Date(p.updatedAt).toISOString())])row.append(node('td',value));body.append(row);
   }
