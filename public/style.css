@@ -473,3 +473,33 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 @media(max-width:650px){.model-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .pregame-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.pregame-check{padding:12px;border:1px solid #526077;border-radius:10px;background:#152032}.pregame-check p{margin:8px 0 0;font-size:.9rem;color:#d4dce8}.pregame-checked strong{color:#8de4ad}.pregame-review strong{color:#ffdb83}.pregame-unknown strong{color:#c8d1df}.pregame-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+
+
+/* Game Lab weather: kickoff forecast and compact hourly weather-app strip. */
+#game-weather{margin:16px 0;padding:14px 16px;border:1px solid #3c5669;border-radius:14px;background:linear-gradient(115deg,#183047,#111d30);overflow:hidden}
+#game-weather>h3{margin:0 0 5px;font-size:17px}
+#game-weather>p:not(.weather-source){margin:5px 0 10px}
+#game-weather-status{min-width:0}
+.weather-now{display:flex;align-items:center;gap:14px;padding:12px 2px 8px}
+.weather-big-icon{display:block;font-size:clamp(35px,5vw,56px);line-height:1;flex:none}
+.weather-temp{font-size:clamp(40px,6vw,60px);font-weight:800;letter-spacing:-.055em;line-height:1;color:#f6fbff;font-variant-numeric:tabular-nums}
+.weather-now-description{display:flex;flex-direction:column;gap:4px;min-width:0}
+.weather-now-description strong{font-size:16px}
+.weather-now-description span{font-size:12px;color:#c4d5e5}
+.weather-metrics{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 15px}
+.weather-metrics>div{display:flex;flex-direction:column;gap:4px;min-width:96px;padding:9px 12px;border:1px solid #3e5970;border-radius:10px;background:#162b3d}
+.weather-metrics span{font-size:11px;color:#bfcede}
+.weather-metrics strong{font-size:15px;font-weight:850;color:#fff;font-variant-numeric:tabular-nums}
+.weather-hours-title{margin:3px 0 8px;font-weight:800;color:#dceef9;font-size:13px}
+.weather-hour-row{display:flex;gap:9px;max-width:100%;overflow-x:auto;padding:2px 1px 9px;scroll-snap-type:x proximity}
+.weather-hour-card{flex:1 0 112px;display:flex;align-items:center;flex-direction:column;gap:7px;scroll-snap-align:start;min-width:112px;padding:12px 9px;background:#142b40;border:1px solid #3b5e75;border-radius:12px;text-align:center}
+.weather-hour-card>span:first-child{font-size:12px;color:#d5e5f1;font-weight:750}
+.weather-hour-icon{font-size:29px;line-height:1.25}
+.weather-hour-card strong{font-size:22px;font-weight:850;font-variant-numeric:tabular-nums}
+.weather-hour-card>span:last-child{font-size:10px;color:#b9d0e1;line-height:1.35}
+#game-weather-impact{margin:12px 0 3px;font-size:12px;color:#c7e4d5;font-weight:650}
+#game-weather .weather-more{margin:10px 0 0;padding:0;border:0;background:transparent}
+#game-weather .weather-more>summary{list-style:revert;padding:4px 0;background:transparent;border:0;font-size:12px;font-weight:700;color:#8dcde4;cursor:pointer}
+#game-weather .weather-more>p{margin:9px 0 0;font-size:12px;line-height:1.4;color:#bccbd8}
+#game-weather .weather-more .weather-source a{color:#83e2ba}
+@media(max-width:560px){#game-weather{padding:12px}.weather-now{gap:10px}.weather-metrics>div{min-width:85px;flex:1}.weather-hour-card{flex-basis:103px;min-width:103px}}
