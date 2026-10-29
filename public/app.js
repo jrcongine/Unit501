@@ -417,19 +417,21 @@ async function loadVenueForecast(game, conditions, roof) {
     }
     conditions.replaceChildren(main,metrics);
     const hoursContainer=weatherPanel.querySelector('#game-weather-hours');
-    const hours=Array.isArray(data.gameHours)?data.gameHours:[];
+    // Always include the kickoff forecast, even for games starting between whole hours.
+    const laterHours=Array.isArray(data.gameHours)?data.gameHours:[];
+    const hours=[{...data,forecastTime:data.forecastTime},...laterHours.filter(hour=>hour.forecastTime!==data.forecastTime)].slice(0,4);
     hoursContainer.replaceChildren();
     if(hours.length){
       const heading=document.createElement('div');
       heading.className='weather-hours-title';
-      heading.textContent='During the game';
+      heading.textContent='Kickoff through game time';
       const row=document.createElement('div');
       row.className='weather-hour-row';
-      for(const hour of hours.slice(0,4)){
+      for(const [index,hour] of hours.entries()){
         const card=document.createElement('div');
         card.className='weather-hour-card';
         const hourTime=document.createElement('span');
-        hourTime.textContent=new Date(hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric'});
+        hourTime.textContent=(index===0?'Kickoff · ':'')+new Date(index===0?game.kickoff:hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric'});
         const emoji=document.createElement('span');
         emoji.className='weather-hour-icon';
         emoji.textContent=weatherCondition(hour.weatherCode,hour.forecastTime).icon;
