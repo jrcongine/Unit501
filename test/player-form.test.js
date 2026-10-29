@@ -196,7 +196,11 @@ test('role review highlights a usage increase but never invents missing workload
 test('role labels distinguish current announcements, depth order and user reviews',()=>{
  const {roleContext}=require('../public/player-form'),now=Date.now(),game={id:'g',kickoff:now+86400000};
  const team={starters:{gameId:'g',kickoff:game.kickoff,checkedAt:now,rows:[{id:'1',publishedAt:new Date(now).toISOString(),publisher:'Team'}]},depth:{available:true,gameId:'g',kickoff:game.kickoff,checkedAt:now,rows:[{id:'1',rank:1}]}};
- assert.deepEqual(roleContext([],'rushYds',team,'1',game,'',now).alerts.map(a=>a.label),['Confirmed starter','Listed starter']);
+ assert.deepEqual(roleContext([],'rushYds',team,'1',game,'',now).alerts,[]);
+ assert.equal(roleContext([],'rushYds',team,'1',game,'',now).active,false);
+ // First-string depth and even a current official starter announcement are normal status.
+ assert.equal(roleContext([],'passYds',{depth:team.depth},'1',game,'',now).active,false);
+ assert.equal(roleContext([],'passYds',{starters:team.starters},'1',game,'',now).active,false);
  assert.equal(roleContext([],'rushYds',team,'2',game,'',now).active,false);
  assert.equal(roleContext([],'rushYds',team,'1',{...game,id:'other'},'',now).active,false);
  assert.equal(roleContext([],'rushYds',team,'1',game,'',now+86400001).active,false);
