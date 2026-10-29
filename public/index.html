@@ -211,9 +211,10 @@
 </section>
 <label for="homeFieldMode">Home advantage</label>
 <select id="homeFieldMode"><option value="auto">Automatic — standard venue adjustment</option><option value="manual">Manual scenario — set total points</option></select>
+<p id="home-advantage-display" role="status">Standard home advantage: +3.0 points to home margin (at confirmed home stadium).</p>
 <details><summary>Advanced home advantage override</summary>
 <label for="homeContext">Total home advantage (points)</label>
-<input id="homeContext" type="number" min="0" max="5" step=".5" value="2" disabled>
+<input id="homeContext" type="number" min="0" max="5" step=".5" value="3" disabled>
 <label for="homeFieldReason">Reason for override</label>
 <input id="homeFieldReason" type="text" maxlength="240" placeholder="Example: playoff elimination stakes and documented trash talk" disabled>
 <p>4–5 total points are reserved for rare manual scenarios and require a reason. Rivalry, evening kickoff, trash talk and playoff stakes do not automatically add points. Overrides are unvalidated, preserve the projected total and are ignored at neutral or unverified venues.</p>
