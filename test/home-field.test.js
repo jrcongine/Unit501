@@ -13,7 +13,7 @@ test('optional team estimate is exact-season scoped and neutral or unverified ve
  const game={league:'1',season:'2026',kickoff:Date.parse('2026-10-11T17:00:00Z'),homeId:'17',venueName:'Test Stadium'},home={homeVenues:{teststadium:3}},away={homeVenues:{}};
  const settings={variableHomeField:true,homeFieldProfile:profile,homeContext:1.5},estimate=profile.teams.find(t=>t.id==='17').margin;
  const v=venueEffect(game,home,away,'auto',settings);assert.equal(v.margin,estimate+1.5);assert.equal(v.variable,true);assert.equal(v.context,1.5);
- assert.equal(venueEffect(game,home,away,'auto').margin,2);
+ assert.equal(venueEffect(game,home,away,'auto').margin,3);
  assert.equal(venueEffect(game,home,away,'neutral',settings).margin,0);
  assert.equal(venueEffect({...game,venueName:'Unknown'},home,away,'auto',settings).margin,0);
  for(const invalid of [{...profile,season:'2025'},{...profile,before:game.kickoff+1},{...profile,teams:profile.teams.slice(1)},{...profile,teams:profile.teams.map(t=>({...t,id:'17'}))}])assert.equal(venueEffect(game,home,away,'home',{...settings,homeFieldProfile:invalid}).variable,false);
@@ -29,7 +29,7 @@ test('rare total override replaces base, requires reason and respects venue gate
  assert.equal(venueEffect({...game,venueName:'Unknown'},home,away,'auto',settings).margin,0);
  assert.equal(venueEffect(game,home,away,'auto',{homeFieldTotal:4}).valid,false);
  assert.equal(venueEffect(game,home,away,'auto',{...settings,homeFieldTotal:6}).valid,false);
- assert.equal(venueEffect(game,home,away,'auto').margin,2);
+ assert.equal(venueEffect(game,home,away,'auto').margin,3);
 });
 
 test('college standard advantage is three margin points and neutral removes it',()=>{
