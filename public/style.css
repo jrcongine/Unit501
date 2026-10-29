@@ -471,3 +471,5 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .model-performance-stat span{display:block;margin-top:6px;color:#c7d6e5;font-size:11px}
 .model-performance>p{font-size:12px;color:#bbcbda;margin:12px 0 0}
 @media(max-width:650px){.model-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.pregame-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.pregame-check{padding:12px;border:1px solid #526077;border-radius:10px;background:#152032}.pregame-check p{margin:8px 0 0;font-size:.9rem;color:#d4dce8}.pregame-checked strong{color:#8de4ad}.pregame-review strong{color:#ffdb83}.pregame-unknown strong{color:#c8d1df}.pregame-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}

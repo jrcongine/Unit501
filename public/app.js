@@ -166,6 +166,7 @@ oddsStatus.setAttribute('aria-live', 'polite');
 const refreshOdds = document.createElement('button');
 refreshOdds.textContent = 'Refresh FanDuel lines';
 refreshOdds.type = 'button';
+refreshOdds.id = 'refresh-odds';
 $('matchup').after(oddsStatus, refreshOdds);
 for (const id of ['spread', 'total']) $(id).addEventListener('input', () => {
   lineEdits++;
@@ -179,6 +180,7 @@ async function loadFanDuel() {
   const game = selected;
   const task = ++oddsSequence;
   gameQuotes=null;
+  document.dispatchEvent(new Event('unit501:odds-updated'));
   const edits = lineEdits;
   pulseObservations=null;
   if($('line-tracking-status'))$('line-tracking-status').textContent='';
