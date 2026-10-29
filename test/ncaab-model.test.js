@@ -15,3 +15,17 @@ test('college simulation records ties and pushes separately and requires recent 
  assert.equal(x.tie,1);assert.equal(x.spreadPush,1);assert.equal(x.totalPush,1);
  assert.equal(simulate(p,{...data,away:{...data.away,recentGames:[]}}).available,false);
 });
+test('college estimates reject missing, nonnumeric and fractional sample counts',()=>{
+ for(const games of [undefined,null,'5',3.5,NaN,Infinity]) {
+  const invalid={...data,away:{...data.away,season:{...record,games}}};
+  assert.equal(project(game,invalid,'season',now).available,false);
+ }
+});
+test('college simulation cannot turn invalid scores or histories into tie probabilities',()=>{
+ const p=project(game,data,'season',now);
+ for(const away of [undefined,null,NaN,Infinity,-1])
+  assert.equal(simulate({...p,away},data,{},10).available,false);
+ assert.equal(simulate(p,data,{},10,null).available,false);
+ const bad={...data,away:{...data.away,recentGames:Array.from({length:5},()=>({scored:-1,allowed:70}))}};
+ assert.equal(simulate(p,bad,{},10).available,false);
+});

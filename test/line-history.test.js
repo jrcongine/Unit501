@@ -13,6 +13,27 @@ function fixture(t, options = {}) {
   const quote = (line = 45.5, at = clock) => ({available: true, total: line, totalUpdated: new Date(at).toISOString()});
   return {settings, q, target, quote, now: () => clock, advance: ms => { clock += ms; }, h: createHistory(settings)};
 }
+test('repeated cached or missing quotes cannot postpone a due background refresh', async t => {
+  for (const mode of ['cached', 'missing']) {
+    const f = fixture(t), quote = f.quote();
+    f.h.capture(f.target, quote);
+    f.h.noteQuota({remaining: 1000});
+    const key = f.h.targetKey(f.target), due = f.h.status(key).nextAt;
+    const lastSuccess = f.h.status(key).lastSuccess;
+    for (let i = 0; i < 3; i++) {
+      f.advance(5 * 60000);
+      f.h.capture(f.target, mode === 'cached' ? quote : {available: false});
+    }
+    assert.equal(f.h.status(key).nextAt, due);
+    assert.equal(f.h.status(key).lastSuccess, lastSuccess);
+    const restarted = createHistory(f.settings);
+    let calls = 0;
+    await restarted.tick(async () => { calls++; return f.quote(47.5); });
+    assert.equal(calls, 1);
+    assert.equal(restarted.status(key).nextAt, f.now() + 15 * 60000);
+    assert.equal(restarted.capture(f.target, f.quote(47.5)).history.total.delta, 2);
+  }
+});
 test('server history survives restart and records a move away and back instead of unchanged', t => {
   const f = fixture(t);
   const first = f.h.capture(f.target, f.quote()).history.total;
