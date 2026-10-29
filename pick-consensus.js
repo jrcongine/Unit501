@@ -19,6 +19,6 @@ function consensus(sources){
   if(!group.members.has(identity))group.members.set(identity,{source:source.name,author:p.author,pick:p.pick,url:p.url});
  }}
  return [...groups.values()].map(g=>({date:g.date,matchup:g.matchup,pick:g.pick,count:g.members.size,sources:[...g.members.values()]}))
-  .filter(g=>g.count>=2).sort((a,b)=>b.count-a.count||a.matchup.localeCompare(b.matchup)).slice(0,3);
+  .filter(g=>g.count>=2).sort((a,b)=>b.count-a.count||a.matchup.localeCompare(b.matchup));
 }
 module.exports={consensus,selection};
