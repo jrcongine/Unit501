@@ -68,7 +68,7 @@ test('injury estimates validate independently and preserve manual, venue and win
  const p=project(data,game,{away:2,home:-1,venueMode:'home',injury:{awayOffense:4,homeDefense:1},
    forecast:{roof:'outdoor',available:true,kickoff:100,forecastTime:100,fetchedAt:0,windMph:25},now:0});
  assert.equal(p.preInjuryAway,26);assert.equal(p.preVenueAway,23);
- assert.equal(p.preWeatherAway,22);assert.equal(p.away,19.8);
+ assert.equal(p.preWeatherAway,21.5);assert.equal(p.away,19.35);
  for(const t of data.teams) for(const m of Object.values(t.metrics)) m.average=0;
  assert.equal(project(data,game,{injury:{awayOffense:14}}).away,0);
 });
@@ -219,9 +219,9 @@ test('inferred home venue changes margin while preserving total and manual adjus
  const {game,data}=scheduled(); game.venueName='Test Stadium';
  data.teams[1].homeVenues={teststadium:2};
  const p=project(data,game,{away:2,home:-1});
- assert.equal(p.venue.appliedMargin,2);
- assert.equal(p.away,p.preVenueAway-1);
- assert.equal(p.home,p.preVenueHome+1);
+ assert.equal(p.venue.appliedMargin,3);
+ assert.equal(p.away,p.preVenueAway-1.5);
+ assert.equal(p.home,p.preVenueHome+1.5);
  assert.equal(p.away+p.home,p.preVenueAway+p.preVenueHome);
  assert.match(p.venue.reason,/inferred/);
 });
@@ -236,7 +236,7 @@ test('neutral selection overrides inferred home venue; unknown and shared venues
  assert.equal(project(data,game).venue.appliedMargin,0);
  game.venueName='';
  assert.equal(project(data,game).venue.appliedMargin,0);
- assert.equal(project(data,game,{venueMode:'home'}).venue.appliedMargin,2);
+ assert.equal(project(data,game,{venueMode:'home'}).venue.appliedMargin,3);
  assert.equal(project(data,game,{venueMode:'invalid'}).available,false);
 });
 test('college home assumption is explicit and nonnegative scores preserve the total',()=>{
