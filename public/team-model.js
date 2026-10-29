@@ -21,7 +21,7 @@
     const inferred = key && home.homeVenues?.[key] >= 2 && !(away.homeVenues?.[key] > 0);
     if (mode === 'auto' && !inferred) return {valid:true,margin:0,
       reason:'Home venue unverified: no home-field adjustment. Select Home stadium or Neutral site if you know the location.'};
-    let margin = game.league === '1' ? 2 : 3;
+    let margin = 3;
     const profile=settings.homeFieldProfile;
     const matches=profile?.teams?.filter(t=>String(t.id)===String(game.homeId))||[];
     const validProfile=settings.variableHomeField===true&&game.league==='1'&&profile?.league==='1'&&String(profile.season)===String(game.season)&&profile.modelVersion==='home-field-ridge-v1'&&Number.isFinite(profile.before)&&profile.before<=game.kickoff&&Number.isFinite(profile.historyThrough)&&profile.historyThrough<profile.before&&profile.teams.length===32&&new Set(profile.teams.map(t=>String(t.id))).size===32&&matches.length===1&&matches[0].available===true&&matches[0].homeGames>=6&&matches[0].awayGames>=6&&Number.isFinite(matches[0].margin)&&matches[0].margin>=0&&matches[0].margin<=5;
