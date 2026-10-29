@@ -49,6 +49,7 @@ $('homeFieldMode').addEventListener('change',()=>{
   const manual=$('homeFieldMode').value==='manual';
   $('homeContext').disabled=!manual;
   $('homeFieldReason').disabled=!manual;
+  $('home-advantage-override').open=manual;
   invalidateSimulation('Home advantage mode changed. Run the simulation again.');
 });
 $('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override reason changed. Run the simulation again.'));
@@ -888,6 +889,7 @@ async function choose(game) {
   $('variableHomeField').checked=false;
   $('homeContext').value=3;
   $('homeFieldMode').value='auto';
+  $('home-advantage-override').open=false;
   $('gameMode').value='normal';
   $('homeContext').disabled=true;
   $('homeFieldReason').disabled=true;
