@@ -256,3 +256,15 @@ test('recent Above and Below ordering uses game percentage, not total hits',()=>
  const twoWithPush=row('twoWithPush',[5,6,10]); // 2 of 3 recorded games, not 2 of 2
  assert.ok(compareRecent(twoWithPush,fourSeven,'below-desc')<0);
 });
+
+test('unverified zero-yard game gaps do not outrank complete player hit histories',()=>{
+ const {compareRecent}=require('../public/player-form');
+ const row=(name,values,missing=0)=>({record:{name},def:{key:'recYds'},values,line:3.5,
+   form:{coverage:{recorded:values.length,total:values.length+missing,missing}}});
+ const misleading=row('Smith recorded', [50,16,19,9],3);
+ const full=row('Seven known', [5,6,0,0,10,0,7]);
+ for(const sort of ['above-desc','above-asc','below-desc','below-asc']){
+   const result=[misleading,full].sort((a,b)=>compareRecent(a,b,sort));
+   assert.equal(result[0].record.name,'Seven known');
+ }
+});
