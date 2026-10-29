@@ -3,6 +3,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const normalize = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const DAY = 86400000, INTERVAL = 15 * 60000;
+// Preserve the daily cap: spend fewer background checks on distant games.
+function nextCheck(kickoff, at) {
+  const remaining = kickoff - at;
+  if (remaining > DAY) return Math.min(at + 6 * 3600000, kickoff - DAY);
+  if (remaining > 6 * 3600000) return Math.min(at + 3600000, kickoff - 6 * 3600000);
+  return at + INTERVAL;
+}
 const finite = Number.isFinite;
 function targetKey(t) {
   if (!t || !['1', '2', 'nba', 'ncaab'].includes(t.league) || !['game', 'props'].includes(t.kind) ||
@@ -70,7 +77,7 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     const key = targetKey(target);
     if (!key || target.kickoff <= now() || target.kickoff > now() + 7 * DAY) return null;
     if (!state.watches[key] && Object.keys(state.watches).length < maxWatches) {
-      state.watches[key] = {target: JSON.parse(JSON.stringify(target)), nextAt: now() + INTERVAL, lastSuccess: null, error: null};
+      state.watches[key] = {target: JSON.parse(JSON.stringify(target)), nextAt: nextCheck(target.kickoff, now()), lastSuccess: null, error: null};
       save();
     }
     return key;
@@ -115,7 +122,7 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     }
     const w = state.watches[key];
     if (w) {
-      w.nextAt = now() + INTERVAL;
+      w.nextAt = nextCheck(w.target.kickoff, now());
       if (movements.length) { w.lastSuccess = now(); w.error = null; }
       else w.error = 'No fresh quotes returned';
     }
@@ -151,15 +158,15 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     try {
       prune(); rollover();
       if (reason()) return;
-      // One serial market request per tick; oldest due first, no overlapping sweeps.
-      const due = Object.entries(state.watches).filter(([, w]) => w.nextAt <= now()).sort((a, b) => a[1].nextAt - b[1].nextAt);
+      // One serial market request per tick; nearest kickoff among due watches first, no overlapping sweeps.
+      const due = Object.entries(state.watches).filter(([, w]) => w.nextAt <= now()).sort((a, b) => a[1].target.kickoff - b[1].target.kickoff || a[1].nextAt - b[1].nextAt);
       for (const [key, w] of due) {
         const cost = w.target.kind === 'game' ? 3 : ['nba', 'ncaab'].includes(w.target.league) ? 4 : 8;
         if (state.budget.spent + cost > dailyBudget || state.quota.remaining - cost < 50) {
-          w.error = 'Background paused to preserve odds credits'; w.nextAt = now() + INTERVAL; save(); continue;
+          w.error = 'Background paused to preserve odds credits'; w.nextAt = nextCheck(w.target.kickoff, now()); save(); continue;
         }
         state.budget.spent += cost; state.quota.remaining -= cost;
-        w.nextAt = now() + INTERVAL;
+        w.nextAt = nextCheck(w.target.kickoff, now());
         // Persist reservation before making a paid request. Fail closed on disk errors.
         if (!save()) return;
         try { capture(w.target, await fetchTarget(w.target)); }
