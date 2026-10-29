@@ -24,17 +24,9 @@
     const alerts=[];
     const labels={new:'New starter',returning:'Back to starter role',primary:'Primary option',increase:'Significant usage increase'};
     if(labels[manual])alerts.push({label:labels[manual],detail:'Your role review for this matchup. Season averages may reflect a smaller prior role.',source:'manual'});
+    // Routine starter/depth-chart status is informational, not a role alert.
+    // Dedicated availability and report details still retain those source records.
     const fresh=(at,age)=>Number.isFinite(at)&&at<=now&&now-at<=age;
-    const starters=team?.starters;
-    if(String(starters?.gameId)===String(game?.id)&&starters?.kickoff===game?.kickoff&&fresh(starters?.checkedAt,900000)){
-      const named=(starters.rows||[]).filter(p=>String(p.id)===String(playerId)&&fresh(Date.parse(p.publishedAt),7*86400000));
-      if(named.length===1)alerts.push({label:'Confirmed starter',detail:(named[0].publisher||'Reviewed team announcement')+' names this player as a starter for this matchup.',source:'announcement'});
-    }
-    const depth=team?.depth;
-    if(depth?.available&&String(depth.gameId)===String(game?.id)&&depth.kickoff===game?.kickoff&&fresh(depth.checkedAt,86400000)){
-      const rows=(depth.rows||[]).filter(p=>String(p.id)===String(playerId)&&Number(p.rank)===1);
-      if(rows.length)alerts.push({label:'Listed starter',detail:'Current depth chart lists first string. Game-day starting role and primary workload still need confirmation.',source:'depth'});
-    }
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
     const games=history.filter(g=>Number.isFinite(g.gameDate)&&(!Number.isFinite(game?.kickoff)||g.gameDate*1000<game.kickoff)).sort((a,b)=>b.gameDate-a.gameDate);
