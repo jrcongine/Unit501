@@ -31,7 +31,7 @@ try {
 }
 require('./odds-monitor').setObserver(lineHistory.noteQuota);
 const trackedOdds = require('./tracked-odds').createTrackedOdds({history: lineHistory,
-  footballLines: fanduel.getLines, footballProps: require('./fanduel-props').getProps, nbaOdds});
+  footballLines: fanduel.getLines, footballProps: require('./fanduel-props').getProps, nbaOdds, ncaabOdds: ncaabMarkets});
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
 const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA});
 const injurySlate = require('./nba-slate-cache').createSlateCache(nbaGames);
@@ -132,8 +132,8 @@ const server = http.createServer(async (req, res) => {
       if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid date and game required.'});
       try{const slate=await ncaab.games(date),game=slate.games.find(g=>g.id===id);if(!game)return send(res,404,{error:'Game not found on this slate.'});
        if(!game.timeKnown||game.status!=='Scheduled'||Date.parse(game.tipoff)<=Date.now())return send(res,400,{error:'Confirmed upcoming game required.'});
-       if(u.pathname.endsWith('/odds'))return send(res,200,await ncaabMarkets(game,'game'));
-       if(u.pathname.endsWith('/props'))return send(res,200,await ncaabMarkets(game,'props'));
+       if(u.pathname.endsWith('/odds'))return send(res,200,await trackedOdds.ncaab(game,'game'));
+       if(u.pathname.endsWith('/props'))return send(res,200,await trackedOdds.ncaab(game,'props'));
        if(u.pathname.endsWith('/injuries'))return send(res,200,await ncaabPlayers.injuries(game));
        return send(res,200,await ncaabPlayers.history(game));
       }catch{return send(res,503,{error:'Data source unavailable for this matchup.'});}
