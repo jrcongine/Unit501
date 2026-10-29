@@ -51,3 +51,10 @@ test('public-feed pipeline combines the two source formats from the reported exa
  const result=await feed('mlb');assert.equal(result.consensus.length,1);assert.equal(result.consensus[0].count,2);
  assert.deepEqual(result.consensus[0].sources.map(s=>s.source),['Covers','WagerTalk']);
 });
+
+ test('all verified consensus groups survive beyond the first three',()=>{
+ const picks=Array.from({length:5},(_,i)=>({...p,pick:`Under ${220.5+i} -110`}));
+ const result=consensus([source('one',picks),source('two',picks)]);
+ assert.equal(result.length,5);
+ assert.ok(result.every(group=>group.count===2));
+ });

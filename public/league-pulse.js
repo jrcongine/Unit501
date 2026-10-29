@@ -24,6 +24,10 @@
   img.onerror=()=>img.remove();
   return img;
  }
+ function rankLabel(data){
+  if(data.league!=='ncaaf')return 'Overall Power Ranks';
+  return data.power?.scheduleAdjustment?.applied===true?'Schedule-adjusted FBS Results':'Unadjusted FBS Results';
+ }
  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  function row(team,league){
   const result=el('li',null,'league-pulse-team');
@@ -59,12 +63,12 @@
   if(!board?.available||!Array.isArray(board.teams)){
    power.append(el('p',board?.message||'Overall power rankings are not verified for this league.','league-pulse-empty'));return;
   }
-  const context=el('p','UNIT 501 Power Index · current '+board.season+' season · '+board.teams.length+' teams · '+board.basis,'league-pulse-note');
+  const context=el('p','UNIT 501 '+rankLabel(data)+' · current '+board.season+' season · '+board.teams.length+' teams · '+board.basis,'league-pulse-note');
   const formula=el('p',(board.explanation||'Calculated from season results and points scored versus points allowed.')+' ↑/↓/→ = win/loss streak momentum, NOT movement in rank. Display only; it does not affect predictions.','league-pulse-explainer');
   if(board.scheduleAdjustment?.applied===false)formula.append(el('span',' '+board.scheduleAdjustment.reason));
   if(data.league==='ncaaf'){
    power.append(context,formula,
-    group('🏆 Top 25 · FBS Power Index',board.teams.slice(0,25),true,data.league),
+    group('🏆 Top 25 · '+rankLabel(data),board.teams.slice(0,25),true,data.league),
     group('26–50 · Next Tier',board.teams.slice(25,50),false,data.league),
     group('51–'+board.teams.length+' · Rest of FBS',board.teams.slice(50),false,data.league));
    return;
@@ -136,15 +140,17 @@
    matchup.append(el('p','Overall league power ranks will appear here when the current standings are verified.','league-pulse-empty'));return;
   }
   const a=findTeam(data,activeGame.away),h=findTeam(data,activeGame.home);
-  const title=el('h3','🏆 UNIT 501 Overall Power Ranks');
+  const title=el('h3','🏆 UNIT 501 '+rankLabel(data));
+  const unadjusted=data.league==='ncaaf'&&data.power.scheduleAdjustment?.applied!==true;
   const grid=el('div',null,'league-pulse-matchup-grid');
   for(const [name,team] of [[activeGame.away,a],[activeGame.home,h]]){
    const card=el('div',null,'league-pulse-matchup-team');
    card.append(el('strong',team?'#'+team.rank+' of '+data.power.count:'Rank unavailable'),
     el('span',name),
-    el('small',team?'Power '+team.score.toFixed(1)+(Number.isInteger(team.scheduleRank)?' · FBS '+team.fbsRecord+' · schedule #'+team.scheduleRank:'')+' · '+(team.trend==='up'?'↑':team.trend==='down'?'↓':'→')+' '+team.trendLabel:'Team identity not verified'));
+    el('small',team?'Index '+team.score.toFixed(1)+(Number.isInteger(team.scheduleRank)?' · FBS '+team.fbsRecord+' · schedule #'+team.scheduleRank:'')+' · '+(team.trend==='up'?'↑':team.trend==='down'?'↓':'→')+' '+team.trendLabel:'Team identity not verified'));
    grid.append(card);
   }
+  if(unadjusted)matchup.append(el('p','Schedule strength unverified — these ranks can overrate teams facing weaker opponents.','league-pulse-note'));
   matchup.append(title,grid,el('p','Current-season ranking context only. Not a historical pregame rating or an automatic score/prop adjustment.','league-pulse-note'));
  }
  async function load(league){

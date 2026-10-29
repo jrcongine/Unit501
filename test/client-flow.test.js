@@ -873,7 +873,7 @@ test('college board opens Top 25, collapses the remaining FBS tiers and retains 
  assert.deepEqual(groups.map(n=>n.open),[true,false,false]);
  assert.deepEqual(groups.map(n=>n.children[1].children.length),[25,25,88]);
  assert.deepEqual(groups.map(n=>n.children[1].start),[1,26,51]);
- assert.match(groups[0].textContent,/Top 25 · FBS Power Index/);
+ assert.match(groups[0].textContent,/Top 25 · Unadjusted FBS Results/);
  assert.match(groups[1].textContent,/26–50 · Next Tier/);
  assert.match(groups[2].textContent,/51–138 · Rest of FBS/);
  assert.doesNotMatch(board.textContent,/Bottom Feeders|Top 10/);
@@ -937,4 +937,23 @@ test('NFL and college show rest differences, short weeks and missing-history sta
   h.run('showTeamContext('+JSON.stringify(h.data)+',selected)');
   assert.match(h.nodes.get('team-context').textContent,/Rest comparison unavailable/);
  }
+});
+
+test('college matchup labels unverified schedule strength and distinguishes adjusted results',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ const original=h.context.fetch;let applied=false;
+ h.context.fetch=async url=>{
+  const response=await original(url);
+  if(!String(url).includes('/api/league-pulse'))return response;
+  const data=await response.json();data.power.scheduleAdjustment={applied};
+  return {ok:true,json:async()=>data};
+ };
+ await h.context.document.dispatchEvent(new h.context.CustomEvent('unit501:matchup-selected',{detail:{league:'ncaaf',away:'Team A',home:'Team B'}}));
+ await h.context.Unit501LeaguePulse.show('ncaaf');
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/Unadjusted FBS Results/);
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/Schedule strength unverified/);
+ assert.doesNotMatch(h.nodes.get('league-pulse-matchup').textContent,/Overall Power Ranks/);
+ applied=true;await h.context.Unit501LeaguePulse.show('ncaaf');
+ assert.match(h.nodes.get('league-pulse-matchup').textContent,/Schedule-adjusted FBS Results/);
+ assert.doesNotMatch(h.nodes.get('league-pulse-matchup').textContent,/Schedule strength unverified/);
 });
