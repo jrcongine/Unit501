@@ -37,9 +37,9 @@ function createSplits(now=Date.now,fetchPage=async url=>{const r=await fetch(url
    const result=await item.pending;
    const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(q.kickoff);
    const matches=result.rows.filter(r=>r.date===date&&teamMatches(r.away,q.away,q.league==='2')&&teamMatches(r.home,q.home,q.league==='2'));
-   if(matches.length!==1)return {...base,fetchedAt:result.fetchedAt,message:'No free splits for this game. Enter sourced numbers below.'};
+   if(matches.length!==1)return {...base,fetchedAt:result.fetchedAt,message:'No verified betting shares for this game in the public preview.'};
    return {...base,...matches[0],available:true,fetchedAt:result.fetchedAt,sourceAt:null,message:'One sportsbook sample. Source update time and bet count not supplied.'};
-  }catch{return {...base,message:'Splits feed unavailable. Enter sourced numbers below.'};}
+  }catch{return {...base,message:'Public betting-splits feed unavailable.'};}
  };
 }
 module.exports={parse,createSplits};
