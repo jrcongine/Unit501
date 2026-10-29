@@ -109,8 +109,8 @@ async function loadHomeField(game){
   }catch{if(selected===game)$('home-field-status').textContent='Historical home-field estimate unavailable for this matchup. Standard venue assumption remains available.';}
 }
 $('weatherEnabled').addEventListener('change', () => invalidateSimulation('Weather setting changed. Run the simulation again.'));
-// Spread/total market data: bookmaker quote movement and sampled bet shares stay separate.
-let pulseObservations=null,pulseSplits=null,pulseSplitsSequence=0,pulseManual=false;
+// FanDuel line movement only. Betting splits stay hidden until a verified provider is available.
+let pulseObservations=null,pulseManual=false;
 function pulseCard(parent,label,headline,detail,tone='flat'){
   const card=document.createElement('div');
   card.className='market-pulse-card market-pulse-'+tone;
@@ -121,8 +121,8 @@ function pulseCard(parent,label,headline,detail,tone='flat'){
 }
 function renderMarketPulse(){
   if(!selected)return;
-  const movement=$('market-movement'),bets=$('market-bets'),status=$('market-pulse-status');
-  movement.replaceChildren();bets.replaceChildren();
+  const movement=$('market-movement');
+  movement.replaceChildren();
   const game=selected;
   for(const [kind,label] of [['spread',game.a+' spread'],['total','Game total']]){
     const observed=pulseObservations?.game===game?pulseObservations[kind]:null;
@@ -136,65 +136,9 @@ function renderMarketPulse(){
     const observed=pulseObservations?.game===game?pulseObservations[key]:null;
     if(observed&&!pulseManual)pulseCard(movement,label,window.Unit501LineWatch.describe(observed),window.Unit501LineWatch.detail(observed));
   }
-  const snapshot=window.Unit501MarketPulse?.splits(pulseSplits?.game===game?pulseSplits.data:null,game);
-  for(const [kind,title] of [['spread','Spread: teams'],['total','Total: Over / Under']]){
-    const side=snapshot?.available?snapshot[kind]:null;
-    if(!side)continue;
-    pulseCard(bets,title,'Bets: '+side.bets,
-      'Money: '+side.money+' · More reported bets: '+side.leader,'flat');
-  }
-  status.replaceChildren();
-  const sourceNote=document.createElement('span');
-  if(snapshot?.available){
-    sourceNote.textContent='Source: '+snapshot.source+
-      ' · '+(snapshot.sourceTimeVerified?'recent source update verified':'source update time unverified')+
-      '. Sampled betting is separate from FanDuel lines; money % alone does not prove sharp action. ';
-  }else{
-    const pending=pulseSplits?.game!==game;
-    sourceNote.textContent=pending?'Checking public betting splits… ':
-      'No verified betting percentages for this matchup. ';
-  }
-  status.append(sourceNote);
-  const sources=[
-    {text:'Action Network public bets',url:game.league==='1'?
-      'https://www.actionnetwork.com/nfl/public-betting':
-      'https://www.actionnetwork.com/ncaaf/public-betting'},
-    {text:'VSiN DraftKings splits',url:game.league==='1'?
-      'https://data.vsin.com/betting-splits/?source=DK&sport=NFL':
-      'https://data.vsin.com/betting-splits/?source=DK&sport=CFB'}
-  ];
-  for(const source of sources){
-    const link=document.createElement('a');
-    link.href=source.url;
-    link.target='_blank';
-    link.rel='noopener noreferrer';
-    link.textContent=source.text;
-    link.className='market-pulse-source';
-    status.append(link);
-  }
-}
-async function loadMarketSplits(){
-  if(!selected)return;
-  const game=selected,task=++pulseSplitsSequence;
-  pulseSplits=null;renderMarketPulse();
-  try{
-    const params=new URLSearchParams({game:String(game.id),league:game.league,season:game.season,
-      kickoff:String(game.kickoff),away:game.a,home:game.h});
-    const response=await fetch('/api/betting-splits?'+params,{signal:AbortSignal.timeout(12000)});
-    if(!response.ok)throw Error('Bet-share feed unavailable');
-    const data=await response.json();
-    if(task!==pulseSplitsSequence||selected!==game)return;
-    pulseSplits={game,data,message:data?.message||'No matching betting percentages available.'};
-  }catch{
-    if(task!==pulseSplitsSequence||selected!==game)return;
-    pulseSplits={game,data:null,message:'Betting splits unavailable — FanDuel line tracking still works.'};
-  }
-  renderMarketPulse();
 }
 $('refresh-market-pulse').addEventListener('click',()=>{
-  if(!selected)return;
-  loadFanDuel();
-  loadMarketSplits();
+  if(selected)loadFanDuel();
 });
 
 let slateSequence = 0;
@@ -790,8 +734,7 @@ function clearSelection() {
   clearTimeout(contextTimer);
   teamContext.replaceChildren();
   oddsSequence++;
-  pulseSplitsSequence++;
-  pulseSplits=null;pulseObservations=null;pulseManual=false;
+  pulseObservations=null;pulseManual=false;
   selected = null;
   
   $('lab').classList.add('hidden');
@@ -975,9 +918,8 @@ async function choose(game) {
   $('homeFieldReason').value='';
   describeMatchup(game);
   renderHomeAdvantage();
-  pulseObservations=null;pulseSplits=null;pulseManual=false;
+  pulseObservations=null;pulseManual=false;
   renderMarketPulse();
-  loadMarketSplits();
   
   homeFieldProfiles=null;
   loadHomeField(game);
