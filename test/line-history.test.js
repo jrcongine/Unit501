@@ -8,7 +8,7 @@ function fixture(t, options = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unit501-lines-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const settings = {file: path.join(dir, 'history.json'), now: () => clock, enabled: true, ...options};
-  const q = {league: '1', away: 'Away', home: 'Home', kickoff: clock + 2 * 86400000};
+  const q = {league: '1', away: 'Away', home: 'Home', kickoff: clock + 4 * 3600000};
   const target = footballTarget(q, 'game');
   const quote = (line = 45.5, at = clock) => ({available: true, total: line, totalUpdated: new Date(at).toISOString()});
   return {settings, q, target, quote, now: () => clock, advance: ms => { clock += ms; }, h: createHistory(settings)};
@@ -133,3 +133,28 @@ test('football and NBA routes return shared history while comparison books stay 
   const props=restarted.capture(ncaabTarget(game,'props'),{props:[{name:'Player',market:'player_points',line:20.5,updatedAt:f.now()}]});
   assert.equal(props.props[0].history.firstLine,20.5);
  });
+
+test('distant games poll less often and transition to faster checks before kickoff',async t=>{
+ const f=fixture(t),target={...f.target,kickoff:f.now()+2*86400000};
+ const key=f.h.targetKey(target);f.h.capture(target,f.quote());f.h.noteQuota({remaining:1000});
+ assert.equal(f.h.status(key).nextAt-f.now(),6*3600000);
+ let calls=0;const fetcher=async()=>{calls++;return f.quote();};
+ f.advance(15*60000);await f.h.tick(fetcher);assert.equal(calls,0);
+ f.advance(6*3600000-15*60000);await f.h.tick(fetcher);assert.equal(calls,1);
+ assert.equal(f.h.status().budget.spent,3);
+ // A manual quote is captured immediately, regardless of background timing.
+ f.advance(1000);assert.equal(f.h.capture(target,f.quote(46.5)).history.total.delta,1);
+ const tomorrow={...target,away:'Tomorrow',kickoff:f.now()+86400000+1000};
+ const tomorrowKey=f.h.watch(tomorrow);assert.equal(f.h.status(tomorrowKey).nextAt,f.now()+1000);
+ f.advance(1000);f.h.capture(tomorrow,f.quote());assert.equal(f.h.status(tomorrowKey).nextAt-f.now(),3600000);
+ const soon={...target,away:'Soon',kickoff:f.now()+6*3600000+1000};
+ const soonKey=f.h.watch(soon);assert.equal(f.h.status(soonKey).nextAt,f.now()+1000);
+ f.advance(1000);f.h.capture(soon,f.quote());assert.equal(f.h.status(soonKey).nextAt-f.now(),15*60000);
+});
+test('when multiple watches are due the nearest kickoff gets the next refresh',async t=>{
+ const f=fixture(t),far={...f.target,away:'Far',kickoff:f.now()+2*86400000};
+ f.h.capture(far,f.quote());f.h.noteQuota({remaining:1000});f.advance(6*3600000);
+ const near={...f.target,away:'Near',kickoff:f.now()+3600000};f.h.capture(near,f.quote());
+ f.advance(15*60000);const seen=[];await f.h.tick(async target=>{seen.push(target.away);return f.quote();});
+ assert.deepEqual(seen,['Near']);assert.equal(f.h.status().budget.spent,3);
+});
