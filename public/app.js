@@ -29,7 +29,7 @@ function invalidateSimulation(message) {
   window.Unit501Availability?.scoring?.(null);
   previewAutomaticInjuries();
   $('availability-score-status').textContent='';
-  for (const id of ['score','cover','over','win','outright-pick','underdog-outlook','win-both','upset-history']) $(id).textContent = '—';
+  for (const id of ['score','cover','over','win','outright-pick','underdog-outlook','win-both']) $(id).textContent = '—';
   if (message) $('note').textContent = message;
   renderHomeAdvantage();
   document.dispatchEvent(new Event('unit501:simulation-invalidated'));
@@ -929,7 +929,7 @@ async function choose(game) {
   $('cover').textContent = '—';
   $('over').textContent = '—';
   $('win').textContent = '—';
-  for (const id of ['outright-pick','underdog-outlook','win-both','upset-history']) $(id).textContent = '—';
+  for (const id of ['outright-pick','underdog-outlook','win-both']) $(id).textContent = '—';
 
   $('note').textContent =
     'Enter the current FanDuel spread and total to run a simulation.';
@@ -1055,21 +1055,6 @@ function sim() {
       Unit501ForecastArchive.save(localStorage,snapshot);
     }catch{ latestForecast=null; }
   }
-  try{
-    const snapshots=Unit501ForecastArchive.read(localStorage).snapshots.filter(s=>
-      String(s.game?.league)===String(selected.league)&&String(s.game?.season)===String(selected.season));
-    const history=Unit501ForecastDashboard.upsetHistory(snapshots);
-    const panel=$('upset-history');panel.replaceChildren();
-    for(const g of history.groups){
-      const line=document.createElement('p');
-      line.textContent=`${g.league==='1'?'NFL':'College'} ${g.season} · ${g.modelVersion}: ${g.projectedUpsets} outright underdog picks in ${g.forecasts} saved forecasts with a nonzero spread. ${g.completed} completed: ${g.actualUpsets} actual upsets, ${g.calledUpsets} called, ${g.missedUpsets} missed; ${g.falseAlarms} upset picks lost, ${g.actualTies} final ties. ${g.pending} pending results.`;
-      panel.append(line);
-    }
-    const note=document.createElement('p');
-    note.textContent=(history.groups.length?'':'No eligible saved pregame forecasts with an underdog line yet. ')+
-      `Uses the spread entered with the first saved forecast on this browser, not a verified closing line or full-season history. ${history.missingLine} missing lines, ${history.pickem} pick’em games and ${history.excluded} invalid or duplicate snapshots excluded. Manual scenarios are included under their saved model version. Missing results are pending, not losses; no betting profit is inferred.`;
-    panel.append(note);
-  }catch{$('upset-history').textContent='Saved upset history could not be verified. Existing forecasts are retained.';}
   document.dispatchEvent(new Event('unit501:simulation-completed'));
   return true;
 }
