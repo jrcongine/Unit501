@@ -232,3 +232,27 @@ test('official absence flags a same-position workload opportunity before new rol
  ])assert.equal(roleContext(history,'rushYds',invalid,'brown',game,'',now).active,false);
  assert.equal(roleContext(history.map((g,i)=>i===0?{...g,carries:undefined}:g),'rushYds',team,'brown',game,'',now).active,false);
 });
+
+test('recent Above and Below ordering uses game percentage, not total hits',()=>{
+ const {compareRecent}=require('../public/player-form');
+ const row=(name,values,line=10)=>({record:{name},def:{key:name},values,line});
+ const perfectTwo=row('perfectTwo',[5,6]); // 2/2 below (100%)
+ const fourSeven=row('fourSeven',[2,3,4,5,11,12,13]); // 4/7 below
+ const threeSix=row('threeSix',[1,2,3,11,12,13]); // 3/6 below
+ const fullSeven=row('fullSeven',[1,2,3,4,5,6,7]); // 7/7 below
+ const pushes=row('pushes',[10,10,10]); // zero hits out of three; not missing
+ const empty=row('empty',[]); // missing sample is not 0%
+ const sample=[fourSeven,perfectTwo,threeSix,fullSeven,pushes,empty];
+ assert.deepEqual([...sample].sort((a,b)=>compareRecent(a,b,'below-desc')).map(r=>r.record.name),
+  ['fullSeven','perfectTwo','fourSeven','threeSix','pushes','empty']);
+ assert.deepEqual([...sample].sort((a,b)=>compareRecent(a,b,'below-asc')).map(r=>r.record.name),
+  ['pushes','threeSix','fourSeven','fullSeven','perfectTwo','empty']);
+ // Reverse direction checks percentage ABOVE, and a shorter sample cannot win by raw count alone.
+ assert.deepEqual([...sample].sort((a,b)=>compareRecent(a,b,'above-desc')).map(r=>r.record.name),
+  ['threeSix','fourSeven','fullSeven','pushes','perfectTwo','empty']);
+ const noAbove=row('noAbove',[5,6]);
+ const someAbove=row('someAbove',[12,0]);
+ assert.deepEqual([noAbove,someAbove].sort((a,b)=>compareRecent(a,b,'above-asc')).map(r=>r.record.name),['noAbove','someAbove']);
+ const twoWithPush=row('twoWithPush',[5,6,10]); // 2 of 3 recorded games, not 2 of 2
+ assert.ok(compareRecent(twoWithPush,fourSeven,'below-desc')<0);
+});
