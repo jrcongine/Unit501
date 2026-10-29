@@ -15,10 +15,18 @@
   }
   function compareRecent(a,b,mode) {
     const side=mode.startsWith('above')?'above':'below';
-    const count=row=>row.values.filter(v=>Number.isFinite(v)&&(side==='above'?v>row.line:v<row.line)).length;
-    const direction=mode.endsWith('-asc')?1:-1;
-    return direction*(count(a)-count(b))||b.values.length-a.values.length||
+    const result=row=>{
+      const values=row.values.filter(Number.isFinite);
+      return {games:values.length,hits:values.filter(v=>side==='above'?v>row.line:v<row.line).length};
+    };
+    const x=result(a),y=result(b);
+    // No results are unknown, not 0%. Rank these last in either direction.
+    if(!x.games||!y.games)return Number(!x.games)-Number(!y.games)||
       a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
+    const direction=mode.endsWith('-asc')?1:-1;
+    // Compare exact fractions to avoid rounding ties; equal-to-line is a separate non-hit.
+    return direction*(x.hits*y.games-y.hits*x.games)||
+      y.games-x.games||a.record.name.localeCompare(b.record.name)||a.def.key.localeCompare(b.def.key);
   }
   function roleContext(history,key,team,playerId,game,manual='',now=Date.now()) {
     const alerts=[];
