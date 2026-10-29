@@ -492,7 +492,7 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 .weather-metrics strong{font-size:15px;font-weight:850;color:#fff;font-variant-numeric:tabular-nums}
 .weather-hours-title{margin:3px 0 8px;font-weight:800;color:#dceef9;font-size:13px}
 .weather-hour-row{display:flex;gap:9px;max-width:100%;overflow-x:auto;padding:2px 1px 9px;scroll-snap-type:x proximity}
-.weather-hour-card{flex:1 0 112px;display:flex;align-items:center;flex-direction:column;gap:7px;scroll-snap-align:start;min-width:112px;padding:12px 9px;background:#142b40;border:1px solid #3b5e75;border-radius:12px;text-align:center}
+.weather-hour-card{flex:0 0 132px;display:flex;align-items:center;flex-direction:column;gap:7px;scroll-snap-align:start;min-width:112px;padding:12px 9px;background:#142b40;border:1px solid #3b5e75;border-radius:12px;text-align:center}
 .weather-hour-card>span:first-child{font-size:12px;color:#d5e5f1;font-weight:750}
 .weather-hour-icon{font-size:29px;line-height:1.25}
 .weather-hour-card strong{font-size:22px;font-weight:850;font-variant-numeric:tabular-nums}
@@ -502,4 +502,4 @@ tbody tr.prop-role-alert details{color:#284057 !important}
 #game-weather .weather-more>summary{list-style:revert;padding:4px 0;background:transparent;border:0;font-size:12px;font-weight:700;color:#8dcde4;cursor:pointer}
 #game-weather .weather-more>p{margin:9px 0 0;font-size:12px;line-height:1.4;color:#bccbd8}
 #game-weather .weather-more .weather-source a{color:#83e2ba}
-@media(max-width:560px){#game-weather{padding:12px}.weather-now{gap:10px}.weather-metrics>div{min-width:85px;flex:1}.weather-hour-card{flex-basis:103px;min-width:103px}}
+@media(max-width:560px){#game-weather{padding:12px}.weather-now{gap:10px}.weather-metrics>div{min-width:85px;flex:1}.weather-hour-card{flex-basis:110px;min-width:110px}}
