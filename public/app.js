@@ -139,17 +139,38 @@ function renderMarketPulse(){
   const snapshot=window.Unit501MarketPulse?.splits(pulseSplits?.game===game?pulseSplits.data:null,game);
   for(const [kind,title] of [['spread','Spread: teams'],['total','Total: Over / Under']]){
     const side=snapshot?.available?snapshot[kind]:null;
-    pulseCard(bets,title,side?'Bets: '+side.bets:'Bet shares unavailable',
-      side?'Money: '+side.money+' · More reported bets: '+side.leader:
-      'No valid, game-matched bet percentages. Cannot infer public or sharp betting from the line.',
-      side?'flat':'unknown');
+    if(!side)continue;
+    pulseCard(bets,title,'Bets: '+side.bets,
+      'Money: '+side.money+' · More reported bets: '+side.leader,'flat');
   }
+  status.replaceChildren();
+  const sourceNote=document.createElement('span');
   if(snapshot?.available){
-    status.textContent='Sample: '+snapshot.source+
-      ' · '+(snapshot.sourceTimeVerified?'source timestamp verified':'source update time unverified')+
-      '. FanDuel movement and sampled bets are different books. Money % is not proof of sharp action.';
+    sourceNote.textContent='Source: '+snapshot.source+
+      ' · '+(snapshot.sourceTimeVerified?'recent source update verified':'source update time unverified')+
+      '. Sampled betting is separate from FanDuel lines; money % alone does not prove sharp action. ';
   }else{
-    status.textContent=(pulseSplits?.game===game&&pulseSplits.message)||'Checking independently sourced betting percentages…';
+    const pending=pulseSplits?.game!==game;
+    sourceNote.textContent=pending?'Checking public betting splits… ':
+      'No verified betting percentages for this matchup. ';
+  }
+  status.append(sourceNote);
+  const sources=[
+    {text:'Action Network public bets',url:game.league==='1'?
+      'https://www.actionnetwork.com/nfl/public-betting':
+      'https://www.actionnetwork.com/ncaaf/public-betting'},
+    {text:'VSiN DraftKings splits',url:game.league==='1'?
+      'https://data.vsin.com/betting-splits/?source=DK&sport=NFL':
+      'https://data.vsin.com/betting-splits/?source=DK&sport=CFB'}
+  ];
+  for(const source of sources){
+    const link=document.createElement('a');
+    link.href=source.url;
+    link.target='_blank';
+    link.rel='noopener noreferrer';
+    link.textContent=source.text;
+    link.className='market-pulse-source';
+    status.append(link);
   }
 }
 async function loadMarketSplits(){
