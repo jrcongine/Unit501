@@ -556,17 +556,18 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     const games=(team?.recentGames||[]).filter(g=>Number.isFinite(g.kickoff)&&g.kickoff<game.kickoff).sort((a,b)=>b.kickoff-a.kickoff);
     const card=document.createElement('section');card.className='football-form-card';
     const heading=document.createElement('h4');heading.textContent=name;card.append(heading);
-    // Full-season W-L comes from verified league standings, never the sampled recent games.
+    // ESPN and API-Sports numeric team IDs are unrelated. Require a unique,
+    // same-season, exact team-name match or withhold the record.
     const seasonRecord=document.createElement('span');seasonRecord.className='football-season-record';
-    seasonRecord.textContent=' · Season W–L unavailable';heading.append(seasonRecord);
+    seasonRecord.textContent=' · Season record unavailable';heading.append(seasonRecord);
     const pulseLeague=game.league==='1'?'nfl':'ncaaf';
     fetch('/api/league-pulse?league='+pulseLeague,{signal:AbortSignal.timeout(12000)})
       .then(r=>r.ok?r.json():null).then(result=>{
         if(selected!==game||!heading.isConnected)return;
-        const standing=result?.power?.available&&Array.isArray(result.power.teams)
-          ?result.power.teams.find(t=>String(t.id)===String(id)):null;
-        if(standing&&/^\d+-\d+(?:-\d+)?$/.test(String(standing.record||''))){
-          seasonRecord.textContent=' ('+standing.record+')';
+        const standing=window.Unit501SharedUI.seasonStanding(result,pulseLeague,game.season,name);
+        if(standing){
+          seasonRecord.textContent=' · Season '+standing.record;
+          seasonRecord.title=game.season+' season wins–losses'+(pulseLeague==='nfl'?'–ties':'')+' · ESPN standings, not last five';
         }
       }).catch(()=>{});
 
@@ -581,7 +582,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     else rest.textContent='Rest unavailable: no previous completed game returned.';
     card.append(rest);
     const form=document.createElement('div');form.className='football-form-results';
-    for(const g of games.slice(0,5)){if(!Number.isFinite(g.scored)||!Number.isFinite(g.allowed))continue;const badge=document.createElement('span');const value=g.scored>g.allowed?'W':g.scored<g.allowed?'L':'T';badge.className='football-form-'+value.toLowerCase();badge.textContent=value;badge.title=g.opponent+' · '+g.scored+'–'+g.allowed;form.append(badge);}card.append(form);
+    for(const g of games.slice(0,5).reverse()){if(!Number.isFinite(g.scored)||!Number.isFinite(g.allowed))continue;const badge=document.createElement('span');const value=g.scored>g.allowed?'W':g.scored<g.allowed?'L':'T';badge.className='football-form-'+value.toLowerCase();badge.textContent=value;badge.title=g.opponent+' · '+g.scored+'–'+g.allowed;form.append(badge);}card.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Last '+Math.min(games.length,5)+' recorded results';details.append(summary);
     for(const g of games.slice(0,5)){const line=document.createElement('p');const when=new Date(g.kickoff).toLocaleDateString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric'});line.textContent=when+' · '+(g.side==='away'?'at ':'vs ')+g.opponent+' · '+(g.scored===null||g.allowed===null?'Score unavailable':g.scored+'–'+g.allowed);details.append(line);}card.append(details);
     const travel=document.createElement('p');travel.textContent=games.length?'Checking distance between game venues…':'Previous game venue unavailable.';card.append(travel);formGrid.append(card);
