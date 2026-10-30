@@ -51,3 +51,9 @@ test('college slate records use only an unambiguous overall record and retain ca
  let clock=1000;const feed=createNCAAB({now:()=>clock,fetcher:async()=>({ok:true,json:async()=>({leagues:[{slug:'mens-college-basketball'}],events:[e]})})});
  assert.equal((await feed.games('2026-11-03')).checkedAt,1000);clock=2000;assert.equal((await feed.games('2026-11-03')).checkedAt,1000);
 });
+
+test('a mixed valid and malformed college slate fails instead of silently omitting a game',async()=>{
+ const good=event(1,'2026-11-04T01:00:00Z',{status:'Scheduled'}),bad={...good,id:'2',competitions:[]};
+ const feed=createNCAAB({fetcher:async()=>({ok:true,json:async()=>({leagues:[{slug:'mens-college-basketball'}],events:[good,bad]})})});
+ await assert.rejects(feed.games('2026-11-03'),/complete slate unavailable/);
+});

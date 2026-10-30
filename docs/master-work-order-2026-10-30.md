@@ -142,14 +142,14 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 84 | Optional game modes | Already completed and verified | Football manual Normal/Upset/Primetime modes retained separately from HFA; labels now show 0%/−10%/+10%. No redundant Upset checkbox. |
 | 85 | Separate modes from HFA | Already completed and verified | Football manual Normal/Upset/Primetime modes retained separately from HFA; labels now show 0%/−10%/+10%. No redundant Upset checkbox. |
 | 86 | Remove Upset checkbox | Already completed and verified | Football manual Normal/Upset/Primetime modes retained separately from HFA; labels now show 0%/−10%/+10%. No redundant Upset checkbox. |
-| 87 | Finish basketball | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
+| 87 | Finish basketball | Still pending | College props and War Room improved; automatic injury/rotation adjustments, all-screen parity and independent calibration are not complete. Shared basketball navigation is deployed under task 88. |
 | 88 | Shared basketball navigation | Newly completed, tested, and deployed | Commit 97b4f8e groups NBA and college basketball under one Basketball entry, with league links and current-page indication. Existing routes and Beta labels retained. Desktop/mobile navigation passed. |
 | 89 | Complete basketball schedules | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 90 | Basketball odds and props | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
-| 91 | Basketball roles/injury projections | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
+| 91 | Basketball roles/injury projections | Still pending | College props and War Room improved; automatic injury/rotation adjustments, all-screen parity and independent calibration are not complete. Shared basketball navigation is deployed under task 88. |
 | 92 | Official NBA injury integration | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 93 | Basketball histories | Blocked by an actual external dependency | NBA/NCAA official reconciliation and unknown-history guards preserved. Full historical participation coverage still depends on usable official box scores; unknown records remain withheld. |
-| 94 | Basketball simulations/backtests | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
+| 94 | Basketball simulations/backtests | Still pending | College props and War Room improved; automatic injury/rotation adjustments, all-screen parity and independent calibration are not complete. Shared basketball navigation is deployed under task 88. |
 | 95 | Basketball loading failures | Still pending | Commit 97b4f8e fixes Central-day NBA coverage across UTC dates in both sources, rejects incomplete responses and conflicting IDs. Live public check returned 10 October 30 games. Full private production acceptance remains pending. |
 | 96 | Retain beta until verified | Already completed and verified | Beta labels retained because full basketball acceptance gates are not met. |
 | 97 | Automatic/manual injury UI | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
@@ -299,3 +299,24 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
 - Tasks 70/76/77/80/81/83/94 have additional evidence but remain pending where they require
   other leagues, contemporary injury/market data, simulations or independent calibration.
   Production authentication and paid-feed acceptance remain blocked as recorded above.
+
+## College schedule safeguard, replay support and Kennesaw review — continuation
+
+- College basketball now rejects mixed valid/malformed slates rather than silently hiding
+  an unparseable game. This brings the incomplete-schedule safeguard in line with NBA.
+- Added a CLI college scoring replay using the production model and the same pre-tipoff
+  history summaries. Conflicting duplicate observations reject the replay; known missing
+  history withholds estimates. Tests prove target/future results cannot rewrite earlier
+  estimates and identical duplicates cannot multiply the sample.
+- 753 automated tests passed. Replayed a deliberately limited ten-team 2024–25 public
+  schedule sample: 26 eligible matchups between collected teams. No all-league accuracy,
+  calibrated simulation, or changed model default is claimed. Source provenance and
+  repeatable offline report are committed in data/ and scripts/.
+- Reconstructed Kennesaw/Middle Tennessee pregame results and opponent records using
+  public schedules. See docs/kennesaw-review-2026-10-30.md. The original model snapshot
+  and historical market/injury inputs are unavailable; the exact original prediction
+  cannot be reproduced. No hindsight tuning from one upset was applied.
+- Prior batch f5bffaf6e5d470fafbc7b09a3b213c62713a45c1 deployed successfully to primary
+  113883d9-23e5-4657-904e-cd61fd1b7d45 and secondary ce4d4261-e998-415c-9c2d-54d354a886a0.
+  Primary public health returned ok:true/private:true/liveData:true. This does not verify
+  authenticated screens or API entitlement. No credentials were copied or changed.

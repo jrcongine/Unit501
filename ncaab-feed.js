@@ -47,7 +47,7 @@ function createNCAAB({fetcher=fetch,now=Date.now}={}){
   const sources=await Promise.all(paths.map(p=>read(p,60000)));
   if(sources.some(s=>!s.leagues?.some(l=>l.slug==='mens-college-basketball'||l.abbreviation==='NCAAM')))throw Error('College basketball league unverified');
   const output=new Map(),day=at=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day;};
-  for(let i=0;i<sources.length;i++)for(const e of sources[i].events){const g=convert(e);if(!g||(!g.timeKnown?i!==0:day(g.tipoff)!==date))continue;
+  for(let i=0;i<sources.length;i++)for(const e of sources[i].events){const g=convert(e);if(!g)throw Error('College basketball schedule contains unverified games; complete slate unavailable.');if(!g.timeKnown?i!==0:day(g.tipoff)!==date)continue;
    const old=output.get(g.id);if(old&&JSON.stringify(old)!==JSON.stringify(g))throw Error('Conflicting college basketball game');output.set(g.id,g);}
   return {checkedAt:Math.min(...paths.map(p=>cache.get(p).at)),date,league:'ncaab',source:'ESPN men’s college basketball',games:[...output.values()].sort((a,b)=>Number(!a.timeKnown)-Number(!b.timeKnown)||Date.parse(a.tipoff)-Date.parse(b.tipoff))};
  }
