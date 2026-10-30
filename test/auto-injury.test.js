@@ -280,3 +280,17 @@ test('college defensive usage reaches score adjustments, excluding conditional a
  t.official.rows[0].status='Out';t.injuryUsage.checkedAt=now-3600001;
  assert.equal(evaluate(d,g,null,now).injury.homeDefense,0);
 });
+
+test('NFL and college exclusion reasons expose actual workload without turning missing records into DNP',()=>{
+ for(const league of ['1','2']){
+  const d=build(),g={...game,league};add(d,'1',{id:'7',name:'Runner',position:'RB',rank:3});
+  for(const t of d.teams)t.official.league=league;
+  d.teams[0].injuryUsage={available:true,checkedAt:now,gameId:g.id,kickoff:g.kickoff,league,rows:[],assessments:[{id:'7',metric:'carries',threshold:8,reason:'latest-stat-unverified',games:[{value:null},{value:7},{value:0}]}]};
+  let result=evaluate(d,g,null,now);
+  assert.equal(result.injury.awayOffense,0);
+  assert.match(result.withheld.join(' '),/newest first\): unknown \/ 7 \/ 0/);
+  assert.match(result.withheld.join(' '),/unknown statistics do not establish zero or DNP/);
+  d.teams[0].injuryUsage.checkedAt=now-3600001;result=evaluate(d,g,null,now);
+  assert.doesNotMatch(result.withheld.join(' '),/unknown \/ 7 \/ 0/);
+ }
+});

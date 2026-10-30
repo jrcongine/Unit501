@@ -10,22 +10,28 @@ function tackles(team,id){
  if(stats.length!==1)return null;
  const value=numeric(stats[0].value);return Number.isInteger(value)&&value>=0?value:null;
 }
-function buildUsage(games,boxes,teamId,roster){
+function buildUsageReport(games,boxes,teamId,roster){
  const records=new Map();
  for(const g of games){const rows=boxes.get(String(g.game.id));const matches=rows.filter(t=>String(t.team?.id)===String(teamId));if(matches.length!==1)throw Error('Team box score missing or ambiguous');const t=matches[0];accumulate(records,t,String(g.game.id),Number(g.game.date.timestamp),'');}
  if(new Set(games.map(g=>String(g.game.id))).size!==games.length)throw Error('Duplicate workload games');
- const rows=[];
+ const rows=[],assessments=[];
  for(const p of roster){
   const metric=p.position==='RB'?'carries':['WR','TE'].includes(p.position)?'rec':defensive.has(p.position)?'tackles':null;
-  if(!metric)continue;
+  if(!metric){assessments.push({id:String(p.id),position:p.position,reason:'unsupported-position'});continue;}
   const history=records.get(String(teamId)+':'+p.id)?.games;
   const values=games.map(g=>metric==='tackles'?tackles(boxes.get(String(g.game.id)).find(t=>String(t.team?.id)===String(teamId)),p.id):history?.get(String(g.game.id))?.[metric]);
   const threshold=metric==='carries'?8:3;
-  if(values.filter(v=>Number.isFinite(v)&&v>=threshold).length>=2&&Number.isFinite(values[0])&&values[0]>=threshold)
+  const qualifying=values.filter(v=>Number.isFinite(v)&&v>=threshold).length;
+  const eligible=qualifying>=2&&Number.isFinite(values[0])&&values[0]>=threshold;
+  assessments.push({id:String(p.id),position:p.position,metric,threshold,qualifying,required:2,
+   games:games.map((g,i)=>({id:String(g.game.id),at:Number(g.game.date.timestamp)*1000,value:Number.isFinite(values[i])?values[i]:null})),
+   reason:eligible?'eligible':!Number.isFinite(values[0])?'latest-stat-unverified':values[0]<threshold?'latest-below-threshold':'insufficient-repeated-workload'});
+  if(eligible)
    rows.push({id:String(p.id),position:p.position,metric,values,role:metric==='tackles'?'recent defensive contributor':'recent regular contributor'});
  }
- return rows;
+ return {rows,assessments};
 }
+function buildUsage(...args){return buildUsageReport(...args).rows;}
 function createCollegeInjuryUsage(api,now=Date.now){
  const cache=new Map();
  async function read(path){const old=cache.get(path);if(old&&now()-old.at<3600000)return old.pending;const item={at:now(),pending:api(path).then(d=>{if(d.errors&&Object.keys(d.errors).length||!Array.isArray(d.response)||d.paging?.total>1)throw Error('Incomplete usage data');return {rows:d.response,checkedAt:now()};})};cache.set(path,item);item.pending.catch(()=>cache.delete(path));if(cache.size>250)cache.delete(cache.keys().next().value);return item.pending;}
@@ -42,9 +48,9 @@ function createCollegeInjuryUsage(api,now=Date.now){
     if(games.length<2)throw Error('Too few games');
     const reports=await Promise.all(games.map(async g=>({id:String(g.game.id),...await read('/games/statistics/players?id='+g.game.id)})));
     const boxes=new Map(reports.map(r=>[r.id,r.rows]));
-    t.injuryUsage={available:true,checkedAt:Math.min(schedule.checkedAt,...reports.map(r=>r.checkedAt)),...scope,rows:buildUsage(games,boxes,t.id,t.roster?.rows||[]),message:'Recent offensive workload or repeated defensive tackles; not confirmed starters or snap counts. Blocking positions still require depth evidence.'};
+    t.injuryUsage={available:true,checkedAt:Math.min(schedule.checkedAt,...reports.map(r=>r.checkedAt)),...scope,...buildUsageReport(games,boxes,t.id,t.roster?.rows||[]),message:'Recent offensive workload or repeated defensive tackles; not confirmed starters or snap counts. Blocking positions still require depth evidence.'};
    }catch{}
   }));
  };
 }
-module.exports={createCollegeInjuryUsage,buildUsage};
+module.exports={createCollegeInjuryUsage,buildUsage,buildUsageReport};

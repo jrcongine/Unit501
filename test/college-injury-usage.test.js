@@ -76,3 +76,16 @@ function defenseBox(value){
  const player={player:{id:7,name:'Defender'},statistics:[{name:'Tackles',value}]};
  return [{team:{id:10},groups:[{name:'Defensive',players:[player]}]}];
 }
+
+test('workload diagnostics distinguish actual zero, missing data, low usage and unsupported positions',()=>{
+ const {buildUsageReport}=require('../college-injury-usage');
+ const roster=[{id:'7',position:'WR'},{id:'9',position:'OL'}];
+ for(const [values,reason] of [[[null,4,3],'latest-stat-unverified'],[[0,4,3],'latest-below-threshold'],[[2,4,3],'latest-below-threshold'],[[4,1,1],'insufficient-repeated-workload'],[[4,3,1],'eligible']]){
+  const report=buildUsageReport(games,boxes(values),10,roster);
+  assert.equal(report.assessments[0].reason,reason);
+  assert.equal(report.assessments[0].games[0].value,values[0]);
+  assert.equal(report.assessments[0].games[0].id,'3');
+  assert.equal(report.assessments[1].reason,'unsupported-position');
+  assert.equal(report.rows.length,reason==='eligible'?1:0);
+ }
+});

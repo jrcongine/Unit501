@@ -136,7 +136,20 @@
     const rbDepth=pos==='RB'?depthRows.filter(r=>String(r.id)===id&&position(r.position)==='RB'):[];
     const rb2=rbDepth.length===1&&rbDepth[0].rank===2&&
       depthRows.filter(r=>position(r.position)==='RB'&&r.slot===rbDepth[0].slot&&r.rank===2).length===1;
-    if(slots.length>1||!(slots.length===1||usage.length===1||rb2)){withheld.push(label+': '+name+' (OUT) has no unique starter, RB2, or recent regular workload evidence; no estimate.');continue;}
+    if(slots.length>1||!(slots.length===1||usage.length===1||rb2)){
+     const assessments=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?(t.injuryUsage.assessments||[]).filter(r=>String(r.id)===id):[];
+     const review=assessments.length===1?assessments[0]:null;
+     let reason='has no unique starter, RB2, or recent regular workload evidence';
+     if(slots.length<=1&&review?.reason==='unsupported-position')reason='needs depth or replacement evidence; this position cannot be valued from this workload feed';
+     else if(slots.length<=1&&review&&['carries','rec','tackles'].includes(review.metric)&&Array.isArray(review.games)&&review.games.length>=2&&review.games.length<=3){
+      const metric={carries:'carries',rec:'receptions',tackles:'tackles'}[review.metric];
+      const values=review.games.map(g=>Number.isFinite(g.value)?String(g.value):'unknown').join(' / ');
+      reason='recent '+metric+' (newest first): '+values+'. Screen requires '+review.threshold+'+ in two games, including the latest';
+      if(review.games.some(g=>!Number.isFinite(g.value)))reason+='; unknown statistics do not establish zero or DNP';
+      reason+='; failure to qualify does not establish zero impact';
+     }
+     withheld.push(label+': '+name+' (OUT) '+reason+'; no estimate.');continue;
+    }
     const reserve=slots.length===0&&usage.length!==1&&rb2;
     const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':usage[0]?.role||'recent regular contributor';
     const weight=weights[pos];
