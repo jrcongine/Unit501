@@ -116,5 +116,6 @@ test('Big 12 report reaches availability and automatic scoring only with matched
  assert.equal(evaluate(data,matchup,null,now).applied.length,0);
  teams[1].injuryUsage.rows=[{id:swint.id,position:'RB',metric:'carries',values:[10,11,9],role:'recent regular contributor'}];
  const scored=evaluate(data,matchup,null,now);assert.equal(scored.injury.homeOffense,.25);assert.equal(scored.applied.length,1);assert.equal(scored.applied[0].name,'Taevion Swint');
- teams[1].official.checkedAt=now-900001;assert.equal(evaluate(data,matchup,null,now).ready,false);
+ teams[1].official.checkedAt=now-900001;
+ const expired=evaluate(data,matchup,null,now);assert.equal(expired.partial,true);assert.equal(expired.injury.homeOffense,0);assert.equal(expired.applied.length,0);
 });

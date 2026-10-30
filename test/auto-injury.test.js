@@ -84,14 +84,14 @@ test('already-reviewed lineup role does not get a second automatic offensive ded
  assert.equal(r.injury.awayOffense,0);
  assert.match(r.withheld.join(' '),/already has a lineup scenario/);
 });
-test("one team's missing official or depth coverage blocks adjustment to both sides",()=>{
+test("one team's missing coverage does not suppress verified adjustments for its opponent",()=>{
  const d=build();add(d,'1',{id:'5',name:'Away Starter',position:'CB'});
  d.teams[1].official.available=false;
  const out=evaluate(d,game,null,now);
- assert.equal(out.ready,false);assert.equal(out.injury.awayDefense,0);
+ assert.equal(out.ready,true);assert.equal(out.partial,true);assert.equal(out.injury.awayDefense,0.5);
  assert.equal(out.injury.homeDefense,0);
- assert.equal(out.applied.length,0);
- assert.match(out.message,/No automatic points for either team/);
+ assert.equal(out.applied.length,1);
+ assert.match(out.message,/Partial coverage/);
 });
 
 test('no live data, post-kickoff and unsupported leagues never imply health or adjustments',()=>{
@@ -112,7 +112,7 @@ test('college confirmed Out regular contributors adjust points; uncertain and mi
  d.teams[0].injuryUsage.rows=[];
  assert.equal(evaluate(d,g,null,now).injury.awayOffense,0);
  d.teams[1].injuryUsage.checkedAt=now-3600001;
- assert.equal(evaluate(d,g,null,now).ready,false);
+ assert.equal(evaluate(d,g,null,now).partial,true);
 });
 test('QB score adjustment requires scoped workload and scoring context and cannot duplicate a lineup',()=>{
  const d=build();add(d,'1',{id:'10',name:'Starter',position:'QB'});
@@ -262,4 +262,21 @@ test('sided defensive line depth labels match their position family only',()=>{
   d.teams[1].depth.rows[0].position=provider==='DE'?'RDT':'RDE';
   assert.equal(evaluate(d,game,null,now).injury.homeDefense,0);
  }
+});
+
+test('college defensive usage reaches score adjustments, excluding conditional and unsupported players',()=>{
+ const d=build(),g={...game,league:'2'};
+ add(d,'2',{id:'7',name:'Defender',position:'DB'});
+ for(const t of d.teams){t.official.league='2';delete t.depth;t.injuryUsage={available:true,checkedAt:now,gameId:g.id,kickoff:g.kickoff,league:'2',season:'2026',rows:[]};}
+ const t=d.teams[1];
+ t.injuryUsage.rows=[{id:'7',position:'DB',metric:'tackles',values:[4,3,0],role:'recent defensive contributor'}];
+ const result=evaluate(d,g,null,now);
+ assert.equal(result.injury.homeDefense,.5);assert.equal(result.applied[0].role,'recent defensive contributor');
+ for(const values of [[0,4,3],[null,4,3],[3.5,4,3],[4,0,0]]){
+  t.injuryUsage.rows[0].values=values;assert.equal(evaluate(d,g,null,now).injury.homeDefense,0);
+ }
+ t.injuryUsage.rows[0].values=[4,3,0];
+ t.official.rows[0].status='Questionable';assert.equal(evaluate(d,g,null,now).injury.homeDefense,0);
+ t.official.rows[0].status='Out';t.injuryUsage.checkedAt=now-3600001;
+ assert.equal(evaluate(d,g,null,now).injury.homeDefense,0);
 });

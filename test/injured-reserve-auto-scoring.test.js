@@ -43,7 +43,8 @@ test('IR requires current matching roster and cannot override conflicting status
   assert.equal(evaluate(data,game,null,now).injury.awayDefense,0);
   t.injuries.rows=[];
   t.roster.checkedAt=now-3600001;
-  assert.equal(evaluate(data,game,null,now).ready,false);
+  assert.equal(evaluate(data,game,null,now).partial,true);
+  assert.equal(evaluate(data,game,null,now).injury.awayDefense,0);
 });
 
 test('IR QB is shown as unavailable, not just a healthy nonstarter',()=>{

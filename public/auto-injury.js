@@ -3,13 +3,13 @@
 (function(root){
  'use strict';
  const weights={
-  CB:['defense',0.5],S:['defense',0.5],FS:['defense',0.5],SS:['defense',0.5],
+  DB:['defense',0.5],DL:['defense',0.3],CB:['defense',0.5],S:['defense',0.5],FS:['defense',0.5],SS:['defense',0.5],
   DE:['defense',0.5],EDGE:['defense',0.5],OLB:['defense',0.35],ILB:['defense',0.35],LB:['defense',0.35],
   DT:['defense',0.3],NT:['defense',0.3],
   T:['offense',0.35],OT:['offense',0.35],G:['offense',0.3],OG:['offense',0.3],C:['offense',0.3],
   WR:['offense',0.35],RB:['offense',0.25],FB:['offense',0.15],TE:['offense',0.2]
  };
- const position = value => {const p=String(value||'').trim().toUpperCase();return ({LT:'T',RT:'T',OT:'T',LG:'G',RG:'G',OG:'G',LDE:'DE',RDE:'DE',LDT:'DT',RDT:'DT'})[p]||p;};
+ const position = value => {const p=String(value||'').trim().toUpperCase();return ({EDG:'EDGE',MLB:'LB',LT:'T',RT:'T',OT:'T',LG:'G',RG:'G',OG:'G',LDE:'DE',RDE:'DE',LDT:'DT',RDT:'DT'})[p]||p;};
  const roleMatches=(chart,provider)=>{const c=position(chart),p=position(provider);return c===p||(c==='DL'&&['DE','DT','NT'].includes(p))||(c==='DB'&&['CB','S','FS','SS'].includes(p));};
  const empty=()=>({awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0});
  const fresh=(record,age,now)=>record?.available===true&&Number.isFinite(record.checkedAt)&&record.checkedAt<=now&&now-record.checkedAt<=age;
@@ -51,17 +51,22 @@
    teamId,side,label:side==='away'?game.a||'Away':game.h||'Home',
    team:data.teams.find(t=>String(t.id)===teamId)
   }));
-  for(const {label,team:t} of teams){
+  const eligible=new Set();
+  for(const {teamId,label,team:t} of teams){
+   const start=withheld.length;
    if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
     withheld.push(label+': current matched roster and official game report required; no point estimate.');
    if(!t||(!(fresh(t.depth,3600000,now)&&matchGame(t.depth,game)||fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game))&&!(fresh(t.quarterback,3600000,now)&&matchGame(t.quarterback,game)&&t.quarterback.rows?.length>0)))
     withheld.push(label+': player-role data unavailable, expired, or for a different matchup; no point estimate.');
+   if(withheld.length===start)eligible.add(teamId);
   }
-  if(withheld.length){
-   state.message='Automatic injury coverage incomplete for at least one team. No automatic points for either team; keep baseline until both official game reports and player-role data are fresh.';
+  state.partial=eligible.size<teams.length;
+  if(!eligible.size){
+   state.message='Automatic injury coverage incomplete for both teams. Baseline retained until matched official reports and player-role data are fresh.';
    return state;
   }
   for(const {teamId,side,label,team:t} of teams){
+   if(!eligible.has(teamId))continue;
    const roster=new Map((t.roster.rows||[]).filter(r=>r?.id).map(r=>[String(r.id),r]));
    // IR players are often absent from the weekly game-status report. Only a fresh
    // provider roster's explicit injured-reserve group can add these candidates.
@@ -125,7 +130,7 @@
     const depthRows=String(game.league)==='1'&&fresh(t.depth,3600000,now)&&matchGame(t.depth,game)?t.depth.rows||[]:[];
     const slots=depthRows.filter(r=>String(r.id)===id&&roleMatches(r.position,pos)&&r.rank===1);
     const usageRows=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?t.injuryUsage.rows||[]:[];
-    const usage=usageRows.filter(r=>String(r.id)===id&&position(r.position)===pos&&['RB','WR','TE'].includes(pos));
+    const usage=usageRows.filter(r=>String(r.id)===id&&position(r.position)===pos&&(['RB','WR','TE'].includes(pos)||(String(game.league)==='2'&&weights[pos]?.[0]==='defense'&&r.metric==='tackles'&&r.role==='recent defensive contributor'&&Array.isArray(r.values)&&Number.isInteger(r.values[0])&&r.values[0]>=3&&r.values.filter(v=>Number.isInteger(v)&&v>=3).length>=2)));
     // An NFL RB2 has a documented depth role even when the recent workload
     // threshold is not met. Use a smaller explicit sensitivity, not starter value.
     const rbDepth=pos==='RB'?depthRows.filter(r=>String(r.id)===id&&position(r.position)==='RB'):[];
@@ -133,7 +138,7 @@
       depthRows.filter(r=>position(r.position)==='RB'&&r.slot===rbDepth[0].slot&&r.rank===2).length===1;
     if(slots.length>1||!(slots.length===1||usage.length===1||rb2)){withheld.push(label+': '+name+' (OUT) has no unique starter, RB2, or recent regular workload evidence; no estimate.');continue;}
     const reserve=slots.length===0&&usage.length!==1&&rb2;
-    const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':'recent regular contributor';
+    const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':usage[0]?.role||'recent regular contributor';
     const weight=weights[pos];
     if(!weight){withheld.push(label+': '+name+' (OUT, '+pos+') has no supported positional sensitivity assumption.');continue;}
     const lineupProps=lineup?.gameId===String(game.id)&&lineup?.kickoff===game.kickoff?
@@ -166,7 +171,7 @@
    if(!applied.some(p=>p.teamId===teamId))withheld.push(label+': no supported injury adjustment; this does not establish full health.');
   }
   state.ready=true;
-  state.message='Experimental positional injury sensitivity: fresh, matched official Out reports or explicit injured-reserve entries from current NFL provider rosters, with starter, RB2 depth, or recent workload evidence; capped at 2 points per team and side. '+
+  state.message=(state.partial?'Partial coverage: verified adjustments applied independently; the other team remains unvalued. ':'')+'Experimental positional injury sensitivity: fresh, matched official Out reports or explicit injured-reserve entries from current NFL provider rosters, with starter, RB2 depth, or recent workload evidence; capped at 2 points per team and side. '+
     'Weights are hand-set assumptions, not validated player values. An absence may already be reflected in season averages; do not use this as a proven betting edge.';
   return state;
  }

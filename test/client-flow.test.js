@@ -1035,3 +1035,29 @@ test('football rejects undated and stale quotes and withdraws fresh quotes at ki
  h.run('selected.kickoff=Date.now()+1000');await h.run('loadFanDuel()');assert.equal(h.nodes.get('total').value,'48.5');
  clock+=1000;h.run('expireGameLines()');assert.equal(h.nodes.get('total').value,'');assert.equal(h.nodes.get('spread').value,'');
 });
+
+test('college defensive workload changes the actual forecast even when opponent coverage is missing',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ h.data.teams=Array.from({length:138},(_,i)=>({...structuredClone(h.data.teams[i%32]),id:String(i+1)}));
+ for(const t of h.data.teams)for(const m of Object.values(t.metrics))m.pool=138;
+ h.data.coverage.pointsFor.expected=138;h.data.coverage.pointsAgainst.expected=138;
+ h.run("const originalProject=Unit501TeamModel.project; Unit501TeamModel.project=(...args)=>{window.lastInjuryOptions=args[2]; window.lastInjuryProjection=originalProject(...args); return window.lastInjuryProjection;}");
+ h.run("selected.league='2'; $('autoInjuries').checked=false; sim()");
+ const baseline=h.run('lastInjuryProjection');
+ const game=h.run('selected'),now=Date.now();
+ const data={current:true,teams:[{id:'2',roster:{available:true,checkedAt:now,rows:[{id:'18',name:'College Defender',position:'LB'}]},
+  official:{available:true,checkedAt:now,league:'2',season:game.season,gameId:game.id,kickoff:game.kickoff,rows:[{id:'18',teamId:'2',name:'College Defender',status:'Out'}]},
+  injuryUsage:{available:true,checkedAt:now,league:'2',season:game.season,gameId:game.id,kickoff:game.kickoff,rows:[{id:'18',position:'LB',metric:'tackles',values:[4,5,3],role:'recent defensive contributor'}]}}]};
+ h.context.Unit501Availability={snapshot:()=>data};
+ h.nodes.get('autoInjuries').checked=true;await h.nodes.get('autoInjuries').dispatchEvent({type:'change'});
+ h.run('sim()');
+ assert.equal(h.run('lastInjuryOptions.injury.homeDefense'),.35);
+ assert.match(h.nodes.get('auto-injury-status').textContent,/College Defender.*factored in.*Partial coverage/);
+ assert.equal(h.run('latestForecast'),null);
+ const adjusted=h.run('lastInjuryProjection');
+ assert.ok(Math.abs(adjusted.away-baseline.away-.35)<1e-9);
+ assert.equal(adjusted.home,baseline.home);
+ data.teams[0].official.rows[0].status='Questionable';h.run('sim()');
+ assert.equal(h.run('lastInjuryOptions.injury.homeDefense'),0);
+ assert.equal(h.run('lastInjuryProjection.away'),baseline.away);
+});

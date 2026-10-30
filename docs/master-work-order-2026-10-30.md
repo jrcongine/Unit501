@@ -496,3 +496,11 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   production roster match or prove tonight's numeric injury adjustment is available.
 - Tasks 16/20/75/97 gain Big 12 source coverage. Protected production acceptance and
   unsupported conferences remain open; no invented injury estimates or new weights.
+
+### College defensive injury projection connection — October 30 follow-up
+
+- Tasks 75/97: added college defensive workload eligibility from provider box scores: at least 3 recorded tackles in two of the last three distinct completed games, including the latest. This is a conservative contributor screen, not proof of starting role, snaps, or player value. Existing capped positional assumptions now support DB/DL and EDG/MLB labels; questionable players, missing roster identities, stale reports, and unsupported blocking roles remain unvalued.
+- Verified injury scoring now operates independently per team. Missing opponent coverage no longer cancels supported adjustments; the UI explicitly labels partial coverage, and partial forecasts remain excluded from the pregame archive.
+- Workload schedules reconcile duplicate/conflicting observations, and cached evidence retains its actual source timestamp instead of renewing on each read.
+- Regression coverage checks the real client simulation: a supported college LB absence adds 0.35 to the opponent projection, leaves its own score unchanged, and withdraws that change when the status becomes Questionable. This uses controlled fixtures, not private production evidence.
+- Baylor–UCF's actual production roster/workload matches still require authenticated observation. This batch does not establish that every listed absence has an estimated impact or calibrate those point assumptions. Master tasks remain partially covered.

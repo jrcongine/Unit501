@@ -43,3 +43,36 @@ test('NFL workload uses completed regular-season games before kickoff and ignore
  assert.equal(t.injuryUsage.available,true);assert.equal(t.injuryUsage.rows[0].id,'7');
  assert.deepEqual(requested.sort(),['/games/statistics/players?id=2','/games/statistics/players?id=3']);
 });
+
+test('defensive workload requires repeated recorded tackles including the latest game',()=>{
+ const defensiveBoxes=values=>new Map(games.map((g,i)=>[String(g.game.id),defenseBox(values[i])]));
+ for(const position of ['CB','DB','S','LB','MLB','EDGE','EDG','DL','DT']){
+  const rows=buildUsage(games,defensiveBoxes([4,3,0]),10,[{id:'7',position}]);
+  assert.equal(rows.length,1);assert.equal(rows[0].metric,'tackles');
+  assert.equal(rows[0].role,'recent defensive contributor');
+ }
+ for(const values of [[0,4,3],[4,0,0],[null,4,3],[true,4,3],['--',4,3],[-1,4,3],[3.5,0,3]])
+  assert.equal(buildUsage(games,defensiveBoxes(values),10,[{id:'7',position:'LB'}]).length,0);
+ assert.equal(buildUsage(games,defensiveBoxes([4,3,3]),10,[{id:'7',position:'OL'}]).length,0);
+ assert.throws(()=>buildUsage([games[0],games[0]],defensiveBoxes([4,3,3]),10,[{id:'7',position:'LB'}]),/Duplicate/);
+});
+
+test('workload cache preserves source age and repeated schedule rows cannot establish a role',async()=>{
+ let clock=Date.parse('2026-10-30T18:00:00Z');const at=clock,kickoff=clock+3600000;
+ const game={league:{id:2,season:2026},teams:{home:{id:10},away:{id:11}},game:{id:1,status:{short:'FT'},date:{timestamp:(clock-86400000)/1000}}};
+ let schedule=[game,structuredClone(game)];
+ const enrich=createCollegeInjuryUsage(async path=>({response:path.startsWith('/games?')?schedule:defenseBox(4)}),()=>clock);
+ const team={id:'10',official:{available:true,kickoff,rows:[{id:'7',status:'Out'}]},roster:{rows:[{id:'7',position:'LB'}]}};
+ const q={league:'2',season:'2026',game:'4'};
+ await enrich(q,[team]);assert.equal(team.injuryUsage.available,false);
+ // A fresh adapter sees two distinct games; subsequent reads keep the source timestamp.
+ schedule=[game,{...game,game:{...game.game,id:2,date:{timestamp:(clock-2*86400000)/1000}}}];
+ const clean=createCollegeInjuryUsage(async path=>({response:path.startsWith('/games?')?schedule:defenseBox(4)}),()=>clock);
+ await clean(q,[team]);assert.equal(team.injuryUsage.rows.length,1);
+ clock+=60000;await clean(q,[team]);assert.equal(team.injuryUsage.checkedAt,at);
+});
+
+function defenseBox(value){
+ const player={player:{id:7,name:'Defender'},statistics:[{name:'Tackles',value}]};
+ return [{team:{id:10},groups:[{name:'Defensive',players:[player]}]}];
+}

@@ -76,7 +76,7 @@ function renderAutomaticInjuries(result,applied=false){
   $('auto-injury-status').dataset.state=!result.ready?'review':result.applied.length?'applied':'clear';
   const who=result.applied.map(p=>{const designation=p.status==='Injured reserve'?'IR':'OUT';return p.category==='quarterback'?`${p.name} — ${designation} — ${applied?'factored in':'ready for next simulation'} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — ${designation} — ${applied?'factored in':'ready for next simulation'} (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`;});
   const hasAbsence=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.roster?.rows||[]).some(p=>/\binjured reserve\b/i.test(p.group||'')));
-  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasAbsence?'Unavailable players listed; no supported point change.':'No confirmed injury adjustment.';
+  $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · ')+(result.partial?' · Partial coverage; other team unvalued.':''):!result.ready?'Injury data incomplete—no adjustment yet.':hasAbsence?'Unavailable players listed; no supported point change.':'No confirmed injury adjustment.';
   const list=$('injury-adjustment-reasons');list.replaceChildren();
   for(const reason of result.withheld){const row=document.createElement('li');row.textContent=reason;list.append(row);}
   $('injury-adjustment-details').hidden=!result.withheld.length;
@@ -1100,7 +1100,7 @@ function sim() {
     +' · '+(calibratedMarkets.length?'Partial calibration':'Uncalibrated estimates')
     +'. Details and limitations below.';
   if(window.Unit501ForecastArchive){
-    if(automatic&&!automatic.ready){
+    if(automatic&&(!automatic.ready||automatic.partial)){
       latestForecast=null;
     }else try{
       const snapshot=Unit501ForecastArchive.capture({game:selected,data,options,marketContext:{awaySpread:spread,total,quotes:gameQuotes?.game===selected?gameQuotes.data:null},availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()},forecastAt);
