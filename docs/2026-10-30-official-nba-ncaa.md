@@ -26,3 +26,11 @@ Authenticated production screens and paid-provider end-to-end requests could not
 ## Follow-up: optional-source failure isolation
 
 The NBA history and replay callers now isolate unexpected official-source exceptions from the validated ESPN response. An official-source outage does not erase valid secondary history or skip the entire replay. It contributes zero official verification; missing-player coverage gates still prevent partial-history projections. Added integration tests verify restoration of a known missing zero appearance before coverage calculation, live-history fallback, and replay fallback with missing-record withholding. Full follow-up suite: 705 tests passed, zero failures.
+
+## Follow-up: unresolved basketball minutes
+
+NBA and college basketball rows with missing/malformed or rounded-zero minutes now stay in an explicit unverified collection, outside the played-game count. Coverage counts them as missing and blocks projections until resolved. Previously they were stored as appearances despite the player being unavailable.
+
+Known numerical market values are retained as conflict evidence. A uniquely matched official played row can restore the appearance only when those values agree; contradictory official DNP or market values remain blocked. Reconciliation does not clear unrelated player conflicts. NBA replay uses the same distinction for histories and target outcomes. This also allows an official zero-stat appearance to restore a complete history without inventing a DNP.
+
+Validation: 708 tests passed, zero failures. New integration cases cover both basketball leagues, missing/zero minutes, successful official restoration, conflicting statistics/DNP, and replay historical/actual repair. Whitespace check passed. No college postseason feature was added: the app's college basketball context still requires regular-season games, so championship-page support remains outside the active projection path. Authenticated production UI verification remains outstanding.

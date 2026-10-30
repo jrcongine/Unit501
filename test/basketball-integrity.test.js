@@ -26,3 +26,14 @@ test('both basketball leagues share zero-inclusive median, counts and unknown-hi
  let out=project(history,quote,game,null,now);assert.equal(out.average,7.5);assert.equal(out.median,5);assert.equal(out.games,4);assert.equal(out.above,1);assert.equal(out.below,2);assert.equal(out.equal,1);assert.equal(out.coverage.dnp,1);
  p.coverage.missing=1;assert.equal(project(history,quote,game,null,now).available,false);
 });
+test('college unknown minutes are missing, and matching official evidence restores the appearance',async()=>{
+ const g=identity(cbbRaw),player=college.extract(cbbRaw,g,g.awayId).find(p=>p.available!==false),copies=[structuredClone(cbbRaw),structuredClone(cbbRaw)];
+ copies[1].header.id='998';copies[1].header.competitions[0].date=new Date(Date.parse(g.tipoff)-86400000).toISOString();
+ const group=copies[0].boxscore.players.find(t=>t.team.id===g.awayId).statistics[0];group.athletes.find(p=>p.athlete.id===player.id).stats[group.keys.indexOf('minutes')]='--';
+ const feed={context:async()=>Object.fromEntries([['away',g.awayId],['home',g.homeId]].map(([side,id])=>[side,{id,name:side,recentGames:copies.map(d=>({id:d.header.id,tipoff:d.header.competitions[0].date,opponentId:id===g.awayId?g.homeId:g.awayId,scored:id===g.awayId?g.for:g.against,allowed:id===g.awayId?g.against:g.for}))}]))};
+ for(const verified of [false,true]){
+ const get=college.createPlayers({feed,fetcher:async url=>({ok:true,json:async()=>copies.find(d=>d.header.id===new URL(url).searchParams.get('event'))}),official:async d=>verified&&d.header.id===g.id?{available:true,gameId:g.id,tipoff:g.tipoff,teams:[{id:g.awayId,players:[{name:player.name,participation:'played',minutes:player.minutes,values:Object.fromEntries(['player_points','player_rebounds','player_assists','player_threes'].map(k=>[k,player[k]]))}]}]}:{available:false}});
+ const result=await get.history({...g,id:'999',tipoff:new Date(Date.parse(g.tipoff)+86400000).toISOString()}),p=result.teams[0].players.find(p=>p.id===player.id);
+ assert.equal(p.available,verified);assert.equal(p.coverage.played,verified?2:1);assert.equal(p.coverage.missing,verified?0:1);assert.equal(p.coverage.dnp,0);
+ }
+});

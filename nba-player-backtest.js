@@ -34,8 +34,8 @@ async function replay(raw,season,options={}){
    for(const g of prior){
     const data=await box(g),rows=extractBox(data,perspective(g,id),id,season,2);
     for(const p of rows){const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
-     if(item.name!==p.name||p.available===false)item.available=false;
-     item.results.push({gameId:g.id,tipoff:g.tipoff,minutes:p.minutes,...p.values});players.set(p.id,item);}
+     if(item.name!==p.name)item.available=false;
+     require('./nba-player-history').recordAppearance(item,p,g);players.set(p.id,item);}
     for(const p of extractInactive(data,id,rows)){
      const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
      if(item.name!==p.name)item.available=false;
@@ -47,8 +47,9 @@ async function replay(raw,season,options={}){
    let actual=extractBox(await box(target),perspective(target,id),id,season,2);
    if(options.official){
     const observed=new Map([...players.values()].map(p=>[p.id,{id:p.id,name:p.name,available:true,results:[],inactive:[]}]));
-    for(const p of actual)observed.set(p.id,{id:p.id,name:p.name,available:p.available!==false,results:[{gameId:target.id,tipoff:target.tipoff,minutes:p.minutes,...p.values}],inactive:[]});
+    for(const p of actual){const item={id:p.id,name:p.name,available:true,results:[],inactive:[]};require('./nba-player-history').recordAppearance(item,p,target);observed.set(p.id,item);}
     require('./nba-official-history').reconcile(observed,[target],officialReports,id);
+    reconcileCoverage(observed,[target]);
     actual=[...observed.values()].filter(p=>p.available&&p.results.length===1).map(p=>({id:p.id,name:p.name,values:p.results[0]}));
    }
    const now=Date.parse(target.tipoff)-1;

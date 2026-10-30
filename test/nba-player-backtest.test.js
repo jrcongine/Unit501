@@ -66,3 +66,11 @@ test('optional official source failure preserves validated replay and missing-re
  const baseline=await replay(games,2025,options),failed=await replay(games,2025,{...options,official:async()=>{throw Error('Official source timeout');}});
  assert.deepEqual(failed,baseline);assert.equal(failed.metrics.player_points.samples,2);assert.equal(failed.officialGames,0);
 });
+test('official evidence repairs unknown minutes in replay histories and actuals without inventing appearances',async()=>{
+ for(const verified of [false,true]){
+  const {games,responses}=fixture();for(const id of [10,16,17])responses.get(id).boxscore.players[0].statistics[0].athletes[0].stats[0]='--';
+  const official=async data=>verified?{available:true,gameId:data.header.id,tipoff:data.header.competitions[0].date,teams:[{id:'1',players:[{name:'Player 1',participation:'played',minutes:30,values:{player_points:20,player_rebounds:5,player_assists:4,player_threes:2}}]}]}:{available:false};
+  const result=await replay(games,2025,{limit:2,official,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+  assert.equal(result.metrics.player_points.samples,verified?4:2);assert.equal(result.metrics.player_points.mae,0);
+ }
+});

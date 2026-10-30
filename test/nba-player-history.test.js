@@ -88,3 +88,12 @@ test('official reconciliation restores a known missing zero appearance before co
  const result=await createPlayerHistory({...f,now:()=>now,official})(selected,'2026-10-26',2026),p=result.teams[0].players.find(p=>p.name==='Player A');
  assert.deepEqual(p.coverage,{total:2,played:2,dnp:0,missing:0});assert.equal(p.results.find(r=>String(r.gameId)==='1').player_points,0);assert.equal(result.teams[0].verification.filled,1);
 });
+test('unverified minutes stay missing until official participation and statistics agree',async()=>{
+ for(const minutes of ['0','--'])for(const mode of ['missing','verified','conflict','dnp']){
+  const f=feeds(),base=f.fetcher;
+  f.fetcher=async url=>{const r=await base(url),d=await r.json();if(String(url).endsWith('event=1'))d.boxscore.players[0].statistics[0].athletes[0].stats[0]=minutes;return {ok:true,headers:new Headers(),json:async()=>d};};
+  const official=async data=>data.header.id!=='1'||mode==='missing'?{available:false}:{available:true,gameId:'1',tipoff:teamGames[0][0].tipoff,teams:[{id:'4',players:[{name:'Player A',participation:mode==='dnp'?'dnp':'played',minutes:30,values:{player_points:mode==='conflict'?19:18,player_rebounds:0,player_assists:5,player_threes:2}}]}]};
+  const result=await createPlayerHistory({...f,now:()=>now,official})(selected,'2026-10-26',2026),p=result.teams[0].players.find(p=>p.name==='Player A');
+  assert.equal(p.available,mode==='verified');assert.equal(p.coverage.played,mode==='verified'?2:1);assert.equal(p.coverage.missing,mode==='verified'?0:1);assert.equal(p.coverage.dnp,0);assert.equal(p.unverified.length,mode==='verified'?0:1);
+ }
+});

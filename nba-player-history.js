@@ -47,11 +47,8 @@ function extractBox(data,prior,teamId,season,stage){
   if(conflictingDNP(row,keys))throw Error('Conflicting NBA participation');
   if(row.didNotPlay)continue;
   const min=minutes(stats[keys.indexOf('minutes')]);
-  // Quarantine a malformed appearance without hiding unrelated verified players.
-  if(min===null){output.push({id,name,available:false,minutes:null,values:{}});continue;}
-  if(min===0){output.push({id,name,available:false,minutes:0,values:{}});continue;}
   const values=Object.fromEntries(Object.entries(METRICS).map(([market,key])=>[market,stat(stats[keys.indexOf(key)],market==='player_threes')]));
-  output.push({id,name,minutes:min,values});
+  output.push({id,name,minutes:min,values,...(min===null||min===0?{available:false}:{})});
  }
  if(!output.length)throw Error('NBA box score has no verified player appearances');
  return output;
@@ -71,9 +68,15 @@ function extractInactive(data,teamId,active){
  }
  return out;
 }
+function recordAppearance(player,row,game){
+ const result={gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values};
+ if(row.available===false){player.unverified=player.unverified||[];player.unverified.push(result);}
+ else player.results.push(result);
+}
 function reconcileCoverage(players,games){
  for(const p of players.values()){
   const appearances=p.results||[],inactive=p.inactive||[];
+  if(p.unverified?.length)p.available=false;
   const ids=[...appearances,...inactive].map(g=>String(g.gameId));
   const expected=new Set(games.map(g=>String(g.id)));
   // Duplicate, contradictory or out-of-window rows cannot establish coverage.
@@ -116,7 +119,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
      const active=extractBox(result.data,game,side.id,season,match.stage);
      for(const row of active){
       const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
-      const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};if(row.available===false)player.available=false;player.results.push({gameId:game.id,tipoff:game.tipoff,minutes:row.minutes,...row.values});players.set(row.id,player);
+      const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};recordAppearance(player,row,game);players.set(row.id,player);
      }
      for(const row of extractInactive(result.data,side.id,active)){
       const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
@@ -132,4 +135,4 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
   return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:official?'NBA official reconciliation with ESPN completed box scores':'ESPN completed NBA box scores',teams};
  };
 }
-module.exports={conflictingDNP,METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};
+module.exports={recordAppearance,conflictingDNP,METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};
