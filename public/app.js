@@ -171,6 +171,7 @@ function expireGameLines(){
   armGameLineExpiry();
 }
 const oddsStatus = document.createElement('p');
+oddsStatus.className = 'matchup-odds';
 oddsStatus.setAttribute('aria-live', 'polite');
 const refreshOdds = document.createElement('button');
 refreshOdds.textContent = 'Refresh FanDuel lines';
