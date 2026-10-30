@@ -35,8 +35,22 @@
     propStatus.textContent = 'Loading FanDuel prop lines… Existing quotes stay visible unless a new response succeeds.';
     try {
       const params = new URLSearchParams({away:game.a,home:game.h,league:game.league || el('league').value,kickoff:game.kickoff});
-      const res = await fetch('/api/fanduel-props?' + params, {signal:AbortSignal.timeout(30000)});
-      const data = await res.json();
+      // A neutral same-origin route avoids sportsbook URL filtering. Retry only
+      // transport failures; provider/auth errors must retain their real message.
+      let res;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          res = await fetch('/api/football/player-lines?' + params, {cache:'no-store',signal:AbortSignal.timeout(30000)});
+          break;
+        } catch (error) {
+          if (task !== propSequence || selection !== sequence) return;
+          if (attempt === 1) throw new Error(error.name === 'TimeoutError'
+            ? 'Player-line request timed out after retrying.'
+            : 'Player-line request could not reach Unit 501 after retrying. Check the connection or browser request filtering.');
+        }
+      }
+      if (res.status === 401) throw new Error('Private session expired. Reload Unit 501 and sign in again.');
+      const data = await res.json().catch(() => { throw new Error('Player-line request returned an unexpected response (HTTP '+res.status+').'); });
       if (task !== propSequence || selection !== sequence) return;
       if (!res.ok || data.error) throw new Error(data.error || 'FanDuel props unavailable.');
       if (!Array.isArray(data.props)) throw new Error('FanDuel prop response had no valid list of quotes.');

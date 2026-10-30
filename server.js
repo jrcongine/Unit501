@@ -302,7 +302,7 @@ const server = http.createServer(async (req, res) => {
       }
       return send(res,200,getRankings(query));
     }
-    if (u.pathname === '/api/fanduel' || u.pathname === '/api/fanduel-props' || u.pathname === '/api/football/comparison') {
+    if (u.pathname === '/api/fanduel' || u.pathname === '/api/fanduel-props' || u.pathname === '/api/football/player-lines' || u.pathname === '/api/football/comparison') {
       const query = Object.fromEntries(u.searchParams);
       query.kickoff = Number(query.kickoff);
       if (!fanduel.sports[query.league] || !query.away || !query.home ||
@@ -311,7 +311,7 @@ const server = http.createServer(async (req, res) => {
         return send(res, 400, { error: 'Valid league, teams and kickoff required' });
       }
       if (u.pathname === '/api/football/comparison') return send(res, 200, await footballComparison(query));
-      return send(res, 200, await trackedOdds.football(query, u.pathname === '/api/fanduel-props' ? 'props' : 'game'));
+      return send(res, 200, await trackedOdds.football(query, ['/api/fanduel-props','/api/football/player-lines'].includes(u.pathname) ? 'props' : 'game'));
     }
 // Get player statistics for a game
 

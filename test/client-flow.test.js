@@ -54,7 +54,7 @@ function harness(storage=new Map(),extras=false) {
   else if(u.pathname==='/api/fanduel')response={available:true,awaySpread:7.5,total:48.5,spreadUpdated:Date.now(),totalUpdated:Date.now()};
   else if(u.pathname==='/api/team-games')response={response:[1,2].map(id=>({...game,game:{...game.game,id,date:{timestamp:stamp-id*86400-1000},status:{short:'FT',long:'Finished'}}}))};
   else if(u.pathname==='/api/player-stats')response={response:['1','2'].map((id,i)=>({team:{id:Number(id),name:'Team '+(i?'B':'A')},groups:[{name:'Rushing',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Total Rushes',value:20},{name:'Yards',value:100}]}]},{name:'Receiving',players:[{player:{id:i+7,name:'RB '+id},statistics:[{name:'Receptions',value:4},{name:'Yards',value:24},{name:'Targets',value:5}]}]}]}))};
-  else if(u.pathname==='/api/fanduel-props')response={props:[{name:'RB 1',stat:'carries',line:19.5,updatedAt:Date.now()},{name:'RB 1',stat:'recYds',line:22.5,updatedAt:Date.now()},{name:'RB 1',stat:'rec',line:3.5,updatedAt:Date.now()}],coverage:require('../fanduel-props').marketCoverage([{stat:'carries'},{stat:'recYds'},{stat:'rec'}]),message:'Fixture props'};
+  else if(u.pathname==='/api/football/player-lines')response={props:[{name:'RB 1',stat:'carries',line:19.5,updatedAt:Date.now()},{name:'RB 1',stat:'recYds',line:22.5,updatedAt:Date.now()},{name:'RB 1',stat:'rec',line:3.5,updatedAt:Date.now()}],coverage:require('../fanduel-props').marketCoverage([{stat:'carries'},{stat:'recYds'},{stat:'rec'}]),message:'Fixture props'};
   else if(u.pathname==='/api/availability')response={current:true,teams:['1','2'].map(id=>({id,roster:{available:true,checkedAt:Date.now(),rows:[{id:id==='1'?'7':'8',name:'RB '+id,position:'RB'},...(id==='1'?[{id:'9',name:'ZZBackup',position:'RB'}]:[])]},injuries:{available:true,checkedAt:Date.now(),rows:context.injuryOut?[{id:'7',teamId:'1',status:'Out',date:new Date().toISOString()}]:[]}})),message:'Fixture'};
   else if(u.pathname==='/api/player-ratings')response={state:'ready',data:{league:'1',season:'2026',before:stamp*1000,players:[{id:'7',teamId:'1',name:'RB 1',position:'RB',role:'RB',rating:80,trend:'Steady',games:4,coverage:[{count:4}],profiles:{receiving:{usage:2,efficiency:6,games:4,latestMissing:false,coverage:{recorded:4,total:4}},rushing:{usage:20,efficiency:5,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}},{id:'9',teamId:'1',name:'ZZBackup',position:'RB',role:'RB',rating:45,trend:'Steady',games:4,coverage:[{count:4}],profiles:{receiving:{usage:2,efficiency:6,games:4,latestMissing:false,coverage:{recorded:4,total:4}},rushing:{usage:5,efficiency:3,games:4,latestMissing:false,coverage:{recorded:4,total:4}}}}]}};
   else throw Error('Unexpected client request '+url);
@@ -531,7 +531,7 @@ test('failed FanDuel props refresh keeps fresh automatic quotes and table lines'
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
  const original=h.context.fetch;
- h.context.fetch=async url=>new URL(url,'http://localhost').pathname==='/api/fanduel-props'
+ h.context.fetch=async url=>new URL(url,'http://localhost').pathname==='/api/football/player-lines'
    ? {ok:false,status:500,json:async()=>({error:'FanDuel prop feed returned 401 (INVALID_KEY). Check ODDS_API_KEY.'})}
    : original(url);
  const refresh=h.created.find(node=>node.tag==='button'&&node.textContent==='Refresh FanDuel props');
@@ -547,7 +547,7 @@ test('prop board omits price clutter while manual line edits still clear pick pr
  const original=h.context.fetch;
  h.context.fetch=async url=>{
   const response=await original(url);
-  if(new URL(url,'http://localhost').pathname!=='/api/fanduel-props')return response;
+  if(new URL(url,'http://localhost').pathname!=='/api/football/player-lines')return response;
   const data=await response.json();
   data.props=data.props.map(p=>({...p,over:p.stat==='rec'?99:-136,under:p.stat==='rec'?null:120}));
   return {ok:true,json:async()=>data};
@@ -1090,7 +1090,7 @@ test('reviewed Baylor and UCF quote spellings populate real client fields withou
   const r=await original(url);const data=await r.json();
   if(String(url).startsWith('/api/team-games?'))for(const game of data.response)game.league.id=2;
   if(String(url).startsWith('/api/player-stats?'))for(const team of data.response){team.team.name=team.team.id===1?'Baylor':'UCF';for(const group of team.groups)for(const p of group.players)p.player.name=team.team.id===1?'Louis Brown':'Joshua Derry';}
-  if(String(url).startsWith('/api/fanduel-props?'))data.props=[['Louis Brown IV','recYds',22.5],['Louis Brown IV','rec',3.5],['Josh Derry','recYds',22.5],['Josh Derry','rec',3.5]].map(([name,stat,line])=>({name,stat,line,updatedAt:Date.now()}));
+  if(String(url).startsWith('/api/football/player-lines?'))data.props=[['Louis Brown IV','recYds',22.5],['Louis Brown IV','rec',3.5],['Josh Derry','recYds',22.5],['Josh Derry','rec',3.5]].map(([name,stat,line])=>({name,stat,line,updatedAt:Date.now()}));
   return {ok:true,json:async()=>data};
  };
  await h.settle();h.run('$("league").value="2"');const game=JSON.parse(JSON.stringify(h.game));game.league.id=2;game.teams.away.name='Baylor';game.teams.home.name='UCF';h.run(`choose(parseGame(${JSON.stringify(game)}))`);await h.settle();
@@ -1102,4 +1102,26 @@ test('reviewed Baylor and UCF quote spellings populate real client fields withou
  const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');await refresh.dispatchEvent({type:'click'});
  assert.equal(h.nodes.get('line-1:7-recYds').value,'25.5');
  assert.match(h.nodes.get('prop-feed-status').textContent,/1 manual entries preserved/);
+});
+
+
+test('player lines recover from one network failure and populate comparisons',async()=>{
+ const h=harness();await h.settle();
+ const original=h.context.fetch;let attempts=0;
+ h.context.fetch=async url=>{
+  if(String(url).startsWith('/api/football/player-lines?')&&++attempts===1)throw new TypeError('Failed to fetch');
+  return original(url);
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ assert.equal(attempts,2);
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.match(h.nodes.get('prop-feed-status').textContent,/3 player lines filled/);
+ const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');
+ attempts=0;h.context.fetch=async url=>{if(String(url).startsWith('/api/football/player-lines?')){attempts++;throw new TypeError('Failed to fetch');}return original(url);};
+ await refresh.dispatchEvent({type:'click'});
+ assert.equal(attempts,2);
+ assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
+ assert.match(h.nodes.get('prop-feed-status').textContent,/could not reach Unit 501 after retrying/);
+ assert.equal(refresh.disabled,false);
 });
