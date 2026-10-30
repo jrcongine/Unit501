@@ -8,6 +8,7 @@
 <nav class="basketball-leagues" aria-label="Basketball league"><a href="nba.html">NBA</a><a href="ncaab.html" aria-current="page">College basketball</a></nav>
 <section class="card"><h2>Game slate</h2><label for="ncaab-date">Game date</label><input id="ncaab-date" type="date"><button id="ncaab-load" type="button">Load Slate</button><p id="ncaab-status" role="status">Choose a date and load games.</p><div id="ncaab-games" class="nba-games"></div></section>
 <section id="ncaab-lab" class="card hidden"><h2>Game Lab</h2><h3 id="ncaab-matchup"></h3><p id="ncaab-game-info"></p><p id="ncaab-context-status" role="status"></p>
+<div><button id="ncaab-refresh-context" type="button">Refresh team history</button></div>
 <label for="ncaab-scope">Compare form</label><select id="ncaab-scope"><option value="season">Season</option><option value="recent5">Last 5</option><option value="recent10">Last 10</option></select>
 <div id="ncaab-teams" class="nba-comparison"></div>
 <section class="nba-model-status"><h3>Experimental score estimate</h3><p id="ncaab-prediction"></p><p class="war-muted">Experimental estimate · not calibrated.</p>

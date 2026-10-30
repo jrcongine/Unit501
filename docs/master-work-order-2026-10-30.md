@@ -404,3 +404,23 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   still requires authenticated access; public health checks cannot substitute for it.
 - Previous venue commit 11449ba5f0131152d8951448eb6ff6a047678a4a passed GitHub Actions
   41116164488 and deployed successfully to both Railway services.
+
+## Basketball estimate freshness — continuation
+
+- NBA and college basketball Game Lab now withhold estimates, market comparisons and
+  simulations when team-history timestamps are missing, in the future beyond clock
+  tolerance, or older than one hour (matching the context feed-health threshold).
+  Local expiry clears previously displayed scores without another request.
+- Both leagues show source check times in Central Time and offer Refresh team history.
+  Refresh preserves form selection and manually entered college lines. Older in-flight
+  refreshes cannot overwrite newer responses. Pure replay/model functions remain usable
+  for historical audits; this freshness gate applies to the live browser display.
+- 777 automated tests passed. Local populated NBA/college browser flows at 1440px and
+  390px verified expiry, cleared simulations, successful refresh, no page overflow and
+  no JavaScript errors. These use explicit fixtures, not authenticated production feeds.
+- Tasks 11/18/87/94 gain coverage; full basketball completion and production acceptance
+  remain open. Prior commit 7a5ab452dd1bf7c2e48c635404ac6b9eca6dfe30 passed CI and both
+  Railway deployments. No provider entitlement or calibrated accuracy is claimed.
+- Concurrent theme commit c1a49c9d29a26af0ef6821ae12b2174881be6f85 was preserved.
+  Repeated the 777-test suite and populated desktop/mobile expiry/refresh checks on
+  that combined dark-theme version; all passed.

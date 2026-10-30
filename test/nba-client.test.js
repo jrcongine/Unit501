@@ -23,7 +23,7 @@ function harness(){
  const games=[{id:899,away:'Chicago Bulls',awayId:5,home:'Milwaukee Bucks',homeId:6,tipoff:'2026-10-24T23:00:00Z',stage:2,status:'Scheduled',awayScore:null,homeScore:null},
  {id:900,away:'Cleveland Cavaliers',awayId:7,home:'Boston Celtics',homeId:8,tipoff:'2026-10-24T23:30:00Z',stage:2,status:'Scheduled',awayScore:null,homeScore:null}];
  const history=(id,other,count)=>Array.from({length:count},(_,i)=>({id:id*100+i,stage:2,season:2026,league:'standard',date:{start:`2026-10-${String(10+i).padStart(2,'0')}T23:00:00Z`},status:{short:3},teams:{visitors:{id,name:'Team'},home:{id:other,name:'Opponent'}},scores:{visitors:{points:100+i},home:{points:90}}}));
- const data=g=>({gameId:g.id,away:{...summarize(history(g.awayId,19,7),g.awayId,g),name:g.away},home:{...summarize(history(g.homeId,20,2),g.homeId,g),name:g.home},message:'Historical comparison'});
+ const data=g=>({checkedAt:context.Date.now(),gameId:g.id,away:{...summarize(history(g.awayId,19,7),g.awayId,g),name:g.away},home:{...summarize(history(g.homeId,20,2),g.homeId,g),name:g.home},message:'Historical comparison'});
  const context={document,Date,Intl,URLSearchParams,AbortSignal,console,setTimeout:(fn,ms)=>{const id=++timerId;timeouts.set(id,{fn,ms});return id;},setInterval:(fn,ms)=>{intervals.push({fn,ms});return intervals.length;},clearTimeout(id){timeouts.delete(id);}};
  context.CustomEvent=class{constructor(type,options={}){this.type=type;this.detail=options.detail;}};
  context.Event=class{constructor(type){this.type=type;}};
@@ -295,4 +295,23 @@ test('NBA watch retries a temporary scoreboard failure instead of silently stopp
  const toggle=h.nodes.get('nba-alert-enable');toggle.checked=true;toggle.events.change();await h.settle();
  assert.equal(toggle.checked,true);assert.match(h.nodes.get('nba-alert-status').textContent,/Watch will retry/);
  assert.equal(h.timeouts.size,1);
+});
+
+test('NBA history expires locally, clears simulations and refresh restores the selected form',async()=>{
+ const h=harness();let clock=Date.now();h.context.Date=class extends Date{static now(){return clock;}};
+ h.games[0].tipoff=new Date(clock+86400000).toISOString();h.games[0].statusCode=1;
+ h.context.Unit501NBAModel.project=()=>({available:true,away:110,home:108,total:218,homeSpread:2,awayGames:7,homeGames:7,explanation:''});
+ await h.load();await h.choose(0);assert.match(h.nodes.get('nba-prediction').textContent,/110.0/);
+ const expiry=[...h.timeouts.values()].find(t=>t.ms===3600001);assert.ok(expiry);
+ clock+=3600001;expiry.fn();assert.match(h.nodes.get('nba-prediction').textContent,/stale/);
+ assert.equal(h.nodes.get('nba-simulation').textContent,'');assert.equal(h.nodes.get('nba-team-comparison').children.length,0);
+ h.nodes.get('nba-form-window').value='recent5';await h.nodes.get('nba-refresh-context').events.click();
+ assert.match(h.nodes.get('nba-prediction').textContent,/110.0/);assert.equal(h.nodes.get('nba-form-window').value,'recent5');
+});
+test('NBA cannot project from missing or future source timestamps',async()=>{
+ for(const checkedAt of [undefined,Date.now()+120000]){
+  const h=harness(),base=h.context.fetch;h.context.Unit501NBAModel.project=()=>{throw Error('Unverified history reached model');};
+  h.context.fetch=async url=>{const r=await base(url);if(!String(url).includes('/context?'))return r;const d=await r.json();return {ok:true,json:async()=>({...d,checkedAt})};};
+  await h.load();await h.choose(0);assert.match(h.nodes.get('nba-prediction').textContent,/update time is unverified/);
+ }
 });

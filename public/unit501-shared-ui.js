@@ -128,5 +128,10 @@
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ function historyFreshness(checkedAt,now=Date.now()){
+   const at=typeof checkedAt==='number'?checkedAt:typeof checkedAt==='string'&&checkedAt.trim()?Date.parse(checkedAt):NaN;
+   const expiresAt=at+3600001;
+   return {fresh:Number.isFinite(at)&&at>0&&at<=now+60000&&now<expiresAt,at,expiresAt};
+ }
+ return Object.freeze({historyFreshness,dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

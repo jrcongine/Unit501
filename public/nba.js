@@ -18,7 +18,7 @@
   return label+': '+record.games+' games · '+record.pointsFor+' scored · '+
     record.pointsAgainst+' allowed · '+(record.net>0?'+':'')+record.net+' average margin';
  }
- let activeContext=null;
+ let activeContext=null,contextTimer=null,contextGame=null;
  const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
  const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
  function renderProjection(){
@@ -29,6 +29,7 @@
   const simulation=byId('nba-simulation'),simulationDetail=byId('nba-simulation-detail');simulation.textContent='';simulationDetail.textContent='';
   if(!activeContext){output.textContent='Estimate unavailable until matching team history loads.';return;}
   const {game,data}=activeContext;
+  if(!shared.historyFreshness(data.checkedAt).fresh){output.textContent='Team history is stale or its update time is unverified. Refresh team history.';contextStatus.textContent=output.textContent;return;}
   const result=window.Unit501NBAModel.project(game,data,formWindow.value);
   if(!result.available){output.textContent=result.reason;return;}
   output.textContent=game.away+' '+result.away.toFixed(1)+' · '+game.home+' '+result.home.toFixed(1)+' | Total '+result.total.toFixed(1)+' | '+game.home+' spread '+signed(result.homeSpread);
@@ -58,6 +59,7 @@
   renderProjection();
   headToHead.replaceChildren();
   if(!activeContext)return;
+  if(!shared.historyFreshness(activeContext.data.checkedAt).fresh){comparison.replaceChildren();return;}
   const {data,game}=activeContext;
   const scope=formWindow.value;
   const record=(side,away)=>scope==='venue'?(away?side.awaySplit:side.homeSplit):side[scope];
@@ -128,7 +130,7 @@
  }
  formWindow.addEventListener('change',renderHeadToHead);
  async function loadContext(game){
-  const token=++contextRequest;
+  const token=++contextRequest;contextGame=game;clearTimeout(contextTimer);
   comparison.replaceChildren();headToHead.replaceChildren();activeContext=null;
   renderProjection();
   contextStatus.textContent='Checking earlier NBA team scores…';
@@ -144,9 +146,13 @@
     return;
    }
    activeContext={data,game};
+   const freshness=shared.historyFreshness(data.checkedAt);
+   if(!freshness.fresh){renderHeadToHead();return;}
+   const expiry=Math.min(freshness.expiresAt,Date.parse(game.tipoff)>Date.now()?Date.parse(game.tipoff):Infinity);
+   contextTimer=setTimeout(()=>{if(token===contextRequest)renderHeadToHead();},Math.max(1,expiry-Date.now()));
    renderHeadToHead();
    const cards=[renderTeam(data.away),renderTeam(data.home)];for(const card of cards)comparison.append(card);
-   contextStatus.textContent=(data.source?data.source+' · ':'')+(data.message||'Historical scoring data loaded.');
+   contextStatus.textContent=(data.source?data.source+' · ':'')+(data.message||'Historical scoring data loaded.')+' · Checked '+shared.timeCentral(freshness.at);
    if(game.statusCode===1&&Date.parse(game.tipoff)>Date.now()){
     fetch('/api/nba/travel?'+query,{signal:AbortSignal.timeout(30000)}).then(r=>r.ok?r.json():null).then(travel=>{
      if(token!==contextRequest||!travel||String(travel.gameId)!==String(game.id)||travel.tipoff!==game.tipoff)return;
@@ -162,6 +168,7 @@
    contextStatus.textContent='NBA team history unavailable from the selected source; no projections were generated.';
   }
  }
+ byId('nba-refresh-context').addEventListener('click',()=>{if(contextGame)return loadContext(contextGame);});
  function clearInjuries(message='Select a game to check injuries.'){
   ++injuryRequest;injuryReport=null;window.Unit501NBAMarkets?.setInjuries?.(injuryGame,null);byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent=message;
  }
@@ -223,7 +230,7 @@ function choose(game){
  async function refresh(){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
-  ++contextRequest;activeContext=null;injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
+  ++contextRequest;activeContext=null;contextGame=null;clearTimeout(contextTimer);injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(30000)});
@@ -257,7 +264,7 @@ function choose(game){
  load.addEventListener('click',refresh);
  dateInput.addEventListener('change',refresh);
  byId('nba-clear').addEventListener('click',()=>{
-   ++contextRequest;activeContext=null;injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
+   ++contextRequest;activeContext=null;contextGame=null;clearTimeout(contextTimer);injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
    lab.classList.add('hidden');players.classList.add('hidden');
    if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-clear'));
    for(const card of games.querySelectorAll('.game')){card.classList.remove('selected');card.setAttribute('aria-pressed','false');}

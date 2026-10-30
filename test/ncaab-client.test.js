@@ -6,11 +6,11 @@ function setup(quotes={}){
  const html=fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8');for(const x of html.matchAll(/id="([^"]+)"/g))nodes.set(x[1],new E());
  const future=new Date(Date.now()+86400000).toISOString(),game={id:'10',awayId:'1',homeId:'2',away:'Away',home:'Home',tipoff:future,timeKnown:true,status:'Scheduled',stage:2,neutral:false};
  const rec={games:5,scored:80,allowed:70,wins:3,losses:2};const side=(id,name)=>({id,name,season:rec,recent5:rec,recent10:rec,recentGames:Array.from({length:5},(_,i)=>({id:String(i+1),tipoff:new Date(Date.now()-86400000*(i+1)).toISOString(),opponent:'Opponent',scored:80,allowed:70,venue:'home'}))});
- const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
+ const data={checkedAt:clock,gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
  vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
- const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
+ const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,data,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
  const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();assert.equal(h.nodes.get('ncaab-games').children.length,1);
@@ -202,4 +202,30 @@ test('college prop UI passes its regulation cap and displays historical minutes 
  assert.equal(seen.regulationMinutes,40);
  assert.match(h.nodes.get('ncaab-props').textContent,/Recent minutes up · 32.0 → 45.0 · last 2 vs earlier 3 games/);
  assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/confirmed starter/);
+});
+
+test('college history expiry withholds scores and simulations and refresh preserves manual lines',async()=>{
+ const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.match(h.nodes.get('ncaab-prediction').textContent,/75.0/);
+ h.nodes.get('ncaab-spread').value='7';h.nodes.get('ncaab-spread').events.input();
+ const expiry=h.timers.find(t=>t.delay===3600001);assert.ok(expiry);h.advance(3600001);expiry.fn();
+ assert.match(h.nodes.get('ncaab-prediction').textContent,/stale/);assert.equal(h.nodes.get('ncaab-teams').children.length,0);
+ h.nodes.get('ncaab-sim').events.click();assert.equal(h.nodes.get('ncaab-simulation').textContent,'');
+ h.data.checkedAt=h.now();await h.nodes.get('ncaab-refresh-context').events.click();
+ assert.match(h.nodes.get('ncaab-prediction').textContent,/75.0/);assert.equal(h.nodes.get('ncaab-spread').value,'7');
+});
+test('college missing and future history times cannot produce estimates',async()=>{
+ for(const checkedAt of [undefined,Date.now()+120000]){
+  const h=setup();h.data.checkedAt=checkedAt;await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();
+  assert.match(h.nodes.get('ncaab-prediction').textContent,/update time is unverified/);
+  h.nodes.get('ncaab-sim').events.click();assert.equal(h.nodes.get('ncaab-simulation').textContent,'');
+ }
+});
+test('college history refresh rejects older in-flight responses',async()=>{
+ const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();
+ const pending=[],base=h.context.fetch;h.context.fetch=url=>String(url).includes('/context?')?new Promise(r=>pending.push(r)):base(url);
+ const refresh=h.nodes.get('ncaab-refresh-context').events.click,first=refresh(),second=refresh();
+ pending[1]({ok:true,json:async()=>({...h.data,source:'Newest'})});await second;
+ pending[0]({ok:true,json:async()=>({...h.data,source:'Old'})});await first;
+ assert.match(h.nodes.get('ncaab-context-status').textContent,/Newest/);
 });

@@ -5,6 +5,7 @@
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));date.value=parts.year+'-'+parts.month+'-'+parts.day;
  const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  let propRows=[],propExpiry=null,recordExpiry=null;const playerScenarios=new Map();
+ let contextTimer=null,contextRequest=0;
  let games=[],selected=null,context=null,serial=0,injuryData=null,injuryPromise=null;
  let lineQuotes=null,lineExpiry=null,lineRequest=0,lineLoading=false,lineError=null;const manualLines=new Set();
  async function api(kind,game){const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/'+kind+'?'+q,{signal:AbortSignal.timeout(kind==='player-history'?120000:30000)}),data=await r.json();if(!r.ok)throw Error(data.error||'Data source unavailable for this matchup.');if(data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error('Response does not match the selected game.');return data;}
@@ -51,6 +52,7 @@
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);
   teams.replaceChildren();$('ncaab-simulation').textContent='';
   if(!selected||!context){$('ncaab-prediction').textContent='Team history unavailable.';return;}
+  if(!window.Unit501SharedUI.historyFreshness(context.checkedAt).fresh){$('ncaab-prediction').textContent='Team history is stale or its update time is unverified. Refresh team history.';$('ncaab-context-status').textContent=$('ncaab-prediction').textContent;return;}
   for(const side of [context.away,context.home]){
    const card=node('section','','nba-team-history'),r=side[scope.value];card.append(node('h4',side.name));
    if(side.conflicts||side.unverifiedGames)card.append(node('p','History incomplete · '+(side.unverifiedGames||0)+' unverified · '+(side.conflicts||0)+' conflicting game(s). Estimates withheld.','nba-injury-out'));
@@ -69,13 +71,20 @@
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];playerScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-matchup').textContent=game.away+' at '+game.home;
   $('ncaab-game-info').textContent=(game.timeKnown?central(game.tipoff):'Tipoff TBD')+' · '+game.status+(game.neutral?' · Neutral site':'')+(game.status==='Final'||game.status==='Live'?` · ${game.awayScore??'—'}–${game.homeScore??'—'}`:'');
   teams.replaceChildren();$('ncaab-simulation').textContent='';$('ncaab-prediction').textContent='Team history unavailable.';loadExtras(game,task);
+  return loadContext(game,task);
+ }
+ async function loadContext(game,task=serial){
+  const token=++contextRequest;clearTimeout(contextTimer);context=null;render();
   if(!game.timeKnown){$('ncaab-context-status').textContent='Tipoff time is not confirmed. Check again when it is announced.';return;}
   if(game.stage!==2){$('ncaab-context-status').textContent='Team comparisons currently support regular-season games.';return;}
   $('ncaab-context-status').textContent='Loading team history…';
-  try{const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/context?'+q,{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;
-   if(!r.ok||data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error();context=data;$('ncaab-context-status').textContent='Completed games before this matchup · '+data.source;render();
-  }catch{if(task!==serial)return;$('ncaab-context-status').textContent='Team history unavailable. Try again shortly.';}
+  try{const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/context?'+q,{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial||token!==contextRequest)return;
+   if(!r.ok||data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error();context=data;const freshness=window.Unit501SharedUI.historyFreshness(data.checkedAt);
+   $('ncaab-context-status').textContent='Completed games before this matchup · '+data.source+(freshness.fresh?' · Checked '+central(freshness.at):'');render();
+   if(freshness.fresh){const expiry=Math.min(freshness.expiresAt,Date.parse(game.tipoff)>Date.now()?Date.parse(game.tipoff):Infinity);contextTimer=setTimeout(()=>{if(task===serial&&token===contextRequest)render();},Math.max(1,expiry-Date.now()));}
+  }catch{if(task!==serial||token!==contextRequest)return;$('ncaab-context-status').textContent='Team history unavailable. Try again shortly.';}
  }
+ $('ncaab-refresh-context').addEventListener('click',()=>{if(selected)return loadContext(selected);});
  load.addEventListener('click',async()=>{
   resetLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];playerScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
@@ -145,7 +154,7 @@
  $('ncaab-prop-player').addEventListener('change',renderProps);$('ncaab-prop-sort').addEventListener('change',renderProps);
  scope.addEventListener('change',render);
  $('ncaab-sim').addEventListener('click',()=>{
-  if(!selected||!context)return;syncLines();const p=window.Unit501NCAABModel.project(selected,context,scope.value);
+  if(!selected||!context)return;render();if(!window.Unit501SharedUI.historyFreshness(context.checkedAt).fresh)return;syncLines();const p=window.Unit501NCAABModel.project(selected,context,scope.value);
   const optional=id=>{const value=$(id).value.trim();return value===''?null:Number(value);};
   const sim=window.Unit501NCAABModel.simulate(p,context,{spread:optional('ncaab-spread'),total:optional('ncaab-total')});
   if(!sim.available){$('ncaab-simulation').textContent=sim.reason;return;}
