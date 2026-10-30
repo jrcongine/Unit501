@@ -133,6 +133,14 @@
     }
     return entry;
   }
+  function touchdownHistory(def, values, missing = 0) {
+    if (!['passTD','rushTD','recTD'].includes(def.key)) return null;
+    const scored = values.filter(value => value >= 1).length;
+    const zero = values.filter(value => value === 0).length;
+    const rate = count => !missing && values.length ? ' ('+(100*count/values.length).toFixed(1)+'%)' : '';
+    return `TD history · 1+ TDs: ${scored}${rate(scored)} · 0 TDs: ${zero}${rate(zero)} · ${values.length} recorded games. Fixed history threshold; no betting line used.` +
+      (missing ? ` ${missing} missing stat games — percentages unverified.` : '');
+  }
   const board = document.createElement('section');
   board.id = 'saved-line-comparisons';
   results.before(board);
@@ -437,7 +445,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const equal = row.values.length - above - below;
       const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), median.toFixed(1), row.line === null ? 'Line unavailable' : String(row.line),
         row.line === null ? '—' : diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
-        row.line === null ? 'Line required' : `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
+        row.line === null ? (touchdownHistory(row.def,row.values,row.form.coverage.missing) || 'Line required') : `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
         row.workloadHistory.text];
       const observed=row.entry.source==='auto'?row.entry.movement:null;
       const movement=observed?window.Unit501LineWatch.describe(observed)+' · '+window.Unit501LineWatch.detail(observed):'No automatic line history';
@@ -493,7 +501,7 @@ explanation.textContent = [availabilityText, row.support.label, `${row.workload}
 details.append(summary, explanation);
 cell.append(details);
         } else if (index === 8 && row.line === null) {
-          cell.textContent = 'Line required';
+          cell.textContent = value;
         } else if (index === 8) {
           const recent=document.createElement('div');recent.className='prop-recent';
           const largest=Math.max(above,below,equal);
@@ -522,7 +530,7 @@ cell.append(details);
     board.append(wrap);
     return report.join('\n');
   }
-  function addLineComparison(card, record, def, projection, values) {
+  function addLineComparison(card, record, def, projection, values, missing) {
     const key = lineKey(record, def);
     let entry = readLine(key);
     const label = document.createElement('label');
@@ -571,7 +579,7 @@ cell.append(details);
         return;
       }
       if (input.value.trim() === '') {
-        comparison.textContent = 'Enter the current line to compare with this projection.';
+        comparison.textContent = touchdownHistory(def, values, missing) || 'Enter the current line to compare with this projection.';
         return;
       }
       if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) {
@@ -890,7 +898,7 @@ results.appendChild(workload);
   card.appendChild(explanation);
 }
       const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${model.beforeScenario.toFixed(1)} (before manual game-day scenario).`;card.append(weatherNote);
-      addLineComparison(card, record, def, adjusted, values);
+      addLineComparison(card, record, def, adjusted, values, model.form.coverage.missing);
       shown++;
     }
     if (!shown) {

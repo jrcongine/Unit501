@@ -1125,3 +1125,23 @@ test('player lines recover from one network failure and populate comparisons',as
  assert.match(h.nodes.get('prop-feed-status').textContent,/could not reach Unit 501 after retrying/);
  assert.equal(refresh.disabled,false);
 });
+
+
+test('TD history shows scoring games without inventing a betting line',async()=>{
+ const h=harness();await h.settle();const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const r=await original(url);if(!String(url).startsWith('/api/player-stats?'))return r;
+  const data=await r.json();const id=new URL(url,'http://localhost').searchParams.get('game');
+  for(const team of data.response)for(const group of team.groups)for(const p of group.players)
+   p.statistics.push({name:group.name==='Rushing'?'Rushing Touchdowns':'Receiving Touchdowns',value:id==='1'?0:2});
+  return {ok:true,json:async()=>data};
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const walk=n=>[n,...n.children.filter(c=>typeof c!=='string').flatMap(walk)];
+ const rows=walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr'&&n.children[1]?.textContent==='Rushing TDs');
+ assert.equal(rows.length,2);
+ for(const row of rows){assert.equal(row.children[6].textContent,'Line unavailable');assert.equal(row.children[7].textContent,'—');assert.match(row.children[8].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
+ h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
+ assert.match(h.nodes.get('predict-results').textContent,/Fixed history threshold; no betting line used/);
+});
