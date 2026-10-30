@@ -1,5 +1,6 @@
 'use strict';
 // Men's college basketball public schedule and strictly pregame team form.
+const {positiveId}=require('./provider-id');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball';
 const validDate=require('./nba-feed').validDate;
 const number=v=>{const x=typeof v==='object'&&v!==null?v.value:v;return (typeof x==='number'||typeof x==='string'&&x.trim()!=='')&&Number.isInteger(Number(x))&&Number(x)>=0?Number(x):null;};
@@ -10,13 +11,13 @@ function seasonRecord(team){
  return /^\d{1,3}-\d{1,3}$/.test(String(r.summary||''))?r.summary:null;
 }
 function convert(e){
- if(!e||!/^\d{1,12}$/.test(String(e.id||''))||!Array.isArray(e.competitions)||e.competitions.length!==1)return null;
+ if(!e||!positiveId(e.id)||!Array.isArray(e.competitions)||e.competitions.length!==1)return null;
  const c=e.competitions[0],teams=c.competitors||[],away=teams.filter(t=>t.homeAway==='away'),home=teams.filter(t=>t.homeAway==='home');
  if(teams.length!==2||away.length!==1||home.length!==1)return null;
  const a=away[0],h=home[0],tipoff=c.date||e.date,type=c.status?.type||e.status?.type;
  const status=/POSTPONED/.test(type?.name||'')?'Postponed':/CANCEL/.test(type?.name||'')?'Canceled':type?.completed===true&&type.state==='post'?'Final':type?.state==='in'?'Live':type?.state==='pre'?'Scheduled':null;
- const stage=Number(e.seasonType?.type??e.season?.type),season=Number(e.season?.year);
- if(!status||![1,2,3].includes(stage)||!Number.isInteger(season)||!Number.isFinite(Date.parse(tipoff))||!/^\d{1,12}$/.test(String(a.team?.id||''))||!/^\d{1,12}$/.test(String(h.team?.id||''))||String(a.team.id)===String(h.team.id)||!a.team.displayName||!h.team.displayName)return null;
+ const stage=positiveId(e.seasonType?.type??e.season?.type),season=positiveId(e.season?.year);
+ if(!status||![1,2,3].includes(stage)||!Number.isInteger(season)||!Number.isFinite(Date.parse(tipoff))||!positiveId(a.team?.id)||!positiveId(h.team?.id)||positiveId(a.team.id)===positiveId(h.team.id)||typeof a.team.displayName!=='string'||!a.team.displayName.trim()||typeof h.team.displayName!=='string'||!h.team.displayName.trim())return null;
  return {...(a.team.logo||a.team.logos?.[0]?.href?{awayLogo:a.team.logo||a.team.logos[0].href}:{}),...(h.team.logo||h.team.logos?.[0]?.href?{homeLogo:h.team.logo||h.team.logos[0].href}:{}),awayRecord:seasonRecord(a),homeRecord:seasonRecord(h),id:String(e.id),awayId:String(a.team.id),homeId:String(h.team.id),away:a.team.displayName,home:h.team.displayName,tipoff,status,stage,season,
   timeKnown:(c.timeValid===true||e.timeValid===true)&&c.timeValid!==false&&e.timeValid!==false,neutral:c.neutralSite===true,venue:c.venue?.fullName||null,
   awayScore:status==='Final'||status==='Live'?number(a.score):null,homeScore:status==='Final'||status==='Live'?number(h.score):null};
@@ -55,7 +56,7 @@ function createNCAAB({fetcher=fetch,now=Date.now}={}){
   if(!game?.timeKnown||!Number.isFinite(Date.parse(game.tipoff))||game.stage!==2)throw Error('Verified regular-season tipoff required');
   const sides=await Promise.all([game.awayId,game.homeId].map(async id=>{
    const {data:d,checkedAt}=await read('/teams/'+id+'/schedule?season='+game.season+'&seasontype=2',300000);
-   if(String(d.team?.id)!==id)throw Error('College basketball team identity unavailable');
+   if(!positiveId(d.team?.id)||String(d.team.id)!==id)throw Error('College basketball team identity unavailable');
    return {id,checkedAt,...summarize(d.events,id,game,now())};
   }));
   return {gameId:game.id,tipoff:game.tipoff,checkedAt:Math.min(...sides.map(s=>s.checkedAt)),away:{name:game.away,...sides[0]},home:{name:game.home,...sides[1]},source:'ESPN completed men’s college games'};

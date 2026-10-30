@@ -443,3 +443,19 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   Prior commit aaa82041264ce55eb542e7da41a5b5e52a1d150a is verified deployed on primary Railway.
 - Re-ran the archived 1,230-game NBA season: all three settings still evaluate 1,182
   games and reproduce the prior MAE/winner metrics. Valid archived results are unchanged.
+
+## Provider identity validation — continuation
+
+- Added a shared positive-integer identifier reader. Booleans, arrays, objects, blank
+  values, fractions, unsafe integers and scientific/hex strings cannot become real IDs.
+- Applied it to NBA provider game/team/status/stage normalization, public NBA event and
+  team-season verification, college basketball event/team/stage identity, and football
+  schedule reconciliation. Ordinary integer numbers and decimal ID strings remain valid.
+  Explicitly identical NBA opponents are rejected rather than shown as a real matchup.
+- Primary NBA slates reject explicitly mismatched league/season responses rather than
+  caching a partially valid slate. Unknown existing optional fields remain unknown.
+- 788 automated tests passed, including malformed ID matrices, valid string IDs, same-team
+  rejection, and mixed NBA source scope failures. These are parsing safeguards, not proof
+  of complete paid-provider coverage. Task 10 gains additional validation coverage.
+- Preserved concurrent weather commit b718bf8734e2ad1eff70e6d742d67c34135f6623, verified
+  deployed on primary Railway before this batch. No layout or model weights changed.

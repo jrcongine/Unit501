@@ -1,4 +1,5 @@
 'use strict';
+const {positiveId}=require('./provider-id');
 const number = value => typeof value === 'number' && Number.isFinite(value) ? value
   : typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : null;
 const readScore = value => {const n=number(value);return Number.isInteger(n)&&n>=0?n:null;};
@@ -15,7 +16,7 @@ function reconcileGames(games) {
   ]);
   for (const game of games) {
     const id = String(game?.game?.id ?? '');
-    if (!/^\d+$/.test(id)) throw new Error('Unverified game identity in scoring schedule.');
+    if (!positiveId(game?.game?.id)) throw new Error('Unverified game identity in scoring schedule.');
     const key = [game.league?.id, game.league?.season, id].join(':');
     const prior = unique.get(key);
     if (prior && signature(prior) !== signature(game))

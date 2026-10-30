@@ -2,20 +2,21 @@
 // Public ESPN NBA source, with its own identifiers and end-year season convention.
 const {normalizeGame,validDate,inferSeason,centralDate,utcDates}=require('./nba-feed');
 const {summarize}=require('./nba-context');
+const {positiveId}=require('./provider-id');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
 const score=value=>{const v=typeof value==='object'&&value!==null?value.value:value;if(typeof v!=='number'&&(typeof v!=='string'||v.trim()===''))return null;const n=Number(v);return Number.isInteger(n)&&n>=0?n:null;};
 function convert(event,season,defaultStage=null){
- if(Number(event?.season?.year)!==season+1||!Array.isArray(event.competitions)||event.competitions.length!==1)return null;
+ if(positiveId(event?.season?.year)!==season+1||!Array.isArray(event.competitions)||event.competitions.length!==1)return null;
  const c=event.competitions[0],rows=c.competitors||[];
  const away=rows.filter(t=>t.homeAway==='away'),home=rows.filter(t=>t.homeAway==='home');
  if(rows.length!==2||away.length!==1||home.length!==1)return null;
  const a=away[0],h=home[0],status=c.status||event.status,type=status?.type;
- const stage=Number(event.season.type??defaultStage);
+ const stage=positiveId(event.season.type??defaultStage),awayId=positiveId(a.team?.id),homeId=positiveId(h.team?.id),id=positiveId(event.id);
  const code=/POSTPONED/.test(type?.name||'')?4:/CANCELED|CANCELLED/.test(type?.name||'')?6:/DELAYED/.test(type?.name||'')?5:
   type?.completed===true&&type.state==='post'&&/FINAL/.test(type.name)?3:type?.state==='in'?2:type?.state==='pre'?1:null;
- if(!code||![1,2,3].includes(stage)||!Number.isSafeInteger(Number(a.team?.id))||Number(a.team.id)<=0||!Number.isSafeInteger(Number(h.team?.id))||Number(h.team.id)<=0||Number(a.team.id)===Number(h.team.id))return null;
- const raw={id:Number(event.id),league:'standard',season,stage,date:{start:c.date||event.date},status:{short:code},
-  teams:{visitors:{id:Number(a.team.id),name:a.team.displayName,logo:a.team.logo||a.team.logos?.[0]?.href},home:{id:Number(h.team.id),name:h.team.displayName,logo:h.team.logo||h.team.logos?.[0]?.href}},
+ if(!code||![1,2,3].includes(stage)||!id||!awayId||!homeId||awayId===homeId)return null;
+ const raw={id,league:'standard',season,stage,date:{start:c.date||event.date},status:{short:code},
+  teams:{visitors:{id:awayId,name:a.team.displayName,logo:a.team.logo||a.team.logos?.[0]?.href},home:{id:homeId,name:h.team.displayName,logo:h.team.logo||h.team.logos?.[0]?.href}},
   scores:{visitors:{points:code===2||code===3?score(a.score):null},home:{points:code===2||code===3?score(h.score):null}},
   periods:{current:Number(status.period),halftime:/HALFTIME/.test(type?.name||'')},arena:{name:c.venue?.fullName}};
  return normalizeGame(raw)?raw:null;
@@ -49,7 +50,7 @@ function createPublicNBA({fetcher=fetch,now=Date.now}={}){
   const sides=await Promise.all([game.awayId,game.homeId].map(async id=>{
    if(!Number.isSafeInteger(id)||id<=0)throw Error('Public NBA team identity required.');
    const {data,checkedAt}=await read('/teams/'+id+'/schedule?season='+(season+1)+'&seasontype='+game.stage,300000);
-   if(Number(data.team?.id)!==id||Number(data.season?.year)!==season+1||Number(data.season?.type)!==game.stage)throw Error('Public NBA team season could not be verified.');
+   if(positiveId(data.team?.id)!==id||positiveId(data.season?.year)!==season+1||positiveId(data.season?.type)!==game.stage)throw Error('Public NBA team season could not be verified.');
    const raw=data.events.map(e=>convert(e,season,game.stage));
    if(raw.some(g=>!g))throw Error('Public NBA history format could not be verified; history incomplete.');
    return {id,checkedAt,...summarize(raw,id,game,season)};

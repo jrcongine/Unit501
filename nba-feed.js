@@ -1,5 +1,6 @@
 'use strict';
 // Experimental NBA-only schedule feed. Never reuse the American-football provider.
+const {positiveId}=require('./provider-id');
 const HOST='https://v2.nba.api-sports.io';
 const STATES={1:'Scheduled',2:'Live',3:'Final',4:'Postponed',5:'Delayed',6:'Canceled'};
 function validDate(date){
@@ -26,20 +27,20 @@ function numberOrNull(value){
 }
 function normalizeGame(game){
  if(!game||typeof game!=='object')return null;
- const id=Number(game.id);
+ const id=positiveId(game.id);
  const visitors=game.teams?.visitors;
  const home=game.teams?.home;
- const awayId=Number(visitors?.id),homeId=Number(home?.id);
- const stage=Number(game.stage);
+ const awayId=positiveId(visitors?.id),homeId=positiveId(home?.id);
+ const stage=positiveId(game.stage);
  const start=game.date?.start;
  const endedAt=typeof game.date?.end==='string'&&Number.isFinite(Date.parse(game.date.end))?game.date.end:null;
- const status=Number(game.status?.short);
+ const status=positiveId(game.status?.short);
  if(!Number.isSafeInteger(id)||id<=0||
     !visitors||!home||
     typeof visitors.name!=='string'||!visitors.name.trim()||
     typeof home.name!=='string'||!home.name.trim()||
     typeof start!=='string'||!Number.isFinite(Date.parse(start)))return null;
- if(!Object.hasOwn(STATES,status))return null;
+ if(!Object.hasOwn(STATES,status)||visitors.id!=null&&awayId===null||home.id!=null&&homeId===null||awayId!==null&&awayId===homeId||game.stage!=null&&stage===null)return null;
  return {
   ...(typeof visitors.logo==='string'?{awayLogo:visitors.logo}:{}),...(typeof home.logo==='string'?{homeLogo:home.logo}:{}),
   id,away:visitors.name.trim().slice(0,100),home:home.name.trim().slice(0,100),
@@ -79,6 +80,7 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
    if(!data||!Array.isArray(data.response)||
       (data.errors&&(Array.isArray(data.errors)?data.errors.length:Object.keys(data.errors).length)))throw Error('NBA provider response unavailable');
    // A schedule can genuinely be empty. Missing/invalid records must not become invented games.
+   if(data.response.some(g=>g?.league!=null&&g.league!=='standard'||g?.season!=null&&positiveId(g.season)!==season))throw Error('NBA provider league or season mismatch; schedule incomplete');
    const normalized=data.response.map(normalizeGame);
    if(normalized.some(g=>!g))throw Error('NBA provider format unrecognized; schedule incomplete');
    for(const g of normalized){
