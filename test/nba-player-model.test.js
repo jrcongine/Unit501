@@ -67,3 +67,23 @@ test('a single missing market value or player game cannot produce a partial-samp
  p.missing=[{gameId:'8'}];assert.equal(project(d,{...q,market},game,null,now).available,false);
  }
 });
+
+test('manual player scenarios preserve observed results and never compound',()=>{
+ const {withScenario}=require('../public/nba-player-model');
+ const base=project(data(),q,game,null,now);
+ for(const [mode,factor] of [['off',1],['boost',1.1],['dud',.9],['fatigue',.95]]){
+  const result=withScenario(base,mode);
+  assert.equal(result.projection,base.projection*factor);
+  for(const field of ['games','above','below','equal','average','median','baseline','delta','projectedMinutes'])assert.deepEqual(result[field],base[field]);
+  assert.deepEqual(result.recentValues,base.recentValues);
+  assert.equal(withScenario(result,mode).projection,result.projection);
+  assert.equal(withScenario(result,'off').projection,base.projection);
+ }
+ assert.equal(withScenario(base,'unknown').projection,base.projection);
+ const unavailable=project(data(),q,game,'Out',now);
+ assert.deepEqual(withScenario(unavailable,'boost'),unavailable);
+ const d=data();d.teams[0].players[0].results.forEach(r=>{r.minutes=20;r.player_points=10;});
+ const minutes=project(d,q,game,null,now,{minutes:30});
+ assert.equal(withScenario(minutes,'boost').projection,16.5);
+ assert.equal(withScenario(minutes,'boost').projectedMinutes,30);
+});

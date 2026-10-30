@@ -52,5 +52,13 @@
    above:values.filter(n=>n>quote.line).length,below:values.filter(n=>n<quote.line).length,equal:values.filter(n=>n===quote.line).length,
    thin:values.length<5};
  }
- const api={project};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
+ function withScenario(prediction,mode='off'){
+  if(!prediction.available)return prediction;
+  const helper=typeof module!=='undefined'&&module.exports?require('./star-power'):root.Unit501StarPower;
+  const base=prediction.scenario?.baseline??prediction.projection;
+  const scenario=helper?.adjust(base,mode);
+  if(!scenario)return prediction;
+  return {...prediction,projection:scenario.adjusted,scenario};
+ }
+ const api={project,withScenario};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
 })(typeof window!=='undefined'?window:globalThis);

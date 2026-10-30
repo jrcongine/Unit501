@@ -1,12 +1,13 @@
 
 
 const http = require('http');
-const dataHealth = require('./data-health').createHealth();
+
 const {withRecovery} = require('./provider-retry');
 
 const fs = require('fs');
 
 const path = require('path');
+const dataHealth = require('./data-health').createHealth({file:process.env.UNIT501_DATA_HEALTH_FILE || (process.env.UNIT501_LINE_HISTORY_FILE?path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'feed-health-v1.json'):'')});
 const fanduel = require('./fanduel');
 const footballComparison = require('./football-comparison').createComparison();
 const outsidePicks = require('./outside-picks').createFeed();

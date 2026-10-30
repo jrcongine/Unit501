@@ -4,7 +4,7 @@
  const central=at=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(at))+' CT';
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));date.value=parts.year+'-'+parts.month+'-'+parts.day;
  const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
- let propRows=[],propExpiry=null;
+ let propRows=[],propExpiry=null;const playerScenarios=new Map();
  let games=[],selected=null,context=null,serial=0,injuryData=null,injuryPromise=null;
  async function api(kind,game){const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/'+kind+'?'+q,{signal:AbortSignal.timeout(kind==='player-history'?120000:30000)}),data=await r.json();if(!r.ok)throw Error(data.error||'Data source unavailable for this matchup.');if(data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error('Response does not match the selected game.');return data;}
  async function loadExtras(game,task){
@@ -29,7 +29,7 @@
   $('ncaab-prediction').textContent=p.available?`${selected.away} ${p.away.toFixed(1)} · ${selected.home} ${p.home.toFixed(1)} | Total ${p.total.toFixed(1)} (${p.awayGames}/${p.homeGames} games)` :p.reason;
  }
  async function choose(game){
-  const task=++serial;propRows=[];clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-matchup').textContent=game.away+' at '+game.home;
+  const task=++serial;propRows=[];playerScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-matchup').textContent=game.away+' at '+game.home;
   $('ncaab-game-info').textContent=(game.timeKnown?central(game.tipoff):'Tipoff TBD')+' · '+game.status+(game.neutral?' · Neutral site':'')+(game.status==='Final'||game.status==='Live'?` · ${game.awayScore??'—'}–${game.homeScore??'—'}`:'');
   teams.replaceChildren();$('ncaab-simulation').textContent='';$('ncaab-prediction').textContent='Team history unavailable.';loadExtras(game,task);
   if(!game.timeKnown){$('ncaab-context-status').textContent='Tipoff time is not confirmed. Check again when it is announced.';return;}
@@ -40,7 +40,7 @@
   }catch{if(task!==serial)return;$('ncaab-context-status').textContent='Team history unavailable. Try again shortly.';}
  }
  load.addEventListener('click',async()=>{
-  const task=++serial;propRows=[];clearTimeout(propExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
+  const task=++serial;propRows=[];playerScenarios.clear();clearTimeout(propExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
    for(const game of games){const button=node('button',`${game.away} at ${game.home} · ${game.timeKnown?central(game.tipoff):'TBD'} · ${game.status}`,'ncaab-game-card');button.type='button';button.addEventListener('click',()=>choose(game));list.append(button);}
   }catch{if(task===serial)status.textContent='College basketball slate unavailable. Check the date and try again.';}finally{if(task===serial)load.disabled=false;}
@@ -59,7 +59,7 @@
   clearTimeout(propExpiry);const board=$('ncaab-props');board.replaceChildren();if(!selected)return;
   const player=$('ncaab-prop-player').value,sort=$('ncaab-prop-sort').value,catalog=['player_points','player_rebounds','player_assists','player_threes'];
   const fresh=r=>Number.isFinite(r.q.updatedAt)&&r.q.updatedAt<=Date.now()+60000&&Date.now()-r.q.updatedAt<=1800000&&Date.parse(selected.tipoff)>Date.now();
-  const rows=propRows.filter(r=>fresh(r)&&(!player||r.q.name===player));
+  const rows=propRows.filter(r=>fresh(r)&&(!player||r.q.name===player)).map(r=>({...r,p:window.Unit501NBAPlayerModel?.withScenario?.(r.p,playerScenarios.get(r.q.name))||r.p}));
   rows.sort((a,b)=>{
    const order=()=>a.q.name.localeCompare(b.q.name)||catalog.indexOf(a.q.market)-catalog.indexOf(b.q.market);
    if(player||sort==='name')return order();
@@ -76,7 +76,16 @@
    const movement=observed?window.Unit501LineWatch.describe(observed):'Movement unknown';
    const pct=field=>p.available?p[field]+' ('+(100*p[field]/p.games).toFixed(1)+'%)':'—';
    const values=[q.name+' · '+q.label,q.line,p.available?p.projection.toFixed(1):p.reason||'Unavailable',p.available?p.median.toFixed(1):'—',p.available?(p.projection-q.line).toFixed(1):'—',p.available?p.recentValues.join(' · ')+(Number.isFinite(p.projectedMinutes)?' · '+p.projectedMinutes.toFixed(1)+' min':'')+(p.thin?' · small sample':''):'History incomplete or unavailable',pct('above'),pct('below'),pct('equal'),p.available?p.games:'—',movement];
-   for(const value of values)tr.append(node('td',value));body.append(tr);
+   for(const [index,value] of values.entries()){
+    const cell=node('td',value);
+    if(index===2&&p.available){
+     const label=node('label','Manual scenario '),select=node('select');
+     for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
+     select.value=playerScenarios.get(q.name)||'off';select.addEventListener('change',()=>{playerScenarios.set(q.name,select.value);renderProps();});label.append(select);cell.append(label);
+     if(p.scenario?.applied)cell.append(node('small','Manual, uncalibrated · before scenario '+p.scenario.baseline.toFixed(1)));
+    }
+    tr.append(cell);
+   }body.append(tr);
   }
   table.append(body);board.append(table);
   const next=Math.min(Date.parse(selected.tipoff),...rows.map(r=>r.q.updatedAt+1800001));propExpiry=setTimeout(renderProps,Math.max(1,next-Date.now()));

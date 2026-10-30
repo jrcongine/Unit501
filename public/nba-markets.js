@@ -10,7 +10,7 @@
  if(!gameBoard||!propBoard||!ui)return;
  let selected=null,date='',sequence=0,gameTask=0,propTask=0,quotes=null,props=null,timer=null;
  let comparisonTask=0,comparison=null,injuries=null,history=null,historyTask=0;
- const minuteOverrides=new Map(),injuryScenarios=new Map();
+ const minuteOverrides=new Map(),injuryScenarios=new Map(),playerScenarios=new Map();
  const normalizedName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  const signed=n=>Number.isFinite(n)?(n>0?'+':'')+n:'—';
@@ -49,7 +49,8 @@
    const scenario=injuryScenarios.get(name);
    if(scenario&&status==='Out')injuryScenarios.delete(name);
    const minutes=injuryScenarios.has(name)?scenario.minutes:minuteOverrides.get(name);
-   const prediction=root.Unit501NBAPlayerModel?.project(history,p,selected,status,Date.now(),{minutes})||{available:false,reason:'—'};
+   let prediction=root.Unit501NBAPlayerModel?.project(history,p,selected,status,Date.now(),{minutes})||{available:false,reason:'—'};
+   prediction=root.Unit501NBAPlayerModel?.withScenario?.(prediction,playerScenarios.get(name))||prediction;
    return {p,status,prediction,splits,scenario:injuryScenarios.get(name),minutes};
   });
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
@@ -76,6 +77,11 @@
     if(index===3&&prediction.available){
      const gap=prediction.projection-p.line;
      cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
+     const label=node('label','Manual scenario '),select=node('select');
+     for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
+     select.value=playerScenarios.get(normalizedName(p.name))||'off';
+     select.addEventListener('change',()=>{playerScenarios.set(normalizedName(p.name),select.value);renderProps();});label.append(select);cell.append(label);
+     if(prediction.scenario?.applied)cell.append(node('small','Manual, uncalibrated · before scenario '+prediction.scenario.baseline.toFixed(1),'nba-line-history'));
      if(Array.isArray(prediction.recentValues)&&prediction.recentValues.length)cell.append(node('small','Last '+prediction.recentValues.length+': '+prediction.recentValues.join(' · ')+' (newest first)','nba-line-history'));
      for(const split of splits.slice(0,2)){
       cell.append(node('small',`${split.name} didn't play: ${split.without.value.toFixed(1)} in ${split.without.games} games (${split.without.minutes.toFixed(1)} min) · played: ${split.with.value.toFixed(1)} in ${split.with.games} (${split.with.minutes.toFixed(1)} min). Past games only; DNP reasons may differ.`, 'nba-line-history'));
@@ -208,7 +214,7 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){if(player){player.value='';player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);}minuteOverrides.clear();injuryScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
+ function clear(){if(player){player.value='';player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);}minuteOverrides.clear();injuryScenarios.clear();playerScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}

@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date,Intl,URLSearchParams,AbortSignal,setTimeout:()=>0,clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
- vm.createContext(context);for(const p of ['market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -64,7 +64,7 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
  const at=Date.now(),q=(name,market)=>({name,market,label:market,line:10.5,updatedAt:at});
  const quotes=[q('A','player_assists'),q('B','player_points'),q('A','player_points'),{...q('Expired','player_points'),updatedAt:at-1800001}];
- h.context.Unit501NBAPlayerModel={project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
+ h.context.Unit501NBAPlayerModel={withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',teams:[],props:String(url).includes('/props?')?quotes:[]})});
  await h.nodes.get('ncaab-load-props').events.click();
  const board=h.nodes.get('ncaab-props'),sort=h.nodes.get('ncaab-prop-sort');sort.value='most';sort.events.change();
@@ -73,4 +73,12 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  const player=h.nodes.get('ncaab-prop-player');player.value='A';player.events.change();assert.doesNotMatch(board.textContent,/B ·/);
  assert.ok(board.textContent.indexOf('player_points')<board.textContent.indexOf('player_assists'));
  assert.match(board.textContent,/Movement unknown/);
+ const flatten=n=>[n,...n.children.flatMap(flatten)];
+ const controls=()=>flatten(board).filter(n=>n.children.length===4&&n.children[0].value==='off');
+ controls()[0].value='boost';controls()[0].events.change();
+ assert.deepEqual(controls().map(n=>n.value),['boost','boost']);
+ assert.match(board.textContent,/13.2/);assert.match(board.textContent,/Manual, uncalibrated/);
+ controls()[0].value='fatigue';controls()[0].events.change();assert.match(board.textContent,/11.4/);
+ controls()[0].value='off';controls()[0].events.change();assert.doesNotMatch(board.textContent,/Manual, uncalibrated/);
+ assert.match(board.textContent,/100.0%/);
 });

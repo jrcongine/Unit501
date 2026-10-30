@@ -7,7 +7,7 @@
   if(!snapshot)return;
   const filter=$('health-filter').value,root=$('health-feeds');root.replaceChildren();
   for(const row of snapshot.feeds){
-   if(filter==='attention'&&!['failed','unavailable','partial','stale','unchecked'].includes(row.status))continue;
+   if(filter==='attention'&&!['failed','unavailable','partial','stale','unchecked','loading'].includes(row.status))continue;
    if(!['all','attention'].includes(filter)&&!row.id.startsWith(filter+':'))continue;
    const card=node('article','','health-feed');card.append(node('h3',row.label),node('span',row.status.toUpperCase(),'health-badge health-'+row.status),node('p','Source / check: '+date(row.sourceAt)),node('p','Last successful response: '+date(row.lastSuccessAt)));root.append(card);
   }
@@ -25,6 +25,7 @@
     ['Football provider quota',quota?.dailyLimit!=null?quota.dailyLimit.toLocaleString()+'/day · '+(quota.dailyRemaining??'Unknown')+' remaining at '+date(quota.observedAt):'Not yet verified from provider headers.'],
     ['Server request budget',usage.outboundAttempts+' / '+usage.budget+' attempts today · resets on restart.'],
     ['Football recovery',usage.cooldownUntil?'Paused until '+date(usage.cooldownUntil):usage.providerAllowance===0||usage.remaining===0?'Daily allowance exhausted; requests paused.':'One retry for temporary network or 502/503/504 errors. Each attempt uses the quota guard.'],
+    ['Feed status storage',snapshot.storage?.error|| (snapshot.storage?.persistent?'Saved across server restarts; original update times retained.':snapshot.storage?.configured?'Persistence configured; waiting for a saved observation.':'Temporary storage; status resets on restart.')],
     ['Line history',history.message+' · '+(history.persistent?'Persistent storage':'Temporary storage')]
    ]){const item=node('div','','health-stat');item.append(node('strong',title),node('p',detail));root.append(item);}
    render();$('health-message').textContent='Status read '+date(snapshot.checkedAt)+' · server started '+date(snapshot.startedAt);
