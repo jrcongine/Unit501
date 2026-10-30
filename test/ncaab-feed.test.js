@@ -66,3 +66,12 @@ test('college context exposes oldest source time and does not renew it on cached
  assert.equal((await feed.context({...selected,homeId:'3'})).checkedAt,first);assert.equal(calls,3);
  clock+=300001;assert.equal((await feed.context(selected)).checkedAt,clock);assert.equal(calls,5);
 });
+
+test('tied college finals remain unverified and cannot distort team form',()=>{
+ for(const score of [0,75]){
+  const tied=event(2,'2026-10-29T01:00:00Z',{scoreA:score,scoreH:score}),good=event(1,'2026-10-28T01:00:00Z');
+  const s=summarize([good,tied],'1',selected,Date.parse('2026-11-03T20:00Z'));
+  assert.equal(s.games,1);assert.equal(s.unverifiedGames,1);assert.equal(s.season.scored,70);
+  assert.equal(s.season.wins+s.season.losses,s.season.games);
+ }
+});

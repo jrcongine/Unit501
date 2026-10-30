@@ -7,10 +7,14 @@ const {project}=require('./public/nba-model');
 function backtest(raw, scope='recent5') {
  if (!Array.isArray(raw)) throw Error('Expected an array of NBA provider games');
  if (!['season','recent5','recent10','venue'].includes(scope)) throw Error('Invalid scope');
- const groups=new Map();
+ const groups=new Map(),history=[];let invalid=0;
  for (const row of raw) {
   const g=normalizeGame(row);
-  if (!g || !g.id) continue;
+  if (!g || !g.id) {invalid++;history.push(row);continue;}
+  const season=inferSeason(g.tipoff.slice(0,10));
+  if (row.league!=null&&row.league!=='standard'||row.season!=null&&
+      !((typeof row.season==='number'||typeof row.season==='string'&&/^\d{4}$/.test(row.season))&&Number(row.season)===season)) {invalid++;continue;}
+  history.push(row);
   if (!groups.has(g.id)) groups.set(g.id,[]);
   groups.get(g.id).push(row);
  }
@@ -23,7 +27,7 @@ function backtest(raw, scope='recent5') {
   if (g.statusCode!==3 || !g.stage || !g.awayId || !g.homeId || g.awayId===g.homeId ||
       g.awayScore===null || g.homeScore===null || g.awayScore===g.homeScore) { skipped++; continue; }
   const season=inferSeason(g.tipoff.slice(0,10));
-  const away=summarize(raw,g.awayId,g,season), home=summarize(raw,g.homeId,g,season);
+  const away=summarize(history,g.awayId,g,season), home=summarize(history,g.homeId,g,season);
   const matchup={...g,statusCode:1};
   const context={gameId:g.id,tipoff:g.tipoff,stage:g.stage,away:{...away,id:g.awayId},home:{...home,id:g.homeId}};
   const estimate=project(matchup,context,scope,Date.parse(g.tipoff)-1);
@@ -38,7 +42,7 @@ function backtest(raw, scope='recent5') {
  rows.sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff)||a.id-b.id);
  const mean=fn=>rows.length?rows.reduce((sum,r)=>sum+fn(r),0)/rows.length:null;
  const decided=rows.filter(r=>r.winnerCorrect!==null);
- return {scope,evaluated:rows.length,skipped,metrics:{
+ return {scope,evaluated:rows.length,skipped,invalid,metrics:{
   teamScoreMAE:mean(r=>(Math.abs(r.predictedAway-r.awayScore)+Math.abs(r.predictedHome-r.homeScore))/2),
   totalMAE:mean(r=>Math.abs(r.predictedTotal-r.actualTotal)),
   marginMAE:mean(r=>Math.abs(r.predictedMargin-r.actualMargin)),

@@ -424,3 +424,22 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
 - Concurrent theme commit c1a49c9d29a26af0ef6821ae12b2174881be6f85 was preserved.
   Repeated the 777-test suite and populated desktop/mobile expiry/refresh checks on
   that combined dark-theme version; all passed.
+
+## Basketball final-score integrity — continuation
+
+- NBA and college team histories no longer treat tied final scores (including 0–0) as
+  usable completed scoring records. They count as unverified history, preserving the
+  incomplete-data gate instead of silently changing averages, records or projections.
+  NBA's display now says unverified scores, covering both missing and contradictory data.
+  Tied live scores and experimental simulation ties are unaffected.
+- NBA replay excludes explicitly foreign leagues and mismatched/malformed season labels
+  from both grading targets and historical inputs, and reports invalid input counts.
+  Unreadable history still blocks estimates; it is not silently discarded during filtering.
+- 783 tests passed, including tied-final gaps in both sports, later replay suppression,
+  foreign league/season exclusion and malformed-history retention. The archived college
+  sample still evaluates 26 games per window; this remains a selected-team audit, not
+  league-wide calibration or verified betting accuracy.
+- Tasks 8/9/10/11/94 gain integrity coverage. No scoring weights or confidence labels changed.
+  Prior commit aaa82041264ce55eb542e7da41a5b5e52a1d150a is verified deployed on primary Railway.
+- Re-ran the archived 1,230-game NBA season: all three settings still evaluate 1,182
+  games and reproduce the prior MAE/winner metrics. Valid archived results are unchanged.

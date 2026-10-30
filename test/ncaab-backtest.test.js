@@ -19,3 +19,9 @@ test('college replay rejects contradictory observations and withholds games afte
  assert.throws(()=>backtest(raw,'unknown'),/scope/);
  assert.equal(backtest([{}]).invalid,1);
 });
+
+test('college replay withholds later estimates after a tied final history record',()=>{
+ const raw=[...history(),event(7,8,1,2,75,78)];
+ assert.equal(backtest(raw).evaluated,1);
+ assert.equal(backtest([...raw,event(8,7,1,3,70,70)]).evaluated,0);
+});

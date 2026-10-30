@@ -157,3 +157,13 @@ test('NBA context reports the oldest actual team fetch rather than refreshing ca
  assert.equal((await get({...selected,homeId:8},2026)).checkedAt,new Date(1000).toISOString());assert.equal(calls,3);
  clock=3601001;assert.equal((await get(selected,2026)).checkedAt,new Date(clock).toISOString());assert.equal(calls,5);
 });
+
+test('tied final NBA scores are history gaps, not usable averages or records',()=>{
+ const tied=game(120,'2026-10-22T23:00:00Z',5,7,100,100);
+ const s=summarize([old1,old2,tied],5,selected);
+ assert.equal(s.sample,2);assert.equal(s.coverage.unverifiedGames,1);
+ assert.equal(s.season.wins+s.season.losses,s.season.games);
+ assert.ok(s.recentGames.every(g=>g.id!==120));
+ const model=require('../public/nba-model');
+ assert.equal(model.project({...selected,statusCode:1},{gameId:selected.id,tipoff:selected.tipoff,stage:2,away:{...s,id:5},home:{...s,id:6}},'season',Date.parse(selected.tipoff)-1).available,false);
+});

@@ -40,7 +40,7 @@ function summarize(raw,teamId,selectedGame,season=inferSeason(selectedGame?.tipo
   if(previous&&JSON.stringify(previous)!==JSON.stringify(record)){conflicts.add(g.id);entries.delete(g.id);continue;}
   if(conflicts.has(g.id))continue;
   played.set(g.id,record);
-  if(record.for===null||record.against===null)continue;
+  if(record.for===null||record.against===null||record.for===record.against)continue;
   const margin=record.for-record.against;
   entries.set(g.id,{...record,margin,result:margin>0?'W':margin<0?'L':'T'});
  }
@@ -72,7 +72,7 @@ function summarize(raw,teamId,selectedGame,season=inferSeason(selectedGame?.tipo
    recent5:summary(prior.slice(-5)),recent10:summary(prior.slice(-10)),
    homeSplit:summary(prior.filter(g=>g.venue==='home')),awaySplit:summary(prior.filter(g=>g.venue==='away')),
    recentGames:prior.slice(-10).reverse(),rest,
-   coverage:{received:raw.length,eligible:prior.length,conflictingGames:conflicts.size,wrongSeason,invalid,unverifiedGames:completed.filter(g=>g.for===null||g.against===null).length,complete:false,
+   coverage:{received:raw.length,eligible:prior.length,conflictingGames:conflicts.size,wrongSeason,invalid,unverifiedGames:completed.filter(g=>g.for===null||g.against===null||g.for===g.against).length,complete:false,
     note:'Counts describe the returned history; a full league schedule has not been independently verified.'},
    lastPlayedAt:prior.at(-1)?.tipoff||null,
    sampleLabel:prior.length===0?'No completed same-stage games before tipoff':
