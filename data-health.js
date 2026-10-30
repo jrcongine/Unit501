@@ -36,7 +36,7 @@ function assessment(data,kind,now){
  const at=times.length?Math.min(...times):null;
  let status='working';
  if(kind==='travel'){const sides=[data.away,data.home];status=sides.every(t=>t?.available===true)?'working':sides.some(t=>t?.available===true)?'partial':'unavailable';}
- if(kind==='context'&&[data.away,data.home].some(t=>t?.available===false))status='partial';
+ if(kind==='context'&&[data.away,data.home].some(t=>t?.available===false||t?.conflicts>0||t?.unverifiedGames>0||t?.coverage?.conflictingGames>0||t?.coverage?.unverifiedGames>0||t?.coverage?.invalid>0))status='partial';
  if(kind==='participation'&&(!Array.isArray(data.response)||data.response.length!==1||data.response[0].available!==true))status='unavailable';
  if(data.available===false||data.current===false)status='unavailable';
  if(data.available!==false && (kind==='props'&&Array.isArray(data.props)&&!data.props.length||kind==='games'&&Array.isArray(data.games)&&!data.games.length||Array.isArray(data.response)&&!data.response.length))status='empty';

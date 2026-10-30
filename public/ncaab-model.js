@@ -1,12 +1,13 @@
 (function(root){
  'use strict';
+ const incomplete=s=>s?.conflicts>0||s?.unverifiedGames>0;
  const round=n=>Math.round(n*10)/10;
  function project(game,data,scope='season',now=Date.now()){
   const no=reason=>({available:false,reason});
   if(!game||game.status!=='Scheduled'||!game.timeKnown||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now)return no('Pregame estimate needs a confirmed future tipoff.');
   if(!data||data.gameId!==game.id||data.tipoff!==game.tipoff||data.away?.id!==game.awayId||data.home?.id!==game.homeId)return no('Team history does not match this game.');
   if(!['season','recent5','recent10'].includes(scope))return no('Choose a supported form window.');
-  if(data.away.conflicts||data.home.conflicts)return no('Conflicting results; estimate withheld.');
+  if([data.away,data.home].some(incomplete))return no('Missing or conflicting team results; estimate withheld.');
   const a=data.away[scope],h=data.home[scope];
   if(!a||!h||![a.games,h.games].every(n=>Number.isInteger(n)&&n>=3)||![a.scored,a.allowed,h.scored,h.allowed].every(n=>Number.isFinite(n)&&n>0))return no('Need three completed games for each team.');
   const away=round((a.scored+h.allowed)/2),home=round((h.scored+a.allowed)/2);
@@ -14,6 +15,7 @@
  }
  function simulate(p,data,lines={},runs=10000,random=Math.random){
   if(!p?.available||![p.away,p.home].every(n=>Number.isFinite(n)&&n>=0)||typeof random!=='function'||!Number.isInteger(runs)||runs<1||runs>100000)return {available:false,reason:'Score estimate unavailable.'};
+  if([data?.away,data?.home].some(incomplete))return {available:false,reason:'Missing or conflicting team results; simulation withheld.'};
   const histories=[data?.away?.recentGames,data?.home?.recentGames];
   if(histories.some(x=>!Array.isArray(x)||x.length<5||x.length>10||x.some(g=>![g.scored,g.allowed].every(n=>Number.isFinite(n)&&n>=0))))return {available:false,reason:'Need five recent games for each team to simulate.'};
   const samples=histories.map(list=>{const a=list.reduce((s,g)=>s+g.scored,0)/list.length,b=list.reduce((s,g)=>s+g.allowed,0)/list.length;return list.map(g=>({off:g.scored-a,def:g.allowed-b}));});

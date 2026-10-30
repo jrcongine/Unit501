@@ -141,3 +141,11 @@ test('NBA schedule context distinguishes road sequences and returns only listed 
  assert.equal(home.rest.schedule.previous,'home');assert.equal(home.rest.schedule.current,'away');assert.equal(home.rest.schedule.consecutive,1);
  assert.equal(home.rest.schedule.currentArena,null);
 });
+
+test('NBA coverage counts missing completed scores without counting future or other-stage games',()=>{
+ const gap=summarize([old1,old2,missing,missing,{...future,scores:{}},{...preseason,scores:{}}],5,selected);
+ assert.equal(gap.coverage.unverifiedGames,1);assert.equal(gap.sample,2);
+ const d={gameId:selected.id,tipoff,stage:2,away:{id:5,...gap},home:{id:6,...gap}};
+ const model=require('../public/nba-model');
+ assert.match(model.project({...selected,statusCode:1},d,'season',Date.parse('2026-10-24T12:00Z')).reason,/Missing/);
+});

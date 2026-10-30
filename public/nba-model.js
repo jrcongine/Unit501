@@ -1,6 +1,7 @@
 (function(root){
  'use strict';
  const version='nba-scoring-baseline-v1';
+ const incomplete=s=>s?.coverage?.conflictingGames>0||s?.coverage?.unverifiedGames>0||s?.coverage?.invalid>0;
  const round=n=>Math.round(n*10)/10;
  function project(game,data,scope='recent5',now=Date.now()){
   const unavailable=reason=>({available:false,version,reason});
@@ -11,7 +12,7 @@
    return unavailable('Team history does not match this matchup. Reload the slate.');
   if(!['season','recent5','recent10','venue'].includes(scope))return unavailable('Choose a supported form window.');
   const sides=[data.away,data.home];
-  if(sides.some(s=>!s.available||s.coverage?.conflictingGames>0))
+  if(sides.some(s=>!s.available||incomplete(s)))
    return unavailable('Missing or conflicting team results. Estimate withheld.');
   const records=sides.map((s,i)=>scope==='venue'?s[i===0?'awaySplit':'homeSplit']:s[scope]);
   if(records.some(r=>!r||!Number.isInteger(r.games)||r.games<3))
@@ -29,6 +30,7 @@
  function simulate(estimate,data,lines={},runs=10000,random=Math.random){
   if(!estimate?.available||![estimate.away,estimate.home].every(Number.isFinite)||
      !Number.isInteger(runs)||runs<1||runs>100000||typeof random!=='function')return {available:false,reason:'Valid score estimate required.'};
+  if([data?.away,data?.home].some(incomplete))return {available:false,reason:'Missing or conflicting team results. Simulation withheld.'};
   const histories=[data?.away?.recentGames,data?.home?.recentGames];
   if(histories.some(list=>!Array.isArray(list)||list.length<5||list.length>10||list.some(g=>
      ![g.for,g.against].every(v=>Number.isFinite(v)&&v>=0))))

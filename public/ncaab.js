@@ -20,8 +20,9 @@
   if(!selected||!context){$('ncaab-prediction').textContent='Team history unavailable.';return;}
   for(const side of [context.away,context.home]){
    const card=node('section','','nba-team-history'),r=side[scope.value];card.append(node('h4',side.name));
-   card.append(node('p',r?`${r.games} games · ${r.wins}–${r.losses} · ${r.scored.toFixed(1)} scored · ${r.allowed.toFixed(1)} allowed`:'No completed games in this view.'));
-   if(side.recentGames?.length){const day=value=>{const d=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value)).map(x=>[x.type,x.value]));return Date.UTC(+d.year,+d.month-1,+d.day);};const days=Math.max(0,Math.round((day(selected.tipoff)-day(side.recentGames[0].tipoff))/86400000)-1);card.append(node('p',`${days} full day(s) off since last recorded game`));}
+   if(side.conflicts||side.unverifiedGames)card.append(node('p','History incomplete · '+(side.unverifiedGames||0)+' unverified · '+(side.conflicts||0)+' conflicting game(s). Estimates withheld.','nba-injury-out'));
+   card.append(node('p',r?`${r.games} recorded games · ${r.wins}–${r.losses} · ${r.scored.toFixed(1)} scored · ${r.allowed.toFixed(1)} allowed`:'No completed games in this view.'));
+   if(!side.conflicts&&!side.unverifiedGames&&side.recentGames?.length){const day=value=>{const d=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value)).map(x=>[x.type,x.value]));return Date.UTC(+d.year,+d.month-1,+d.day);};const days=Math.max(0,Math.round((day(selected.tipoff)-day(side.recentGames[0].tipoff))/86400000)-1);card.append(node('p',`${days} full day(s) off since last recorded game`));}
    const last=side.recentGames||[];if(last.length){const detail=node('details',''),title=node('summary','Last '+Math.min(5,last.length)+' results');detail.append(title);for(const g of last.slice(0,5))detail.append(node('p',`${g.scored>g.allowed?'W':'L'} · ${g.venue==='away'?'at ':g.venue==='neutral'?'neutral vs ':'vs '}${g.opponent} · ${g.scored}–${g.allowed}`));card.append(detail);}
    teams.append(card);
   }

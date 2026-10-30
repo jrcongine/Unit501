@@ -15,7 +15,7 @@ function setup(quotes={}){
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
  const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();assert.equal(h.nodes.get('ncaab-games').children.length,1);
  await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();assert.match(h.nodes.get('ncaab-prediction').textContent,/Away 75.0.*Home 75.0/);
- assert.match(h.nodes.get('ncaab-teams').textContent,/5 games.*3–2/);
+ assert.match(h.nodes.get('ncaab-teams').textContent,/5 recorded games.*3–2/);
  h.nodes.get('ncaab-spread').value='0';h.nodes.get('ncaab-total').value='150';h.nodes.get('ncaab-sim').events.click();assert.match(h.nodes.get('ncaab-simulation').textContent,/tie 100.0%.*spread push 100.0%.*total push 100.0%/);
 });
 test('TBD tipoffs do not request history or create predictions',async()=>{
@@ -81,4 +81,14 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  controls()[0].value='fatigue';controls()[0].events.change();assert.match(board.textContent,/11.4/);
  controls()[0].value='off';controls()[0].events.change();assert.doesNotMatch(board.textContent,/Manual, uncalibrated/);
  assert.match(board.textContent,/100.0%/);
+});
+
+test('college history gap displays warning and withholds projection, simulation and inferred rest',async()=>{
+ const h=setup(),original=h.context.fetch;
+ h.context.fetch=async url=>{const r=await original(url);if(!String(url).includes('/context?'))return r;const d=await r.json();d.away.unverifiedGames=1;d.home.unverifiedGames=1;return {ok:true,json:async()=>d};};
+ h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.match(h.nodes.get('ncaab-teams').textContent,/History incomplete/);
+ assert.doesNotMatch(h.nodes.get('ncaab-teams').textContent,/full day\(s\) off/);
+ assert.match(h.nodes.get('ncaab-prediction').textContent,/withheld/);
+ h.nodes.get('ncaab-sim').events.click();assert.doesNotMatch(h.nodes.get('ncaab-simulation').textContent,/%/);
 });

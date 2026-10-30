@@ -119,6 +119,7 @@
   if(!list.children.length)history.append(node('p','No qualifying results available.'));
   else history.append(list);
   card.append(history);
+  if(side.coverage?.unverifiedGames||side.coverage?.invalid)card.append(node('p','History incomplete · '+(side.coverage.unverifiedGames||0)+' completed game(s) missing scores · '+(side.coverage.invalid||0)+' malformed record(s). Estimates withheld.','nba-sample-note'));
   if(side.coverage?.conflictingGames)card.append(node('p',side.coverage.conflictingGames+' conflicting game record(s) excluded.','nba-sample-note'));
   return card;
  }

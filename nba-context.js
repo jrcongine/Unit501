@@ -72,7 +72,7 @@ function summarize(raw,teamId,selectedGame,season=inferSeason(selectedGame?.tipo
    recent5:summary(prior.slice(-5)),recent10:summary(prior.slice(-10)),
    homeSplit:summary(prior.filter(g=>g.venue==='home')),awaySplit:summary(prior.filter(g=>g.venue==='away')),
    recentGames:prior.slice(-10).reverse(),rest,
-   coverage:{received:raw.length,eligible:prior.length,conflictingGames:conflicts.size,wrongSeason,invalid,complete:false,
+   coverage:{received:raw.length,eligible:prior.length,conflictingGames:conflicts.size,wrongSeason,invalid,unverifiedGames:completed.filter(g=>g.for===null||g.against===null).length,complete:false,
     note:'Counts describe the returned history; a full league schedule has not been independently verified.'},
    lastPlayedAt:prior.at(-1)?.tipoff||null,
    sampleLabel:prior.length===0?'No completed same-stage games before tipoff':

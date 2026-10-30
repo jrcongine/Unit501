@@ -216,3 +216,17 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   adapter locally, not authenticated Railway pages or the paid API-NBA response.
 - Railway primary 2753e137-d9b5-4c26-b29d-e85d585ef802 and secondary
   2dce1b6a-a3f4-4884-b11c-7b17d3260ad4 both reached SUCCESS on 97b4f8e.
+
+## Team-history gap safeguards — continuation
+
+- NBA context now counts completed same-stage games missing scores. NBA estimates and
+  simulations reject these gaps, conflicting games and malformed history records.
+- The public NBA context adapter rejects mixed valid/malformed responses instead of
+  silently dropping malformed events before coverage checks.
+- College basketball estimates and simulations now honor the existing unverified-game
+  count. Known gaps also suppress inferred rest days; recorded results remain visible
+  with an incomplete-history warning. Both sports expose gaps in Data Health.
+- 735 local automated tests passed, including adapter-to-model coverage and client checks.
+  This is a data-integrity safeguard, not evidence of improved calibrated accuracy.
+  Tasks 70/80/81/94 remain pending for independent model/backtest validation; private
+  production feed/screen acceptance remains unverified.

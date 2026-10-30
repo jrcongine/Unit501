@@ -128,3 +128,10 @@ test('rankings builds, component availability and live-score freshness are disti
  assert.equal(row(h,'mlb:standings').status,'working');assert.equal(row(h,'mlb:headlines').status,'unavailable');
  h.observe(url('/api/nba/travel'),200,{away:{available:true},home:{available:false}});assert.equal(row(h,'nba:travel').status,'partial');
 });
+
+test('team context telemetry labels known NBA and college history gaps partial',()=>{
+ const {assessment}=require('../data-health');
+ for(const side of [{unverifiedGames:1},{conflicts:1},{coverage:{unverifiedGames:1}},{coverage:{invalid:1}},{coverage:{conflictingGames:1}}]){
+  assert.equal(assessment({away:side,home:{}},'context',Date.now()).status,'partial');
+ }
+});

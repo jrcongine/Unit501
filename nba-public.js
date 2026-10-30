@@ -50,8 +50,8 @@ function createPublicNBA({fetcher=fetch,now=Date.now}={}){
    if(!Number.isSafeInteger(id)||id<=0)throw Error('Public NBA team identity required.');
    const data=await read('/teams/'+id+'/schedule?season='+(season+1)+'&seasontype='+game.stage,300000);
    if(Number(data.team?.id)!==id||Number(data.season?.year)!==season+1||Number(data.season?.type)!==game.stage)throw Error('Public NBA team season could not be verified.');
-   const raw=data.events.map(e=>convert(e,season,game.stage)).filter(Boolean);
-   if(data.events.length&&!raw.length)throw Error('Public NBA history format could not be verified.');
+   const raw=data.events.map(e=>convert(e,season,game.stage));
+   if(raw.some(g=>!g))throw Error('Public NBA history format could not be verified; history incomplete.');
    return {id,...summarize(raw,id,game,season)};
   }));
   return {gameId:game.id,tipoff:game.tipoff,season,stage:game.stage,provider:'espn',source:'ESPN public NBA feed',

@@ -29,3 +29,12 @@ test('college simulation cannot turn invalid scores or histories into tie probab
  const bad={...data,away:{...data.away,recentGames:Array.from({length:5},()=>({scored:-1,allowed:70}))}};
  assert.equal(simulate(p,bad,{},10).available,false);
 });
+
+test('known team-history gaps withhold college projections and simulations even with enough valid games',()=>{
+ const p=project(game,data,'season',now);
+ for(const side of ['away','home'])for(const field of ['unverifiedGames','conflicts']){
+  const partial=structuredClone(data);partial[side][field]=1;
+  assert.equal(project(game,partial,'season',now).available,false);
+  assert.equal(simulate(p,partial).available,false);
+ }
+});

@@ -60,3 +60,8 @@ test('NBA public and primary feeds preserve unknown scores instead of coercing t
   assert.equal(normalizeGame(convert(e,2026)).awayScore,Number(value));
  }
 });
+
+test('public NBA context rejects mixed valid and malformed events instead of silently shrinking history',async()=>{
+ const feed=createPublicNBA({now:()=>now,fetcher:async url=>({ok:true,json:async()=>({team:{id:/teams\/(\d+)/.exec(url)[1]},season:{year:2027,type:2},events:[event(100,'2026-10-22T23:00Z',true),{id:'101'}]})})});
+ await assert.rejects(feed.context({...normalizeGame(convert(event(),2026)),provider:'espn'},2026),/incomplete/);
+});

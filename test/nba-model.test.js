@@ -63,3 +63,14 @@ test('NBA simulation withholds incomplete histories and uses deterministic empir
  assert.equal(simulate(p,{away:{recentGames:[...samples.slice(0,4),{for:null,against:5}]},home:data.home}).available,false);
  assert.equal(simulate({available:false},data).available,false);
 });
+
+test('known NBA team-history gaps block estimates and simulations independently',()=>{
+ const {simulate}=require('../public/nba-model');
+ for(const side of ['away','home'])for(const field of ['unverifiedGames','conflictingGames','invalid']){
+  const d=context();for(const s of ['away','home'])d[s].recentGames=Array.from({length:5},()=>({for:110,against:100}));
+  const p=project(game,d,'season',now);assert.equal(p.available,true);
+  d[side].coverage[field]=1;
+  assert.equal(project(game,d,'season',now).available,false);
+  assert.equal(simulate(p,d).available,false);
+ }
+});
