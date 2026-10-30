@@ -43,12 +43,13 @@
       // Replace previous automatic quotes only after a successful feed response.
       // A 401, exhausted quota, network failure or invalid response must not erase them.
       for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
+      const links=data.props.map(quote=>({quote,players:Unit501PlayerStats.quotePlayers(quote,choices,{league:game.league||el('league').value,season:lineScope.split(':')[1]})}));
       let count = 0, matched = 0, manual = 0;
       for (const record of choices) {
         // Never guess abbreviated names or select between duplicate player names.
         if (choices.filter(p => playerName(p.name) === playerName(record.name)).length !== 1) continue;
         for (const def of definitions) {
-          const quotes = (data.props || []).filter(p => p.stat === def.key && playerName(p.name) === playerName(record.name));
+          const quotes = links.filter(link=>link.quote.stat===def.key&&link.players.length===1&&link.players[0]===record).map(link=>link.quote);
           if (quotes.length !== 1) continue;
           const quote = quotes[0];
           if (!Number.isFinite(quote.line) || !Number.isFinite(quote.updatedAt) || quote.updatedAt > Date.now()+60000 || Date.now() - quote.updatedAt > 1800000) continue;
@@ -66,7 +67,7 @@
       const covered = coverage.filter(m=>m.lines>0).length;
       const missing = coverage.filter(m=>m.lines===0).map(m=>definitions.find(d=>d.key===m.stat)?.title).filter(Boolean);
       const detail = coverage.length ? ` ${covered}/${coverage.length} modeled markets returned usable lines.${missing.length ? ' No usable lines returned for: '+missing.join(', ')+'.' : ''}` : '';
-      const unmatched=[...new Set(data.props.filter(q=>choices.filter(p=>playerName(p.name)===playerName(q.name)).length!==1).map(q=>q.name))];
+      const unmatched=[...new Set(links.filter(link=>link.players.length!==1).map(link=>link.quote.name))];
       const audit=data.audit;
       const rejected=audit?` Provider: ${audit.quotesReceived} quote candidates / ${audit.outcomesReceived} outcomes received; ${audit.accepted} accepted, ${audit.rejected} rejected (${Object.entries(audit.reasons).map(([k,v])=>k+': '+v).join(', ')||'none'}); ${audit.duplicatesRemoved} identical outcomes removed.`:'';
       const matchingDetail=` ${data.props.length} usable quotes returned by the feed.${unmatched.length?' Unmatched or ambiguous player names: '+unmatched.join(', ')+'.':''}`;

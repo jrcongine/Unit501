@@ -119,7 +119,19 @@
     }
     return updated;
   }
-  const api={definitions,extract,teamYards,accumulate,completeCalendar,applyReviewedHistory,applyParticipation};
+  // Reviewed provider spellings from the 2026 college roster/odds comparison.
+  // These aliases do not authorize generic nickname expansion or suffix removal.
+  function quotePlayers(quote,players,scope={}) {
+    const key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const name=key(quote?.name);
+    if(!name)return [];
+    const aliases=String(scope.league)==='2'&&String(scope.season)==='2026'?[
+      {teams:['baylor','baylorbears'],names:['louisbrown','louisbrowniv']},
+      {teams:['ucf','ucfknights'],names:['joshderry','joshuaderry']}
+    ]:[];
+    return players.filter(p=>key(p.name)===name||aliases.some(a=>a.teams.includes(key(p.team))&&a.names.includes(name)&&a.names.includes(key(p.name))));
+  }
+  const api={definitions,extract,teamYards,accumulate,completeCalendar,applyReviewedHistory,applyParticipation,quotePlayers};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -47,3 +47,20 @@ test('missing team-game calendar entries stay unknown and a sparse recent market
  const full=project([{gameDate:6},...Array.from({length:5},(_,i)=>({gameDate:i+1,rec:4,recYds:40}))],'recYds');
  assert.equal(full.withheld,true);assert.equal(full.coverage.latestMissing,true);
 });
+
+test('reviewed college quote aliases require the correct league, season, team and unique player',()=>{
+ const {quotePlayers}=require('../public/player-stats');
+ const scope={league:'2',season:'2026'};
+ for(const [quote,name,team]of [['Louis Brown IV','Louis Brown','Baylor'],['Josh Derry','Joshua Derry','UCF']]){
+  const player={name,team,playerId:'7',teamId:'1'};
+  assert.deepEqual(quotePlayers({name:quote},[player],scope),[player]);
+  assert.deepEqual(quotePlayers({name:quote},[{...player,team:'Other'}],scope),[]);
+  assert.deepEqual(quotePlayers({name:quote},[player],{...scope,league:'1'}),[]);
+  assert.deepEqual(quotePlayers({name:quote},[player],{...scope,season:'2027'}),[]);
+  assert.equal(quotePlayers({name:quote},[player,{...player,playerId:'8'}],scope).length,2);
+  assert.equal(quotePlayers({name:quote},[player,{...player,name:quote,playerId:'8'}],scope).length,2);
+ }
+ assert.deepEqual(quotePlayers({name:'Josh Smith'},[{name:'Joshua Smith',team:'UCF'}],scope),[]);
+ assert.deepEqual(quotePlayers({name:'John Doe IV'},[{name:'John Doe',team:'Baylor'}],scope),[]);
+ assert.equal(quotePlayers({name:'José Player'},[{name:'Jose Player',team:'Other'}],{}).length,1);
+});

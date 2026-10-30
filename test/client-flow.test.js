@@ -1083,3 +1083,23 @@ test('projection board lists usable no-line markets without invented comparisons
  }
  const filter=h.nodes.get('prop-filter-direction');filter.value='above';await filter.dispatchEvent({type:'change'});assert.ok(rows().every(r=>!r.textContent.includes('Line unavailable')));
 });
+
+test('reviewed Baylor and UCF quote spellings populate real client fields without overriding manual entries',async()=>{
+ const h=harness();const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const r=await original(url);const data=await r.json();
+  if(String(url).startsWith('/api/team-games?'))for(const game of data.response)game.league.id=2;
+  if(String(url).startsWith('/api/player-stats?'))for(const team of data.response){team.team.name=team.team.id===1?'Baylor':'UCF';for(const group of team.groups)for(const p of group.players)p.player.name=team.team.id===1?'Louis Brown':'Joshua Derry';}
+  if(String(url).startsWith('/api/fanduel-props?'))data.props=[['Louis Brown IV','recYds',22.5],['Louis Brown IV','rec',3.5],['Josh Derry','recYds',22.5],['Josh Derry','rec',3.5]].map(([name,stat,line])=>({name,stat,line,updatedAt:Date.now()}));
+  return {ok:true,json:async()=>data};
+ };
+ await h.settle();h.run('$("league").value="2"');const game=JSON.parse(JSON.stringify(h.game));game.league.id=2;game.teams.away.name='Baylor';game.teams.home.name='UCF';h.run(`choose(parseGame(${JSON.stringify(game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.doesNotMatch(h.nodes.get('predict-status').textContent,/Could not load/);
+ assert.match(h.nodes.get('prop-feed-status').textContent,/4 matched to unique loaded players; 0 unmatched or invalid; 4 player lines filled/);
+ assert.equal(h.nodes.get('line-1:7-recYds').value,'22.5');
+ const field=h.nodes.get('line-1:7-recYds');field.value='25.5';await field.dispatchEvent({type:'input'});
+ const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');await refresh.dispatchEvent({type:'click'});
+ assert.equal(h.nodes.get('line-1:7-recYds').value,'25.5');
+ assert.match(h.nodes.get('prop-feed-status').textContent,/1 manual entries preserved/);
+});
