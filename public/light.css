@@ -1,111 +1,111 @@
-/* Shared daylight theme. Status colors and repeated-pick purple remain distinct. */
-:root{color-scheme:light;background:#f2f3f5;color:#202b3a}
-body{background:#f2f3f5;color:#202b3a}
+/* Shared navy/charcoal theme (legacy filename retained for existing page links). Status colors and repeated-pick purple remain distinct. */
+:root{color-scheme:dark;background:#111C27;color:#f5f7fb}
+body{background:#111C27;color:#f5f7fb}
 main{max-width:1440px;padding:24px 28px}
 main>*{min-width:0}
-h1,h2,h3,h4{color:#182536;font-weight:850;letter-spacing:-.02em}
+h1,h2,h3,h4{color:#f5f7fb;font-weight:850;letter-spacing:-.02em}
 p{line-height:1.5}
-small,.war-muted,.quick-help{color:#526174}
-a{color:#28568a}
-button,input,select,textarea{background:#fff;color:#253348;border-color:#b6c1ce;max-width:100%}
-button:hover{background:#e9edf3;border-color:#687d96}
+small,.war-muted,.quick-help{color:#c6d2e3}
+a{color:#c6d2e3}
+button,input,select,textarea{background:#243244;color:#f5f7fb;border-color:#405168;max-width:100%}
+button:hover{background:#243244;border-color:#405168}
 button:disabled{opacity:.55;cursor:default}
-:focus-visible{outline:3px solid #7654a5;outline-offset:3px}
+:focus-visible{outline:3px solid #9773c5;outline-offset:3px}
 [hidden]{display:none!important}
-.card{background:#fff;border-color:#d4dbe3;border-radius:14px;box-shadow:0 2px 8px #1c304007}
-.unit-tagline{margin:-8px 0 20px;color:#5b5269;font-size:13px;font-weight:750;letter-spacing:.04em}
-.quick-nav a,.quick-nav a.nav-war,.quick-nav a.nav-lab,.quick-nav a.nav-slate,.quick-nav a.nav-player{background:#e8ecf1;color:#253348;border-color:#c5cfda}
-.quick-nav a[aria-current=page]{background:#eee7f6;border-color:#8a6cae;color:#573578}
-.section-heading,.section-heading-slate{background:#e6eaf0;color:#202b3a;border-color:#c2ccd8}
-.section-heading p,.section-kicker{color:#46566c}
-.game,.nba-game{background:#fafbfc;border-color:#c9d3df;color:#263449}
-.game p,.nba-game p,.football-season-record{color:#3c4f65}
-.game.selected,.nba-game.selected{border-color:#725394;box-shadow:0 0 0 2px #72539422}
-.game-title{color:#182536;background:#fff}
-.open-game{background:#e9e1f2;color:#553277;border-color:#bba6d2}
-.results div{background:#eef1f5;color:#182536}
-.results small{color:#536175}
-:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.nba-lab-grid>div,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat,.player-rating-team,.player-rating-scenario,.player-rating-note,.war-record,.war-youtube-desk){background:#f4f6f8;color:#27384b;border-color:#c9d3dd}
-:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat) :is(h3,h4,strong,b){color:#223448}
-:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat) :is(p,small,span){color:#4c5e71}
-.nba-home,.nba-intro p,.nba-disabled,.nba-recent-results li,.nba-recent-results ol,.nba-recent-results summary,.nba-model-status summary{color:#405771}
-#nba-prediction{color:#214b42}
-.nba-rest-comparison{background:#e9edf3;color:#344c68;border-color:#7891aa}
-.nba-form-chip{background:#edf0f4;color:#263c50}
-.nba-result-W,.nba-rest-normal{background:#e2f0e5;color:#235d37}
-.nba-result-L,.nba-injury-out{color:#9e2d2d;background:#fbeae7}
-.nba-rest-flag,.nba-sample-note{color:#865717}
-:is(.nba-form-table,.player-ratings-table) :is(th,td){border-color:#cbd5df;padding:10px 12px}
-.nba-form-table :is(thead th,tbody th),.nba-book-table :is(thead th:first-child,tbody th){background:#e9edf2;color:#273d54}
+.card{background:#243244;border-color:#405168;border-radius:14px;box-shadow:0 2px 8px #1c304007}
+.unit-tagline{margin:-8px 0 20px;color:#d2b5f5;font-size:13px;font-weight:750;letter-spacing:.04em}
+.quick-nav a,.quick-nav a.nav-war,.quick-nav a.nav-lab,.quick-nav a.nav-slate,.quick-nav a.nav-player{background:#243244;color:#f5f7fb;border-color:#405168}
+.quick-nav a[aria-current=page]{background:#352b49;border-color:#9773c5;color:#d2b5f5}
+.section-heading,.section-heading-slate{background:#243244;color:#f5f7fb;border-color:#405168}
+.section-heading p,.section-kicker{color:#c6d2e3}
+.game,.nba-game{background:#243244;border-color:#405168;color:#f5f7fb}
+.game p,.nba-game p,.football-season-record{color:#c6d2e3}
+.game.selected,.nba-game.selected{border-color:#9773c5;box-shadow:0 0 0 2px #72539422}
+.game-title{color:#f5f7fb;background:#243244}
+.open-game{background:#352b49;color:#d2b5f5;border-color:#9773c5}
+.results div{background:#243244;color:#f5f7fb}
+.results small{color:#c6d2e3}
+:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.nba-lab-grid>div,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat,.player-rating-team,.player-rating-scenario,.player-rating-note,.war-record,.war-youtube-desk){background:#243244;color:#f5f7fb;border-color:#405168}
+:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat) :is(h3,h4,strong,b){color:#f5f7fb}
+:is(.market-pulse,.nba-market-panel,.nba-quote-card,section.nba-model-status,.nba-team-history,.model-performance,.model-performance-stat,.pregame-check,.health-feed,.health-stat) :is(p,small,span){color:#c6d2e3}
+.nba-home,.nba-intro p,.nba-disabled,.nba-recent-results li,.nba-recent-results ol,.nba-recent-results summary,.nba-model-status summary{color:#c6d2e3}
+#nba-prediction{color:#f5f7fb}
+.nba-rest-comparison{background:#243244;color:#c6d2e3;border-color:#405168}
+.nba-form-chip{background:#243244;color:#f5f7fb}
+.nba-result-W,.nba-rest-normal{background:#203d35;color:#9be5b8}
+.nba-result-L,.nba-injury-out{color:#ffadb7;background:#482c36}
+.nba-rest-flag,.nba-sample-note{color:#ffdb83}
+:is(.nba-form-table,.player-ratings-table) :is(th,td){border-color:#405168;padding:10px 12px}
+.nba-form-table :is(thead th,tbody th),.nba-book-table :is(thead th:first-child,tbody th){background:#243244;color:#f5f7fb}
 .nba-form-table td{font-size:15px}
-.nba-form-table caption,.nba-book-table small,#nba-prop-lines .nba-line-history{color:#4b5f74}
-#nba-prop-lines tbody tr{border-bottom:2px solid #b8c5d4}
+.nba-form-table caption,.nba-book-table small,#nba-prop-lines .nba-line-history{color:#c6d2e3}
+#nba-prop-lines tbody tr{border-bottom:2px solid #405168}
 #nba-prop-lines .nba-form-table td{white-space:normal}
-.nba-prop-strong{background:#e3f2e6;color:#245233}
-.war-room label,.player-rating-help,.player-rating-panel>p,.player-rating-help>summary{color:#455970}
-.war-feed-source h4{background:#fff;color:#24364a}
-.war-feed-source a{color:#305d8a}
-.war-sources a,.war-youtube-grid>a{background:#f2f4f7;border-color:#c5cfdb;color:#253950}
-.war-youtube-grid>a span,.war-youtube-grid>a small{color:#50647a}
-.war-feed-source.war-consensus{background:#eeeaf4;border-color:#7953ad}
-.war-consensus-icon{background:#7543ac;color:#fff}
-.war-consensus-card{border-color:#cfc1e0;background:#fcfaff}
-.league-pulse-panel,.league-pulse-columns>section{background:#f0f2f5;color:#26384d}
-#game-weather{background:#f4f2e7;border-color:#d5d1bb;padding:12px 16px}
-#game-weather :is(h3,strong),#game-weather .weather-temp{color:#25394a}
-#game-weather :is(p,span),#game-weather .weather-more>summary,#game-weather .weather-more>p{color:#526273}
-#game-weather .weather-metrics>div,#game-weather .weather-hour-card{background:#fffef8;border-color:#d8d5c4}
+.nba-prop-strong{background:#203d35;color:#9be5b8}
+.war-room label,.player-rating-help,.player-rating-panel>p,.player-rating-help>summary{color:#c6d2e3}
+.war-feed-source h4{background:#243244;color:#f5f7fb}
+.war-feed-source a{color:#c6d2e3}
+.war-sources a,.war-youtube-grid>a{background:#243244;border-color:#405168;color:#f5f7fb}
+.war-youtube-grid>a span,.war-youtube-grid>a small{color:#c6d2e3}
+.war-feed-source.war-consensus{background:#352b49;border-color:#9773c5}
+.war-consensus-icon{background:#352b49;color:#f5f7fb}
+.war-consensus-card{border-color:#9773c5;background:#352b49}
+.league-pulse-panel,.league-pulse-columns>section{background:#243244;color:#f5f7fb}
+#game-weather{background:#44371f;border-color:#405168;padding:12px 16px}
+#game-weather :is(h3,strong),#game-weather .weather-temp{color:#f5f7fb}
+#game-weather :is(p,span),#game-weather .weather-more>summary,#game-weather .weather-more>p{color:#c6d2e3}
+#game-weather .weather-metrics>div,#game-weather .weather-hour-card{background:#44371f;border-color:#405168}
 #game-weather .weather-now{padding:5px 0}
 #game-weather .weather-temp{font-size:42px}
 #game-weather .weather-hour-card{flex-basis:112px;padding:8px;gap:4px}
-#game-weather-impact{color:#315c45}
-#game-weather .weather-more .weather-source a{color:#365f87}
-#lab #note{color:#465970}
-#lab #simulation-report-details{background:#f5f6f8;border-color:#c9d2dd}
-#lab #simulation-report-details>summary{background:#e9edf2;color:#293c53}
-#lab .simulation-report-content :is(h4,p){color:#43566b}
-#lab #availability-score-status{color:#77521e}
-#auto-injury-status{padding:8px 11px;border-radius:7px;background:#eef1f5;color:#48596e;font-size:13px}
-#auto-injury-status[data-state=review]{background:#fff1d9;color:#79541b}
-#auto-injury-status[data-state=applied]{background:#e5f1e7;color:#2c5d39}
-.health-feed .health-working,.pregame-checked strong{color:#27613b}
-.health-feed :is(.health-empty,.health-partial,.health-stale),.pregame-review strong{color:#81591b}
-.health-feed :is(.health-failed,.health-unavailable){color:#a3303b}
-.health-feed .health-unchecked,.pregame-unknown strong{color:#526074}
+#game-weather-impact{color:#9be5b8}
+#game-weather .weather-more .weather-source a{color:#c6d2e3}
+#lab #note{color:#c6d2e3}
+#lab #simulation-report-details{background:#243244;border-color:#405168}
+#lab #simulation-report-details>summary{background:#243244;color:#f5f7fb}
+#lab .simulation-report-content :is(h4,p){color:#c6d2e3}
+#lab #availability-score-status{color:#ffdb83}
+#auto-injury-status{padding:8px 11px;border-radius:7px;background:#243244;color:#c6d2e3;font-size:13px}
+#auto-injury-status[data-state=review]{background:#44371f;color:#ffdb83}
+#auto-injury-status[data-state=applied]{background:#203d35;color:#9be5b8}
+.health-feed .health-working,.pregame-checked strong{color:#9be5b8}
+.health-feed :is(.health-empty,.health-partial,.health-stale),.pregame-review strong{color:#ffdb83}
+.health-feed :is(.health-failed,.health-unavailable){color:#ffadb7}
+.health-feed .health-unchecked,.pregame-unknown strong{color:#c6d2e3}
 .health-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .health-feed{padding:12px}.health-feed h3{margin-bottom:8px}
 #games{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
 @media(max-width:650px){main{padding:14px 12px}.card{padding:12px}.quick-nav{gap:6px}.quick-nav a{font-size:12px;padding:9px}.unit-tagline{margin:0 0 14px}h1{font-size:28px}.results b{font-size:20px}.nba-prop-filters label{min-width:0;flex:1 1 140px}}
-.ncaab-game-card{background:#f7f8fa;color:#26384d;border-color:#c7d1df}
-#ncaab-props tbody tr{border-bottom:2px solid #b8c5d4}
+.ncaab-game-card{background:#243244;color:#f5f7fb;border-color:#405168}
+#ncaab-props tbody tr{border-bottom:2px solid #405168}
 #ncaab-props td{font-size:13px;min-width:70px}#ncaab-props td:first-child{min-width:150px}
 :root{--text:#26384d;--muted:#506277;--teal:#bdc8d6;--war-accent:#5e3e83;--green:#456e54;--violet:#80619f}
-label{color:#344b65}header small{color:#5f477d}
-.nba-inputs button,#load,#predict{background:#354f70;color:#fff;border-color:#354f70}
-button:hover:not(:disabled){background:#dce4ed;color:#22384e;border-color:#879cb1}
-#load:hover:not(:disabled),#predict:hover:not(:disabled){background:#284261;color:#fff}
-.game .open-game,.game.selected .open-game{background:#e8e0f1;color:#573678;border-color:#bba5d0}
-.game.selected,.game:hover,.game:focus-visible{background:#f2edf7;color:#293749}
-#lab>h2,#player-lab>h2,#lab>.section-kicker,#player-lab>.section-kicker{color:#354961;border-color:#bbc7d4}
-#lab>p,#player-lab>p{color:#4b6077}
-#lab>details,#player-lab>details,#forecast-review{background:#f6f7f9;border-color:#c3cfdb}
-#lab details>summary,#player-lab details>summary,#forecast-review>summary,#lab details[open]>summary,#player-lab details[open]>summary{background:#e9edf3;color:#314a65;border-color:#c3cfdb}
-#lab details>summary::after,#player-lab details>summary::after{color:#445d77}
-.results div,.results div:nth-child(2),.results div:nth-child(3),.results div:nth-child(4){background:#edf1f5;border-color:#cad4df}
-.results b{color:#20374f}
-th,.all-projection-table thead th{background:#e9eef4;color:#2c4663}
-tbody tr:nth-child(even){background:#f2f5f8}
-#all-player-projections,.market-pulse-card,.football-form-card,.football-rest-comparison,.injury-team-summary,#lab .outcome-summary{background:#f4f6f8;color:#2d4158;border-color:#c6d1de}
-#all-player-projections h3,#all-player-projections>p,.market-pulse-label,.market-pulse-value,.market-pulse-detail,.football-form-card h4,.injury-team-summary h3,#lab .outcome-summary h3,#lab .outcome-summary>small{color:#3d526b}
-.market-pulse-up .market-pulse-value{color:#256447}.market-pulse-down .market-pulse-value{color:#895322}.market-pulse-flat .market-pulse-value{color:#485e75}
-.injury-team-summary li.injury-confirmed-out{color:#a1313d}.football-short-week{color:#8b591c}
-.all-projection-table button{background:#e8edf4;color:#324c69}
-.league-pulse-heading h2,.league-pulse-columns h3,#league-pulse-status,.league-pulse-note,.league-pulse-explainer,.league-pulse-empty{color:#3e536c}
-.league-pulse-group,.league-pulse-matchup,.league-pulse-matchup-team{background:#f5f7fa;color:#2e4058;border-color:#c9d3de}
-.league-pulse-group>summary,.league-pulse-team:nth-child(even){background:#e9eef4;color:#314963}
-.league-pulse-rank,.league-pulse-name,.league-pulse-strength,.league-pulse-record,.league-pulse-index,.league-pulse-matchup h3,.league-pulse-matchup-team strong,.league-pulse-matchup-team small{color:#3c526d}
-.league-pulse-trend.trend-up{color:#296742}.league-pulse-trend.trend-down{color:#a1373d}.league-pulse-trend.trend-flat{color:#52647a}
-#war-room h3,#war-room h4{color:#563b76}
+label{color:#c6d2e3}header small{color:#d2b5f5}
+.nba-inputs button,#load,#predict{background:#354f70;color:#f5f7fb;border-color:#405168}
+button:hover:not(:disabled){background:#243244;color:#f5f7fb;border-color:#405168}
+#load:hover:not(:disabled),#predict:hover:not(:disabled){background:#354f70;color:#f5f7fb}
+.game .open-game,.game.selected .open-game{background:#352b49;color:#d2b5f5;border-color:#9773c5}
+.game.selected,.game:hover,.game:focus-visible{background:#352b49;color:#f5f7fb}
+#lab>h2,#player-lab>h2,#lab>.section-kicker,#player-lab>.section-kicker{color:#c6d2e3;border-color:#405168}
+#lab>p,#player-lab>p{color:#c6d2e3}
+#lab>details,#player-lab>details,#forecast-review{background:#243244;border-color:#405168}
+#lab details>summary,#player-lab details>summary,#forecast-review>summary,#lab details[open]>summary,#player-lab details[open]>summary{background:#243244;color:#c6d2e3;border-color:#405168}
+#lab details>summary::after,#player-lab details>summary::after{color:#c6d2e3}
+.results div,.results div:nth-child(2),.results div:nth-child(3),.results div:nth-child(4){background:#243244;border-color:#405168}
+.results b{color:#f5f7fb}
+th,.all-projection-table thead th{background:#243244;color:#c6d2e3}
+tbody tr:nth-child(even){background:#243244}
+#all-player-projections,.market-pulse-card,.football-form-card,.football-rest-comparison,.injury-team-summary,#lab .outcome-summary{background:#243244;color:#c6d2e3;border-color:#405168}
+#all-player-projections h3,#all-player-projections>p,.market-pulse-label,.market-pulse-value,.market-pulse-detail,.football-form-card h4,.injury-team-summary h3,#lab .outcome-summary h3,#lab .outcome-summary>small{color:#c6d2e3}
+.market-pulse-up .market-pulse-value{color:#9be5b8}.market-pulse-down .market-pulse-value{color:#ffdb83}.market-pulse-flat .market-pulse-value{color:#c6d2e3}
+.injury-team-summary li.injury-confirmed-out{color:#ffadb7}.football-short-week{color:#ffdb83}
+.all-projection-table button{background:#243244;color:#c6d2e3}
+.league-pulse-heading h2,.league-pulse-columns h3,#league-pulse-status,.league-pulse-note,.league-pulse-explainer,.league-pulse-empty{color:#c6d2e3}
+.league-pulse-group,.league-pulse-matchup,.league-pulse-matchup-team{background:#243244;color:#c6d2e3;border-color:#405168}
+.league-pulse-group>summary,.league-pulse-team:nth-child(even){background:#243244;color:#c6d2e3}
+.league-pulse-rank,.league-pulse-name,.league-pulse-strength,.league-pulse-record,.league-pulse-index,.league-pulse-matchup h3,.league-pulse-matchup-team strong,.league-pulse-matchup-team small{color:#c6d2e3}
+.league-pulse-trend.trend-up{color:#9be5b8}.league-pulse-trend.trend-down{color:#ffadb7}.league-pulse-trend.trend-flat{color:#c6d2e3}
+#war-room h3,#war-room h4{color:#d2b5f5}
 /* Let populated player filters shrink inside narrow cards. */
 .nba-prop-filters{min-width:0}
 .nba-prop-filters label{min-width:0}
@@ -114,13 +114,13 @@ tbody tr:nth-child(even){background:#f2f5f8}
 :is(#nba-prop-lines,#ncaab-props) td select{width:165px;min-width:0;font-size:12px}
 
 .basketball-leagues{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
-.basketball-leagues a{padding:10px 18px;border:1px solid #b6c1ce;border-radius:9px;background:#fff;font-weight:750;text-decoration:none}
-.basketball-leagues a[aria-current="page"]{background:#e8e0f1;border-color:#7953ad;color:#573678}
+.basketball-leagues a{padding:10px 18px;border:1px solid #405168;border-radius:9px;background:#243244;font-weight:750;text-decoration:none}
+.basketball-leagues a[aria-current="page"]{background:#352b49;border-color:#9773c5;color:#d2b5f5}
 
-.game-records{display:block;margin:8px 0;color:#344b61;font-size:13px;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
+.game-records{display:block;margin:8px 0;color:#c6d2e3;font-size:13px;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
 
-.market-gap{padding:9px 12px;border-left:3px solid #7a8da1;background:#edf1f5;color:#293e52;font-size:14px;font-weight:650;line-height:1.5}
-.market-gap-large{border-color:#ac741c;background:#fff2d6;color:#6c470b}
+.market-gap{padding:9px 12px;border-left:3px solid #405168;background:#243244;color:#f5f7fb;font-size:14px;font-weight:650;line-height:1.5}
+.market-gap-large{border-color:#405168;background:#44371f;color:#ffdb83}
 
 .nba-form-strip{flex-wrap:wrap}
 /* Provider-supplied logos share the compact matchup heading across leagues. */
@@ -128,13 +128,24 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .game-title .game-team-logo{width:24px;height:24px;object-fit:contain;flex:0 0 24px}
 .game-title .game-team span{overflow-wrap:anywhere}
 .game-title .game-at{white-space:pre-wrap}
-.ncaab-game-card .game-title{display:block;font-size:1rem;font-weight:800;color:#152332;line-height:1.5}
-.ncaab-game-card p{margin:6px 0;color:#3f5268;font-size:.88rem}
+.ncaab-game-card .game-title{display:block;font-size:1rem;font-weight:800;color:#f5f7fb;line-height:1.5}
+.ncaab-game-card p{margin:6px 0;color:#c6d2e3;font-size:.88rem}
 .ncaab-line-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ncaab-line-inputs label{display:grid;gap:5px;min-width:0}
 .ncaab-line-inputs input{width:100%;min-width:0;box-sizing:border-box}
-.ncaab-report-details{margin-top:10px;color:#455970;font-size:.88rem}
+.ncaab-report-details{margin-top:10px;color:#c6d2e3;font-size:.88rem}
 .ncaab-report-details summary{cursor:pointer;font-weight:700}
-.venue-distance{margin-top:8px;color:#455970;font-size:.88rem}
+.venue-distance{margin-top:8px;color:#c6d2e3;font-size:.88rem}
 .venue-distance summary{cursor:pointer;font-weight:700;line-height:1.5}
 .venue-distance p{margin:6px 0;overflow-wrap:anywhere}
+
+/* Shared selection and status contrast across all sports. */
+:root{--text:#f5f7fb;--muted:#c6d2e3;--teal:#7891aa;--war-accent:#d2b5f5;--green:#9be5b8;--violet:#b68bdc}
+.card{box-shadow:0 2px 8px #0002}
+.game-title,.ncaab-game-card .game-title{background:#243244;color:#f5f7fb}
+.game.selected,.game:hover,.game:focus-visible,.nba-game.selected{background:#352b49;border-color:#9773c5}
+.nba-inputs button,#load,#predict{background:#354f70;color:#fff}
+.nba-inputs button:hover:not(:disabled),#load:hover:not(:disabled),#predict:hover:not(:disabled){background:#42658e;color:#fff}
+button:hover:not(:disabled){background:#30445d;color:#fff}
+tbody tr:nth-child(even){background:#1c2a3a}
+.war-consensus-card{background:#352b49;border-color:#9773c5}
