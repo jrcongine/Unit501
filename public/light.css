@@ -174,7 +174,8 @@ tbody tr:nth-child(even){background:#1c2a3a}
 
 /* Option 3: compact sportsbook summary beside the matchup. */
 .matchup-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,520px);gap:6px 24px;align-items:center;margin:6px 0 18px}
-.matchup-heading #matchup{margin:0;font-size:clamp(24px,3vw,32px);min-width:0;overflow-wrap:anywhere;grid-row:1 / 3}
-.matchup-heading .matchup-odds{margin:0;text-align:right;font-size:14px;line-height:1.5;color:#c6d2e3;overflow-wrap:anywhere}
-.matchup-heading #refresh-odds{grid-column:2;justify-self:end;min-height:32px;padding:5px 10px;font-size:12px}
-@media(max-width:700px){.matchup-heading{grid-template-columns:minmax(0,1fr);gap:8px}.matchup-heading #matchup{grid-row:auto}.matchup-heading .matchup-odds{text-align:left}.matchup-heading #refresh-odds{grid-column:1;justify-self:start}}
+.matchup-heading #matchup{margin:0;font-size:clamp(24px,3vw,32px);min-width:0;overflow-wrap:anywhere;grid-column:1;grid-row:1}
+.matchup-heading .matchup-odds{grid-column:2;grid-row:1;margin:0;text-align:right;font-size:14px;line-height:1.5;color:#c6d2e3;overflow-wrap:anywhere}
+.matchup-heading #refresh-odds{grid-column:2;grid-row:2;justify-self:end;min-height:32px;padding:5px 10px;font-size:12px}
+.matchup-heading>:not(#matchup):not(.matchup-odds):not(#refresh-odds){grid-column:1 / -1;min-width:0;width:100%}
+@media(max-width:700px){.matchup-heading{grid-template-columns:minmax(0,1fr);gap:8px}.matchup-heading #matchup{grid-row:auto}.matchup-heading .matchup-odds{grid-column:1;grid-row:2;text-align:left}.matchup-heading #refresh-odds{grid-column:1;grid-row:3;justify-self:start}}
