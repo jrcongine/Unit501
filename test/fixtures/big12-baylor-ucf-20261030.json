@@ -1,0 +1,123 @@
+{
+  "source": "https://big12sports.com/sports/2025/8/14/FBreporting.aspx",
+  "embeddedSource": "https://app.hdintelligence.com/?conf=B12&source=B12&sport=Football&type=report",
+  "retrievedAt": "2026-10-30T20:32:38.062Z",
+  "note": "Public report 3407, status excerpt only: all non-Available/non-Exempt rows plus one Available and Exempt example per team. Provider roster IDs are not part of this source.",
+  "report": {
+    "publishDate": "2026-10-29",
+    "postedTime": "21:00:00",
+    "conferenceTimeZone": "CT",
+    "footer": {
+      "date": "2026-10-30",
+      "time": "18:30:00"
+    },
+    "games": [
+      {
+        "teamName": "Baylor",
+        "rows": [
+          {
+            "name": "CB #7 Devon Jordan",
+            "status": "Probable"
+          },
+          {
+            "name": "S #8 Jacob Redding",
+            "status": "Out"
+          },
+          {
+            "name": "RB #35 Dawson Pendergrass",
+            "status": "Probable"
+          },
+          {
+            "name": "CB #38 Jamarion Richardson",
+            "status": "Out"
+          },
+          {
+            "name": "DL #59 Devonte Tezino",
+            "status": "Out"
+          },
+          {
+            "name": "OL #61 Cayden Tone",
+            "status": "Out"
+          },
+          {
+            "name": "WR #87 Ashton Jones",
+            "status": "Out"
+          },
+          {
+            "name": "DL #0 Hosea Wheeler",
+            "status": "Available"
+          }
+        ]
+      },
+      {
+        "teamName": "UCF",
+        "rows": [
+          {
+            "name": "RB #4 Taevion Swint",
+            "status": "Out"
+          },
+          {
+            "name": "DB #5 DJ Bell",
+            "status": "Out"
+          },
+          {
+            "name": "WR #7 Duane Thomas Jr.",
+            "status": "Probable"
+          },
+          {
+            "name": "DB #8 Demari Henderson",
+            "status": "Out"
+          },
+          {
+            "name": "EDG #10 Sincere Edwards",
+            "status": "Probable"
+          },
+          {
+            "name": "EDG #11 Ken Talley",
+            "status": "Probable"
+          },
+          {
+            "name": "WR #13 Caleb Rollerson",
+            "status": "Questionable"
+          },
+          {
+            "name": "QB #14 Alonza Barnett III",
+            "status": "Questionable"
+          },
+          {
+            "name": "LB #20 Lewis Carter",
+            "status": "Out"
+          },
+          {
+            "name": "LB #38 Jayden Jennings",
+            "status": "Probable"
+          },
+          {
+            "name": "EDG #41 Bruno Dall",
+            "status": "Probable"
+          },
+          {
+            "name": "OL #55 Jacob Maiava",
+            "status": "Probable"
+          },
+          {
+            "name": "OL #75 Tyler Gibson",
+            "status": "Out"
+          },
+          {
+            "name": "OL #78 Preston Cushman",
+            "status": "Probable"
+          },
+          {
+            "name": "TE #0 Dylan Wade",
+            "status": "Available"
+          },
+          {
+            "name": "OL #61 Owen Spell",
+            "status": "Exempt"
+          }
+        ]
+      }
+    ]
+  }
+}

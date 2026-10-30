@@ -476,3 +476,23 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   No model weight, theme, or weather change. Prior commit a0e5eac is verified live on primary.
 - Preserved concurrent compact FanDuel-header commit fd09cad and re-ran all 791 tests
   successfully against the combined version before publication.
+
+## Big 12 official football availability — continuation
+
+- Found the college adapter queried SEC, ACC and Big Ten only. Added B12 using the
+  conference's official Football reporting page and its embedded HD Intelligence source:
+  https://big12sports.com/sports/2025/8/14/FBreporting.aspx
+  https://app.hdintelligence.com/?conf=B12&source=B12&sport=Football&type=report
+- Live public request returned report 3407 for Baylor at UCF, October 30 at 6:30 p.m. CT,
+  published October 29 at 9 p.m. CT. Retained a minimal status excerpt as a regression
+  fixture with provenance; image data and decorative source fields are excluded.
+- Existing exact-matchup/kickoff/publication/roster matching applies unchanged. Big 12
+  reports now reach availability, role review and the existing automatic sensitivity
+  pipeline. Official Out alone does not create points: supported role/workload evidence
+  is still required. Questionable/Exempt statuses do not become confirmed absences.
+- 792 tests passed. A source-derived Baylor/UCF fixture with explicitly synthetic roster
+  IDs tests Out versus conditional status, no points without workload, a supported RB
+  sensitivity with workload, and stale-report rejection. This does not verify the live
+  production roster match or prove tonight's numeric injury adjustment is available.
+- Tasks 16/20/75/97 gain Big 12 source coverage. Protected production acceptance and
+  unsupported conferences remain open; no invented injury estimates or new weights.

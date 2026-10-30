@@ -19,7 +19,7 @@ test('official college reports require both schools, exact kickoff and a valid p
 });
 test('official college Out gates without provider coverage and uncertain statuses remain conditional',async()=>{
  let calls=0;const get=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>{calls++;return conf==='SEC'?{x:report()}:{};});
- const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,3);
+ const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,4);
  assert.equal(t[0].official.publisher,'SEC');assert.equal(t[0].official.rows[0].id,'10');
  const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).blocked,true);
  assert.equal(assess(data,game,'2','20',now,true).state,'conditional');
@@ -97,4 +97,24 @@ test('college nickname aliases require the reviewed league, season, school, ID a
  assert.equal(matchPlayer(row,[{...player,id:'other'}],'195',scope),null);
  assert.equal(matchPlayer(row,[{...player,position:'WR'}],'195',scope),null);
  assert.equal(matchPlayer(row,[player,{...player,id:'other',name:'Hollywood Smothers'}],'195',scope),null);
+});
+
+test('Big 12 report reaches availability and automatic scoring only with matched roster and workload',async()=>{
+ const snapshot=require('./fixtures/big12-baylor-ucf-20261030.json'),r=snapshot.report;
+ const now=Date.parse('2026-10-30T20:00:00Z'),kickoff=Date.parse('2026-10-30T23:30:00Z');
+ const q={league:'2',season:'2026',game:'100',away:'1',home:'2'};
+ const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:'Baylor'},home:{id:2,name:'UCF'}}};
+ // Synthetic provider IDs test identity reconciliation; these are not live roster IDs.
+ const teams=r.games.map((side,i)=>({id:String(i+1),roster:{available:true,checkedAt:now,rows:side.rows.map((p,j)=>{const m=/^([A-Z]+) #\d+ (.+)$/.exec(p.name);return {id:String(1000+i*100+j),name:m[2],position:m[1]};})},injuryUsage:{available:true,checkedAt:now,gameId:'100',kickoff,league:'2',season:'2026',rows:[]}}));
+ const read=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='B12'?{3407:r}:{});
+ await read(q,teams);assert.ok(teams.every(t=>t.official.available));assert.equal(teams[0].official.publisher,'Big 12');assert.equal(teams[0].official.unmatched,0);
+ const swint=teams[1].roster.rows.find(p=>p.name==='Taevion Swint'),barnett=teams[1].roster.rows.find(p=>p.name==='Alonza Barnett III');
+ const matchup={id:'100',league:'2',season:'2026',kickoff,awayId:'1',homeId:'2'},data={current:true,teams};
+ assert.equal(assess(data,matchup,'2',swint.id,now,true).blocked,true);
+ assert.equal(assess(data,matchup,'2',barnett.id,now,true).state,'conditional');
+ const {evaluate}=require('../public/auto-injury');
+ assert.equal(evaluate(data,matchup,null,now).applied.length,0);
+ teams[1].injuryUsage.rows=[{id:swint.id,position:'RB',metric:'carries',values:[10,11,9],role:'recent regular contributor'}];
+ const scored=evaluate(data,matchup,null,now);assert.equal(scored.injury.homeOffense,.25);assert.equal(scored.applied.length,1);assert.equal(scored.applied[0].name,'Taevion Swint');
+ teams[1].official.checkedAt=now-900001;assert.equal(evaluate(data,matchup,null,now).ready,false);
 });
