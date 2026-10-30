@@ -72,7 +72,7 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 14 | All-sport FanDuel coverage | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 15 | Automatic loading and refreshing | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 16 | Pregame roster/trade/depth freshness | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
-| 17 | Complete Data Health coverage | Still pending | Added football team/player history telemetry and college basketball expert feeds. Complete route/source inventory and durable cross-restart status remain unfinished. |
+| 17 | Complete Data Health coverage | Still pending | Added football team/player history telemetry and college basketball expert feeds. Commit 5ca6e0a adds persistent status and rankings, player ratings, box scores, roster/official/depth subfeeds, standings/headlines, NBA travel/comparison/live scoreboards. Full live source acceptance remains pending. |
 | 18 | Success times and stale warnings | Newly completed, tested, and deployed | Retained real success/source timestamps; Central Time display; unchecked feeds appear under Needs attention. Fixed 429 and missing official injury coverage falsely retaining healthy status. |
 | 19 | Quota-aware retries | Already completed and verified | Existing provider retry and API-meter budget/cooldown/concurrency tests pass. No allowance or billing plan changed. |
 | 20 | Confirmed pregame roles | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
@@ -102,16 +102,16 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 44 | Selected-player props only | Newly completed, tested, and deployed | NBA exact-player selector and catalog order added; college basketball gains exact selector and catalog order; football selector retained. |
 | 45 | Catalog-order props | Newly completed, tested, and deployed | NBA exact-player selector and catalog order added; college basketball gains exact selector and catalog order; football selector retained. |
 | 46 | Comparison table | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
-| 47 | Projection/median/line/gap/recent/workload/movement | Still pending | College table now exposes projection, median, line, gap, recent/workload and movement. NBA retains comparison table and these values; full scenario and market parity remains unfinished. |
+| 47 | Projection/median/line/gap/recent/workload/movement | Still pending | College table now exposes projection, median, line, gap, recent/workload and movement. NBA retains comparison table and these values; basketball scenario parity is delivered in 5ca6e0a; full supported-market parity remains unfinished. |
 | 48 | Compact statistics panels | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
 | 49 | Confirmed role/usage alerts | Still pending | Existing football role alerts reject conflicted evidence. NBA minutes trends remain explicitly historical; no unsupported confirmed promotion labels added. |
 | 50 | Above/Below/Equal samples | Newly completed, tested, and deployed | Existing football/NBA hit-rate arithmetic preserved; college basketball adds percentage sorts, sample sizes and pushes. Incomplete projections sort below available ones. |
 | 51 | All-player percentage sorts | Newly completed, tested, and deployed | Existing football/NBA hit-rate arithmetic preserved; college basketball adds percentage sorts, sample sizes and pushes. Incomplete projections sort below available ones. |
 | 52 | Correct high/low sorting | Newly completed, tested, and deployed | Existing football/NBA hit-rate arithmetic preserved; college basketball adds percentage sorts, sample sizes and pushes. Incomplete projections sort below available ones. |
 | 53 | Do not verify incomplete histories | Already completed and verified | Preserved stat-integrity, participation, replacement, sorting and replay protections; 717-test suite passes. Supported records only, not universal source coverage. |
-| 54 | Player scenarios | Still pending | Football scenario controls preserved. Equivalent complete NBA/college player scenario parity has not been added. |
-| 55 | Lightning bolt icon | Still pending | Football scenario controls preserved. Equivalent complete NBA/college player scenario parity has not been added. |
-| 56 | Football/basketball market consistency | Still pending | College table now exposes projection, median, line, gap, recent/workload and movement. NBA retains comparison table and these values; full scenario and market parity remains unfinished. |
+| 54 | Player scenarios | Newly completed, tested, and deployed | Commit 5ca6e0a adds per-player NBA/college Normal 0%, Star Power +10%, Rivalry Dud −10%, Fatigue −5%. Recorded statistics remain unchanged; scenarios cannot compound and reset between games. |
+| 55 | Lightning bolt icon | Newly completed, tested, and deployed | Football retained; basketball Star Power and Rivalry Dud controls use ⚡. |
+| 56 | Football/basketball market consistency | Still pending | College table now exposes projection, median, line, gap, recent/workload and movement. NBA retains comparison table and these values; basketball scenario parity is delivered in 5ca6e0a; full supported-market parity remains unfinished. |
 | 57 | Betting percentage source audit | Already completed and verified | Main football UI already removed unreliable betting shares and disables their scoring input. No invented percentages or auto-restoration; source attribution/consensus tests pass. |
 | 58 | Hide unsupported percentages | Already completed and verified | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
 | 59 | No fabricated percentages/consensus | Already completed and verified | Main football UI already removed unreliable betting shares and disables their scoring input. No invented percentages or auto-restoration; source attribution/consensus tests pass. |
@@ -175,3 +175,21 @@ Primary public `/api/health`: HTTP 200, `ok:true`, `private:true`, `liveData:tru
 That last flag only means the provider key is configured; it does not verify the plan or data quality.
 Secondary public `/api/health`: HTTP 200, `ok:true`, `private:true`, `liveData:false`; it has no live football provider key. Primary remains the configured live-data service.
 The follow-up commit containing this ledger changes documentation only.
+
+## Continuation batch — 5ca6e0ab89f6a8ccdf5bfab03aebdc0dc7e92084
+
+- Added bounded, atomic feed-status persistence beside the existing line-history file (or
+  UNIT501_DATA_HEALTH_FILE). Original source/success times survive restarts; malformed files
+  are preserved and storage errors are disclosed. No payloads, URLs or credentials are stored.
+  Writes are debounced 500ms; abrupt termination can lose the latest unsaved observation.
+- Expanded passive feed coverage; rankings loading/error states no longer register as success.
+  NBA live scoreboard expires after three minutes, availability after fifteen minutes.
+- Added optional per-player basketball scenarios without altering actual history, percentages,
+  minutes or medians. Explicit manual/uncalibrated labels; reset on matchup changes.
+- Local full suite: 723 passed, zero failures/skips. Targeted college client suite passed after
+  adding scenario switching assertions. Desktop/mobile four-screen checks: no errors/overflow.
+- Railway application deployment: primary 03cc6aec-c8e9-4df5-84d6-16682e30003c SUCCESS;
+  secondary b777c672-25ef-4fba-a2d1-e90c76029a73 SUCCESS. Both identify commit 5ca6e0a.
+- Primary public health responds OK, private true, liveData true. These flags do not verify
+  entitlement, every feed, saved on-disk status or authenticated screens. The existing
+  production-login blocker remains; GitHub Actions was still queued at this check.
