@@ -395,21 +395,25 @@ async function loadVenueForecast(game, conditions, roof) {
     label.textContent=condition.label;
     const when=document.createElement('span');
     when.textContent=`Kickoff · ${time} CT`;
-    description.append(label,when);
-    main.append(icon,temp,description);
+    description.append(temp,label,when);
+    main.append(icon,description);
     const metrics=document.createElement('div');
     metrics.className='weather-metrics';
-    for(const [name,value] of [
-      ['Wind',fmt(data.windMph,' mph')],
-      ['Gusts',fmt(data.gustMph,' mph')],
-      ['Rain chance',fmt(data.precipitationChance,'%')]
+    for(const [name,value,symbol] of [
+      ['Wind',fmt(data.windMph,' mph'),'💨'],
+      ['Gusts',fmt(data.gustMph,' mph'),'💨'],
+      ['Rain chance',fmt(data.precipitationChance,'%'),'💧']
     ]){
       const item=document.createElement('div');
       const title=document.createElement('span');
       title.textContent=name;
       const number=document.createElement('strong');
       number.textContent=value;
-      item.append(title,number);
+      const metricIcon=document.createElement('span');
+      metricIcon.className='weather-metric-icon';
+      metricIcon.textContent=symbol;
+      metricIcon.setAttribute('aria-hidden','true');
+      item.append(metricIcon,title,number);
       metrics.append(item);
     }
     conditions.replaceChildren(main,metrics);
@@ -428,7 +432,7 @@ async function loadVenueForecast(game, conditions, roof) {
         const card=document.createElement('div');
         card.className='weather-hour-card';
         const hourTime=document.createElement('span');
-        hourTime.textContent=(index===0?'Kickoff · ':'')+new Date(index===0?game.kickoff:hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric'});
+        hourTime.textContent=new Date(index===0?game.kickoff:hour.forecastTime).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'});
         const emoji=document.createElement('span');
         emoji.className='weather-hour-icon';
         emoji.textContent=weatherCondition(hour.weatherCode,hour.forecastTime).icon;
