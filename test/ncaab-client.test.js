@@ -8,7 +8,7 @@ function setup(quotes={}){
  const rec={games:5,scored:80,allowed:70,wins:3,losses:2};const side=(id,name)=>({id,name,season:rec,recent5:rec,recent10:rec,recentGames:Array.from({length:5},(_,i)=>({id:String(i+1),tipoff:new Date(Date.now()-86400000*(i+1)).toISOString(),opponent:'Opponent',scored:80,allowed:70,venue:'home'}))});
  const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
- context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
+ context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
  vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
@@ -16,7 +16,7 @@ test('college slate loads, selects a game, displays form and simulates manual li
  const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();assert.equal(h.nodes.get('ncaab-games').children.length,1);
  await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();assert.match(h.nodes.get('ncaab-prediction').textContent,/Away 75.0.*Home 75.0/);
  assert.match(h.nodes.get('ncaab-teams').textContent,/5 recorded games.*3–2/);
- h.nodes.get('ncaab-spread').value='0';h.nodes.get('ncaab-total').value='150';h.nodes.get('ncaab-sim').events.click();assert.match(h.nodes.get('ncaab-simulation').textContent,/tie 100.0%.*spread push 100.0%.*total push 100.0%/);
+ h.nodes.get('ncaab-spread').value='0';h.nodes.get('ncaab-spread').events.input();h.nodes.get('ncaab-total').value='150';h.nodes.get('ncaab-total').events.input();h.nodes.get('ncaab-sim').events.click();assert.match(h.nodes.get('ncaab-simulation').textContent,/tie 100.0%.*spread push 100.0%.*total push 100.0%/);
 });
 test('TBD tipoffs do not request history or create predictions',async()=>{
  const h=setup();h.game.timeKnown=false;await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();assert.match(h.nodes.get('ncaab-context-status').textContent,/not confirmed/);assert.equal(h.requests.length,1);
@@ -29,7 +29,7 @@ test('college missing markets and unrecorded movement are disclosed',async()=>{
 });
 
 test('college quotes show moneylines and recorded movement without labeling them opening lines',async()=>{
- const h=setup({message:'Loaded',moneyline:{away:125,home:-145},history:{spread:{firstLine:3,line:4,firstAt:1,lastAt:2},total:{firstLine:145,line:145,firstAt:1,lastAt:1}}});
+ const h=setup({message:'Loaded',spread:{away:4,home:-4,updatedAt:Date.now()},total:{line:145,updatedAt:Date.now()},moneyline:{away:125,home:-145,updatedAt:Date.now()},history:{spread:{firstLine:3,line:4,firstAt:1,lastAt:2},total:{firstLine:145,line:145,firstAt:1,lastAt:1}}});
  await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
  assert.match(h.nodes.get('ncaab-odds-status').textContent,/Away \+125 \/ Home -145/);
  assert.match(h.nodes.get('ncaab-line-history').textContent,/toward Home/);
@@ -131,4 +131,63 @@ test('college comparison responds to entered lines without inventing a line for 
  const calls=h.requests.length;spread.value='7';spread.events.input();assert.match(gap.textContent,/Large model\/line difference.*Entered lines.*\+7.0/);assert.doesNotMatch(gap.textContent,/Total gap/);
  total.value='160';total.events.input();assert.match(gap.textContent,/Total gap -10.0/);
  spread.value='';spread.events.input();total.value='';total.events.input();assert.equal(gap.hidden,true);assert.equal(h.requests.length,calls);
+});
+
+test('college game lines expire locally, remove stale comparisons and preserve manually edited lines',async()=>{
+ const q={spread:{away:4,home:-4,updatedAt:0},total:{line:145,updatedAt:0},moneyline:{away:125,home:-145,updatedAt:0}},h=setup(q);
+ for(const market of Object.values(q))market.updatedAt=h.now();
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.match(h.nodes.get('ncaab-market-gap').textContent,/FanDuel/);
+ assert.equal(Number(h.nodes.get('ncaab-spread').value),4);
+ h.nodes.get('ncaab-spread').value='7';h.nodes.get('ncaab-spread').events.input();
+ assert.match(h.nodes.get('ncaab-market-gap').textContent,/FanDuel \+ entered lines/);
+ const calls=h.requests.length,timer=h.timers.filter(t=>t.delay===1800001).at(-1);assert.ok(timer);
+ h.advance(1800001);timer.fn();
+ assert.equal(h.nodes.get('ncaab-spread').value,'7');assert.equal(h.nodes.get('ncaab-total').value,'');
+ assert.match(h.nodes.get('ncaab-market-gap').textContent,/Entered lines/);assert.doesNotMatch(h.nodes.get('ncaab-market-gap').textContent,/Total gap/);
+ assert.doesNotMatch(h.nodes.get('ncaab-odds-status').textContent,/\+125/);assert.match(h.nodes.get('ncaab-odds-status').textContent,/No fresh/);
+ assert.equal(h.requests.length,calls);
+});
+
+test('college quote refresh restores fresh automatic fields without overwriting an intentional blank',async()=>{
+ const q={spread:{away:4,home:-4,updatedAt:0},total:{line:145,updatedAt:0}},h=setup(q);for(const m of Object.values(q))m.updatedAt=h.now();
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ h.nodes.get('ncaab-spread').value='';h.nodes.get('ncaab-spread').events.input();
+ h.advance(1800001);h.nodes.get('ncaab-scope').events.change();assert.equal(h.nodes.get('ncaab-market-gap').hidden,true);
+ q.total.updatedAt=h.now();q.total.line=155;q.spread.updatedAt=h.now();
+ await h.nodes.get('ncaab-refresh-lines').events.click();
+ assert.equal(h.nodes.get('ncaab-spread').value,'');assert.equal(Number(h.nodes.get('ncaab-total').value),155);
+ assert.match(h.nodes.get('ncaab-market-gap').textContent,/FanDuel.*Total gap -5.0/);
+ assert.equal(h.nodes.get('ncaab-refresh-lines').disabled,false);
+});
+
+test('college rejects missing timestamps, malformed markets and mismatched tipoffs',async()=>{
+ const q={spread:{away:4,home:4,updatedAt:0},total:{line:145},moneyline:{away:0,home:-145,updatedAt:0}},h=setup(q);
+ q.spread.updatedAt=q.moneyline.updatedAt=h.now();
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.equal(h.nodes.get('ncaab-spread').value,'');assert.equal(h.nodes.get('ncaab-total').value,'');assert.equal(h.nodes.get('ncaab-market-gap').hidden,true);
+ q.spread.home=-4;q.total.updatedAt=h.now();h.game.tipoff=new Date(h.now()+100).toISOString();
+ await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ // The fixture response retains its original tipoff, so mismatched data is also rejected.
+ assert.equal(h.nodes.get('ncaab-market-gap').hidden,true);
+});
+
+test('college quotes disappear at tipoff even when the quote timestamp is still fresh',async()=>{
+ const q={spread:{away:4,home:-4,updatedAt:0},total:{line:145,updatedAt:0}},h=setup(q);
+ h.game.tipoff=new Date(h.now()+1000).toISOString();for(const m of Object.values(q))m.updatedAt=h.now();
+ const base=h.context.fetch;h.context.fetch=async url=>{const r=await base(url);const data=await r.json();return {ok:true,json:async()=>String(url).includes('/games?')?data:{...data,tipoff:h.game.tipoff}};};
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.equal(Number(h.nodes.get('ncaab-total').value),145);const timer=h.timers.filter(t=>t.delay===1000).at(-1);assert.ok(timer);
+ h.advance(1000);timer.fn();assert.equal(h.nodes.get('ncaab-total').value,'');assert.equal(h.nodes.get('ncaab-spread').value,'');assert.equal(h.nodes.get('ncaab-market-gap').hidden,true);
+});
+
+test('late college quote responses cannot overwrite a newer selection or user edits',async()=>{
+ const h=setup(),base=h.context.fetch,pending=[];
+ h.context.fetch=url=>String(url).includes('/odds?')?new Promise(resolve=>pending.push(resolve)):base(url);
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();assert.equal(pending.length,2);
+ h.nodes.get('ncaab-spread').value='8';h.nodes.get('ncaab-spread').events.input();
+ const response=total=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,bookmaker:'FanDuel',spread:{away:4,home:-4,updatedAt:h.now()},total:{line:total,updatedAt:h.now()}})});
+ pending[1](response(155));await h.settle();assert.equal(Number(h.nodes.get('ncaab-total').value),155);assert.equal(h.nodes.get('ncaab-spread').value,'8');
+ pending[0](response(140));await h.settle();assert.equal(Number(h.nodes.get('ncaab-total').value),155);assert.equal(h.nodes.get('ncaab-spread').value,'8');
 });

@@ -1006,3 +1006,32 @@ test('football simulation shows entered-line differences and clears them when in
  assert.match(h.nodes.get('football-market-gap').textContent,/Entered lines.*Away margin gap.*Total gap/);
  h.run('invalidateSimulation("Inputs changed")');assert.equal(h.nodes.get('football-market-gap').hidden,true);assert.equal(h.nodes.get('football-market-gap').textContent,'');
 });
+
+test('football automatic quotes expire without a new provider call and preserve an edited field',async()=>{
+ const h=harness();let clock=Date.now();h.context.Date=class extends Date{static now(){return clock;}};
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
+ assert.equal(h.nodes.get('spread').value,'7.5');assert.equal(h.nodes.get('total').value,'48.5');
+ h.nodes.get('spread').value='3.5';await h.nodes.get('spread').dispatchEvent({type:'input'});
+ let calls=0;h.context.fetch=async()=>{calls++;throw Error('Unexpected request');};
+ clock+=1801000;const timer=h.timers.filter(t=>t.active&&t.delay>=1790000&&t.delay<=1801000).at(-1);assert.ok(timer);timer.fn();
+ assert.equal(h.nodes.get('spread').value,'3.5');assert.equal(h.nodes.get('total').value,'');
+ assert.equal(h.run('gameQuotes'),null);assert.equal(calls,0);
+ h.run('sim()');assert.match(h.nodes.get('note').textContent,/Missing FanDuel total/);
+});
+
+test('football refresh failure cannot retain previously automatic quotes',async()=>{
+ const h=harness();h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
+ assert.equal(h.nodes.get('total').value,'48.5');
+ h.context.fetch=async()=>({ok:false,json:async()=>({error:'Unavailable'})});await h.run('loadFanDuel()');
+ assert.equal(h.nodes.get('spread').value,'');assert.equal(h.nodes.get('total').value,'');assert.equal(h.run('automaticGameLines.size'),0);
+});
+
+test('football rejects undated and stale quotes and withdraws fresh quotes at kickoff',async()=>{
+ const h=harness();let clock=Date.now();h.context.Date=class extends Date{static now(){return clock;}};
+ const base=h.context.fetch;h.context.fetch=async url=>String(url).includes('/api/fanduel?')?{ok:true,json:async()=>({available:true,awaySpread:7.5,total:48.5,totalUpdated:clock-1800001})}:base(url);
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();
+ assert.equal(h.nodes.get('spread').value,'');assert.equal(h.nodes.get('total').value,'');
+ h.context.fetch=async()=>({ok:true,json:async()=>({available:true,awaySpread:7.5,total:48.5,spreadUpdated:clock,totalUpdated:clock})});
+ h.run('selected.kickoff=Date.now()+1000');await h.run('loadFanDuel()');assert.equal(h.nodes.get('total').value,'48.5');
+ clock+=1000;h.run('expireGameLines()');assert.equal(h.nodes.get('total').value,'');assert.equal(h.nodes.get('spread').value,'');
+});

@@ -149,6 +149,27 @@ $('refresh-market-pulse').addEventListener('click',()=>{
 let slateSequence = 0;
 let oddsSequence = 0;
 let lineEdits = 0;
+const automaticGameLines=new Map();let gameLineExpiry=null;
+const quoteTime=value=>typeof value==='number'?value:typeof value==='string'?Date.parse(value):NaN;
+function clearAutomaticGameLines(){
+  clearTimeout(gameLineExpiry);
+  for(const [id,q] of automaticGameLines)if($(id)&&Number($(id).value)===q.value)$(id).value='';
+  automaticGameLines.clear();
+}
+function armGameLineExpiry(){
+  clearTimeout(gameLineExpiry);if(!automaticGameLines.size)return;
+  const deadline=Math.min(...[...automaticGameLines.values()].map(q=>Math.min(q.at+1800001,q.game.kickoff)));
+  gameLineExpiry=setTimeout(expireGameLines,Math.max(1,deadline-Date.now()));
+}
+function expireGameLines(){
+  let expired=false;
+  for(const [id,q] of automaticGameLines)if(q.game!==selected||Date.now()-q.at>1800000||q.at>Date.now()+60000||q.game.kickoff<=Date.now()){
+    if(q.game===selected&&$(id)&&Number($(id).value)===q.value)$(id).value='';
+    automaticGameLines.delete(id);expired=true;
+  }
+  if(expired){gameQuotes=null;pulseObservations=null;invalidateSimulation('FanDuel lines expired. Refresh lines or enter current values.');oddsStatus.textContent='FanDuel lines expired. Refresh lines or enter current values.';renderMarketPulse();}
+  armGameLineExpiry();
+}
 const oddsStatus = document.createElement('p');
 oddsStatus.setAttribute('aria-live', 'polite');
 const refreshOdds = document.createElement('button');
@@ -158,6 +179,7 @@ refreshOdds.id = 'refresh-odds';
 $('matchup').after(oddsStatus, refreshOdds);
 for (const id of ['spread', 'total']) $(id).addEventListener('input', () => {
   lineEdits++;
+  automaticGameLines.delete(id);armGameLineExpiry();
   gameQuotes=null;
   oddsStatus.textContent = 'Manual lines — refresh FanDuel lines to replace them.';
   pulseManual=true;
@@ -167,6 +189,7 @@ async function loadFanDuel() {
   if (!selected) return;
   const game = selected;
   const task = ++oddsSequence;
+  clearAutomaticGameLines();
   gameQuotes=null;
   document.dispatchEvent(new Event('unit501:odds-updated'));
   const edits = lineEdits;
@@ -190,7 +213,9 @@ async function loadFanDuel() {
     pulseObservations={game,spread:null,total:null};
     const messages = [];
     for (const [id, key, stamp] of [['spread', 'awaySpread', 'spreadUpdated'], ['total', 'total', 'totalUpdated']]) {
-      if (Number.isFinite(data[key])) {
+      const stampAt=quoteTime(data[stamp]);
+      if (Number.isFinite(data[key])&&(id!=='total'||data[key]>0)&&Number.isFinite(stampAt)&&stampAt<=Date.now()+60000&&Date.now()-stampAt<=1800000&&game.kickoff>Date.now()) {
+        automaticGameLines.set(id,{game,at:stampAt,value:data[key]});
         $(id).value = data[key];
         const time = new Date(data[stamp]).toLocaleTimeString('en-US', {timeZone:'America/Chicago', hour:'numeric', minute:'2-digit'});
         const observed=window.Unit501LineWatch?.fromServer(data.history?.[id],data[key],typeof data[stamp]==='number'?data[stamp]:Date.parse(data[stamp]));
@@ -202,8 +227,10 @@ async function loadFanDuel() {
         messages.push(`${id} unavailable — enter manually`);
       }
     }
+    if(data.moneyline&&Number.isFinite(quoteTime(data.moneyline.updatedAt))&&quoteTime(data.moneyline.updatedAt)<=Date.now()+60000&&Date.now()-quoteTime(data.moneyline.updatedAt)<=1800000&&game.kickoff>Date.now())automaticGameLines.set('moneyline',{game,at:quoteTime(data.moneyline.updatedAt)});
+    armGameLineExpiry();
     for(const [name,side] of [['awayMoneyline','away'],['homeMoneyline','home']]){
-      pulseObservations[name]=window.Unit501LineWatch?.fromServer(data.history?.[name],data.moneyline?.[side],data.moneyline?.updatedAt);
+      pulseObservations[name]=automaticGameLines.has('moneyline')?window.Unit501LineWatch?.fromServer(data.history?.[name],data.moneyline?.[side],data.moneyline?.updatedAt):null;
     }
     if($('line-tracking-status'))$('line-tracking-status').textContent=data.tracking?.message||'Shared tracking status unavailable.';
     oddsStatus.textContent = 'FanDuel • ' + messages.join(' • ') + '. Feed cached up to 5 minutes.';
@@ -892,6 +919,7 @@ async function load() {
 }
 
 async function choose(game) {
+  clearAutomaticGameLines();
   scoringContext = null;
   game.league = $('league').value;
   game.season = $('date').value.slice(0,4);
@@ -947,6 +975,7 @@ async function choose(game) {
 
 function sim() {
   if (!selected) return;
+  expireGameLines();
   invalidateSimulation();
   const marketFields=[['spread','FanDuel away spread'],['total','FanDuel total']];
   for(const [id,label] of marketFields){

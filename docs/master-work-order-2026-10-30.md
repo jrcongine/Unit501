@@ -335,3 +335,22 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   success used isolated image fixtures, not a claim that every remote logo was fetched.
 - Prior college batch 6bda818ce8e52fb2d95a28c4fa7fd8504feb9184 reached SUCCESS on primary
   24f180bc-2ba3-4c35-b1a4-8a51b7ce2c3d and secondary b141a52a-14cb-40ca-988f-a8b38f112855.
+
+## Pregame quote expiration — continuation
+
+- College basketball now validates game quote timestamps and values on display, withdraws
+  automatic spread/total/moneyline values after 30 minutes or at tipoff, and clears stale
+  comparisons and movement displays. Fresh source labels distinguish FanDuel, entered
+  values and mixed inputs. Manual edits, including an intentionally empty field, survive
+  refresh; late responses cannot overwrite newer selections. Added Refresh Lines.
+- NFL and college football now expire their automatically filled spread/total fields and
+  observed moneyline displays with the same 30-minute/tipoff limits. Individually edited
+  fields survive expiration. A failed refresh clears previously automatic inputs, and
+  simulation rechecks expiry before it reads lines. Existing NBA expiration stays intact.
+- Expiration uses local timers and does not poll providers or change API allowances. Full
+  automatic refresh/capacity and true sportsbook opening-line collection remain separate,
+  unfinished requirements. Private production feed acceptance remains unverified.
+- 762 tests passed, including missing timestamps, invalid values, timer expiry, tipoff,
+  refresh failure, manual values, intentional blanks and out-of-order response handling.
+  Populated NBA/college and all four main screens passed local desktop/mobile checks
+  without page overflow or JavaScript errors.
