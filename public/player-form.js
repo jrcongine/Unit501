@@ -2,6 +2,14 @@
 (function(root){
   'use strict';
   const isDNP=g=>g.participation==='dnp'&&g.verification?.participation===true;
+  // A duplicate kickoff is unresolved evidence, not an extra game or a game to omit.
+  function datedHistory(history){
+    const dates=new Map();
+    for(const g of history){if(!Number.isFinite(g.gameDate))continue;
+      dates.set(g.gameDate,dates.has(g.gameDate)?{gameDate:g.gameDate,participation:'conflict'}:g);
+    }
+    return [...dates.values()].sort((a,b)=>b.gameDate-a.gameDate);
+  }
   function compareCovers(a,b,mode) {
     const history=row=>{
       const values=row.values.filter(Number.isFinite);
@@ -41,7 +49,7 @@
     const fresh=(at,age)=>Number.isFinite(at)&&at<=now&&now-at<=age;
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
-    const games=history.filter(g=>Number.isFinite(g.gameDate)&&(!Number.isFinite(game?.kickoff)||g.gameDate*1000<game.kickoff)).sort((a,b)=>b.gameDate-a.gameDate);
+    const games=datedHistory(history).filter(g=>!Number.isFinite(game?.kickoff)||g.gameDate*1000<game.kickoff);
     const latest=games[0]?.[metric];
     const prior=games.slice(1,4).map(g=>g[metric]);
     // Compare consecutive team games: missing workload must not become zero or
@@ -75,8 +83,8 @@
     return {alerts,active:alerts.length>0,changed:alerts.some(a=>a.source==='manual'||a.source==='box-score'||a.source==='absence')};
   }
   function summarize(history,key) {
-    const games=history.filter(g=>Number.isFinite(g.gameDate)&&!isDNP(g)).sort((a,b)=>b.gameDate-a.gameDate);
-    const valid=g=>Number.isFinite(g[key]) && (key.endsWith('Yds') || g[key]>=0);
+    const games=datedHistory(history).filter(g=>!isDNP(g));
+    const valid=g=>g.participation!=='conflict'&&Number.isFinite(g[key]) && (key.endsWith('Yds') || g[key]>=0);
     const gameDetails=games.filter(valid);
     const values=gameDetails.map(g=>g[key]);
     if(values.length<2)return null;
@@ -91,13 +99,13 @@
     const trend=earlier.length<2?'Insufficient history for a trend':mean(recent)>mean(earlier)?'Trending up':mean(recent)<mean(earlier)?'Trending down':'Holding steady';
     const latestConsecutiveMissing=games.findIndex(valid);
     return {values,gameDetails,average,recentWeighted,weighted,trend,
-      coverage:{dnp:history.filter(g=>Number.isFinite(g.gameDate)&&isDNP(g)).length,teamGames:history.filter(g=>Number.isFinite(g.gameDate)).length,recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
+      coverage:{dnp:datedHistory(history).filter(isDNP).length,teamGames:datedHistory(history).length,recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
       sample:values.length<5?'Limited sample':values.length<9?'Developing sample':'Larger sample'};
   }
   function workloadSummary(history,key) {
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'Pass attempts',carries:'Carries',targets:'Targets'}[metric];
-    const games=history.filter(g=>Number.isFinite(g.gameDate)&&!isDNP(g)).sort((a,b)=>b.gameDate-a.gameDate);
+    const games=datedHistory(history).filter(g=>!isDNP(g));
     const values=games.map(g=>Number.isFinite(g[metric])&&g[metric]>=0?g[metric]:null);
     const recorded=values.filter(v=>v!==null);
     const recent=values.slice(0,3);
@@ -111,7 +119,7 @@
   function workloadWarning(history,key) {
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'pass attempts',carries:'carries',targets:'targets'}[metric];
-    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    const games=datedHistory(history);
     if(games.length && (!Number.isFinite(games[0][metric]) || games[0][metric]<0))
       return `Workload unverified: latest completed team game has no recorded ${label}. Older appearances do not confirm the current role; missing statistics are not zeros.`;
     const values=games.map(g=>g[metric]).filter(v=>Number.isFinite(v)&&v>=0);

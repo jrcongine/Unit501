@@ -67,3 +67,14 @@ test('basketball DNP cannot override recorded minutes, points or shot attempts',
  for(const stats of [['1','0','0-0'],['0','1','0-0'],['0','0','0-1']])assert.ok(conflictingDNP({didNotPlay:true,stats},keys));
  for(const stats of [[],['0','0','0-0'],['--','--','--']])assert.equal(conflictingDNP({didNotPlay:true,stats},keys),false);
 });
+test('duplicate football kickoffs remain a missing game across every supported player market',()=>{
+ const {definitions}=require('../public/player-stats');
+ for(const key of [...definitions.map(d=>d.key),'attempts','targets']){
+  const history=[1,2,3,4].map(gameDate=>({gameDate,[key]:10}));
+  const ambiguous=[...history,{...history[1],[key]:0}];
+  const result=project(ambiguous,key);
+  assert.equal(result.withheld,true,key);assert.equal(result.coverage.total,4);assert.equal(result.coverage.recorded,3);assert.equal(result.coverage.missing,1);assert.deepEqual(result.values,[10,10,10]);
+  assert.equal(project(history,key).withheld,undefined);
+  assert.equal(project([...history,{...history[1]}],key).withheld,true,'identical duplicates still need identity resolution');
+ }
+});

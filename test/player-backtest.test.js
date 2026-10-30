@@ -47,8 +47,8 @@ test('range retains negative yardage, floors count stats at zero and avoids dupl
  assert.ok(range(history,'recYds',before).low<0);
  const counts=history.map(g=>({...g,rec:0}));assert.equal(range(counts,'rec',before).low,0);
  const duplicated=[...history,{...history[0],recYds:9999}];
- const removed=history.slice(1);
- assert.deepEqual(range(duplicated,'recYds',before),range(removed,'recYds',before));
+ assert.equal(range(duplicated,'recYds',before).available,false);
+ assert.equal(range(history.slice(1),'recYds',before).available,true);
 });
 
 test('range coverage replays the displayed formula with strictly earlier training errors',()=>{
@@ -94,4 +94,13 @@ test('range coverage retains negative yards and floors count ranges at zero',()=
  assert.ok(validateRanges(history,'recYds',17*604800).records.some(r=>r.low<0));
  const audit=validateRanges(history.map(g=>({...g,rec:0})),'rec',17*604800);
  assert.equal(audit.coverage,1);assert.ok(audit.records.every(r=>r.low===0&&r.high===0));
+});
+test('earlier duplicate dates block later replay and ranges instead of shrinking the training history',()=>{
+ const {range,validateRanges}=require('../public/player-backtest');
+ const history=rows(Array(18).fill(20)),duplicate={...history[4],recYds:0},result=validate([...history,duplicate],'recYds');
+ assert.equal(result.ambiguous,2);assert.equal(result.count,2);assert.ok(result.withheld>0);
+ assert.ok(result.records.every(r=>r.gameDate<duplicate.gameDate));
+ assert.equal(range([...history,duplicate],'recYds',19*604800).available,false);
+ assert.equal(validateRanges([...history,duplicate],'recYds',19*604800).count,0);
+ assert.deepEqual(result.records,validate(history,'recYds').records.filter(r=>r.gameDate<duplicate.gameDate));
 });

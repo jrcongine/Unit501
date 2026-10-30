@@ -6,14 +6,14 @@
     const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>a.gameDate-b.gameDate);
     const counts=new Map();games.forEach(g=>counts.set(g.gameDate,(counts.get(g.gameDate)||0)+1));
     const records=[];let missingActual=0,insufficient=0,withheld=0,ambiguous=0,dnp=0;
-    const valid=g=>Number.isFinite(g[key])&&(key.endsWith('Yds')||g[key]>=0);
+    const valid=g=>g.participation!=='conflict'&&Number.isFinite(g[key])&&(key.endsWith('Yds')||g[key]>=0);
     for(const target of games){
       if(counts.get(target.gameDate)>1){ambiguous++;continue;}
       if(form.isDNP(target)){dnp++;continue;}
       if(!valid(target)){missingActual++;continue;}
       // Dates are kickoff seconds. A full day buffer avoids overlapping-game results.
       const cutoff=target.gameDate-86400;
-      const prior=games.filter(g=>g.gameDate<cutoff&&counts.get(g.gameDate)===1);
+      const prior=games.filter(g=>g.gameDate<cutoff);
       const prediction=form.project(prior,key);
       if(!prediction){insufficient++;continue;}
       if(prediction.withheld||!Number.isFinite(prediction.baseline)){withheld++;continue;}
@@ -28,9 +28,7 @@
   function range(history,key,before){
     if(!Number.isFinite(before))return {available:false,reason:'Target kickoff is unknown.'};
     const prior=history.filter(g=>Number.isFinite(g.gameDate)&&g.gameDate<before-86400);
-    const dates=new Map();prior.forEach(g=>dates.set(g.gameDate,(dates.get(g.gameDate)||0)+1));
-    const unique=prior.filter(g=>dates.get(g.gameDate)===1);
-    const forecast=form.project(unique,key),audit=validate(prior,key);
+    const forecast=form.project(prior,key),audit=validate(prior,key);
     if(!forecast||forecast.withheld||!Number.isFinite(forecast.baseline))return {available:false,count:audit.count,reason:'Recent recorded coverage cannot support a baseline range.'};
     if(audit.count<10)return {available:false,count:audit.count,reason:'Need at least 10 earlier replay errors for a historical-error range.'};
     return {available:true,count:audit.count,baseline:forecast.baseline,...errorBounds(audit.records,forecast.baseline,key)};
