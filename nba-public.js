@@ -24,14 +24,14 @@ function createPublicNBA({fetcher=fetch,now=Date.now}={}){
  const cache=new Map();
  async function read(path,ttl){
   const old=cache.get(path);if(old&&now()-old.at<ttl)return old.pending;
-  const pending=(async()=>{const r=await fetcher(ROOT+path,{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Public NBA source unavailable.');const data=await r.json();if(!Array.isArray(data?.events)||data.events.length>300)throw Error('Public NBA event list was invalid.');return data;})();
+  const pending=(async()=>{const r=await fetcher(ROOT+path,{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Public NBA source unavailable.');const data=await r.json();if(!Array.isArray(data?.events)||data.events.length>300)throw Error('Public NBA event list was invalid.');return {data,checkedAt:now()};})();
   cache.set(path,{at:now(),pending});pending.catch(()=>{if(cache.get(path)?.pending===pending)cache.delete(path);});if(cache.size>200)cache.delete(cache.keys().next().value);return pending;
  }
  async function games(date){
   if(!validDate(date))throw Error('Invalid NBA date.');
-  const season=inferSeason(date),unique=new Map();
+  const season=inferSeason(date),unique=new Map(),timestamps=[];
   for(const utcDate of utcDates(date)){
-   const data=await read('/scoreboard?dates='+utcDate.replace(/-/g,'')+'&limit=1000',60000);
+   const {data,checkedAt}=await read('/scoreboard?dates='+utcDate.replace(/-/g,'')+'&limit=1000',60000);timestamps.push(checkedAt);
    if(!data.leagues?.some(l=>l.slug==='nba'||l.abbreviation==='NBA'))throw Error('Public source league could not be verified.');
    const raw=data.events.map(e=>convert(e,season));
    if(raw.some(g=>!g))throw Error('Public NBA game format or season could not be verified; schedule incomplete.');
@@ -41,21 +41,21 @@ function createPublicNBA({fetcher=fetch,now=Date.now}={}){
     unique.set(g.id,g);
    }
   }
-  return {league:'nba',season,date,checkedAt:new Date(now()).toISOString(),provider:'espn',source:'ESPN public NBA feed',experimental:true,
+  return {league:'nba',season,date,checkedAt:new Date(Math.min(...timestamps)).toISOString(),provider:'espn',source:'ESPN public NBA feed',experimental:true,
    games:[...unique.values()].map(g=>({...g,provider:'espn',source:'ESPN public NBA feed'})).sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff))};
  }
  async function context(game,season){
   if(game?.provider!=='espn'||!Number.isInteger(season)||![1,2,3].includes(game.stage))throw Error('Public NBA game identity required.');
   const sides=await Promise.all([game.awayId,game.homeId].map(async id=>{
    if(!Number.isSafeInteger(id)||id<=0)throw Error('Public NBA team identity required.');
-   const data=await read('/teams/'+id+'/schedule?season='+(season+1)+'&seasontype='+game.stage,300000);
+   const {data,checkedAt}=await read('/teams/'+id+'/schedule?season='+(season+1)+'&seasontype='+game.stage,300000);
    if(Number(data.team?.id)!==id||Number(data.season?.year)!==season+1||Number(data.season?.type)!==game.stage)throw Error('Public NBA team season could not be verified.');
    const raw=data.events.map(e=>convert(e,season,game.stage));
    if(raw.some(g=>!g))throw Error('Public NBA history format could not be verified; history incomplete.');
-   return {id,...summarize(raw,id,game,season)};
+   return {id,checkedAt,...summarize(raw,id,game,season)};
   }));
   return {gameId:game.id,tipoff:game.tipoff,season,stage:game.stage,provider:'espn',source:'ESPN public NBA feed',
-   available:sides.every(s=>s.available),away:{...sides[0],name:game.away},home:{...sides[1],name:game.home},checkedAt:new Date(now()).toISOString(),
+   available:sides.every(s=>s.available),away:{...sides[0],name:game.away},home:{...sides[1],name:game.home},checkedAt:new Date(Math.min(...sides.map(s=>s.checkedAt))).toISOString(),
    message:'Public NBA history: same-stage games before tipoff only. Small or missing samples remain labeled; no score projections.'};
  }
  return {games,context};

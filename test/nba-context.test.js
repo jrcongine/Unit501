@@ -149,3 +149,11 @@ test('NBA coverage counts missing completed scores without counting future or ot
  const model=require('../public/nba-model');
  assert.match(model.project({...selected,statusCode:1},d,'season',Date.parse('2026-10-24T12:00Z')).reason,/Missing/);
 });
+
+test('NBA context reports the oldest actual team fetch rather than refreshing cached timestamps',async()=>{
+ let clock=1000,calls=0;const get=createNBAContext({now:()=>clock,key:()=> 'fixture',fetcher:async()=>{calls++;return {ok:true,json:async()=>({response:[old1,old2],errors:[]})};}});
+ assert.equal((await get(selected,2026)).checkedAt,new Date(1000).toISOString());
+ clock=2000;assert.equal((await get(selected,2026)).checkedAt,new Date(1000).toISOString());assert.equal(calls,2);
+ assert.equal((await get({...selected,homeId:8},2026)).checkedAt,new Date(1000).toISOString());assert.equal(calls,3);
+ clock=3601001;assert.equal((await get(selected,2026)).checkedAt,new Date(clock).toISOString());assert.equal(calls,5);
+});

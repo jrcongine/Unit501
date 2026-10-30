@@ -390,3 +390,17 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   passed local 1440px/390px checks without page overflow or JavaScript errors.
 - Task 42 progresses for existing verified venue sources; college travel parity and actual
   itinerary verification are not claimed. Protected production acceptance remains open.
+
+## Basketball source timestamps — continuation
+
+- NBA provider history, public NBA schedules/history, and college basketball history
+  retain the actual fetch timestamp when read from cache. Combined responses report
+  the oldest contributing source, so a cache hit cannot make old data appear newly
+  verified in feed health. College history now includes a top-level source timestamp.
+- Regression tests cover repeated reads, mixed-age team caches, and cache expiry with
+  a real refetch. Full suite: 772 passed. These are source-age correctness fixes;
+  they do not establish provider entitlement, confirmed starters, or model calibration.
+- Tasks 17/18 have additional coverage. Protected production feed and screen acceptance
+  still requires authenticated access; public health checks cannot substitute for it.
+- Previous venue commit 11449ba5f0131152d8951448eb6ff6a047678a4a passed GitHub Actions
+  41116164488 and deployed successfully to both Railway services.

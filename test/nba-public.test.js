@@ -65,3 +65,14 @@ test('public NBA context rejects mixed valid and malformed events instead of sil
  const feed=createPublicNBA({now:()=>now,fetcher:async url=>({ok:true,json:async()=>({team:{id:/teams\/(\d+)/.exec(url)[1]},season:{year:2027,type:2},events:[event(100,'2026-10-22T23:00Z',true),{id:'101'}]})})});
  await assert.rejects(feed.context({...normalizeGame(convert(event(),2026)),provider:'espn'},2026),/incomplete/);
 });
+
+test('public NBA slate and context retain fetch timestamps across cache hits and mixed-age teams',async()=>{
+ let clock=now,calls=0;const feed=createPublicNBA({now:()=>clock,fetcher:async url=>{
+  calls++;const id=/teams\/(\d+)/.exec(url)?.[1];return {ok:true,json:async()=>id?{team:{id},season:{year:2027,type:2},events:[event(100,'2026-10-22T23:00Z',true)]}:payload([event()])};
+ }});
+ const first=await feed.games('2026-10-24');clock+=1000;assert.equal((await feed.games('2026-10-24')).checkedAt,first.checkedAt);assert.equal(calls,2);
+ const game={...normalizeGame(convert(event(),2026)),provider:'espn'},context=await feed.context(game,2026);
+ clock+=1000;assert.equal((await feed.context(game,2026)).checkedAt,context.checkedAt);assert.equal(calls,4);
+ assert.equal((await feed.context({...game,homeId:21},2026)).checkedAt,context.checkedAt);assert.equal(calls,5);
+ clock+=300001;assert.equal((await feed.context(game,2026)).checkedAt,new Date(clock).toISOString());assert.equal(calls,7);
+});

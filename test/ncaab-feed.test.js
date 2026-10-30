@@ -57,3 +57,12 @@ test('a mixed valid and malformed college slate fails instead of silently omitti
  const feed=createNCAAB({fetcher:async()=>({ok:true,json:async()=>({leagues:[{slug:'mens-college-basketball'}],events:[good,bad]})})});
  await assert.rejects(feed.games('2026-11-03'),/complete slate unavailable/);
 });
+
+test('college context exposes oldest source time and does not renew it on cached reads',async()=>{
+ let clock=Date.parse('2026-11-03T20:00Z'),calls=0;const first=clock;
+ const feed=createNCAAB({now:()=>clock,fetcher:async url=>{calls++;return {ok:true,json:async()=>({team:{id:/teams\/(\d+)/.exec(url)[1]},events:[event(1,'2026-10-28T01:00:00Z')]})};}});
+ assert.equal((await feed.context(selected)).checkedAt,first);
+ clock+=1000;assert.equal((await feed.context(selected)).checkedAt,first);assert.equal(calls,2);
+ assert.equal((await feed.context({...selected,homeId:'3'})).checkedAt,first);assert.equal(calls,3);
+ clock+=300001;assert.equal((await feed.context(selected)).checkedAt,clock);assert.equal(calls,5);
+});

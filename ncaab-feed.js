@@ -39,26 +39,26 @@ function summarize(rows,id,selected,now=Date.now()){
 function createNCAAB({fetcher=fetch,now=Date.now}={}){
  const cache=new Map();
  async function read(path,ttl){const old=cache.get(path);if(old&&now()-old.at<ttl)return old.pending;
-  const entry={at:now()};entry.pending=(async()=>{const r=await fetcher(ROOT+path,{signal:AbortSignal.timeout(12000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>8000000)throw Error('College basketball source unavailable');const d=await r.json();if(!Array.isArray(d.events)||d.events.length>600)throw Error('College basketball response invalid');return d;})();cache.set(path,entry);if(cache.size>200)cache.delete(cache.keys().next().value);entry.pending.catch(()=>{if(cache.get(path)===entry)cache.delete(path);});return entry.pending;}
+  const entry={at:now()};entry.pending=(async()=>{const r=await fetcher(ROOT+path,{signal:AbortSignal.timeout(12000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>8000000)throw Error('College basketball source unavailable');const d=await r.json();if(!Array.isArray(d.events)||d.events.length>600)throw Error('College basketball response invalid');return {data:d,checkedAt:entry.at};})();cache.set(path,entry);if(cache.size>200)cache.delete(cache.keys().next().value);entry.pending.catch(()=>{if(cache.get(path)===entry)cache.delete(path);});return entry.pending;}
  async function games(date){
   if(!validDate(date))throw Error('Invalid date');
   const next=new Date(date+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);const nextDate=next.toISOString().slice(0,10);
   const paths=[date,nextDate].map(d=>'/scoreboard?dates='+d.replace(/-/g,'')+'&groups=50&limit=500');
-  const sources=await Promise.all(paths.map(p=>read(p,60000)));
+  const responses=await Promise.all(paths.map(p=>read(p,60000))),sources=responses.map(r=>r.data);
   if(sources.some(s=>!s.leagues?.some(l=>l.slug==='mens-college-basketball'||l.abbreviation==='NCAAM')))throw Error('College basketball league unverified');
   const output=new Map(),day=at=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day;};
   for(let i=0;i<sources.length;i++)for(const e of sources[i].events){const g=convert(e);if(!g)throw Error('College basketball schedule contains unverified games; complete slate unavailable.');if(!g.timeKnown?i!==0:day(g.tipoff)!==date)continue;
    const old=output.get(g.id);if(old&&JSON.stringify(old)!==JSON.stringify(g))throw Error('Conflicting college basketball game');output.set(g.id,g);}
-  return {checkedAt:Math.min(...paths.map(p=>cache.get(p).at)),date,league:'ncaab',source:'ESPN men’s college basketball',games:[...output.values()].sort((a,b)=>Number(!a.timeKnown)-Number(!b.timeKnown)||Date.parse(a.tipoff)-Date.parse(b.tipoff))};
+  return {checkedAt:Math.min(...responses.map(r=>r.checkedAt)),date,league:'ncaab',source:'ESPN men’s college basketball',games:[...output.values()].sort((a,b)=>Number(!a.timeKnown)-Number(!b.timeKnown)||Date.parse(a.tipoff)-Date.parse(b.tipoff))};
  }
  async function context(game){
   if(!game?.timeKnown||!Number.isFinite(Date.parse(game.tipoff))||game.stage!==2)throw Error('Verified regular-season tipoff required');
   const sides=await Promise.all([game.awayId,game.homeId].map(async id=>{
-   const d=await read('/teams/'+id+'/schedule?season='+game.season+'&seasontype=2',300000);
+   const {data:d,checkedAt}=await read('/teams/'+id+'/schedule?season='+game.season+'&seasontype=2',300000);
    if(String(d.team?.id)!==id)throw Error('College basketball team identity unavailable');
-   return {id,...summarize(d.events,id,game,now())};
+   return {id,checkedAt,...summarize(d.events,id,game,now())};
   }));
-  return {gameId:game.id,tipoff:game.tipoff,away:{name:game.away,...sides[0]},home:{name:game.home,...sides[1]},source:'ESPN completed men’s college games'};
+  return {gameId:game.id,tipoff:game.tipoff,checkedAt:Math.min(...sides.map(s=>s.checkedAt)),away:{name:game.away,...sides[0]},home:{name:game.home,...sides[1]},source:'ESPN completed men’s college games'};
  }
  return {games,context};
 }

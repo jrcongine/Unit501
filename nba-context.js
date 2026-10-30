@@ -85,7 +85,7 @@ function createNBAContext({fetcher=fetch,key=()=>process.env.NBA_API_SPORTS_KEY|
   if(!isId(id)||!Number.isInteger(season)||season<2000||season>2100)throw Error('Invalid NBA team season');
   const ck=season+':'+id;
   const cached=cache.get(ck);
-  if(cached&&now()-cached.at<3600000)return cached.games;
+  if(cached&&now()-cached.at<3600000)return cached;
   if(pending.has(ck))return pending.get(ck);
   const task=(async()=>{
     const apiKey=key();
@@ -99,8 +99,8 @@ function createNBAContext({fetcher=fetch,key=()=>process.env.NBA_API_SPORTS_KEY|
       (result.errors&&(Array.isArray(result.errors)?result.errors.length:Object.keys(result.errors).length))||
       Number(result.paging?.total||1)>1)throw Error('NBA history incomplete');
     if(result.response.length>200)throw Error('NBA history response too large');
-    cache.set(ck,{at:now(),games:result.response});
-    return result.response;
+    const saved={at:now(),games:result.response};cache.set(ck,saved);
+    return saved;
   })();
   pending.set(ck,task);
   try{return await task;}finally{pending.delete(ck);}
@@ -113,15 +113,15 @@ function createNBAContext({fetcher=fetch,key=()=>process.env.NBA_API_SPORTS_KEY|
   if(!isId(selectedGame.stage))
     return {available:false,reason:'Selected game stage is not identified. Cannot safely compare team records.',away:null,home:null};
   const [visitor,host]=await Promise.all([teamGames(selectedGame.awayId,season),teamGames(selectedGame.homeId,season)]);
-  const away=summarize(visitor,selectedGame.awayId,selectedGame,season);
-  const home=summarize(host,selectedGame.homeId,selectedGame,season);
+  const away=summarize(visitor.games,selectedGame.awayId,selectedGame,season);
+  const home=summarize(host.games,selectedGame.homeId,selectedGame,season);
   return {gameId:selectedGame.id,season,stage:selectedGame.stage,tipoff:selectedGame.tipoff,
     available:away.available&&home.available,
     message:away.available&&home.available?'NBA matchup form, venue splits and rest context. Descriptive history; no score projections yet.':
       'At least one team has no completed games in this stage before tipoff. Estimates withheld.',
     away:{name:selectedGame.away,id:selectedGame.awayId,...away},
     home:{name:selectedGame.home,id:selectedGame.homeId,...home},
-    checkedAt:new Date(now()).toISOString()};
+    checkedAt:new Date(Math.min(visitor.at,host.at)).toISOString()};
  };
 }
 module.exports={createNBAContext,summarize};
