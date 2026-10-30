@@ -255,3 +255,53 @@ test('default Game Lab limits outbound detailed boxes while preserving national 
    assert.equal(calls.filter(x=>x.startsWith('/games/statistics/teams')).length,16);
  }finally{await fs.rm(folder,{recursive:true,force:true});}
 });
+
+test('contradictory duplicate games never become rankings or replay evidence, in either order',()=>{
+ const {games,boxes}=fixture();
+ const {reconcileGames}=require('../football-schedule-integrity');
+ assert.equal(reconcileGames([...games,structuredClone(games[0])]).length,games.length);
+ for(const change of [g=>g.scores.away.total++,g=>g.teams.home.id++,g=>g.game.date.timestamp++,g=>g.game.status.short='NS',g=>g.game.venue={name:'Neutral stadium'}]){
+  const conflicting=structuredClone(games[0]);change(conflicting);
+  for(const rows of [[...games,conflicting],[conflicting,...games]]){
+   assert.throws(()=>summarize(rows,boxes,query,teams),/Conflicting game records/);
+   assert.throws(()=>require('../backtest').validate(rows,query,()=>{}),/Conflicting game records/);
+  }
+ }
+ assert.throws(()=>reconcileGames([{game:{}}]),/Unverified game identity/);
+});
+
+test('conflicted primary schedules fail before scoring data or box requests are published',async()=>{
+ const {games}=fixture();const conflict=structuredClone(games[0]);conflict.scores.home.total++;
+ for(const league of ['1','2']){
+  const rows=[...games,conflict].map(g=>({...g,league:{id:Number(league),season:2026},game:{...g.game,stage:'Regular Season'}}));
+  const calls=[];
+  const job=createRankings(async endpoint=>{calls.push(endpoint);return {response:rows};},{delayMs:0,boxLimit:0})({...query,league});
+  const deadline=Date.now()+2000;
+  while(job.state==='loading'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
+  assert.equal(job.state,'error');assert.equal(job.data,undefined);
+  assert.match(job.message,/Conflicting game records/);assert.equal(calls.length,1);
+ }
+});
+
+test('contradictory supplemental opponent scores cannot receive verified schedule status',async()=>{
+ const {games}=fixture();const conflict=structuredClone(games[0]);conflict.scores.home.total++;
+ const job=createRankings(async endpoint=>({response:endpoint.startsWith('/games?team=')?[conflict,...games.slice(1)]:games}),{delayMs:0,boxLimit:0})(query);
+ const deadline=Date.now()+2000;
+ while(job.state==='loading'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,5));
+ assert.equal(job.state,'ready');
+ const extra=job.data.teams.find(t=>t.id==='1000');
+ assert.equal(extra.opponentScheduleVerified,false);
+ assert.equal(extra.metrics.pointsFor.sum, games.reduce((sum,g)=>sum+g.scores.home.total,0));
+});
+
+test('invalid final scores count as missing coverage and cannot produce national scoring ranks',()=>{
+ for(const value of [true,false,-1,2.5,'',null]){
+  const {games,boxes}=fixture();games[0].scores.away.total=value;
+  const data=summarize(games,boxes,query,teams);
+  assert.equal(data.teams[0].games,1);
+  assert.equal(data.teams[0].metrics.pointsFor.games,0);
+  assert.equal(data.coverage.pointsFor.ranked,false);
+ }
+ const {games,boxes}=fixture();games[0].scores.away.total='0';
+ assert.equal(summarize(games,boxes,query,teams).coverage.pointsFor.ranked,true);
+});

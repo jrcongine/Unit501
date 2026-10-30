@@ -68,7 +68,7 @@ test('probability fitting evaluates later games only and future results cannot c
 test('tied finals are not losses in reliability checks; other leagues, seasons and unfinished games are excluded',()=>{
  const {roster,games}=season();const rows=games.map(g=>({...g,scores:{away:{total:24},home:{total:24}}}));
  const query={league:'1',season:'2026',before:1000000000};
- const invalid=[{...rows[0],league:{id:2,season:2026}},{...rows[0],league:{id:1,season:2025}},{...rows[0],game:{...rows[0].game,status:{short:'NS'}}}];
+ const invalid=[{...rows[0],league:{id:2,season:2026}},{...rows[0],league:{id:1,season:2025}},{...rows[0],game:{...rows[0].game,id:99999,status:{short:'NS'}}}];
  const result=validate([...rows,...invalid],query,before=>summarize(rows,new Map(),{...query,before},roster));
  assert.equal(result.games,96);assert.equal(result.probabilityGames,0);assert.equal(result.probabilityCalibration.win,null);
 });

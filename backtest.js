@@ -1,5 +1,6 @@
 'use strict';
 const model=require('./public/team-model');
+const {reconcileGames,readScore}=require('./football-schedule-integrity');
 const scoreAudit=require('./public/score-audit');
 const probability=require('./public/probability-calibration');
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
@@ -19,6 +20,7 @@ function fit(errors) {
   return {modelVersion:'scoring-v2',games:errors.length,awaySD,homeSD,correlation};
 }
 function validate(games,query,snapshot) {
+  games=reconcileGames(games);
   const ordered=[...new Map(games.filter(g=>Number(g.game?.date?.timestamp)>0&&Number(g.game.date.timestamp)*1000<query.before&&String(g.league?.id)===String(query.league)&&String(g.league?.season)===String(query.season)&&['FT','AOT','FINAL'].includes(g.game?.status?.short)&&(query.league!=='1'||g.game?.stage==='Regular Season'))
     .map(g=>[String(g.game?.id),g])).values()].sort((a,b)=>a.game.date.timestamp-b.game.date.timestamp);
   const errors=[],records=[];
@@ -39,7 +41,7 @@ function validate(games,query,snapshot) {
       const away=g.teams?.away||g.teams?.visitors,home=g.teams?.home;
       const game={league:query.league,season:query.season,kickoff:before,awayId:String(away?.id),homeId:String(home?.id),venueName:g.game?.venue?.name};
       const prediction=model.project(data,game);
-      const numeric=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
+      const numeric=v=>readScore(v)!==null;
       if(!prediction.available||!numeric(g.scores?.away?.total)||!numeric(g.scores?.home?.total)){skipped++;continue;}
       const actualAway=Number(g.scores.away.total),actualHome=Number(g.scores.home.total);
       const error={away:actualAway-prediction.away,home:actualHome-prediction.home,kickoff:before};

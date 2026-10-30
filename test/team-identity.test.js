@@ -23,7 +23,7 @@ test('canonical identity restores complete FBS scoring coverage without counting
  const teams=membership.teams.map((t,i)=>({id:t.name==="Hawai'i"?59:1000+i,name:t.name}));
  const games=[];
  for(let week=0;week<2;week++)for(let i=0;i<138;i+=2)games.push({league:{id:2,season:2026},game:{id:games.length+1,date:{timestamp:100+week*100},status:{short:'FT'}},teams:{away:teams[i],home:teams[i+1]},scores:{away:{total:24},home:{total:24}}});
- games.push(future);
+ games.push({...future,game:{...future.game,id:9999}});
  const rawRoster=[...teams,{id:901,name:'Hawai&#x27;i'}];const query={league:'2',season:'2026',before:250000};
  assert.equal(summarize(games,new Map(),query,rawRoster).coverage.pointsFor.ranked,false);
  const clean=canonicalizeGames(games,games,'2026'),roster=new Map(clean.flatMap(g=>[g.teams.away,g.teams.home]).map(t=>[String(t.id),t]));

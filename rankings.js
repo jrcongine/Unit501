@@ -5,6 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const membership = require('./fbs-2026.json');
 const {validate}=require('./backtest');
+const {reconcileGames,readScore}=require('./football-schedule-integrity');
 const {fbsName,canonicalizeGames}=require('./team-identity');
 const metrics = [
   ['rushFor', 'Rushing offense', false], ['passFor', 'Passing offense', false],
@@ -38,7 +39,7 @@ function summarize(games, boxes, query, roster) {
     pace:{games:0,drives:0,opponentDrives:0,plays:0,playGames:0}
   }]));
   const seen = new Set();
-  for (const game of games) {
+  for (const game of reconcileGames(games)) {
     const id = String(game.game?.id);
     if (!eligible(game, query) || seen.has(id)) continue;
     seen.add(id);
@@ -52,9 +53,9 @@ function summarize(games, boxes, query, roster) {
       team.games++;
       const venue = String(game.game?.venue?.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
       if (side === 'home' && venue) team.homeVenues[venue] = (team.homeVenues[venue] || 0) + 1;
-      team.recentGames.push({kickoff:time(game), opponent:String(opponent?.name || 'Opponent'), side, scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
+      team.recentGames.push({kickoff:time(game), opponent:String(opponent?.name || 'Opponent'), side, scored:readScore(game.scores?.[side]?.total), allowed:readScore(game.scores?.[other]?.total)});
       team.opponents.push({id:String(opponent?.id || ''),
-        scored:number(game.scores?.[side]?.total), allowed:number(game.scores?.[other]?.total)});
+        scored:readScore(game.scores?.[side]?.total), allowed:readScore(game.scores?.[other]?.total)});
       const ownStats = readYards(uniqueRow(own.id));
       const against = readYards(uniqueRow(opponent?.id));
       const ownPace=readPace(uniqueRow(own.id));
@@ -64,7 +65,7 @@ function summarize(games, boxes, query, roster) {
       const values = {
         rushFor: ownStats.rush, passFor: ownStats.pass,
         rushAgainst: against.rush, passAgainst: against.pass,
-        pointsFor: number(game.scores?.[side]?.total), pointsAgainst: number(game.scores?.[other]?.total)
+        pointsFor: readScore(game.scores?.[side]?.total), pointsAgainst: readScore(game.scores?.[other]?.total)
       };
       for (const [key, value] of Object.entries(values)) if (value !== null) {
         team.metrics[key].sum += value;
@@ -161,9 +162,10 @@ function createRankings(api, options = {}) {
       } else {
         const a = await request(`/games?team=${query.away}&season=${query.season}`);
         const h = await request(`/games?team=${query.home}&season=${query.season}`);
-        games = [...new Map([...a,...h].map(g => [String(g.game?.id),g])).values()];
+        games = [...a,...h];
       }
       if(nationalCollege)games=canonicalizeGames(games,games,query.season);
+      games=reconcileGames(games);
       const roster = new Map();
       for (const g of games) {
         if (String(g.league?.id) !== query.league || (query.league === '1' && g.game?.stage !== 'Regular Season')) continue;
@@ -192,13 +194,15 @@ function createRankings(api, options = {}) {
       for (const [id,team] of opponents) {
         roster.set(id,team);
         try {
-          const rows = await request(`/games?team=${id}&season=${query.season}`);
+          const rows = reconcileGames(await request(`/games?team=${id}&season=${query.season}`));
           const own = rows.filter(g => eligible(g,query) &&
             [g.teams?.away || g.teams?.visitors,g.teams?.home].some(t => String(t?.id) === id));
           // Existing head-to-head games must be present in the team schedule.
           const known = past.filter(g => [g.teams?.away || g.teams?.visitors,g.teams?.home].some(t => String(t?.id) === id));
           const ids = new Set(own.map(g => String(g.game?.id)));
           if (!known.every(g => ids.has(String(g.game?.id)))) throw new Error('Incomplete opponent schedule');
+          // Validate the entire merge before accepting any supplemental rows.
+          reconcileGames([...past,...supplemental.values(),...own]);
           for (const g of own) supplemental.set(String(g.game?.id),g);
           reports.set(id,true);
         } catch { reports.set(id,false); }
@@ -258,6 +262,7 @@ function createRankings(api, options = {}) {
       job.state = 'ready';
     } catch (error) {
       job.state = 'error';
+      delete job.data;
       job.message = error.message;
     }
     job.finishedAt = Date.now();
@@ -275,4 +280,4 @@ function createRankings(api, options = {}) {
     return job;
   };
 }
-module.exports = {createRankings,summarize,eligible,readYards,readPace,fbsName};
+module.exports = {createRankings,summarize,eligible,readYards,readPace,fbsName,reconcileGames};

@@ -275,3 +275,27 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   against editable values as Entered lines. Empty inputs never become synthetic zero lines.
 - 746 automated tests passed; cross-sport invalidation and line-change checks included.
   Populated NBA/college comparison screens passed desktop/mobile checks.
+
+## Conflicting schedules and historical engine diagnostics — continuation
+
+- Football rankings, opponent corrections and scoring replay no longer silently select
+  one duplicate when scores, teams, kickoff, stage, status or venue disagree. Identical
+  observations still deduplicate; IDs are scoped by league and season. Supplemental
+  opponent conflicts cannot receive verified status. Invalid negative, fractional or
+  boolean football scores are missing data, never valid scoring coverage.
+- 750 automated tests passed. Two old fixture-only ID collisions were corrected so their
+  original tests continue to exercise distinct unfinished games instead of contradictions.
+- Added reproducible NFL 2024/2025 diagnostics by team, model-favorite side and Central
+  kickoff group. Later samples contain 206/210 games. Total bias changes direction;
+  no blanket totals reduction or margin expansion is justified by this replay.
+- Collected and reconciled public NBA 2024–25 regular-season results: 1,230 finals,
+  30 teams, 82 games each; individual event years verified despite erroneous current-year
+  response wrappers. Kept source provenance and excluded five non-final entries plus
+  the explicitly labeled NBA Cup Championship from this regular-season audit.
+- Replayed NBA recent-five, recent-ten and season settings, with team/favorite segments.
+  See docs/nba-replay-2026-10-30.md and docs/scoring-diagnostics-2026-10-30.md.
+  No live model setting or confidence rating changed. These are descriptive historical
+  comparisons, not new untouched holdouts or against-the-spread profitability tests.
+- Tasks 70/76/77/80/81/83/94 have additional evidence but remain pending where they require
+  other leagues, contemporary injury/market data, simulations or independent calibration.
+  Production authentication and paid-feed acceptance remain blocked as recorded above.
