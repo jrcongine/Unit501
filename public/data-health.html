@@ -1,8 +1,10 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data Health — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="data-health.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data Health — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="data-health.css"><link rel="stylesheet" href="light.css">
+</head>
 <body><main>
 <nav class="quick-nav" aria-label="Unit 501 sections"><a href="/" class="nav-slate">Football</a><a href="nba.html" class="nav-war">NBA</a><a href="ncaab.html" class="nav-war">College basketball</a><a href="data-health.html" class="nav-lab" aria-current="page">Data Health</a></nav>
 <header><div><small>UNIT 501 / SYSTEM STATUS</small><h1>Data Health</h1><p>See what’s ready. Spot what needs attention.</p></div><button id="health-refresh" type="button">Refresh status</button></header>
+<p class="unit-tagline">Always Buy the Hook.</p>
 <p id="health-message" role="status" aria-live="polite">Loading saved feed status…</p>
 <section class="card"><h2>API capacity &amp; line tracking</h2><div id="health-capacity" class="health-capacity"></div><p class="war-muted">Refreshing this screen reads saved status only. It does not request sports feeds or spend provider credits.</p></section>
 <section class="card"><div class="health-heading"><h2>Feed status</h2><label>Show <select id="health-filter"><option value="all">All feeds</option><option value="attention">Needs attention</option><option value="nfl">NFL</option><option value="ncaaf">College football</option><option value="nba">NBA</option><option value="ncaab">College basketball</option><option value="mlb">MLB picks</option><option value="nhl">NHL picks</option></select></label></div>

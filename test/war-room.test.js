@@ -32,7 +32,8 @@ test('War Room is focused on public picks; no manual board vote form or decision
   assert.match(html,/<option value="mlb">MLB<\/option>/);
   assert.match(html,/id="war-youtube-desk"/);
   assert.match(html,/id="war-archive"/);
-  assert.match(html,/Big 12 Board stays in our chat/);
+  assert.doesNotMatch(html,/Big 12 Board stays in our chat/);
+  assert.match(html,/Published expert picks, separate from Unit 501 predictions/);
   assert.doesNotMatch(html,/GuyBostonSports|Ev Singleton|EV \/ Guy Boston/);
   for (const gone of ['war-form','war-list','war-matchup','war-pick','war-source-juicereel','war-vote-jr','war-vote-aria','war-vote-unit501','war-import']) {
     assert.doesNotMatch(html,new RegExp('id="'+gone+'"'),gone+' removed');

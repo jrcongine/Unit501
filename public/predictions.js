@@ -929,7 +929,7 @@ results.appendChild(workload);
       if (teamIds.some(x => !/^\d+$/.test(x))) throw new Error('Team IDs were not provided for this game.');
       const kickoff = gameTime(target);
       if (!Number.isFinite(kickoff) || kickoff <= 0) throw new Error('Kickoff time is missing for this game.');
-      const history = await Promise.all(teamIds.map(team => json(`/api/team-games?team=${team}&season=${season}`)));
+      const history = await Promise.all(teamIds.map(team => json(`/api/team-games?team=${team}&season=${season}&league=${league}`)));
       const past = new Map();
       history.forEach((list, i) => {
         const previous = list.filter(g => {
@@ -968,7 +968,7 @@ if (league === '1' && stage !== 'regular season') return false;
      // Sequential requests are intentionally gentler on rate limits.
          for (const id of ids) {
         status.textContent = `Reading player stats: ${ids.indexOf(id)+1} of ${ids.length} season games…`;
-        const rows = await json(`/api/player-stats?game=${id}`);
+        const rows = await json(`/api/player-stats?game=${id}&league=${league}`);
         if (task !== sequence) return;
         const pastGame = past.get(id);
         for (const [teamId, opponent] of pastGame.teams) {

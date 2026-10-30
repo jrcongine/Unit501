@@ -14,6 +14,7 @@
 
 <link rel="stylesheet" href="style.css">
 
+<link rel="stylesheet" href="light.css">
 </head>
 
 <body>
@@ -33,6 +34,7 @@
 <span id="status">Checking data…</span>
 
 </header>
+<p class="unit-tagline">Always Buy the Hook.</p>
 
 <nav class="quick-nav" aria-label="Command center sections">
   <a href="#slate-section" class="nav-slate"><span aria-hidden="true">🏈</span> Game slate</a>
@@ -46,7 +48,7 @@
 
 <section class="card controls">
 
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">   <input     id="date"     type="date"     aria-label="Game date"     style="color-scheme:dark;min-width:0;flex:1;"   >   <button     type="button"     onclick="const field = document.getElementById('date'); try { field.showPicker(); } catch { field.focus(); }"   >     Choose date ▾   </button> </div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">   <input     id="date"     type="date"     aria-label="Game date"     style="min-width:0;flex:1;"   >   <button     type="button"     onclick="const field = document.getElementById('date'); try { field.showPicker(); } catch { field.focus(); }"   >     Choose date ▾   </button> </div>
 
 <select id="league">
 
@@ -69,13 +71,13 @@
 
 <details id="war-room" class="card war-room">
 <summary><strong>⚔ 501 WAR ROOM</strong> <span class="war-muted">Outside picks • sources • scouting</span></summary>
-<p class="war-muted">Actual published picks and research sources only. The J.R. / Aria / Unit 501 Big 12 Board stays in our chat; no duplicate voting or manual entry here.</p>
+<p class="war-muted">Published expert picks, separate from Unit 501 predictions.</p>
 <h3>Public pick feed</h3>
 <div class="war-record-actions">
-<label>Public picks <select id="war-feed-league"><option value="nfl">NFL</option><option value="ncaaf">College football</option><option value="mlb">MLB</option><option value="nba">NBA</option><option value="nhl">NHL</option></select></label>
+<label>Public picks <select id="war-feed-league"><option value="nfl">NFL</option><option value="ncaaf">College football</option><option value="mlb">MLB</option><option value="nba">NBA</option><option value="ncaab">College basketball</option><option value="nhl">NHL</option></select></label>
 <button id="war-feed-refresh" type="button">Refresh picks</button>
 </div>
-<p class="war-muted">Covers, WagerTalk, Boyd's Bets and Pickswise public selections are checked automatically for NFL, college football and MLB. Only explicit selections are shown; any unverified analyst or kickoff is labeled as such. A missing feed does not count as a pick. Source prices are not live FanDuel quotes. This feed covers the selected league, not just your Game Lab matchup. No automatic board votes.</p>
+<p class="war-muted">Covers, WagerTalk, Boyd's Bets and Pickswise · published selections for the selected league. Missing feeds contribute no votes. Source prices may differ from FanDuel. Unverified analysts and dates remain labeled.</p>
 <p id="war-feed-status" role="status" aria-live="polite">Open the War Room to load public picks.</p>
 <p class="war-muted"><a href="#league-pulse">View that league’s overall power rankings and current headlines below the slate</a> · NFL, college football, NBA, MLB and NHL, without changing pages.</p>
 <div id="war-feed" class="war-feed-grid"></div>
@@ -102,7 +104,7 @@
 </details>
 <details id="war-archive" class="war-archive" hidden>
 <summary>Previous War Room records <span class="war-muted" id="war-archive-count"></span></summary>
-<p class="war-muted">Old manual decisions stay saved on this device. This section is for backup only; new Big 12 decisions are tracked in our chat.</p>
+<p class="war-muted">Previous decisions saved on this device. Export remains available.</p>
 <button id="war-export" type="button" class="war-secondary">Download old decisions</button>
 <p id="war-message" role="status" aria-live="polite"></p>
 </details>
@@ -182,7 +184,7 @@
 <p id="auto-injury-status" role="status" aria-live="polite">Auto injuries ON — applied when you run the prediction.</p>
 <details id="injury-adjustment-details" hidden><summary>Why no adjustment?</summary><ul id="injury-adjustment-reasons"></ul></details>
 <p>Confirmed Out players only. Estimated impact depends on role data. Turn off for manual points.</p>
-<div class="grid">
+<div class="grid" id="manual-injury-controls" hidden>
 <label>Away offense loss (points)<input id="awayOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
 <label>Away defense loss (extra opponent points)<input id="awayDefenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
 <label>Home offense loss (points)<input id="homeOffenseLoss" type="number" min="0" max="14" step=".5" value="0"></label>
@@ -190,21 +192,22 @@
 </div>
 </details>
 <details id="maintenance-panel"><summary>Automatic NFL roster checks</summary><p id="maintenance-status">Open this panel to check background roster maintenance.</p><ul id="maintenance-issues"></ul></details>
+<details id="matchup-settings"><summary>Game settings · scenarios, venue &amp; weather</summary>
 <label for="venueMode">Game location</label>
 <select id="venueMode">
 <option value="auto">Automatic — check venue history</option>
 <option value="home" selected>Home stadium</option>
 <option value="neutral">Neutral site</option>
 </select>
-<p>Home stadium is the default for each matchup and automatically applies home-field advantage. Select Neutral site for games played away from the home stadium; this removes the home-field boost. Automatic checks earlier venue history instead. This changes team scores, not player props.</p>
+
 <label><input id="variableHomeField" type="checkbox"> Use experimental NFL team home-field estimate</label>
 <p id="home-field-status">Historical home-field estimates load with the matchup. These are performance estimates, not crowd-noise ratings.</p>
 <details><summary>NFL historical home-field rankings</summary><div id="home-field-rankings"></div></details>
 <p id="matchup-context-status"></p>
 <section aria-label="Game scenario">
 <label for="gameMode">Game mode</label>
-<select id="gameMode"><option value="normal">Normal margin</option><option value="upset">Narrow margin by 10% (manual)</option><option value="primetime">Widen margin by 10% (manual)</option></select>
-<p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
+<select id="gameMode"><option value="normal">Normal 0%</option><option value="upset">Upset −10% (manual)</option><option value="primetime">Primetime +10% (manual)</option></select>
+
 </section>
 <label for="homeFieldMode">Home advantage</label>
 <select id="homeFieldMode"><option value="auto">Automatic — standard venue adjustment</option><option value="manual">Manual scenario — set total points</option></select>
@@ -217,7 +220,8 @@
 <p>4–5 total points are reserved for rare manual scenarios and require a reason. Rivalry, evening kickoff, trash talk and playoff stakes do not automatically add points. Overrides are unvalidated, preserve the projected total and are ignored at neutral or unverified venues.</p>
 </details>
 <label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
-<p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
+
+</details>
 <button id="sim">Run 50,000 Sims</button>
 
 <div class="results">
@@ -244,7 +248,10 @@
 <details id="simulation-report-details" class="simulation-report-details">
   <summary>Report details</summary>
   <div class="simulation-report-content">
-    <h4>Model calculations</h4>
+    <p>Home stadium is the default for each matchup and automatically applies home-field advantage. Select Neutral site for games played away from the home stadium; this removes the home-field boost. Automatic checks earlier venue history instead. This changes team scores, not player props.</p>
+<p>For known open-air stadiums with a fresh forecast: reduce both scores 1% per mph above 15 mph, capped at 15%. This assumption has not been calibrated. Rain chance, gusts and temperature are context only.</p>
+<p>Manual projected-margin adjustment. Total stays unchanged. Home advantage and player scenarios remain separate.</p>
+<h4>Model calculations</h4>
     <p id="simulation-report-text"></p>
     <h4>Injury coverage and limitations</h4>
     <p id="availability-score-status"></p>

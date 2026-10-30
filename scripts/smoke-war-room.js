@@ -5,7 +5,7 @@
 const fs=require('node:fs');
 const {createFeed}=require('../outside-picks');
 
-const leagues=['nfl','ncaaf','mlb','nba','nhl'];
+const leagues=['nfl','ncaaf','mlb','nba','nhl','ncaab'];
 const SOURCES=['covers','wagertalk','boyds','pickswise'];
 const LIMIT=80;
 const start=new Date();

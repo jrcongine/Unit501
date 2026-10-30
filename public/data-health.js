@@ -1,13 +1,13 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id);let snapshot=null;
- const date=value=>value?new Date(value).toLocaleString():'Not recorded';
+ const date=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Chicago',timeZoneName:'short'}):'Not recorded';
  function node(tag,text,cls){const el=document.createElement(tag);el.textContent=text;if(cls)el.className=cls;return el;}
  function render(){
   if(!snapshot)return;
   const filter=$('health-filter').value,root=$('health-feeds');root.replaceChildren();
   for(const row of snapshot.feeds){
-   if(filter==='attention'&&!['failed','unavailable','partial','stale'].includes(row.status))continue;
+   if(filter==='attention'&&!['failed','unavailable','partial','stale','unchecked'].includes(row.status))continue;
    if(!['all','attention'].includes(filter)&&!row.id.startsWith(filter+':'))continue;
    const card=node('article','','health-feed');card.append(node('h3',row.label),node('span',row.status.toUpperCase(),'health-badge health-'+row.status),node('p','Source / check: '+date(row.sourceAt)),node('p','Last successful response: '+date(row.lastSuccessAt)));root.append(card);
   }

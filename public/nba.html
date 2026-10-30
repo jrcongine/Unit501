@@ -1,20 +1,20 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NBA Beta — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"></head>
+<title>NBA Beta — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"><link rel="stylesheet" href="light.css">
+</head>
 <body><main>
 <nav class="quick-nav" aria-label="Unit 501 sports"><a href="/" class="nav-slate">🏈 Football</a><a href="nba.html" class="nav-war" aria-current="page">🏀 NBA Beta</a><a href="ncaab.html" class="nav-lab">🏀 College basketball · Beta</a><a href="/#war-room" class="nav-war">⚔ War Room (all sports)</a><a href="data-health.html" class="nav-lab">Data Health</a></nav>
 <header><div><small>UNIT 501</small><h1>🏀 NBA Beta</h1></div><a class="nba-home" href="/">← Football Command Center</a></header>
-<section class="card nba-intro"><h2>NBA matchup dashboard</h2>
-<p>Compare real NBA scoring form, home/away splits, recent results and rest before tipoff. FanDuel spreads, totals and player prop lines are available when supplied by the feed. Experimental team and player estimates use recent completed games.</p>
-<p>Choose a game to compare both teams. Missing data stays unavailable; small samples are labeled.</p></section>
+<p class="unit-tagline">Always Buy the Hook.</p>
+<section class="card nba-intro"><h2>NBA matchup dashboard</h2><p>Choose a game to compare teams, FanDuel lines and player props. Projections are experimental; missing data remains unavailable.</p></section>
 <section class="card nba-controls"><label for="nba-date">NBA game date</label>
 <div class="nba-inputs"><input id="nba-date" type="date" required><button id="nba-load" type="button">Load NBA games</button></div>
 <p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p></section>
-<section class="card"><h2>First-half deficit watch</h2>
+<details class="card"><summary>First-half deficit watch · 20+ points</summary>
 <label><input id="nba-alert-enable" type="checkbox"> Watch for a team down 20+ before halftime</label>
 <button id="nba-alert-permission" type="button">Enable browser notifications</button>
 <p id="nba-alert-status" role="status">Off. Watches today's games while this tab is open, including in the background. Browser throttling can delay checks; current-season NBA data required.</p>
-<div id="nba-alert-list" aria-live="polite"></div></section>
+<div id="nba-alert-list" aria-live="polite"></div></details>
 <section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
   <div class="league-pulse-heading">
@@ -80,7 +80,8 @@
 <button id="nba-load-props" type="button">Load FanDuel player props</button>
 <p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>
 <div class="nba-prop-filters"><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label>
-<label for="nba-prop-search">Player <input id="nba-prop-search" type="search" placeholder="Search player name"></label>
+<label for="nba-prop-player">Player <select id="nba-prop-player"><option value="">All players</option></select></label>
+<label for="nba-prop-search">Search <input id="nba-prop-search" type="search" placeholder="Search player name"></label>
 <label for="nba-prop-sort">Sort <select id="nba-prop-sort"><option value="gap">Largest projection gap</option><option value="name">Player</option><option value="most">Above: highest %</option><option value="least">Below: highest %</option></select></label></div>
 <p id="nba-player-history-status" role="status" class="war-muted"></p>
 <div id="nba-prop-lines" class="nba-head-to-head"></div>

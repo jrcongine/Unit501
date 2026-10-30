@@ -3,8 +3,8 @@ const boyds=require('./boyds-picks');
 const pickswise=require('./pickswise-picks');
 // Public, attributed selections only. Never retrieve premium picks or infer video picks.
 const SOURCES = {
-  covers: {name:'Covers', urls:{nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb',nba:'https://www.covers.com/picks/nba',nhl:'https://www.covers.com/picks/nhl'}},
-  wagertalk: {name:'WagerTalk', urls:{nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb',nba:'https://www.wagertalk.com/free-sports-picks/nba',nhl:'https://www.wagertalk.com/free-sports-picks/nhl'}},
+  covers: {name:'Covers', urls:{ncaab:'https://www.covers.com/picks/ncaab',nfl:'https://www.covers.com/picks/nfl', ncaaf:'https://www.covers.com/picks/ncaaf',mlb:'https://www.covers.com/picks/mlb',nba:'https://www.covers.com/picks/nba',nhl:'https://www.covers.com/picks/nhl'}},
+  wagertalk: {name:'WagerTalk', urls:{ncaab:'https://www.wagertalk.com/free-sports-picks/college-basketball',nfl:'https://www.wagertalk.com/free-sports-picks/nfl', ncaaf:'https://www.wagertalk.com/free-sports-picks/college-football',mlb:'https://www.wagertalk.com/free-sports-picks/mlb',nba:'https://www.wagertalk.com/free-sports-picks/nba',nhl:'https://www.wagertalk.com/free-sports-picks/nhl'}},
   boyds: {name:"Boyd's Bets",urls:boyds.URLS},
   pickswise: {name:'Pickswise',urls:pickswise.URLS}
 };
@@ -92,7 +92,7 @@ function createFeed({fetcher=fetch,now=Date.now}={}) {
     pending.set(id,work);try{return await work;}finally{pending.delete(id);}
   }
   return async league=>{
-    if(!['nfl','ncaaf','mlb','nba','nhl'].includes(league))throw Error('Unsupported league');
+    if(!['nfl','ncaaf','mlb','nba','nhl','ncaab'].includes(league))throw Error('Unsupported league');
     const sources=await Promise.all(['covers','wagertalk','boyds','pickswise'].map(key=>source(key,league)));
     const current=sources.map(s=>({...s,picks:s.picks.filter(p=>{
       const kickoff=require('./consensus-identity').eventTimestamp(p,s);

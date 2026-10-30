@@ -3,6 +3,7 @@
 // it contains the named matchup, exact selection and published best price.
 // Expert names are matched to visible pick cards by selection, not list order.
 const URLS={
+  ncaab:'https://www.pickswise.com/college-basketball/picks/',
   nfl:'https://www.pickswise.com/nfl/picks/',
   ncaaf:'https://www.pickswise.com/college-football/picks/',
   mlb:'https://www.pickswise.com/mlb/picks/',

@@ -63,3 +63,30 @@ test('official football participation distinguishes unsupported coverage from ve
  h.observe(u,200,{response:[{available:true,checkedAt:Date.now()}]});
  assert.equal(h.snapshot().feeds.find(r=>r.id==='nfl:participation').status,'working');
 });
+
+test('rate limits invalidate feed status while preserving successful response time',()=>{
+ const h=createHealth();const u=url('/api/nba/props');h.observe(u,200,{props:[]});
+ const success=row(h,'nba:props').lastSuccessAt;h.observe(u,429,{error:'rate limit'});
+ assert.equal(row(h,'nba:props').status,'failed');assert.equal(row(h,'nba:props').lastSuccessAt,success);
+});
+test('unavailable or partial official injury coverage cannot become an empty healthy report',()=>{
+ const h=createHealth();
+ for(const league of ['nba','ncaab']){
+  const u=url('/api/'+league+'/injuries');
+  h.observe(u,200,{available:false,teams:[{players:[]}]});assert.equal(row(h,league+':injuries').status,'unavailable');
+  h.observe(u,200,{teams:[{available:false,players:[]},{available:true,players:[]}]});assert.equal(row(h,league+':injuries').status,'partial');
+ }
+ h.observe(url('/api/availability?league=1'),200,{teams:[{roster:{available:true},injuries:{available:true},official:{available:false}}]});
+ assert.equal(row(h,'nfl:injuries').status,'partial');
+});
+test('football team and player histories are tracked only with explicit league context',()=>{
+ const h=createHealth();
+ for(const league of ['1','2']){
+  const sport=league==='1'?'nfl':'ncaaf';
+  h.observe(url('/api/team-games?team=1&league='+league),200,{response:[{id:1}]});
+  h.observe(url('/api/player-stats?game=1&league='+league),200,{response:[]});
+  assert.equal(row(h,sport+':context').status,'working');assert.equal(row(h,sport+':player-history').status,'empty');
+ }
+ h.observe(url('/api/player-stats?game=1'),503,{});
+ assert.equal(row(h,'nfl:player-history').status,'empty');
+});

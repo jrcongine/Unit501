@@ -58,6 +58,7 @@ $('homeFieldReason').addEventListener('input',()=>invalidateSimulation('Override
 const injuryFields=['awayOffenseLoss','awayDefenseLoss','homeOffenseLoss','homeDefenseLoss'];
 function injuryModeChanged(){
   const automatic=$('autoInjuries').checked;
+  if($('manual-injury-controls'))$('manual-injury-controls').hidden=automatic;
   for(const id of injuryFields){$(id).disabled=automatic;$(id).value='0';}
   $('auto-injury-status').textContent=automatic?
     'Auto injuries ON — applied when you run the prediction.':
@@ -71,6 +72,7 @@ function renderAutomaticInjuries(result,applied=false){
   for(const [id,key] of [['awayOffenseLoss','awayOffense'],['awayDefenseLoss','awayDefense'],['homeOffenseLoss','homeOffense'],['homeDefenseLoss','homeDefense']]){
     $(id).value=result.ready?String(result.injury[key]):'';$(id).placeholder=result.ready?'0':'Pending';
   }
+  $('auto-injury-status').dataset.state=!result.ready?'review':result.applied.length?'applied':'clear';
   const who=result.applied.map(p=>{const designation=p.status==='Injured reserve'?'IR':'OUT';return p.category==='quarterback'?`${p.name} — ${designation} — ${applied?'factored in':'ready for next simulation'} → ${p.replacement}: ${p.points>0?'+':''}${p.points.toFixed(1)} pts`:`${p.name} — ${designation} — ${applied?'factored in':'ready for next simulation'} (${p.role}): ${p.category==='offense'?'-':'+'}${p.points.toFixed(2)} pts`;});
   const hasAbsence=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.roster?.rows||[]).some(p=>/\binjured reserve\b/i.test(p.group||'')));
   $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · '):!result.ready?'Injury data incomplete—no adjustment yet.':hasAbsence?'Unavailable players listed; no supported point change.':'No confirmed injury adjustment.';

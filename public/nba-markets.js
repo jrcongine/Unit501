@@ -4,6 +4,7 @@
  const $=id=>document.getElementById(id),ui=root.Unit501SharedUI;
  const gameBoard=$('nba-game-odds'),propBoard=$('nba-prop-lines'),gameStatus=$('nba-odds-status'),propStatus=$('nba-props-status');
  const refresh=$('nba-refresh-odds'),loadProps=$('nba-load-props'),market=$('nba-prop-market'),search=$('nba-prop-search');
+ const player=$('nba-prop-player');
  const sort=$('nba-prop-sort'),historyStatus=$('nba-player-history-status');
  const compare=$('nba-compare-odds'),compareStatus=$('nba-comparison-status'),compareBoard=$('nba-book-comparison');
  if(!gameBoard||!propBoard||!ui)return;
@@ -39,7 +40,7 @@
    if(!current.some(s=>JSON.stringify(s)===scenario.evidence))injuryScenarios.delete(name);
   }
   const query=search.value.trim().toLowerCase();
-  const source=(props.props||[]).filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query)));
+  const source=(props.props||[]).filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
    const matching=injuries&&Number.isFinite(injuries.reportAt)&&injuries.reportAt<=Date.now()+60000&&Date.now()-injuries.reportAt<=7200000?
     injuries.teams.filter(t=>t.available).flatMap(t=>t.players).filter(player=>normalizedName(player.name)===normalizedName(p.name)):[];
@@ -52,7 +53,9 @@
    return {p,status,prediction,splits,scenario:injuryScenarios.get(name),minutes};
   });
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
-  if(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap')rows.sort((a,b)=>{
+  const catalog=['player_points','player_rebounds','player_assists','player_threes'];
+  if(player?.value||sort?.value==='name')rows.sort((a,b)=>a.p.name.localeCompare(b.p.name)||catalog.indexOf(a.p.market)-catalog.indexOf(b.p.market));
+  if(!player?.value&&(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap'))rows.sort((a,b)=>{
    if(a.prediction.available!==b.prediction.available)return a.prediction.available?-1:1;
    if(!a.prediction.available)return a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
    if(sort.value==='gap')return Math.abs(b.prediction.projection-b.p.line)-Math.abs(a.prediction.projection-a.p.line)||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
@@ -195,7 +198,7 @@
    if(kind==='game'){quotes=data;renderGames();}
    else{
     if(!Array.isArray(data.props))throw Error('NBA player quotes were not returned as a list.');
-    props=data;renderProps();loadPlayerHistory(game,serial);
+    props=data;if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(data.props.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=data.props.some(p=>p.name===previous)?previous:'';}renderProps();loadPlayerHistory(game,serial);
    }
    const coverage=kind==='props'?(data.coverage||[]).map(m=>m.label+': '+m.lines).join(' · '):'';
    status.textContent=(data.message||'NBA FanDuel quotes checked.')+(coverage?' '+coverage+'.':'')+' '+(data.tracking?.message||'Shared tracking status unavailable.')+' Quotes expire after 30 minutes or at tipoff.';
@@ -205,7 +208,7 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){minuteOverrides.clear();injuryScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
+ function clear(){if(player){player.value='';player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);}minuteOverrides.clear();injuryScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
@@ -223,6 +226,7 @@
   return selected&&String(selected.id)===String(game.id)&&selected.tipoff===game.tipoff&&s&&fresh(s.updatedAt)&&Number.isFinite(s.away)&&Number.isFinite(s.home)&&Math.abs(s.away+s.home)<1e-9?s.away:null;
  },select(game,day){clear();selected=game;date=day;market.value='';search.value='';refresh.disabled=false;loadProps.disabled=false;compare.disabled=false;compareStatus.textContent='Click Compare to check FanDuel, DraftKings and BetMGM; no comparison request has been made yet.';propStatus.textContent='Load FanDuel player props for points, rebounds, assists and threes.';load('game');tick();}};
  refresh.addEventListener('click',()=>load('game'));loadProps.addEventListener('click',()=>load('props'));
+ player?.addEventListener('change',()=>{market.value='';search.value='';renderProps();});
  market.addEventListener('change',renderProps);search.addEventListener('input',renderProps);sort?.addEventListener('change',renderProps);
  compare.addEventListener('click',loadComparison);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){renderGames();renderProps();renderComparison();}});

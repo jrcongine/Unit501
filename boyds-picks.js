@@ -1,6 +1,7 @@
 'use strict';
 // Only Boyd's Bets publicly displayed free picks, never package previews or inferred bets.
 const URLS={
+  ncaab:'https://www.boydsbets.com/free-college-basketball-picks/',
   nfl:'https://www.boydsbets.com/free-nfl-picks/',
   ncaaf:'https://www.boydsbets.com/free-college-football-picks/',
   mlb:'https://www.boydsbets.com/free-baseball-picks/',
@@ -8,7 +9,7 @@ const URLS={
   nhl:'https://www.boydsbets.com/free-nhl-picks/'
 };
 const SUMMARY='https://www.boydsbets.com/free-sports-picks/';
-const SPORTS={nfl:'NFL',ncaaf:'NCAA-F',mlb:'MLB',nba:'NBA',nhl:'NHL'};
+const SPORTS={ncaab:'NCAA-B',nfl:'NFL',ncaaf:'NCAA-F',mlb:'MLB',nba:'NBA',nhl:'NHL'};
 const MONTHS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const pad=x=>String(x).padStart(2,'0');
 function plain(html){

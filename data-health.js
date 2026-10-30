@@ -6,7 +6,7 @@ const SOURCES={covers:'Covers',wagertalk:'WagerTalk',boyds:'Boyd’s Bets',picks
 function route(url){
  const p=url.pathname,q=url.searchParams;
  const sport=q.get('league')==='1'?'nfl':q.get('league')==='2'?'ncaaf':null;
- const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/availability':'injuries','/api/football/participation':'participation'};
+ const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/availability':'injuries','/api/football/participation':'participation','/api/team-games':'context','/api/player-stats':'player-history'};
  if(football[p]&&sport)return sport+':'+football[p];
  const match=p.match(/^\/api\/(nba|ncaab)\/(games|odds|props|injuries|context|player-history)$/);
  if(match)return match[1]+':'+match[2];
@@ -37,8 +37,8 @@ function assessment(data,kind,now){
  if(data.available===false||data.current===false)status='unavailable';
  if(data.available!==false && (kind==='props'&&Array.isArray(data.props)&&!data.props.length||kind==='games'&&Array.isArray(data.games)&&!data.games.length||Array.isArray(data.response)&&!data.response.length))status='empty';
  if(kind==='injuries'){
-  if(!Array.isArray(data.teams)||!data.teams.length)status='unavailable';
-  else if(data.teams.some(t=>t.roster?.available===false||t.injuries?.available===false))status='partial';
+  if(data.available===false||data.current===false||!Array.isArray(data.teams)||!data.teams.length)status='unavailable';
+  else if(data.teams.some(t=>t.available===false||t.roster?.available===false||t.injuries?.available===false||t.official?.available===false))status='partial';
   else if(data.teams.every(t=>!(t.players?.length||t.injuries?.rows?.length)))status='empty';
  }
  if(kind==='player-history'&&data.teams?.some(t=>t.available===false||t.players?.some(p=>p.available===false||p.coverage?.missing>0||p.missing?.length||p.results?.some(r=>['player_points','player_rebounds','player_assists','player_threes'].some(k=>!Number.isInteger(r[k])||r[k]<0)))))status='partial';
@@ -48,12 +48,11 @@ function createHealth({now=Date.now}={}){
  const startedAt=new Date(now()).toISOString(),rows=new Map();
  const add=(id,label,ttl)=>rows.set(id,{id,label,ttl,status:'unchecked',lastResponseAt:null,lastSuccessAt:null,sourceAt:null});
  for(const [sport,label] of Object.entries(SPORTS))for(const [kind,name] of Object.entries(KINDS)){
-  if(['nfl','ncaaf'].includes(sport)&&['context','player-history'].includes(kind))continue;
   if(['nba','ncaab'].includes(sport)&&kind==='participation')continue;
   add(sport+':'+kind,label+' · '+name,['games','odds','props'].includes(kind)?30*60000:60*60000);
  }
  add('weather','Weather · Open-Meteo',30*60000);
- for(const sport of ['nfl','ncaaf','nba','mlb','nhl'])for(const [source,label] of Object.entries(SOURCES))add(sport+':'+source,(SPORTS[sport]||sport.toUpperCase())+' · '+label,60*60000);
+ for(const sport of ['nfl','ncaaf','nba','ncaab','mlb','nhl'])for(const [source,label] of Object.entries(SOURCES))add(sport+':'+source,(SPORTS[sport]||sport.toUpperCase())+' · '+label,60*60000);
  function record(id,result){
   const row=rows.get(id);if(!row)return;
   row.status=result.status;row.lastResponseAt=now();row.sourceAt=result.at;
@@ -61,12 +60,12 @@ function createHealth({now=Date.now}={}){
  }
  function observe(url,code,data){
   // Input errors and missing matchups are not evidence of provider failure.
-  if(code>=400&&code<500)return;
+  if(code>=400&&code<500&&code!==429)return;
   const id=route(url);
-  if(id)record(id,code>=500?{status:'failed',at:null}:assessment(data,id.split(':')[1],now()));
+  if(id)record(id,(code>=500||code===429)?{status:'failed',at:null}:assessment(data,id.split(':')[1],now()));
   if(url.pathname==='/api/outside-picks'){
    const league=url.searchParams.get('league')||'nfl';
-   if(code>=500){for(const source of Object.keys(SOURCES))record(league+':'+source,{status:'failed',at:null});return;}
+   if(code>=500||code===429){for(const source of Object.keys(SOURCES))record(league+':'+source,{status:'failed',at:null});return;}
    for(const source of data?.sources||[]){
     const status=source.status==='available'?'working':source.status==='empty'?'empty':'failed';
     record(league+':'+source.source,{status,at:time(source.checkedAt)});

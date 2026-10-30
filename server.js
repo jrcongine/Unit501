@@ -235,7 +235,7 @@ const server = http.createServer(async (req, res) => {
     }
     if(u.pathname==='/api/outside-picks'){
       const league=u.searchParams.get('league')||'nfl';
-      if(!['nfl','ncaaf','mlb','nba','nhl'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA or NHL.'});
+      if(!['nfl','ncaaf','mlb','nba','nhl','ncaab'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA, college basketball or NHL.'});
       return send(res,200,await outsidePicks(league));
     }
     if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());

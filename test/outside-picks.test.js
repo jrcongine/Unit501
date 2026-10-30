@@ -140,3 +140,14 @@ test('NBA and NHL route all four public sources and preserve league identity',as
   assert.ok(urls.some(url=>url.includes('pickswise.com/'+league+'/picks/')));
  }
 });
+
+test('college basketball feed uses its own source routes and never borrows NBA picks',async()=>{
+ const {createFeed}=require('../outside-picks');const urls=[];
+ const feed=createFeed({fetcher:async url=>{urls.push(String(url));return {ok:true,text:async()=>'<html><body>No public selections</body></html>'};}});
+ const result=await feed('ncaab');assert.equal(result.league,'ncaab');assert.equal(result.sources.length,4);
+ assert.ok(urls.some(u=>u==='https://www.covers.com/picks/ncaab'));
+ assert.ok(urls.some(u=>u==='https://www.wagertalk.com/free-sports-picks/college-basketball'));
+ assert.ok(urls.some(u=>u==='https://www.boydsbets.com/free-college-basketball-picks/'));
+ assert.ok(urls.some(u=>u==='https://www.pickswise.com/college-basketball/picks/'));
+ assert.ok(!urls.some(u=>u.includes('/nba')));assert.ok(result.sources.every(s=>s.picks.length===0));
+});

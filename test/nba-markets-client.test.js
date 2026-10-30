@@ -300,3 +300,18 @@ test('NBA Above sorting compares percentages rather than raw hit counts',async()
  assert.ok(text.indexOf('Player A')<text.indexOf('Player B'),'2/2 ranks above 3/6');assert.match(text,/100.0%/);
  sort.value='least';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
 });
+
+test('exact NBA player selection shows only that player and preserves catalog order without requests',async()=>{
+ const h=harness();await h.select();
+ const original=h.context.fetch;h.context.fetch=async url=>{
+  if(!String(url).includes('/props?'))return original(url);
+  h.calls.push(url);const d=h.data(h.game,true),p=d.props[0];
+  d.props=[{...p,market:'player_assists',label:'Assists'},d.props[1],{...p,market:'player_points',label:'Points'},{...p,market:'player_rebounds',label:'Rebounds'}];
+  return {ok:true,json:async()=>d};
+ };
+ await h.nodes.get('nba-load-props').events.click();
+ const player=h.nodes.get('nba-prop-player'),before=h.calls.length;player.value='Player A';player.events.change();
+ const text=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(text,/Player B/);
+ assert.ok(text.indexOf('Points')<text.indexOf('Rebounds'));assert.ok(text.indexOf('Rebounds')<text.indexOf('Assists'));
+ assert.equal(h.calls.length,before);h.context.Unit501NBAMarkets.clear();assert.equal(player.value,'');
+});
