@@ -100,7 +100,7 @@
   }catch{if(task===serial)status.textContent='College basketball slate unavailable. Check the date and try again.';}finally{if(task===serial)load.disabled=false;}
  });
  $('ncaab-load-props').addEventListener('click',async()=>{const game=selected,task=serial;if(!game)return;if(game.timeKnown&&game.status==='Scheduled'&&Date.parse(game.tipoff)>Date.now()&&injuryData&&Date.now()-injuryData.checkedAt>900000)loadInjuries(game,task);const button=$('ncaab-load-props');button.disabled=true;$('ncaab-props').replaceChildren();$('ncaab-props-status').textContent='Loading FanDuel props and recent player history…';
-  try{const [quotes,history]=await Promise.all([api('props',game),api('player-history',game).catch(()=>null),injuryPromise||Promise.resolve()]);if(task!==serial)return;$('ncaab-props-status').textContent=quotes.message+(history?' · '+history.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NCAA official statistics.':'');const rows=[];
+  try{const [quotes,history]=await Promise.all([api('props',game),api('player-history',game).catch(()=>null),injuryPromise||Promise.resolve()]);if(task!==serial)return;$('ncaab-props-status').textContent=quotes.message+(quotes.audit?' '+quotes.audit.quotesReceived+' quote candidates received; '+quotes.audit.accepted+' accepted; '+quotes.audit.rejected+' rejected ('+Object.entries(quotes.audit.reasons).map(([k,v])=>k+': '+v).join(', ')+').':'')+(history?' · '+history.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NCAA official statistics.':'');const rows=[];
    for(const q of quotes.props)rows.push({q,history});
    propRows=rows;const player=$('ncaab-prop-player'),previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);
    for(const name of [...new Set(rows.map(r=>r.q.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=rows.some(r=>r.q.name===previous)?previous:'';
@@ -126,6 +126,7 @@
    if(sort==='most'||sort==='least'){const field=sort==='most'?'above':'below';return b.p[field]*a.p.games-a.p[field]*b.p.games||b.p.games-a.p.games||order();}
    return Math.abs(b.p.projection-b.q.line)-Math.abs(a.p.projection-a.q.line)||order();
   });
+  board.setAttribute('data-displayed-lines',String(rows.length));board.append(node('p',rows.length+' lines displayed after view filters; player-history identity is checked separately for projections.'));
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   for(const label of ['Player / stat','FanDuel line','Projection','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');

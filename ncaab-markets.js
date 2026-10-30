@@ -1,6 +1,6 @@
 'use strict';
 // Quotes are accepted only for an exact team pair and verified tipoff.
-const {gameLines,playerLines,MARKETS}=require('./nba-odds');
+const {gameLines,auditPlayerLines,MARKETS}=require('./nba-odds');
 const SPORT='basketball_ncaab';
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function matches(e,g){return e?.sport_key===SPORT&&norm(e.away_team)===norm(g.away)&&norm(e.home_team)===norm(g.home)&&norm(g.away)!==norm(g.home)&&Number.isFinite(Date.parse(e.commence_time))&&Math.abs(Date.parse(e.commence_time)-Date.parse(g.tipoff))<=15*60000;}
@@ -22,7 +22,7 @@ function createMarkets({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   if(kind!=='props'){const lines=gameLines(found[0],now());return {...base,...lines,available:!!(lines.moneyline||lines.spread||lines.total),message:lines.moneyline||lines.spread||lines.total?'Fresh FanDuel game lines loaded.':'No fresh FanDuel game lines available.'};}
   const e=await request('events/'+encodeURIComponent(found[0].id)+'/odds',{bookmakers:'fanduel',markets:Object.keys(MARKETS).join(','),oddsFormat:'american'});
   if(e.id!==found[0].id||!matches(e,game))throw Error('Sportsbook matchup could not be verified.');
-  const props=playerLines(e,now());return {...base,props,available:!!props.length,message:props.length?'Fresh FanDuel player lines loaded.':'No fresh FanDuel player lines returned for this game.'};
+  const {props,audit}=auditPlayerLines(e,now());return {...base,props,audit,eventId:e.id,coverage:Object.entries(MARKETS).map(([market,label])=>({market,label,lines:props.filter(p=>p.market===market).length})),available:!!props.length,message:props.length?'Fresh FanDuel player lines loaded.':'No fresh FanDuel player lines returned for this game.'};
  };
 }
 module.exports={matches,createMarkets};

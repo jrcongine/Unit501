@@ -43,7 +43,7 @@
       // Replace previous automatic quotes only after a successful feed response.
       // A 401, exhausted quota, network failure or invalid response must not erase them.
       for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
-      let count = 0;
+      let count = 0, matched = 0, manual = 0;
       for (const record of choices) {
         // Never guess abbreviated names or select between duplicate player names.
         if (choices.filter(p => playerName(p.name) === playerName(record.name)).length !== 1) continue;
@@ -53,8 +53,9 @@
           const quote = quotes[0];
           if (!Number.isFinite(quote.line) || !Number.isFinite(quote.updatedAt) || quote.updatedAt > Date.now()+60000 || Date.now() - quote.updatedAt > 1800000) continue;
           const key = lineKey(record, def);
+          matched++;
           const entry = readLine(key);
-          if (entry.value !== '') continue;
+          if (entry.value !== '') { manual++; continue; }
           const movement=window.Unit501LineWatch?.fromServer(quote.history,quote.line,quote.updatedAt);
           enteredLines.set(key, {value:String(quote.line),savedAt:quote.updatedAt,persisted:false,source:'auto',
             over:quote.over,under:quote.under,movement});
@@ -66,8 +67,10 @@
       const missing = coverage.filter(m=>m.lines===0).map(m=>definitions.find(d=>d.key===m.stat)?.title).filter(Boolean);
       const detail = coverage.length ? ` ${covered}/${coverage.length} modeled markets returned usable lines.${missing.length ? ' No usable lines returned for: '+missing.join(', ')+'.' : ''}` : '';
       const unmatched=[...new Set(data.props.filter(q=>choices.filter(p=>playerName(p.name)===playerName(q.name)).length!==1).map(q=>q.name))];
+      const audit=data.audit;
+      const rejected=audit?` Provider: ${audit.quotesReceived} quote candidates / ${audit.outcomesReceived} outcomes received; ${audit.accepted} accepted, ${audit.rejected} rejected (${Object.entries(audit.reasons).map(([k,v])=>k+': '+v).join(', ')||'none'}); ${audit.duplicatesRemoved} identical outcomes removed.`:'';
       const matchingDetail=` ${data.props.length} usable quotes returned by the feed.${unmatched.length?' Unmatched or ambiguous player names: '+unmatched.join(', ')+'.':''}`;
-      propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${count} player lines filled. ${data.tracking?.message||'Shared tracking status unavailable.'}`;
+      propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${matched} matched to unique loaded players; ${data.props.length-matched} unmatched or invalid; ${count} player lines filled; ${manual} manual entries preserved.${rejected} ${data.tracking?.message||'Shared tracking status unavailable.'}`;
       showPlayer();
     } catch (e) {
       if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' Existing fresh quotes were kept; you can also enter lines manually.';
@@ -356,6 +359,8 @@ for (let i = rows.length - 1; i >= 0; i--) {
      empty.textContent = 'No projections match these filters. Reset the filters, or review player data below.';
      board.append(empty); return;
     }
+    board.dataset.displayedAutoLines = String(rows.filter(r=>r.line!==null&&r.entry.source==='auto').length);
+    const auditNote=document.createElement('p');auditNote.textContent=board.dataset.displayedAutoLines+' automatic lines displayed in this table after player, availability, projection and view filters.';board.append(auditNote);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'overflow-x:auto;margin-bottom:18px';
     wrap.tabIndex = 0;

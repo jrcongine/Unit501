@@ -23,7 +23,7 @@ test('NBA player props support only main points/rebounds/assists/threes with uni
  const markets=['player_points','player_rebounds','player_assists','player_threes'].map((k,i)=>market(k,pair('Player A',20.5-i)));
  assert.equal(playerLines(quotes(markets),now).length,4);
  for(const m of [market('player_points_alternate',pair('Player A',20.5)),market('player_points',pair('Player A',20.5),now-1800001),market('player_points',pair('Player A',20.5).slice(0,1)),market('player_points',pair('Player A',20.5).map(o=>({...o,price:50})))])assert.deepEqual(playerLines(quotes([m]),now),[]);
- assert.deepEqual(playerLines(quotes([markets[0],markets[0]]),now),[]);
+ assert.equal(playerLines(quotes([markets[0],markets[0]]),now).length,1);
  const duplicated=market('player_points',[...pair('Player A',20.5),...pair('Player A.',21.5)]);
  assert.deepEqual(playerLines(quotes([duplicated]),now),[]);
 });

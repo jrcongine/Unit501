@@ -20,10 +20,10 @@ test('only paired fresh main FanDuel props are returned',()=>{
  assert.equal(parseProps(event(outcomes,now,'player_pass_yds_alternate'),now).length,0);
  assert.equal(parseProps(event(outcomes,now,'player_pass_yds','draftkings'),now).length,0);
 });
-test('rejects one-sided, conflicting and duplicate quotes',()=>{
+test('rejects one-sided and conflicting quotes, recovers identical duplicates',()=>{
  assert.equal(parseProps(event(outcomes.slice(0,1)),now).length,0);
  assert.equal(parseProps(event([outcomes[0],{...outcomes[1],point:251.5}]),now).length,0);
- assert.equal(parseProps(event([...outcomes,outcomes[0]]),now).length,0);
+ assert.equal(parseProps(event([...outcomes,outcomes[0]]),now).length,1);
 });
 test('rushing attempts, RB receiving yards and receptions parse paired main lines',()=>{
  for(const [key,stat]of [['player_rush_attempts','carries'],['player_reception_yds','recYds'],['player_receptions','rec']]) {

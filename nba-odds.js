@@ -34,21 +34,11 @@ function gameLines(e,now=Date.now(),bookKey='fanduel'){
  }
  return {spread,total,moneyline};
 }
-function playerLines(e,now=Date.now()){
- const book=bookFor(e),props=[];
- for(const [key,label] of Object.entries(MARKETS)){
-  const markets=(Array.isArray(book?.markets)?book.markets:[]).filter(m=>m.key===key);if(markets.length!==1)continue;
-  const m=markets[0],at=fresh(m,book,now);if(at===null||!Array.isArray(m.outcomes))continue;
-  const names=new Set(m.outcomes.map(o=>o.description).filter(n=>typeof n==='string'&&n.trim()));
-  for(const name of names){
-   const rows=m.outcomes.filter(o=>o.description===name),over=rows.filter(o=>o.name==='Over'),under=rows.filter(o=>o.name==='Under');
-   if(rows.length!==2||over.length!==1||under.length!==1||!half(over[0].point)||over[0].point<0||over[0].point!==under[0].point||!rows.every(r=>price(r.price)))continue;
-   props.push({name:name.trim().slice(0,100),market:key,label,line:over[0].point,over:over[0].price,under:under[0].price,updatedAt:at});
-  }
- }
- const counts=new Map();for(const p of props){const k=normalize(p.name)+':'+p.market;counts.set(k,(counts.get(k)||0)+1);}
- return props.filter(p=>counts.get(normalize(p.name)+':'+p.market)===1).sort((a,b)=>a.name.localeCompare(b.name)||a.label.localeCompare(b.label));
+function auditPlayerLines(e,now=Date.now()){
+ const result=require('./prop-quotes').auditProps(e,MARKETS,now);
+ return {audit:result.audit,props:result.props.map(({stat,...p})=>({...p,label:stat})).sort((a,b)=>a.name.localeCompare(b.name)||a.label.localeCompare(b.label))};
 }
+function playerLines(e,now=Date.now()){return auditPlayerLines(e,now).props;}
 function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.now}={}){
  const cache=new Map();
  async function request(path,params={}){
@@ -88,8 +78,8 @@ function createNBAOdds({fetcher=fetch,key=()=>process.env.ODDS_API_KEY,now=Date.
   const found=events.filter(e=>matches(e,game));if(found.length!==1)return {...base,available:false,message:'No unique NBA prop matchup matched both teams and tipoff.'};
   e=await request('events/'+encodeURIComponent(found[0].id)+'/odds',{bookmakers:'fanduel',markets:Object.keys(MARKETS).join(','),oddsFormat:'american'});
   if(e.id!==found[0].id||!matches(e,game))throw Error('NBA prop event identity could not be verified.');
-  const props=playerLines(e,now()),coverage=Object.entries(MARKETS).map(([market,label])=>({market,label,lines:props.filter(p=>p.market===market).length}));
-  return {...base,props,coverage,available:props.length>0,message:props.length?'FanDuel player lines loaded.':'No fresh paired FanDuel player props were returned for this game.'};
+  const {props,audit}=auditPlayerLines(e,now()),coverage=Object.entries(MARKETS).map(([market,label])=>({market,label,lines:props.filter(p=>p.market===market).length}));
+  return {...base,props,audit,eventId:e.id,coverage,available:props.length>0,message:props.length?'FanDuel player lines loaded.':'No fresh paired FanDuel player props were returned for this game.'};
  };
 }
-module.exports={createNBAOdds,matches,gameLines,playerLines,MARKETS,BOOKS};
+module.exports={createNBAOdds,matches,gameLines,playerLines,auditPlayerLines,MARKETS,BOOKS};

@@ -39,6 +39,7 @@
    const current=root.Unit501NBARotationContext?.compare(history,scenario.quote,injuries,selected,Date.now())||[];
    if(!current.some(s=>JSON.stringify(s)===scenario.evidence))injuryScenarios.delete(name);
   }
+  const audit=props.audit;if(audit)propBoard.append(node('p',`${audit.quotesReceived} quote candidates received; ${audit.accepted} accepted; ${audit.rejected} rejected (${Object.entries(audit.reasons).map(([k,v])=>k+': '+v).join(', ')||'none'}).`));
   const query=search.value.trim().toLowerCase();
   const source=(props.props||[]).filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
@@ -51,6 +52,7 @@
    prediction=root.Unit501NBAPlayerModel?.withScenario?.(prediction,playerScenarios.get(name))||prediction;
    return {p,status,prediction,splits,scenario:injuryScenarios.get(name),minutes};
   });
+  propBoard.setAttribute('data-displayed-lines',String(rows.length));propBoard.append(node('p',rows.length+' lines displayed after view filters; player-history identity is checked separately for projections.'));
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
   const catalog=['player_points','player_rebounds','player_assists','player_threes'];
   if(player?.value||sort?.value==='name')rows.sort((a,b)=>a.p.name.localeCompare(b.p.name)||catalog.indexOf(a.p.market)-catalog.indexOf(b.p.market));

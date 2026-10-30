@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function setup(quotes={}){
  const nodes=new Map(),requests=[],timers=[];let clock=Date.now();
- class E{constructor(){this.children=[];this.events={};this.value='';this._text='';this.classList={add(){},remove(){}};}set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join(' ');}append(...x){this.children.push(...x);}replaceChildren(...x){this._text='';this.children=x;}addEventListener(k,f){this.events[k]=f;}}
+ class E{setAttribute(k,v){this[k]=v;}constructor(){this.children=[];this.events={};this.value='';this._text='';this.classList={add(){},remove(){}};}set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join(' ');}append(...x){this.children.push(...x);}replaceChildren(...x){this._text='';this.children=x;}addEventListener(k,f){this.events[k]=f;}}
  const html=fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8');for(const x of html.matchAll(/id="([^"]+)"/g))nodes.set(x[1],new E());
  const future=new Date(Date.now()+86400000).toISOString(),game={id:'10',awayId:'1',homeId:'2',away:'Away',home:'Home',tipoff:future,timeKnown:true,status:'Scheduled',stage:2,neutral:false};
  const rec={games:5,scored:80,allowed:70,wins:3,losses:2};const side=(id,name)=>({id,name,season:rec,recent5:rec,recent10:rec,recentGames:Array.from({length:5},(_,i)=>({id:String(i+1),tipoff:new Date(Date.now()-86400000*(i+1)).toISOString(),opponent:'Opponent',scored:80,allowed:70,venue:'home'}))});

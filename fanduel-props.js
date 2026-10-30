@@ -32,26 +32,7 @@ async function request(path, params = {}) {
   return pending;
 }
 function parseProps(event,now=Date.now()) {
-  const book=event.bookmakers?.find(b=>b.key==='fanduel');
-  const props=[];
-  for (const market of book?.markets || []) {
-    const stat=markets[market.key];
-    const updated=Date.parse(market.last_update || book.last_update);
-    if (!stat || !Number.isFinite(updated) || now-updated>1800000 || updated>now+60000) continue;
-    const names=new Set((market.outcomes||[]).map(o=>o.description).filter(Boolean));
-    for (const name of names) {
-      const rows=market.outcomes.filter(o=>o.description===name);
-      const over=rows.filter(o=>o.name==='Over'),under=rows.filter(o=>o.name==='Under');
-      if(over.length!==1 || under.length!==1) continue;
-      const point=over[0].point;
-      if(!Number.isFinite(point) || point!==under[0].point || !Number.isInteger(point*2) || (!stat.endsWith('Yds') && point<0)) continue;
-      props.push({name,stat,line:point,updatedAt:updated,over:over[0].price,under:under[0].price});
-    }
-  }
-  // Repeated market snapshots or differently punctuated names must not pick an arbitrary quote.
-  const counts=new Map();
-  for(const p of props){const key=normalize(p.name)+':'+p.stat;counts.set(key,(counts.get(key)||0)+1);}
-  return props.filter(p=>counts.get(normalize(p.name)+':'+p.stat)===1);
+  return require('./prop-quotes').auditProps(event,markets,now).props.map(({market,...p})=>p);
 }
 function marketCoverage(props) {
   return Object.entries(markets).map(([market,stat])=>({market,stat,lines:props.filter(p=>p.stat===stat).length}));
@@ -66,7 +47,8 @@ async function getProps(q) {
   if(found.length!==1) return {props:[],message:missingMatchMessage(events,q)};
   const data=await request(`${sport}/events/${encodeURIComponent(found[0].id)}/odds`,{bookmakers:'fanduel',markets:Object.keys(markets).join(','),oddsFormat:'american'});
   if(data.id!==found[0].id || !matches(data,q)) throw new Error('FanDuel prop matchup could not be verified.');
-  const props=parseProps(data);
-  return {props,coverage:marketCoverage(props),message:props.length?'FanDuel props loaded. Missing props can be entered manually.':'No fresh FanDuel props available for this matchup. Enter lines manually.'};
+  const parsed=require('./prop-quotes').auditProps(data,markets);
+  const audit=parsed.audit,props=parsed.props.map(({market,...p})=>p);
+  return {props,audit,eventId:data.id,coverage:marketCoverage(props),message:props.length?'FanDuel props loaded. Missing props can be entered manually.':'No fresh FanDuel props available for this matchup. Enter lines manually.'};
 }
 module.exports={getProps,parseProps,matches,normalize,marketCoverage};
