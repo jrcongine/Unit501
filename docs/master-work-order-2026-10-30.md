@@ -193,3 +193,8 @@ The follow-up commit containing this ledger changes documentation only.
 - Primary public health responds OK, private true, liveData true. These flags do not verify
   entitlement, every feed, saved on-disk status or authenticated screens. The existing
   production-login blocker remains; GitHub Actions was still queued at this check.
+
+Populated basketball fixture checks also exercised Star Power on both pages at 1440 and
+390 pixels. This caught mobile filter-select overflow that empty tables did not reveal.
+The follow-up CSS constrains filter widths and formats scenario controls; rerun passed
+without page overflow or JavaScript errors at both sizes. Tables retain internal scrolling.

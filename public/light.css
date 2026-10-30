@@ -106,3 +106,9 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .league-pulse-rank,.league-pulse-name,.league-pulse-strength,.league-pulse-record,.league-pulse-index,.league-pulse-matchup h3,.league-pulse-matchup-team strong,.league-pulse-matchup-team small{color:#3c526d}
 .league-pulse-trend.trend-up{color:#296742}.league-pulse-trend.trend-down{color:#a1373d}.league-pulse-trend.trend-flat{color:#52647a}
 #war-room h3,#war-room h4{color:#563b76}
+/* Let populated player filters shrink inside narrow cards. */
+.nba-prop-filters{min-width:0}
+.nba-prop-filters label{min-width:0}
+.nba-prop-filters select{width:100%;min-width:0}
+:is(#nba-prop-lines,#ncaab-props) td label{display:block;margin-top:6px;font-size:12px;letter-spacing:normal}
+:is(#nba-prop-lines,#ncaab-props) td select{width:165px;min-width:0;font-size:12px}
