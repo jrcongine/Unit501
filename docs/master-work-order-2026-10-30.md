@@ -134,7 +134,7 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 76 | Close-game bias | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
 | 77 | Totals/scoring distributions | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
 | 78 | Upset detection | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
-| 79 | Market disagreement alerts | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
+| 79 | Market disagreement alerts | Still pending | Shared point-gap display implemented for NFL/college football/NBA/college basketball. NBA uses current validated FanDuel lines; football/college basketball use explicitly labeled editable entered lines. Large-gap review flags are display thresholds, not calibrated edges. Authenticated production acceptance still needs checking. |
 | 80 | Historical segmented backtests | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
 | 81 | Measured confidence | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
 | 82 | Workload/matchup/availability props | Still pending | Existing model code/tests and previous validation reviewed. No new held-out proof of improved predictions, contextual weights or all-league calibration. These remain research/implementation work, not completed fixes. |
@@ -261,3 +261,17 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   interaction checks without JavaScript errors or page-level overflow.
 - College record-card parity is now implemented; MLB card parity, broad live feed acceptance,
   independent model calibration and private production-screen checks still need work.
+
+## Model/line comparison — continuation
+
+- Football and both basketball views show away-margin and total differences beside their
+  estimates. Positive margin gap means Unit 501 favors the away side more; positive total
+  gap means a higher model total. Correct away-spread sign and pick'em handling are tested.
+- Review flags start at 7 spread points or 10 total points. These fixed display thresholds
+  are disclosed in the explanation; they are not calibrated edges, confidence or picks.
+  No scoring formula, market line or prediction is changed.
+- NBA comparison uses only the market module's current matching FanDuel lines and clears
+  with expired/missing quotes. Football and college basketball explicitly label comparisons
+  against editable values as Entered lines. Empty inputs never become synthetic zero lines.
+- 746 automated tests passed; cross-sport invalidation and line-change checks included.
+  Populated NBA/college comparison screens passed desktop/mobile checks.

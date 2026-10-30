@@ -118,3 +118,8 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .basketball-leagues a[aria-current="page"]{background:#e8e0f1;border-color:#7953ad;color:#573678}
 
 .game-records{display:block;margin:8px 0;color:#344b61;font-size:13px;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
+
+.market-gap{padding:9px 12px;border-left:3px solid #7a8da1;background:#edf1f5;color:#293e52;font-size:14px;font-weight:650;line-height:1.5}
+.market-gap-large{border-color:#ac741c;background:#fff2d6;color:#6c470b}
+
+.nba-form-strip{flex-wrap:wrap}

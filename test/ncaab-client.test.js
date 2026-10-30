@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
- vm.createContext(context);for(const p of ['star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -123,4 +123,12 @@ test('college cards show supplied overall records and expire them without fetchi
  await h.nodes.get('ncaab-load').events.click();const card=h.nodes.get('ncaab-games').children[0];assert.match(card.textContent,/Season · Away 4-1 · Home 3-2/);const calls=h.requests.length;
  h.advance(10002);h.timers.at(-1).fn();assert.doesNotMatch(card.textContent,/4-1/);assert.equal(h.requests.length,calls);
  h.game.status='Final';await h.nodes.get('ncaab-load').events.click();assert.doesNotMatch(h.nodes.get('ncaab-games').textContent,/4-1/);
+});
+
+test('college comparison responds to entered lines without inventing a line for empty inputs',async()=>{
+ const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ const gap=h.nodes.get('ncaab-market-gap'),spread=h.nodes.get('ncaab-spread'),total=h.nodes.get('ncaab-total');assert.equal(gap.hidden,true);
+ const calls=h.requests.length;spread.value='7';spread.events.input();assert.match(gap.textContent,/Large model\/line difference.*Entered lines.*\+7.0/);assert.doesNotMatch(gap.textContent,/Total gap/);
+ total.value='160';total.events.input();assert.match(gap.textContent,/Total gap -10.0/);
+ spread.value='';spread.events.input();total.value='';total.events.input();assert.equal(gap.hidden,true);assert.equal(h.requests.length,calls);
 });

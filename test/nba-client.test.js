@@ -188,8 +188,10 @@ test('NBA simulation follows projections and fresh line updates without new requ
  await h.load();await h.choose(0);
  assert.match(h.nodes.get('nba-simulation').textContent,/10,000 simulations.*Chicago Bulls win.*cover.*Over 220.5/);
  assert.match(h.nodes.get('nba-simulation-detail').textContent,/not calibrated.*injuries/);
+ assert.match(h.nodes.get('nba-market-gap').textContent,/FanDuel.*Away margin gap.*Total gap/);assert.equal(h.nodes.get('nba-market-gap').hidden,false);
  const count=h.requests.length;lines={};h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
  assert.doesNotMatch(h.nodes.get('nba-simulation').textContent,/cover|Over/);
+ assert.equal(h.nodes.get('nba-market-gap').hidden,true);assert.equal(h.nodes.get('nba-market-gap').textContent,'');
  assert.equal(h.requests.length,count);
 });
 

@@ -22,6 +22,7 @@
  const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
  const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
  function renderProjection(){
+  shared.showMarketComparison(byId('nba-market-gap'),null);
   const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
   detail.textContent='';
   const alert=byId('nba-upset-pick');alert.hidden=true;alert.textContent='';
@@ -41,6 +42,7 @@
   let seed=(Number(game.id)>>>0)||1;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const lines=window.Unit501NBAMarkets?.linesFor?.(game)||{};
+  shared.showMarketComparison(byId('nba-market-gap'),result,lines,'FanDuel');
   const sim=window.Unit501NBAModel.simulate(result,data,lines,10000,random);
   if(sim.available){
    const percent=n=>(n*100).toFixed(1)+'%';
@@ -92,7 +94,7 @@
   if(rest?.available){
    const label=rest.sameDay?'Same-day game':rest.backToBack?'Back to back':rest.fullDaysOff+' full day(s) off';
    card.append(node('p',label+(rest.threeInFour?' · Third game in four days':''),rest.backToBack||rest.sameDay?'nba-rest-flag':'nba-rest-normal'));
-   card.append(node('p',rest.gamesLast7Days+' completed game(s) in the previous seven days · '+rest.gapHours+' hours between tipoffs','war-muted'));
+   card.append(node('p',rest.gamesLast7Days+' completed game(s) in the previous seven days','war-muted'));
    if(rest.schedule){
     const schedule=rest.schedule,venue=value=>value==='away'?'road':'home';
     card.append(node('p','Schedule: '+venue(schedule.previous)+' → '+venue(schedule.current)+
@@ -104,7 +106,8 @@
   if(side.lastPlayedAt)card.append(node('p','Previous scored game: '+shared.timeCentral(side.lastPlayedAt),'war-muted'));
   const form=node('div','', 'nba-form-strip');form.setAttribute('aria-label','Last five recorded results, newest first');
   for(const result of (side.recentGames||[]).slice(0,5)){
-   const chip=node('span',result.result,'nba-form-chip nba-result-'+result.result);
+   const outcome=['W','L','T'].includes(result.result)?result.result:'—';
+   const chip=node('span',outcome,'nba-form-chip nba-result-'+outcome);
    chip.title=result.opponent+': '+result.for+'–'+result.against;
    form.append(chip);
   }

@@ -81,11 +81,30 @@
    card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate();}});
    return card;
  }
+ function marketComparison(prediction,lines={},source='Entered lines'){
+   if(!prediction?.available||![prediction.away,prediction.home].every(n=>Number.isFinite(n)&&n>=0))return null;
+   const spreadGap=Number.isFinite(lines.awaySpread)?prediction.away-prediction.home+lines.awaySpread:null;
+   const totalGap=Number.isFinite(lines.total)&&lines.total>0?prediction.away+prediction.home-lines.total:null;
+   if(spreadGap===null&&totalGap===null)return null;
+   const signed=n=>(n>=0?'+':'')+n.toFixed(1);
+   const large=Math.abs(spreadGap??0)>=7||Math.abs(totalGap??0)>=10;
+   const text=(large?'Large model/line difference · ':'Model/line comparison · ')+source+' · '+[
+    spreadGap!==null?'Away margin gap '+signed(spreadGap)+' pts':null,
+    totalGap!==null?'Total gap '+signed(totalGap)+' pts':null].filter(Boolean).join(' · ');
+   return {spreadGap,totalGap,large,text};
+ }
+ function showMarketComparison(element,prediction,lines,source){
+   if(!element)return;
+   const comparison=marketComparison(prediction,lines,source);
+   element.hidden=!comparison;element.textContent=comparison?.text||'';
+   element.className=comparison?.large?'market-gap market-gap-large':'market-gap';
+   element.title='Positive away margin gap means Unit 501 favors the away side more than the entered spread. Positive total gap means a higher model total. Review flags start at 7 spread points or 10 total points; these are display thresholds, not calibrated betting edges.';
+ }
  function upsetOutlook(prediction,awaySpread){
    if(!prediction?.available||![prediction.away,prediction.home,awaySpread].every(Number.isFinite))return null;
    const winner=prediction.away>prediction.home?'away':prediction.home>prediction.away?'home':null;
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,seasonStanding,currentStanding,updateGameRecords});
+ return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

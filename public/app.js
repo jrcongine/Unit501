@@ -24,6 +24,7 @@ function renderHomeAdvantage(venue=null) {
   }
 }
 function invalidateSimulation(message) {
+  window.Unit501SharedUI.showMarketComparison($('football-market-gap'),null);
   latestForecast=null;
   $('outright-pick').classList.remove('automatic-upset-pick');
   window.Unit501Availability?.scoring?.(null);
@@ -995,6 +996,7 @@ function sim() {
     $('note').textContent = prediction.reason;
     return false;
   }
+  window.Unit501SharedUI.showMarketComparison($('football-market-gap'),prediction,{awaySpread:spread,total},'Entered lines');
   renderHomeAdvantage(prediction.venue);
   const result = Unit501TeamModel.simulate(prediction,spread,total);
   const percent = value => (value*100).toFixed(1) + '%';

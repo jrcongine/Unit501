@@ -1000,3 +1000,9 @@ test('official historical DNP reaches the prop UI and is excluded without invent
  assert.match(h.nodes.get('predict-results').textContent,/1 verified DNP game\(s\) excluded/);
  assert.match(h.nodes.get('predict-results').textContent,/100.0 average/);
 });
+
+test('football simulation shows entered-line differences and clears them when invalidated',async()=>{
+ const h=harness();await h.settle();h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();await h.settle();h.run('sim()');
+ assert.match(h.nodes.get('football-market-gap').textContent,/Entered lines.*Away margin gap.*Total gap/);
+ h.run('invalidateSimulation("Inputs changed")');assert.equal(h.nodes.get('football-market-gap').hidden,true);assert.equal(h.nodes.get('football-market-gap').textContent,'');
+});
