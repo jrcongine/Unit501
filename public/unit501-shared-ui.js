@@ -59,6 +59,16 @@
    current.classList.add('selected');
    current.setAttribute('aria-pressed','true');
  }
+ function renderVenueDistance(element,result,doc=(typeof document!=='undefined'?document:null)){
+   if(!element||!doc)return;
+   element.replaceChildren();element.hidden=true;
+   if(!result||!Number.isFinite(result.miles)||result.miles<0)return;
+   const summary=doc.createElement('summary');
+   summary.textContent='Venue distance · ~'+Math.round(result.miles).toLocaleString('en-US')+' miles'+(result.cityPrecision!==false?' (city estimate)':'');
+   const detail=doc.createElement('p');
+   detail.textContent=[(result.previous||result.previousCity)&&(result.current||result.currentCity)?(result.previous||result.previousCity)+' → '+(result.current||result.currentCity):null,'Straight-line distance between recorded game venues. Actual route, transport and travel time are unknown.'].filter(Boolean).join(' · ');
+   element.append(summary,detail);element.className='venue-distance';element.hidden=false;
+ }
  function matchupHeading(away,home,awayLogo,homeLogo,doc){
    const title=doc.createElement('b');title.className='game-title';
    const safe=url=>typeof url==='string'&&/^https:\/\/(?:[a-z0-9-]+\.)*(?:espncdn\.com|api-sports\.io|nba\.com)\/[^\s]*$/i.test(url);
@@ -118,5 +128,5 @@
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,matchupHeading,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ return Object.freeze({dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

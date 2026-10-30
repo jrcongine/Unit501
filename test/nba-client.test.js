@@ -95,7 +95,7 @@ test('NBA travel renders matching city estimates and discards late responses fro
  };
  await h.choose(0);await h.choose(1);await h.settle();release();await h.settle();await h.settle();
  const text=h.nodes.get('nba-team-comparison').textContent;
- assert.match(text,/300 miles straight-line.*Cleveland.*Boston/);assert.doesNotMatch(text,/190 miles/);
+ assert.match(text,/Venue distance.*300 miles.*Cleveland.*Boston.*Straight-line/);assert.doesNotMatch(text,/190 miles/);
 });
 test('NBA context failures clear old numbers and preserve an explicit unavailable state',async()=>{
  const h=harness();await h.load();await h.choose(0);

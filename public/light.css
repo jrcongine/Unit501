@@ -135,3 +135,6 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .ncaab-line-inputs input{width:100%;min-width:0;box-sizing:border-box}
 .ncaab-report-details{margin-top:10px;color:#455970;font-size:.88rem}
 .ncaab-report-details summary{cursor:pointer;font-weight:700}
+.venue-distance{margin-top:8px;color:#455970;font-size:.88rem}
+.venue-distance summary{cursor:pointer;font-weight:700;line-height:1.5}
+.venue-distance p{margin:6px 0;overflow-wrap:anywhere}

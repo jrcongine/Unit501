@@ -38,7 +38,8 @@ async function resolveVenue(q){
  const known=catalog.resolve({season:q.season,venueName:v.fullName});
  let venue=known;
  if(!venue){
-  const latitude=Number(v.latitude??v.location?.latitude??v.location?.lat),longitude=Number(v.longitude??v.location?.longitude??v.location?.lon);
+  const coordinate=value=>typeof value==='number'?value:typeof value==='string'&&value.trim()!==''?Number(value):NaN;
+  const latitude=coordinate(v.latitude??v.location?.latitude??v.location?.lat),longitude=coordinate(v.longitude??v.location?.longitude??v.location?.lon);
   if(Number.isFinite(latitude)&&Math.abs(latitude)<=90&&Number.isFinite(longitude)&&Math.abs(longitude)<=180){
    venue={name:v.fullName,latitude,longitude,roof:v.indoor===true?'indoor':v.indoor===false?'outdoor':'unknown',locationPrecision:'stadium'};
   }else{
@@ -46,7 +47,7 @@ async function resolveVenue(q){
   const address=v.address;
   const geo=await json('https://geocoding-api.open-meteo.com/v1/search?'+new URLSearchParams({name:city,count:'100',language:'en',format:'json'}));
   const states={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'District of Columbia'};
-  const places=(geo.results||[]).filter(p=>p.country_code==='US'&&key(p.name)===key(city)&&key(p.admin1)===key(states[state]||state));
+  const places=(geo.results||[]).filter(p=>p.country_code==='US'&&key(p.name)===key(city)&&key(p.admin1)===key(states[state]||state)&&Number.isFinite(p.latitude)&&Math.abs(p.latitude)<=90&&Number.isFinite(p.longitude)&&Math.abs(p.longitude)<=180);
   const postal=places.filter(p=>p.postcodes?.includes(address?.zipCode));const found=postal.length===1?postal:places;
   if(found.length!==1)return {available:false,message:'Venue city coordinates could not be uniquely matched.'};
   venue={name:v.fullName,latitude:found[0].latitude,longitude:found[0].longitude,roof:v.indoor===true?'indoor':v.indoor===false?'outdoor':'unknown',locationPrecision:'city',city,state};

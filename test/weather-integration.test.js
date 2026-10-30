@@ -79,3 +79,14 @@ test('NFL Paris matchup resolves an outdoor venue without U.S. state geocoding',
   assert.ok(urls.every(url=>!url.includes('geocoding-api')));
  }finally{global.fetch=original;}
 });
+
+test('blank or boolean football venue coordinates require a real location lookup',async()=>{
+ const {resolveVenue}=require('../game-venue'),original=global.fetch;
+ try{for(const [i,value] of ['',false].entries()){
+  const kickoff=Date.parse('2026-11-03T01:00:00Z')+i*86400000;let geocoded=false;
+  global.fetch=async url=>{if(String(url).includes('geocoding-api')){geocoded=true;return {ok:true,json:async()=>({results:[{name:'Arlington',admin1:'Texas',country_code:'US',latitude:32.7,longitude:-97.1}]})};}
+   return {ok:true,json:async()=>({events:[{id:'invalid-coordinates-'+i,season:{year:2026},competitions:[{date:new Date(kickoff).toISOString(),neutralSite:true,venue:{fullName:'Unverified Coordinates Field',latitude:value,longitude:value,address:{city:'Arlington',state:'TX'}},competitors:[{homeAway:'home',team:{location:'Texas'}},{homeAway:'away',team:{location:'Ole Miss'}}]}]}]})};};
+  const r=await resolveVenue({league:'2',season:'2026',kickoff,home:'Texas',away:'Ole Miss'});
+  assert.equal(r.available,true);assert.equal(r.locationPrecision,'city');assert.equal(r.latitude,32.7);assert.equal(geocoded,true);
+ }}finally{global.fetch=original;}
+});

@@ -150,8 +150,9 @@
    if(game.statusCode===1&&Date.parse(game.tipoff)>Date.now()){
     fetch('/api/nba/travel?'+query,{signal:AbortSignal.timeout(30000)}).then(r=>r.ok?r.json():null).then(travel=>{
      if(token!==contextRequest||!travel||String(travel.gameId)!==String(game.id)||travel.tipoff!==game.tipoff)return;
-     for(const [i,side] of [travel.away,travel.home].entries())if(side?.available&&Number.isFinite(side.miles))
-      cards[i].append(node('p',`About ${side.miles} miles straight-line between the last and next game cities (${side.previousCity} → ${side.currentCity}). Actual route and travel method unknown.`, 'war-muted'));
+     for(const [i,side] of [travel.away,travel.home].entries())if(side?.available){
+      const distance=node('details','');shared.renderVenueDistance(distance,side);if(!distance.hidden)cards[i].append(distance);
+     }
     }).catch(()=>{});
    }
   }catch{

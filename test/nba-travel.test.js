@@ -36,3 +36,29 @@ test('Brooklyn may use verified New York city-center coordinates when borough lo
  }});
  const result=await get(match,'2026-10-26',2026);assert.equal(result.away.available,true);assert.equal(result.away.previousCity,'Brooklyn');assert.ok(result.away.miles>100);
 });
+
+test('verified arena coordinates avoid geocoding and retain stadium precision',async()=>{
+ const f=make();let geocalls=0;const get=createNBATravel({publicFeed:f.publicFeed,now:()=>now,fetcher:async url=>{
+  if(!url.includes('/summary?')){geocalls++;throw Error('Should not geocode');}
+  const response=await f.fetcher(url),data=await response.json();const city=data.gameInfo.venue.address.city;
+  data.gameInfo.venue.location={latitude:city==='Boston'?42:41,longitude:city==='Boston'?-71:-87};
+  return {ok:true,json:async()=>data};
+ }});
+ const r=await get(match,'2026-10-26',2026);assert.equal(r.away.available,true);assert.equal(r.away.cityPrecision,false);assert.equal(r.home.miles,0);assert.equal(geocalls,0);
+});
+
+test('null or out-of-range arena coordinates cannot masquerade as verified zero coordinates',async()=>{
+ for(const location of [{latitude:null,longitude:null},{latitude:'',longitude:''},{latitude:91,longitude:181}]){
+  const f=make(),get=createNBATravel({publicFeed:f.publicFeed,now:()=>now,fetcher:async url=>{
+   const response=await f.fetcher(url),data=await response.json();if(data.gameInfo)data.gameInfo.venue.location=location;return {ok:true,json:async()=>data};
+  }});
+  const r=await get(match,'2026-10-26',2026);assert.equal(r.away.available,true);assert.equal(r.away.cityPrecision,true);assert.ok(r.away.miles>700);
+ }
+});
+
+test('out-of-range city coordinates cannot create a venue distance',async()=>{
+ const f=make(),get=createNBATravel({publicFeed:f.publicFeed,now:()=>now,fetcher:async url=>{
+  const response=await f.fetcher(url),data=await response.json();if(data.results)data.results[0].latitude=91;return {ok:true,json:async()=>data};
+ }});
+ await assert.rejects(get(match,'2026-10-26',2026),/ambiguous/);
+});

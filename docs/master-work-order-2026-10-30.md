@@ -375,3 +375,18 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   Actions 41114570194 and deployed successfully to primary b2a2e6d4-92ee-42de-a92b-3d4c59f7c189
   and secondary a8d9a019-c54f-444b-bde2-e8eb7113a5fb. Public primary health passed; this
   does not replace protected production-screen or paid-feed verification.
+
+## Venue precision and compact distance display — continuation
+
+- NBA venue distance now prefers coordinates supplied for the verified arena, avoiding
+  city geocoding when precise coordinates are available. City fallback remains explicitly
+  labeled. Blank, boolean and out-of-range coordinates cannot become fabricated locations.
+  Applied the same coordinate checks to the football weather/venue resolver.
+- Football and NBA share a compact expandable Venue distance display. Known venue names
+  and the straight-line/unknown-route limitation remain in details. Unknown distances
+  produce no empty panel; a valid zero-mile distance remains visible. No route, transport
+  method, travel duration or automatic score adjustment is inferred.
+- 769 tests passed. All four main screens and populated basketball distance/details flows
+  passed local 1440px/390px checks without page overflow or JavaScript errors.
+- Task 42 progresses for existing verified venue sources; college travel parity and actual
+  itinerary verification are not claimed. Protected production acceptance remains open.

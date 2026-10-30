@@ -23,17 +23,20 @@ function createNBATravel({publicFeed,fetcher=fetch,now=Date.now}={}){
     !teams.some(t=>String(t.id)===String(game.awayId)&&t.homeAway==='away')||!teams.some(t=>String(t.id)===String(game.homeId)&&t.homeAway==='home'))throw Error('NBA venue matchup unverified');
   const v=data.gameInfo?.venue,city=v?.address?.city,state=v?.address?.state;
   if(!v?.fullName||!city||!state||typeof city!=='string'||city.length>100||typeof state!=='string'||state.length>40)throw Error('NBA venue location unavailable');
+  const coordinate=value=>typeof value==='number'?value:typeof value==='string'&&value.trim()!==''?Number(value):NaN;
+  const latitude=coordinate(v.latitude??v.location?.latitude??v.location?.lat),longitude=coordinate(v.longitude??v.location?.longitude??v.location?.lon);
+  if(Number.isFinite(latitude)&&Math.abs(latitude)<=90&&Number.isFinite(longitude)&&Math.abs(longitude)<=180)return {name:v.fullName,city,state,latitude,longitude,locationPrecision:'stadium'};
   const expected=states[state]||state;
   async function search(location){
    const geo=await read('https://geocoding-api.open-meteo.com/v1/search?'+new URLSearchParams({name:location,count:'100',language:'en',format:'json'}));
-   return (geo.results||[]).filter(p=>['US','CA'].includes(p.country_code)&&key(p.name)===key(location)&&key(p.admin1)===key(expected)&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude));
+   return (geo.results||[]).filter(p=>['US','CA'].includes(p.country_code)&&key(p.name)===key(location)&&key(p.admin1)===key(expected)&&Number.isFinite(p.latitude)&&Math.abs(p.latitude)<=90&&Number.isFinite(p.longitude)&&Math.abs(p.longitude)<=180);
   }
   let matches=await search(city);
   // Some city geocoders omit NYC boroughs; use the city center and retain the
   // explicit approximate-city label instead of inventing arena coordinates.
   if(matches.length!==1&&key(city)==='brooklyn'&&state==='NY')matches=await search('New York');
   if(matches.length!==1)throw Error('NBA venue city is ambiguous');
-  return {name:v.fullName,city,state,latitude:matches[0].latitude,longitude:matches[0].longitude};
+  return {name:v.fullName,city,state,latitude:matches[0].latitude,longitude:matches[0].longitude,locationPrecision:'city'};
  }
  return async(selected,date,season)=>{
   if(!selected||selected.statusCode!==1||!Number.isFinite(Date.parse(selected.tipoff))||Date.parse(selected.tipoff)<=now()||!Number.isInteger(season))throw Error('Pregame NBA matchup required');
@@ -47,10 +50,10 @@ function createNBATravel({publicFeed,fetcher=fetch,now=Date.now}={}){
     if(!side?.rest?.available||!previous||previous.tipoff!==side.rest.previousTipoff||!previous.opponentId||!['away','home'].includes(previous.venue))throw Error('Previous venue unavailable');
     const prior={id:previous.id,tipoff:previous.tipoff,stage:match.stage,awayId:previous.venue==='away'?side.id:previous.opponentId,homeId:previous.venue==='home'?side.id:previous.opponentId};
     const from=await venue(prior,season),distance=miles(from,current);if(distance===null)throw Error('Distance unavailable');
-    return {available:true,miles:distance,previous:from.name,current:current.name,previousCity:from.city,currentCity:current.city};
+    return {available:true,miles:distance,previous:from.name,current:current.name,previousCity:from.city,currentCity:current.city,cityPrecision:from.locationPrecision==='city'||current.locationPrecision==='city'};
    }catch(error){return {available:false,reason:error.message};}
   }));
-  return {gameId:selected.id,tipoff:selected.tipoff,away:sides[0],home:sides[1],source:'ESPN venues and Open-Meteo city coordinates'};
+  return {gameId:selected.id,tipoff:selected.tipoff,away:sides[0],home:sides[1],source:'ESPN venue coordinates; Open-Meteo city fallback when needed'};
  };
 }
 module.exports={createNBATravel};
