@@ -1,5 +1,6 @@
 (function(root){
  'use strict';
+ const model=typeof module!=='undefined'&&module.exports?require('./nba-player-model'):root.Unit501NBAPlayerModel;
  const markets=new Set(['player_points','player_rebounds','player_assists','player_threes']);
  const key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  function compare(history,quote,report,game,now=Date.now()){
@@ -22,19 +23,19 @@
    }
    return map;
   };
-  const wanted=key(quote.name),matches=[];
-  for(let i=0;i<2;i++)if(history.teams[i]?.available&&Array.isArray(history.teams[i].players))for(const p of history.teams[i].players)if(wanted&&key(p.name)===wanted)matches.push({player:p,index:i});
-  if(matches.length!==1)return [];
-  const {player,index}=matches[0],team=history.teams[index],official=report.teams[index];
+  const candidates=history.teams.flatMap((t,index)=>Array.isArray(t?.players)?t.players.map(player=>({...player,index,teamAvailable:t.available})):[]);
+  const player=model?.matchPlayer(candidates,quote.name).player;
+  if(!player||!player.teamAvailable)return [];
+  const index=player.index,team=history.teams[index],official=report.teams[index];
   if(player.available===false||!Array.isArray(player.results)||!official?.available||!Array.isArray(official.players))return [];
   if(!records(player.results))return [];
   const out=[];
   for(const injury of official.players){
    if(String(injury.status||'').toLowerCase()!=='out')continue;
-   const name=key(injury.name);if(!name||name===wanted)continue;
-   const candidates=team.players.filter(p=>key(p.name)===name);
-   if(candidates.length!==1||official.players.filter(p=>key(p.name)===name).length!==1)continue;
-   const teammate=candidates[0];if(teammate.available===false||!Array.isArray(teammate.results)||!Array.isArray(teammate.inactive))continue;
+   const teammate=model.matchPlayer(team.players,injury.name).player;
+   if(!teammate||teammate===model.matchPlayer(team.players,quote.name).player)continue;
+   if(!model.matchPlayer(official.players,injury.name).player)continue;
+   if(teammate.available===false||!Array.isArray(teammate.results)||!Array.isArray(teammate.inactive))continue;
    const active=records(teammate.results),inactive=records(teammate.inactive);
    if(!active||!inactive||[...active.keys()].some(id=>inactive.has(id))||
     teammate.results.some(r=>!Number.isFinite(r.minutes)||r.minutes<=0||r.minutes>60))continue;

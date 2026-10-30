@@ -33,3 +33,19 @@ test('absence splits reject mismatched teams, conflicting dates and malformed pa
   const x=input();mutate(x);assert.deepEqual(compare(x.history,x.quote,x.report,game,now),[]);
  }
 });
+
+test('teammate absence splits tolerate unique suffix formatting but reject collisions',()=>{
+ const x=input();x.history.teams[0].players[0].name='Player A Jr.';
+ x.history.teams[0].players[1].name='Téammate B III';
+ const split=compare(x.history,x.quote,x.report,game,now);
+ assert.equal(split.length,1);assert.equal(split[0].without.value,22);assert.equal(split[0].with.value,11);
+ for(const mutate of [
+  y=>y.report.teams[0].players[0].name='Teammate B II',
+  y=>y.history.teams[0].players.push({...y.history.teams[0].players[1],name:'Teammate B Jr.'}),
+  y=>y.history.teams[1].players.push({...y.history.teams[0].players[0],name:'Player A Sr.'}),
+  y=>y.report.teams[0].players.push({name:'Teammate B III',status:'Questionable'}),
+  y=>y.history.teams[0].available=false
+ ]){
+  const y=structuredClone(x);mutate(y);assert.deepEqual(compare(y.history,y.quote,y.report,game,now),[]);
+ }
+});

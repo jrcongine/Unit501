@@ -133,3 +133,15 @@ test('injury identity cannot cross suffix conflicts, stale reports or matchups',
  assert.equal(injuryStatus(null,q,game,now),null);
  assert.equal(injuryStatus(report,{...q,name:'Different Player'},game,now),null);
 });
+
+test('NBA and college histories share unique suffix matching with injury reports',()=>{
+ for(const regulationMinutes of [40,48]){
+  const d=data();d.teams[0].players[0].name='Jalén Smith Jr.';
+  const estimate=project(d,q,game,null,now,{regulationMinutes});
+  assert.equal(estimate.available,true);assert.equal(estimate.games,3);assert.equal(estimate.average,10);
+  assert.equal(project(d,{...q,name:'Jalen Smith Sr.'},game,null,now,{regulationMinutes}).available,false);
+  d.teams[1].players=[{...d.teams[0].players[0],name:'Jalen Smith Sr.'}];
+  // Even an exact suffix must not silently choose between a colliding base name.
+  for(const name of ['Jalen Smith','Jalen Smith Jr.'])assert.equal(project(d,{...q,name},game,null,now,{regulationMinutes}).available,false);
+ }
+});
