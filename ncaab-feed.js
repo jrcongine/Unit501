@@ -17,7 +17,7 @@ function convert(e){
  const status=/POSTPONED/.test(type?.name||'')?'Postponed':/CANCEL/.test(type?.name||'')?'Canceled':type?.completed===true&&type.state==='post'?'Final':type?.state==='in'?'Live':type?.state==='pre'?'Scheduled':null;
  const stage=Number(e.seasonType?.type??e.season?.type),season=Number(e.season?.year);
  if(!status||![1,2,3].includes(stage)||!Number.isInteger(season)||!Number.isFinite(Date.parse(tipoff))||!/^\d{1,12}$/.test(String(a.team?.id||''))||!/^\d{1,12}$/.test(String(h.team?.id||''))||String(a.team.id)===String(h.team.id)||!a.team.displayName||!h.team.displayName)return null;
- return {awayRecord:seasonRecord(a),homeRecord:seasonRecord(h),id:String(e.id),awayId:String(a.team.id),homeId:String(h.team.id),away:a.team.displayName,home:h.team.displayName,tipoff,status,stage,season,
+ return {...(a.team.logo||a.team.logos?.[0]?.href?{awayLogo:a.team.logo||a.team.logos[0].href}:{}),...(h.team.logo||h.team.logos?.[0]?.href?{homeLogo:h.team.logo||h.team.logos[0].href}:{}),awayRecord:seasonRecord(a),homeRecord:seasonRecord(h),id:String(e.id),awayId:String(a.team.id),homeId:String(h.team.id),away:a.team.displayName,home:h.team.displayName,tipoff,status,stage,season,
   timeKnown:(c.timeValid===true||e.timeValid===true)&&c.timeValid!==false&&e.timeValid!==false,neutral:c.neutralSite===true,venue:c.venue?.fullName||null,
   awayScore:status==='Final'||status==='Live'?number(a.score):null,homeScore:status==='Final'||status==='Live'?number(h.score):null};
 }

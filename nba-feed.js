@@ -41,6 +41,7 @@ function normalizeGame(game){
     typeof start!=='string'||!Number.isFinite(Date.parse(start)))return null;
  if(!Object.hasOwn(STATES,status))return null;
  return {
+  ...(typeof visitors.logo==='string'?{awayLogo:visitors.logo}:{}),...(typeof home.logo==='string'?{homeLogo:home.logo}:{}),
   id,away:visitors.name.trim().slice(0,100),home:home.name.trim().slice(0,100),
   awayId:Number.isSafeInteger(awayId)&&awayId>0?awayId:null,
   homeId:Number.isSafeInteger(homeId)&&homeId>0?homeId:null,

@@ -98,7 +98,7 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 40 | Team season records | Still pending | Existing exact league/season/name standing mapping and collision tests pass; complete live all-sport season-record coverage remains unverified. |
 | 41 | Rest in days | Already completed and verified | Existing Central-calendar full-days-off display preserved in football/NBA/college basketball; regression suite passes. |
 | 42 | Recent results and verified travel | Still pending | Recent results and verified travel helpers exist; full cross-sport travel/logo/game-card parity is not complete. |
-| 43 | Logos and consistent game cards | Still pending | Recent results and verified travel helpers exist; full cross-sport travel/logo/game-card parity is not complete. |
+| 43 | Logos and consistent game cards | Newly completed, tested, and deployed | NFL/college football/NBA/college basketball cards share compact matchup headings and provider-supplied logos when available. Missing/failed logos preserve team names; no IDs or logo URLs are invented. Existing MLB has no matchup-card screen. Local desktop/mobile checks passed; authenticated production acceptance remains task 108. |
 | 44 | Selected-player props only | Newly completed, tested, and deployed | NBA exact-player selector and catalog order added; college basketball gains exact selector and catalog order; football selector retained. |
 | 45 | Catalog-order props | Newly completed, tested, and deployed | NBA exact-player selector and catalog order added; college basketball gains exact selector and catalog order; football selector retained. |
 | 46 | Comparison table | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
@@ -320,3 +320,18 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   113883d9-23e5-4657-904e-cd61fd1b7d45 and secondary ce4d4261-e998-415c-9c2d-54d354a886a0.
   Primary public health returned ok:true/private:true/liveData:true. This does not verify
   authenticated screens or API entitlement. No credentials were copied or changed.
+
+## Shared matchup headings and compact college controls — continuation
+
+- Added provider-supplied team logos to existing football and basketball game cards.
+  Only supported provider image hosts are rendered; missing/broken images retain the
+  team names. No new provider requests or inferred team-ID logo mappings were added.
+- College cards use the shared heading and a separate compact time/status line. The
+  spread/total inputs now stay paired with their labels on mobile. Technical scoring
+  and simulation details live under Report Details; experimental/not-calibrated labels
+  remain visible, including directly on simulation output.
+- 754 tests passed. Populated NBA/college fixture pages at 1440px and 390px passed without
+  JavaScript errors or page overflow, including logo-success and fallback checks. Logo
+  success used isolated image fixtures, not a claim that every remote logo was fetched.
+- Prior college batch 6bda818ce8e52fb2d95a28c4fa7fd8504feb9184 reached SUCCESS on primary
+  24f180bc-2ba3-4c35-b1a4-8a51b7ce2c3d and secondary b141a52a-14cb-40ca-988f-a8b38f112855.

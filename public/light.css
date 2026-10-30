@@ -123,3 +123,15 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .market-gap-large{border-color:#ac741c;background:#fff2d6;color:#6c470b}
 
 .nba-form-strip{flex-wrap:wrap}
+/* Provider-supplied logos share the compact matchup heading across leagues. */
+.game-title .game-team{display:inline-flex;align-items:center;gap:6px;max-width:100%;vertical-align:middle}
+.game-title .game-team-logo{width:24px;height:24px;object-fit:contain;flex:0 0 24px}
+.game-title .game-team span{overflow-wrap:anywhere}
+.game-title .game-at{white-space:pre-wrap}
+.ncaab-game-card .game-title{display:block;font-size:1rem;font-weight:800;color:#152332;line-height:1.5}
+.ncaab-game-card p{margin:6px 0;color:#3f5268;font-size:.88rem}
+.ncaab-line-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ncaab-line-inputs label{display:grid;gap:5px;min-width:0}
+.ncaab-line-inputs input{width:100%;min-width:0;box-sizing:border-box}
+.ncaab-report-details{margin-top:10px;color:#455970;font-size:.88rem}
+.ncaab-report-details summary{cursor:pointer;font-weight:700}

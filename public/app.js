@@ -792,6 +792,7 @@ homeId: String(home.id || ''),
 venueName: g.game?.venue?.name || '',
 venueCity: g.game?.venue?.city || '',
     kickoff: date.timestamp ? Number(date.timestamp) * 1000 : Date.parse(date.date + 'T' + date.time),
+    awayLogo:away.logo,homeLogo:home.logo,
     a: away.name || 'Away team TBD',
     h: home.name || 'Home team TBD',
     time: date.timestamp
@@ -878,7 +879,7 @@ async function load() {
       const detailText=`${game.time} | ${game.status}`+
         (hasScore ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}` : '');
       const card=window.Unit501SharedUI.gameCard({
-        away:game.a,home:game.h,detailText,container:games,seasonRecord:{league:league==='1'?'nfl':'ncaaf',season:game.season,date},
+        away:game.a,home:game.h,awayLogo:game.awayLogo,homeLogo:game.homeLogo,detailText,container:games,seasonRecord:{league:league==='1'?'nfl':'ncaaf',season:game.season,date},
         onSelect:()=>choose(game)
       });
       games.appendChild(card);

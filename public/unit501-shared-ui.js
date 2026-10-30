@@ -59,11 +59,23 @@
    current.classList.add('selected');
    current.setAttribute('aria-pressed','true');
  }
- function gameCard({away,home,detailText,seasonRecord=null,actionLabel='Open Game Lab →',onSelect,container,doc=(typeof document!=='undefined'?document:null),cardClass='card game'}){
+ function matchupHeading(away,home,awayLogo,homeLogo,doc){
+   const title=doc.createElement('b');title.className='game-title';
+   const safe=url=>typeof url==='string'&&/^https:\/\/(?:[a-z0-9-]+\.)*(?:espncdn\.com|api-sports\.io|nba\.com)\/[^\s]*$/i.test(url);
+   if(!safe(awayLogo)&&!safe(homeLogo)){title.textContent=matchup(away,home);return title;}
+   for(const [index,name,url] of [[0,away,awayLogo],[1,home,homeLogo]]){
+     if(index){const at=doc.createElement('span');at.textContent=' @ ';at.className='game-at';title.append(at);}
+     const team=doc.createElement('span');team.className='game-team';
+     if(safe(url)){const logo=doc.createElement('img');logo.className='game-team-logo';logo.src=url;logo.alt='';logo.width=24;logo.height=24;logo.loading='lazy';logo.referrerPolicy='no-referrer';logo.addEventListener('error',()=>{logo.hidden=true;});team.append(logo);}
+     const label=doc.createElement('span');label.textContent=name;team.append(label);title.append(team);
+   }
+   return title;
+ }
+ function gameCard({away,home,awayLogo,homeLogo,detailText,seasonRecord=null,actionLabel='Open Game Lab →',onSelect,container,doc=(typeof document!=='undefined'?document:null),cardClass='card game'}){
    if(!doc||!container||typeof onSelect!=='function')throw Error('Game card requires document, container and selection callback');
    const card=doc.createElement('div');
    card.className=cardClass;
-   const title=doc.createElement('b');title.className='game-title';title.textContent=matchup(away,home);
+   const title=matchupHeading(away,home,awayLogo,homeLogo,doc);
    const details=doc.createElement('p');details.textContent=String(detailText||'');
    const action=doc.createElement('span');action.className='open-game';action.textContent=actionLabel;
    action.setAttribute('aria-hidden','true');
@@ -106,5 +118,5 @@
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ return Object.freeze({dateCentral,timeCentral,matchup,matchupHeading,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

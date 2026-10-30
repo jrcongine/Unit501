@@ -85,3 +85,15 @@ test('game-card records require exact identities and disappear on expiry or fail
  const ambiguous=structuredClone(report);ambiguous.power.teams.push({name:'Chicago Bulls',record:'0-0'});
  shared.updateGameRecords(ambiguous,'nba',now);assert.match(record.textContent,/Chicago Bulls unavailable/);
 });
+
+test('matchup headings use supplied provider logos and keep team names when images fail',()=>{
+ const {doc}=dom();
+ const title=shared.matchupHeading('Bears','Packers','https://a.espncdn.com/i/teamlogos/nfl/500/chi.png','javascript:alert(1)',doc);
+ assert.equal(title.children[0].children[0].tag,'img');
+ const img=title.children[0].children[0];assert.equal(img.alt,'');assert.equal(img.referrerPolicy,'no-referrer');
+ img.handlers.error();assert.equal(img.hidden,true);
+ assert.equal(title.children[0].children[1].textContent,'Bears');
+ assert.equal(title.children[2].children.length,1);assert.equal(title.children[2].children[0].textContent,'Packers');
+ const rejected=shared.matchupHeading('Away','Home','https://espncdn.com.evil.test/logo.png',null,doc);
+ assert.equal(rejected.textContent,'Away @ Home');
+});

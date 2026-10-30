@@ -15,7 +15,7 @@ function convert(event,season,defaultStage=null){
   type?.completed===true&&type.state==='post'&&/FINAL/.test(type.name)?3:type?.state==='in'?2:type?.state==='pre'?1:null;
  if(!code||![1,2,3].includes(stage)||!Number.isSafeInteger(Number(a.team?.id))||Number(a.team.id)<=0||!Number.isSafeInteger(Number(h.team?.id))||Number(h.team.id)<=0||Number(a.team.id)===Number(h.team.id))return null;
  const raw={id:Number(event.id),league:'standard',season,stage,date:{start:c.date||event.date},status:{short:code},
-  teams:{visitors:{id:Number(a.team.id),name:a.team.displayName},home:{id:Number(h.team.id),name:h.team.displayName}},
+  teams:{visitors:{id:Number(a.team.id),name:a.team.displayName,logo:a.team.logo||a.team.logos?.[0]?.href},home:{id:Number(h.team.id),name:h.team.displayName,logo:h.team.logo||h.team.logos?.[0]?.href}},
   scores:{visitors:{points:code===2||code===3?score(a.score):null},home:{points:code===2||code===3?score(h.score):null}},
   periods:{current:Number(status.period),halftime:/HALFTIME/.test(type?.name||'')},arena:{name:c.venue?.fullName}};
  return normalizeGame(raw)?raw:null;

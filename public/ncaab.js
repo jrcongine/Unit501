@@ -50,7 +50,7 @@
  load.addEventListener('click',async()=>{
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];playerScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
-   for(const game of games){const button=node('button',`${game.away} at ${game.home} · ${game.timeKnown?central(game.tipoff):'TBD'} · ${game.status}`,'ncaab-game-card');button.type='button';button.addEventListener('click',()=>choose(game));
+   for(const game of games){const button=node('button','','ncaab-game-card');button.type='button';button.append(window.Unit501SharedUI.matchupHeading(game.away,game.home,game.awayLogo,game.homeLogo,document),node('p',`${game.timeKnown?central(game.tipoff):'Tipoff TBD'} · ${game.status}`));button.addEventListener('click',()=>choose(game));
     const record=node('small','','game-records');record.hidden=true;
     const current=Number.isFinite(data.checkedAt)&&data.checkedAt<=Date.now()+60000&&Date.now()-data.checkedAt<=3600000&&game.stage===2&&game.status==='Scheduled'&&game.timeKnown&&Date.parse(game.tipoff)>Date.now();
     const valid=value=>typeof value==='string'&&/^\d{1,3}-\d{1,3}$/.test(value);
@@ -121,6 +121,6 @@
   const pct=n=>(n*100).toFixed(1)+'%';let out=`${selected.away} win ${pct(sim.awayWin)} · ${selected.home} win ${pct(sim.homeWin)} · tie ${pct(sim.tie)}`;
   if(sim.awayCover!==null)out+=` · away cover ${pct(sim.awayCover)} · spread push ${pct(sim.spreadPush)}`;
   if(sim.over!==null)out+=` · over ${pct(sim.over)} · total push ${pct(sim.totalPush)}`;
-  $('ncaab-simulation').textContent=out;
+  $('ncaab-simulation').textContent='Experimental simulation · not calibrated: '+out;
  });
 })();
