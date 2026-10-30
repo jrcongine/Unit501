@@ -142,7 +142,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
     const note = document.createElement('p');
-    note.textContent = 'Selected game • Our projection, FanDuel line and difference. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
+    note.textContent = 'Selected game • All usable projections, including players without a betting line. Enter missing lines on the player cards below for comparisons. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     if (starScenarios.size) {
@@ -157,12 +157,12 @@
       for (const def of definitions) {
         const entry = readLine(lineKey(record, def));
         const line = n(entry.value);
-        if (line === null || !Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0)) continue;
+        if (line !== null && (!Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0))) continue;
         const model = projectionFor(record, def);
         if (!model) continue;
-        if(window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
+        if(line !== null && window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
-        const checks = Unit501PlayerForm.reviewChecks(model, entry, availability);
+        const checks = line === null ? ['Line unavailable — enter a current line for comparisons'] : Unit501PlayerForm.reviewChecks(model, entry, availability);
         if(model.role.changed)checks.push('Role / usage change: verify current workload; season baseline may lag');
         const support = Unit501PlayerForm.dataSupport(model, availability);
         rows.push({record, def, entry, line, checks, support, ...model});
@@ -297,24 +297,24 @@ for (let i = rows.length - 1; i >= 0; i--) {
       (board.dataset.support === 'review' && !rows[i].support.needsReview) ||
       (board.dataset.support === 'clean' && rows[i].support.needsReview) ||
       (board.dataset.support === 'thin' && rows[i].support.count >= 5) ||
-      (board.dataset.direction === 'above' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) <= 0) ||
-      (board.dataset.direction === 'below' && Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) >= 0)) {
+      (board.dataset.direction === 'above' && (rows[i].line === null || Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) <= 0)) ||
+      (board.dataset.direction === 'below' && (rows[i].line === null || Number((Number(rows[i].adjusted.toFixed(1)) - rows[i].line).toFixed(1)) >= 0))) {
     rows.splice(i, 1);
   }
 }
     if (['gap','stat-gap','reviewed-gap'].includes(board.dataset.sort)) {
       const statOrder = new Map(definitions.map((def, index) => [def.key, index]));
-      const gap = row => Math.abs(Number((Number(row.adjusted.toFixed(1)) - row.line).toFixed(1)));
-      rows.sort((a, b) => (board.dataset.sort === 'stat-gap'
+      const gap = row => row.line === null ? -1 : Math.abs(Number((Number(row.adjusted.toFixed(1)) - row.line).toFixed(1)));
+      rows.sort((a, b) => Number(a.line===null)-Number(b.line===null) || (board.dataset.sort === 'stat-gap'
         ? statOrder.get(a.def.key) - statOrder.get(b.def.key) || gap(b) - gap(a)
         : board.dataset.sort === 'reviewed-gap'
         ? Number(a.support.needsReview) - Number(b.support.needsReview) || gap(b) - gap(a)
         : gap(b) - gap(a)) || statOrder.get(a.def.key) - statOrder.get(b.def.key) ||
         a.record.name.localeCompare(b.record.name));
     } else if (['most-covers','least-covers'].includes(board.dataset.sort)) {
-      rows.sort((a,b)=>Unit501PlayerForm.compareCovers(a,b,board.dataset.sort));
+      rows.sort((a,b)=>Number(a.line===null)-Number(b.line===null)||(a.line===null?a.record.name.localeCompare(b.record.name):Unit501PlayerForm.compareCovers(a,b,board.dataset.sort)));
     } else if (/^(above|below)-(asc|desc)$/.test(board.dataset.sort)) {
-      rows.sort((a,b)=>Unit501PlayerForm.compareRecent(a,b,board.dataset.sort));
+      rows.sort((a,b)=>Number(a.line===null)-Number(b.line===null)||(a.line===null?a.record.name.localeCompare(b.record.name):Unit501PlayerForm.compareRecent(a,b,board.dataset.sort)));
     } else if (board.dataset.sort === 'sample') {
       rows.sort((a, b) => b.values.length - a.values.length);
     }
@@ -353,7 +353,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     board.append(copy, copyStatus);
     if (!rows.length) {
       const empty = document.createElement('p');
-     empty.textContent = 'No lines match these filters. Reset the filters, or enter a line on a player card below.';
+     empty.textContent = 'No projections match these filters. Reset the filters, or review player data below.';
      board.append(empty); return;
     }
     const wrap = document.createElement('div');
@@ -364,7 +364,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     const table = document.createElement('table');
     table.style.cssText = 'width:100%;border-collapse:collapse;text-align:left;font-size:.9em';
     const caption = document.createElement('caption');
-    caption.textContent = `${rows.length} entered ${rows.length === 1 ? 'line' : 'lines'} — ${matchupTeams.map(t => t.name).join(' vs ')}`;
+    caption.textContent = `${rows.length} projections · ${rows.filter(row=>row.line!==null).length} with lines — ${matchupTeams.map(t => t.name).join(' vs ')}`;
     caption.style.cssText = 'text-align:left;padding:8px 0;font-weight:bold';
     table.append(caption);
     const head = document.createElement('thead');
@@ -415,16 +415,16 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), median.toFixed(1), String(row.line),
-        diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
-        `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), median.toFixed(1), row.line === null ? 'Line unavailable' : String(row.line),
+        row.line === null ? '—' : diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
+        row.line === null ? 'Line required' : `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
         row.workloadHistory.text];
       const observed=row.entry.source==='auto'?row.entry.movement:null;
       const movement=observed?window.Unit501LineWatch.describe(observed)+' · '+window.Unit501LineWatch.detail(observed):'No automatic line history';
       fields.push(movement);
-      const source = row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
+      const source = row.line === null ? 'Line unavailable' : row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${movement}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line === null ? 'unavailable' : row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${movement}`);
       report.push(row.workloadHistory.text);
       for(const alert of row.role.alerts)report.push(alert.label+': '+alert.detail);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
@@ -472,6 +472,8 @@ const explanation = document.createElement('p');
 explanation.textContent = [availabilityText, row.support.label, `${row.workload}% workload.`, row.weather.reason, row.checks.join(' • ')].join(' ');
 details.append(summary, explanation);
 cell.append(details);
+        } else if (index === 8 && row.line === null) {
+          cell.textContent = 'Line required';
         } else if (index === 8) {
           const recent=document.createElement('div');recent.className='prop-recent';
           const largest=Math.max(above,below,equal);

@@ -422,14 +422,15 @@ test('prop board sorts largest raw discrepancy across stats or within a stat, wi
  const change=async(key,value)=>{const select=h.nodes.get('prop-filter-'+key);select.value=value;await select.dispatchEvent({type:'change'});};
  await change('direction','below');assert.equal(rows().length,1);assert.match(rows()[0].textContent,/1.5 below/);
  await change('direction','above');assert.equal(rows().length,2);assert.ok(rows().every(r=>r.textContent.includes('above')));
- await change('direction','');await change('sort','gap');assert.equal(rows().length,3);
+ await change('direction','');await change('sort','gap');assert.equal(rows().length,8);
+ assert.equal(rows().filter(r=>r.textContent.includes('Line unavailable')).length,5);
  // Same market: the larger gap must lead even when that player loaded later.
  h.nodes.get('predict-player').value='2:8';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const second=h.nodes.get('line-2:8-carries');second.value='25.5';await second.dispatchEvent({type:'input'});
  const receiving=h.nodes.get('line-1:7-recYds');receiving.value='6.5';await receiving.dispatchEvent({type:'input'});
  await change('stat','');
  await change('sort','gap');
- assert.equal(rows().length,4);
+ assert.equal(rows().length,8);
  assert.match(rows()[0].textContent,/Receiving yards/); // The +17.5 gap leads overall even though receiving follows rushing in stat order.
  assert.match(rows()[1].textContent,/RB 2/); // The -5.5 gap ranks second because raw distance is absolute.
  await change('sort','stat-gap');
@@ -470,7 +471,7 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  const future=Date.now()+1800001;h.context.Date=class extends Date{static now(){return future;}};
  copied='';h.context.navigator.clipboard.writeText=async text=>{copied=text;};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
+ assert.match(copied,/Line unavailable/);assert.doesNotMatch(copied,/Line 19.5/);assert.match(copied,/Above\/below\/equal: Line required/);assert.match(h.nodes.get('copy-prop-board-status').textContent,/copied/);
 });
 
 test('shortlist preserves chosen markets through filters, copies current rows and resets for another matchup',async()=>{
@@ -493,7 +494,7 @@ test('shortlist preserves chosen markets through filters, copies current rows an
  // Older automatic quotes are not copied, even if previously shortlisted.
  const future=Date.now()+1800001;h.context.Date=class extends Date{static now(){return future;}};
  copied='';await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.equal(copied,'');assert.match(h.nodes.get('copy-prop-board-status').textContent,/No current lines/);
+ assert.match(copied,/Line unavailable/);assert.doesNotMatch(copied,/Line 19.5/);assert.match(copied,/Above\/below\/equal: Line required/);assert.match(h.nodes.get('copy-prop-board-status').textContent,/copied/);
  // Clear and game changes do not retain selection from the previous matchup.
  await h.nodes.get('clear-prop-shortlist').dispatchEvent({type:'click'});
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/0 shortlisted/);
@@ -584,7 +585,7 @@ test('data-support display and filters keep thin samples visible without claimin
   const currentFilter=h.nodes.get('prop-filter-support');
   currentFilter.value='clean';await currentFilter.dispatchEvent({type:'change'});
   assert.equal(h.nodes.get('copy-prop-board').disabled,true);
-  assert.match(board.textContent,/No lines match these filters/);
+  assert.match(board.textContent,/No projections match these filters/);
 });
 
 test('Game Lab automatically scores a confirmed defender absence and cleanly switches back to manual',async()=>{
@@ -647,7 +648,7 @@ test('automatic research queue omits thin samples and never casts board votes',a
  const choice=h.nodes.get('prop-filter-shortlist');
  choice.value='automatic';await choice.dispatchEvent({type:'change'});
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Automatic research queue only/);
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/No lines match these filters/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/No projections match these filters/);
  assert.equal(h.nodes.get('war-stats')?.textContent||'', '');
 });
 test('auto prep waits for complete official injury coverage instead of freezing early forecasts',async()=>{
@@ -1060,4 +1061,25 @@ test('college defensive workload changes the actual forecast even when opponent 
  data.teams[0].official.rows[0].status='Questionable';h.run('sim()');
  assert.equal(h.run('lastInjuryOptions.injury.homeDefense'),0);
  assert.equal(h.run('lastInjuryProjection.away'),baseline.away);
+});
+
+
+test('projection board lists usable no-line markets without invented comparisons and supports manual entry',async()=>{
+ const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const board=h.nodes.get('saved-line-comparisons');
+ const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
+ const rows=()=>walk(board,'tbody')[0].children;
+ const missing=rows().filter(r=>r.textContent.includes('Line unavailable'));
+ assert.equal(rows().length,8);assert.equal(missing.length,5);
+ for(const row of missing){assert.equal(row.children[7].textContent,'—');assert.equal(row.children[8].textContent,'Line required');assert.notEqual(row.children[4].textContent,'');}
+ const target=missing.find(row=>row.children[1].textContent==='Rushing yards');
+ const open=walk(target,'button')[0];await open.dispatchEvent({type:'click'});
+ const input=h.nodes.get('line-1:7-rushYds');assert.ok(input);input.value='45.5';await input.dispatchEvent({type:'input'});
+ assert.equal(rows().filter(r=>r.textContent.includes('Line unavailable')).length,4);
+ for(const sort of ['above-desc','above-asc','below-desc','below-asc','most-covers','least-covers','gap','reviewed-gap']){
+  const select=h.nodes.get('prop-filter-sort');select.value=sort;await select.dispatchEvent({type:'change'});
+  const list=rows();let seenMissing=false;for(const row of list){if(row.textContent.includes('Line unavailable'))seenMissing=true;else assert.equal(seenMissing,false,sort+' must put missing lines last');}
+ }
+ const filter=h.nodes.get('prop-filter-direction');filter.value='above';await filter.dispatchEvent({type:'change'});assert.ok(rows().every(r=>!r.textContent.includes('Line unavailable')));
 });
