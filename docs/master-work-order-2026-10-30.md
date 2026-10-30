@@ -354,3 +354,24 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   refresh failure, manual values, intentional blanks and out-of-order response handling.
   Populated NBA/college and all four main screens passed local desktop/mobile checks
   without page overflow or JavaScript errors.
+
+## Basketball workload accuracy and display — continuation
+
+- The shared player model now accepts an explicit regulation-minute limit: NBA retains
+  48 and college basketball passes 40. College overtime histories no longer allow the
+  baseline to project more than 40 regulation minutes. Actual overtime statistics,
+  averages, medians, sample sizes, hit counts and pushes remain unchanged. This is a
+  cap correction, not a calibrated improvement claim or an overtime forecast model.
+- College props now show the same historical minutes trends as NBA. Both identify the
+  comparison sample (last two versus earlier games) instead of an unexplained arrow.
+  These describe recorded workload; no confirmed starting-role labels are invented.
+  Missing minutes are explicitly labeled unavailable while usable stat history remains.
+- Full suite: 765 passed. After the final display wording, all 44 basketball model/client
+  tests passed again. Populated NBA/college workload and scenario flows passed local
+  1440px/390px browser checks without page overflow or JavaScript errors.
+- Tasks 47/49/56/82/91 have additional implementation coverage; confirmed pregame roles,
+  automatic injury/rotation adjustments and broader validation still need work.
+- Previous quote-expiration commit 3fd880fcdff15f1d7b67ed0f502f7e42b4614949 passed GitHub
+  Actions 41114570194 and deployed successfully to primary b2a2e6d4-92ee-42de-a92b-3d4c59f7c189
+  and secondary a8d9a019-c54f-444b-bde2-e8eb7113a5fb. Public primary health passed; this
+  does not replace protected production-screen or paid-feed verification.

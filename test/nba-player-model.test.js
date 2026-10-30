@@ -87,3 +87,23 @@ test('manual player scenarios preserve observed results and never compound',()=>
  assert.equal(withScenario(minutes,'boost').projection,16.5);
  assert.equal(withScenario(minutes,'boost').projectedMinutes,30);
 });
+
+test('college regulation minutes cap estimates without altering actual overtime statistics',()=>{
+ const d=data();d.teams[0].players[0].results.forEach(r=>{r.minutes=45;r.player_points=45;});
+ const nba=project(d,q,game,null,now),college=project(d,q,game,null,now,{regulationMinutes:40});
+ assert.equal(nba.projectedMinutes,45);assert.equal(nba.projection,45);
+ assert.equal(college.projectedMinutes,40);assert.equal(college.projection,40);
+ for(const field of ['average','median','games','above','below','equal'])assert.equal(college[field],nba[field]);
+ assert.equal(project(d,q,game,null,now,{regulationMinutes:40,minutes:41}).available,false);
+ assert.equal(project(d,q,game,null,now,{regulationMinutes:40,minutes:35}).projection,35);
+ assert.equal(project(d,q,game,null,now,{regulationMinutes:45}).available,false);
+});
+
+test('basketball minutes trend states the historical comparison sample and hides unavailable estimates',()=>{
+ const {minuteChangeText}=require('../public/nba-player-model');const d=data();
+ d.teams[0].players[0].results=Array.from({length:5},(_,i)=>({gameId:i+1,tipoff:`2026-10-${24-i*2}T20:00:00Z`,minutes:i<2?32:20,player_points:10}));
+ const r=project(d,q,game,null,now,{regulationMinutes:40});
+ assert.equal(minuteChangeText(r),'Recent minutes up · 20.0 → 32.0 · last 2 vs earlier 3 games');
+ assert.equal(minuteChangeText({...r,available:false}),null);
+ assert.equal(minuteChangeText(project(data(),q,game,null,now)),null);
+});

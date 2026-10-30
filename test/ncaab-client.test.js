@@ -191,3 +191,15 @@ test('late college quote responses cannot overwrite a newer selection or user ed
  pending[1](response(155));await h.settle();assert.equal(Number(h.nodes.get('ncaab-total').value),155);assert.equal(h.nodes.get('ncaab-spread').value,'8');
  pending[0](response(140));await h.settle();assert.equal(Number(h.nodes.get('ncaab-total').value),155);assert.equal(h.nodes.get('ncaab-spread').value,'8');
 });
+
+test('college prop UI passes its regulation cap and displays historical minutes samples',async()=>{
+ const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ const original=h.context.Unit501NBAPlayerModel.project;let seen;
+ h.context.Unit501NBAPlayerModel.project=(...args)=>{seen=args[5];return original(...args);};
+ const results=Array.from({length:5},(_,i)=>({gameId:String(i+1),tipoff:new Date(h.now()-(i+1)*86400000).toISOString(),minutes:i<2?45:32,player_points:20}));
+ h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),message:'Loaded',props:[{name:'Player A',market:'player_points',label:'Points',line:18.5,updatedAt:h.now()}],teams:[{available:true,players:[{name:'Player A',results}]},{available:true,players:[]}]})});
+ await h.nodes.get('ncaab-load-props').events.click();
+ assert.equal(seen.regulationMinutes,40);
+ assert.match(h.nodes.get('ncaab-props').textContent,/Recent minutes up · 32.0 → 45.0 · last 2 vs earlier 3 games/);
+ assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/confirmed starter/);
+});

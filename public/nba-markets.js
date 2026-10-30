@@ -71,8 +71,7 @@
    for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
     const cell=node('td',value);
     if(index===0&&prediction.minuteChange){
-     const change=prediction.minuteChange;
-     cell.append(node('strong','Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1),'nba-minutes-trend'));
+     cell.append(node('strong',root.Unit501NBAPlayerModel.minuteChangeText(prediction),'nba-minutes-trend'));
     }
     if(index===3&&prediction.available){
      const gap=prediction.projection-p.line;
@@ -98,7 +97,7 @@
       cell.append(node('small',`${scenario?'Teammate absence minutes scenario':'Manual minutes scenario'} · baseline ${prediction.baseline.toFixed(1)} · change ${prediction.delta>=0?'+':''}${prediction.delta.toFixed(1)}. Uses overall scoring/stat rate; not a confirmed rotation.`, 'nba-line-history'));
       const reset=node('button','Reset minutes');reset.type='button';reset.addEventListener('click',()=>{const name=normalizedName(p.name);minuteOverrides.delete(name);injuryScenarios.delete(name);renderProps();});cell.append(reset);
      }
-     cell.append(node('small',prediction.method+' · recent average '+prediction.average.toFixed(1)+' · median '+prediction.median.toFixed(1)+(prediction.thin?' · small sample':''),'nba-line-history'));
+     cell.append(node('small',prediction.method+' · recent average '+prediction.average.toFixed(1)+' · median '+prediction.median.toFixed(1)+(prediction.projectedMinutes===null?' · minutes unavailable':'')+(prediction.thin?' · small sample':''),'nba-line-history'));
      if(prediction.projectedMinutes!==null){
       const label=node('label','Minutes ', 'nba-minutes-control'),input=node('input');
       input.type='number';input.min='1';input.max='48';input.step='0.5';input.placeholder=prediction.projectedMinutes.toFixed(1);
