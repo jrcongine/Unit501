@@ -24,6 +24,7 @@
   const values=sample.map(r=>r[quote.market]);
   if(values.length<2)return {available:false,reason:'Fewer than 2 verified games'};
   const average=values.reduce((a,b)=>a+b,0)/values.length;
+  const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2),median=sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
   // Minutes are observed playing time, not a confirmed starting assignment.
   const hasMinutes=sample.every(r=>Number.isFinite(r.minutes)&&r.minutes>0&&r.minutes<=60);
   const manual=options.minutes!==undefined&&options.minutes!==null;
@@ -46,7 +47,7 @@
     if(Math.abs(recent-previous)>=5)minuteChange={recent,previous,direction:recent>previous?'up':'down'};
    }
   }
-  return {available:true,projection,baseline,delta:projection-baseline,average,projectedMinutes,minuteChange,method,games:values.length,
+  return {available:true,projection,baseline,delta:projection-baseline,average,median,coverage:matches[0].coverage||null,projectedMinutes,minuteChange,method,games:values.length,
    recentValues:values.slice(0,5),
    above:values.filter(n=>n>quote.line).length,below:values.filter(n=>n<quote.line).length,equal:values.filter(n=>n===quote.line).length,
    thin:values.length<5};

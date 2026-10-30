@@ -16,9 +16,11 @@ function convert(e){
   awayScore:status==='Final'||status==='Live'?number(a.score):null,homeScore:status==='Final'||status==='Live'?number(h.score):null};
 }
 function summarize(rows,id,selected,now=Date.now()){
- const cutoff=Math.min(Date.parse(selected.tipoff),now),entries=new Map(),conflicts=new Set();
+ const cutoff=Math.min(Date.parse(selected.tipoff),now),entries=new Map(),conflicts=new Set(),unverified=new Set();
  for(const row of rows){
-  const g=convert(row);if(!g||g.season!==selected.season||g.stage!==2||g.status!=='Final'||g.id===selected.id||!g.timeKnown||Date.parse(g.tipoff)+5*3600000>=cutoff||g.awayScore===null||g.homeScore===null)continue;
+  const g=convert(row),c=row?.competitions?.[0],at=Date.parse(c?.date||row?.date),own=c?.competitors?.some(t=>String(t.team?.id)===id);
+  if(own&&Number(row.season?.year)===selected.season&&Number(row.seasonType?.type??row.season?.type)===2&&(c?.status?.type?.completed===true||row.status?.type?.completed===true)&&(!Number.isFinite(at)||at<cutoff)&&(!g||!g.timeKnown||g.awayScore===null||g.homeScore===null))unverified.add(String(row.id||'unknown'));
+  if(!g||g.season!==selected.season||g.stage!==2||g.status!=='Final'||g.id===selected.id||!g.timeKnown||Date.parse(g.tipoff)+5*3600000>=cutoff||g.awayScore===null||g.homeScore===null)continue;
   const away=g.awayId===id,home=g.homeId===id;if(away===home)continue;
   const item={id:g.id,tipoff:g.tipoff,opponent:away?g.home:g.away,opponentId:away?g.homeId:g.awayId,scored:away?g.awayScore:g.homeScore,allowed:away?g.homeScore:g.awayScore,venue:g.neutral?'neutral':away?'away':'home'};
   const old=entries.get(g.id);if(old&&JSON.stringify(old)!==JSON.stringify(item)){conflicts.add(g.id);entries.delete(g.id);continue;}
@@ -26,7 +28,7 @@ function summarize(rows,id,selected,now=Date.now()){
  }
  const games=[...entries.values()].sort((a,b)=>Date.parse(b.tipoff)-Date.parse(a.tipoff));
  const summary=list=>list.length?{games:list.length,scored:list.reduce((s,g)=>s+g.scored,0)/list.length,allowed:list.reduce((s,g)=>s+g.allowed,0)/list.length,wins:list.filter(g=>g.scored>g.allowed).length,losses:list.filter(g=>g.scored<g.allowed).length}:null;
- return {games:games.length,season:summary(games),recent5:summary(games.slice(0,5)),recent10:summary(games.slice(0,10)),home:summary(games.filter(g=>g.venue==='home')),away:summary(games.filter(g=>g.venue==='away')),recentGames:games.slice(0,10),conflicts:conflicts.size};
+ return {games:games.length,season:summary(games),recent5:summary(games.slice(0,5)),recent10:summary(games.slice(0,10)),home:summary(games.filter(g=>g.venue==='home')),away:summary(games.filter(g=>g.venue==='away')),recentGames:games.slice(0,10),conflicts:conflicts.size,unverifiedGames:unverified.size};
 }
 function createNCAAB({fetcher=fetch,now=Date.now}={}){
  const cache=new Map();

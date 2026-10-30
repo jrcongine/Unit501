@@ -34,3 +34,9 @@ test('missing or malformed college scores remain unknown and do not enter team f
  }
  for(const value of [0,'0',70,' 70 '])assert.equal(convert(event(21,'2026-10-28T01:00:00Z',{scoreA:value})).awayScore,Number(value));
 });
+
+test('unverified completed college games remain visible as history gaps',()=>{
+ const bad=event(2,'2026-10-29T01:00:00Z',{scoreA:null}),good=event(1,'2026-10-28T01:00:00Z');
+ const r=summarize([good,bad],'1',selected,Date.parse('2026-11-03T20:00:00Z'));
+ assert.equal(r.games,1);assert.equal(r.unverifiedGames,1);
+});

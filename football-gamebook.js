@@ -22,7 +22,7 @@ function roster(rows,team){
  const start=rows.indexOf(team),sub=rows.indexOf('Substitutions'),dnp=rows.indexOf('Did Not Play'),inactive=rows.indexOf('Not Active');
  if(start<0||sub<=start||dnp<=sub||inactive<=dnp)throw Error('Participation sections unavailable');
  const positions='3QB|QB|RB|FB|WR|TE|C/G|G/T|C|G|T|OL|LT|LG|RG|RT|OLB|ILB|LB|EDGE|DE|DT|NT|DL|CB|FS|SS|S|DB|LS|K|P';
- const expression=new RegExp('(?:^|[, ]+)('+positions+')\\s+(\\d{1,2})\\s+([A-Z]\\.[A-Za-zÀ-ž][A-Za-zÀ-ž.\x27’ -]*?)(?=,|\\s+(?:'+positions+')\\s+\\d|$)','g');
+ const expression=new RegExp('(?:^|[, ]+)('+positions+')\\s+(\\d{1,2})\\s+([A-Z][a-z]{0,3}\\.[A-Za-zÀ-ž][A-Za-zÀ-ž.\x27’ -]*?)(?=,|\\s+(?:'+positions+')\\s+\\d|$)','g');
  function parse(text,participation){
   text=text.replace(/\s+/g,' ').trim();if(!text)return [];
   const out=[],matches=[...text.matchAll(expression)];
@@ -67,7 +67,9 @@ async function extract(bytes){
  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
  const task=getDocument({data:new Uint8Array(bytes),useSystemFonts:true,isEvalSupported:false,verbosity:0});
  try{const pdf=await task.promise;if(pdf.numPages<2||pdf.numPages>80)throw Error('Invalid gamebook');
-  const pages=[];for(let n=1;n<=2;n++){const p=await pdf.getPage(n);pages.push({width:p.view[2]-p.view[0],items:(await p.getTextContent()).items});}return pages;
+  const pages=[];for(let n=1;n<=Math.min(6,pdf.numPages);n++){const p=await pdf.getPage(n),page={width:p.view[2]-p.view[0],items:(await p.getTextContent()).items};
+   if(n===1)pages.push(page);else if(lines(page.items,undefined,page.width).includes('Final Individual Statistics')){pages.push(page);break;}}
+  if(pages.length!==2)throw Error('Final individual statistics unavailable');return pages;
  }finally{await task.destroy();}
 }
 function parse(pages,source){
@@ -78,24 +80,28 @@ function parse(pages,source){
  for(const [label,team,score]of [['VISITOR:',source.away,source.awayScore],['HOME:',source.home,source.homeScore]]){
   const rows=header.filter(r=>r.startsWith(label+' '+team+' '));if(rows.length!==1||Number(rows[0].split(' ').at(-1))!==score)throw Error('Final score mismatch');
  }
- if(!lines(second.items,undefined,second.width).includes('Final Individual Statistics'))throw Error('Final statistics missing');
+ const statisticsHeader=lines(second.items,undefined,second.width);
+ if(!statisticsHeader.includes('Final Individual Statistics')||!statisticsHeader.some(r=>r.includes(`${source.away} vs ${source.home}`))||!statisticsHeader.some(r=>new RegExp('\\b0?'+Number(date[1])+'/0?'+Number(date[2])+'/'+date[0]+'\\b').test(r)))throw Error('Final statistics missing or identity mismatch');
  const boundary=first.items.filter(i=>i.str==='Field Goals (made ( ) & missed)');
  if(boundary.length!==1)throw Error('Participation boundary unavailable');
  const participation=first.items.filter(i=>i.transform[5]>boundary[0].transform[5]+2);
  return [source.away,source.home].map((name,i)=>({name,players:statistics(lines(second.items,i,second.width),roster([...lines(participation,i,first.width),'Field Goals (made ( ) & missed)'],name))}));
 }
-function createGamebooks({api,fetcher=fetch,now=Date.now,extractPDF=extract,registry=sources}={}){
+function createGamebooks({api,fetcher=fetch,now=Date.now,extractPDF=extract,registry=sources,discover}={}){
  const cache=new Map();
  return async q=>{
   const unavailable={available:false,gameId:String(q.game),reason:'No verified official gamebook for this game.'};
-  const candidates=registry.filter(s=>s.league===q.league&&s.season===q.season&&s.date===q.date);if(!candidates.length)return unavailable;
+  const candidates=registry.filter(s=>s.league===q.league&&s.season===q.season&&s.date===q.date);if(!candidates.length&&!discover)return unavailable;
   try{
    const response=await api('/games?id='+encodeURIComponent(q.game));
    if(response.errors&&Object.keys(response.errors).length||response.paging?.total>1||response.response?.length!==1)throw Error('Game unavailable');
    const g=response.response[0],time=Number(g.game?.date?.timestamp);
    if(String(g.game?.id)!==String(q.game)||String(g.league?.id)!==q.league||String(g.league?.season)!==q.season||!['FT','AOT','FINAL'].includes(g.game?.status?.short)||g.game?.stage!=='Regular Season'||!Number.isFinite(time)||time*1000>=now()||dateKey(time)!==q.date)throw Error('Completed game identity unverified');
+   if(['away','home'].some(side=>!/^\d+$/.test(String(g.scores?.[side]?.total??''))))throw Error('Final scores unavailable');
    const matches=candidates.filter(s=>s.away===g.teams?.away?.name&&s.home===g.teams?.home?.name&&s.awayScore===Number(g.scores?.away?.total)&&s.homeScore===Number(g.scores?.home?.total));
-   if(matches.length!==1)throw Error('Official matchup mismatch');const source=matches[0];
+   if(matches.length>1)throw Error('Official matchup ambiguous');
+   const source=matches[0]||await discover?.({league:q.league,season:q.season,date:q.date,gameDate:time,away:g.teams?.away?.name,home:g.teams?.home?.name,awayScore:Number(g.scores?.away?.total),homeScore:Number(g.scores?.home?.total)});
+   if(!source)throw Error('Official gamebook unavailable');
    let item=cache.get(source.url);
    if(!item||now()-item.at>=6*3600000){item={at:now(),pending:(async()=>{
     const r=await fetcher(source.url,{signal:AbortSignal.timeout(15000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>8000000)throw Error('Gamebook unavailable');

@@ -18,7 +18,7 @@ function conflictingDNP(row,keys){
  return keys.some((key,i)=>{
   const value=row.stats[i];
   if(key==='minutes')return minutes(value)>0;
-  if(key==='threePointFieldGoalsMade-threePointFieldGoalsAttempted'){
+  if(/^(\d+)-(\d+)$/.test(String(value??'').trim())){
    const pair=/^(\d+)-(\d+)$/.exec(String(value??'').trim());
    return pair&&pair.some((v,j)=>j>0&&Number(v)>0);
   }

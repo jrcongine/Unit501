@@ -192,3 +192,8 @@ test('replacement profiles require complete usage and yardage including older ga
   assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000,league)[1].profiles.passing);
  }
 });
+
+test('missing appearances cannot produce a production grade from a shortened denominator',()=>{
+ const f=fixture(),id=String(f.games[0].game.id);for(const team of f.boxes.get(id))for(const group of team.groups)group.players=group.players.filter(p=>String(p.player.id)!=='1');
+ const p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='1');assert.equal(p.rating,null);assert.deepEqual(p.coverage,[]);assert.match(p.reason,/complete histories/);
+});

@@ -116,7 +116,7 @@ async function providerAPI(endpoint) {
 
 }
 
-const footballGamebooks=require('./football-gamebook').createGamebooks({api});
+const footballGamebooks=require('./football-participation').createParticipation({api});
 
 const server = http.createServer(async (req, res) => {
   if(!require('./private-access').allowRequest(req,res))return;

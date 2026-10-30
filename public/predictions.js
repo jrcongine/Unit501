@@ -82,7 +82,7 @@
     const x = Number(v); return Number.isFinite(x) ? x : null;
   };
   const json = async url => {
-    const res = await fetch(url, {signal:AbortSignal.timeout(20000)});
+    const res = await fetch(url, {signal:AbortSignal.timeout(url.startsWith('/api/football/participation?')?90000:20000)});
     const x = await res.json();
     if (!res.ok || x.error || (x.errors && Object.keys(x.errors).length)) {
       throw new Error(x.error || JSON.stringify(x.errors) || 'Data could not be loaded');
@@ -987,6 +987,7 @@ if (league === '1' && stage !== 'regular season') return false;
       let reconciled=0;
       for(const [id,g] of past){
         if(task!==sequence)return;
+        status.textContent=`Verifying participation: ${ids.indexOf(id)+1} of ${ids.length} season games…`;
         const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000));
         try{
           const reports=await json(`/api/football/participation?game=${id}&league=${league}&season=${season}&date=${day}`);
@@ -1008,7 +1009,7 @@ if (league === '1' && stage !== 'regular season') return false;
       loadedFor = gameId;
       lineScope = `${league}:${season}:${date}:${gameId}`;
       picker.disabled = false;
-      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against official gamebooks. All supported projections are listed below; select a player for a detailed breakdown.`;
+      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against gamebooks or completed box scores. All supported projections are listed below; select a player for a detailed breakdown.`;
       showPlayer();
       loadProps();
     } catch (e) {

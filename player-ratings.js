@@ -92,7 +92,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
      if(c.key!=='punting:average')name=c.name+' percent of punts';
     }
     return {...c,name,form};
-   }).filter(c=>c.form);
+   }).filter(c=>c.form&&c.form.coverage.missing===0);
   return {...p,components,profiles};
  });
  const peerMetrics=new Map();
@@ -113,7 +113,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
    const score=49.5+(raw-49.5)*count/(count+4);
    components.push({name:c.name,direction:c.direction,score,count,peers:values.length,average:c.form.average,baseline:c.form.weighted});
   }
-  if(components.length<2)return {...out,reason:'Need at least two recorded games for two metrics and eight same-position peers per metric.'};
+  if(components.length<2)return {...out,reason:'Need complete histories, at least two recorded games for two metrics and eight same-position peers per metric.'};
   const rating=Math.round(components.reduce((s,c)=>s+c.score,0)/components.length);
   const change=components.reduce((s,c)=>s+c.direction*(c.baseline-c.average)/(Math.abs(c.average)||1),0)/components.length;
   return {...out,rating,trend:change>.03?'Rising':change<-.03?'Falling':'Steady',coverage:components,

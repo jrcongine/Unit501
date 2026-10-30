@@ -1,7 +1,7 @@
 'use strict';
 // Passive request telemetry. Never fetches providers or retains URLs/payloads.
 const SPORTS={nfl:'NFL',ncaaf:'College football',nba:'NBA',ncaab:'College basketball'};
-const KINDS={games:'Schedule',odds:'FanDuel lines',props:'FanDuel props',injuries:'Availability',context:'Team history','player-history':'Player history',participation:'Official participation'};
+const KINDS={games:'Schedule',odds:'FanDuel lines',props:'FanDuel props',injuries:'Availability',context:'Team history','player-history':'Player history',participation:'Player participation'};
 const SOURCES={covers:'Covers',wagertalk:'WagerTalk',boyds:'Boyd’s Bets',pickswise:'Pickswise'};
 function route(url){
  const p=url.pathname,q=url.searchParams;
