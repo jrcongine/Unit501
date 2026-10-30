@@ -143,14 +143,14 @@ No billing change or subscription purchase is required/authorized by this audit.
 | 85 | Separate modes from HFA | Already completed and verified | Football manual Normal/Upset/Primetime modes retained separately from HFA; labels now show 0%/−10%/+10%. No redundant Upset checkbox. |
 | 86 | Remove Upset checkbox | Already completed and verified | Football manual Normal/Upset/Primetime modes retained separately from HFA; labels now show 0%/−10%/+10%. No redundant Upset checkbox. |
 | 87 | Finish basketball | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
-| 88 | Shared basketball navigation | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
+| 88 | Shared basketball navigation | Newly completed, tested, and deployed | Commit 97b4f8e groups NBA and college basketball under one Basketball entry, with league links and current-page indication. Existing routes and Beta labels retained. Desktop/mobile navigation passed. |
 | 89 | Complete basketball schedules | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 90 | Basketball odds and props | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 91 | Basketball roles/injury projections | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
 | 92 | Official NBA injury integration | Blocked by an actual external dependency | Private production authentication is unavailable. Railway OAuth exposes variable names only; browser returns ERR_INVALID_AUTH_CREDENTIALS. Current account entitlement and end-to-end paid/live-provider behavior cannot be checked. |
 | 93 | Basketball histories | Blocked by an actual external dependency | NBA/NCAA official reconciliation and unknown-history guards preserved. Full historical participation coverage still depends on usable official box scores; unknown records remain withheld. |
 | 94 | Basketball simulations/backtests | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
-| 95 | Basketball loading failures | Still pending | College props and War Room improved; automatic injury/rotation adjustments, combined basketball navigation, all-screen parity and independent calibration are not complete. |
+| 95 | Basketball loading failures | Still pending | Commit 97b4f8e fixes Central-day NBA coverage across UTC dates in both sources, rejects incomplete responses and conflicting IDs. Live public check returned 10 October 30 games. Full private production acceptance remains pending. |
 | 96 | Retain beta until verified | Already completed and verified | Beta labels retained because full basketball acceptance gates are not met. |
 | 97 | Automatic/manual injury UI | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
 | 98 | Compact color-coded injury summary | Newly completed, tested, and deployed | See delivered changes and verification below. Completion applies to implemented scope; production login-dependent acceptance remains item 108. |
@@ -198,3 +198,21 @@ Populated basketball fixture checks also exercised Star Power on both pages at 1
 390 pixels. This caught mobile filter-select overflow that empty tables did not reveal.
 The follow-up CSS constrains filter widths and formats scenario controls; rerun passed
 without page overflow or JavaScript errors at both sizes. Tables retain internal scrolling.
+
+## Central-day schedules and basketball navigation — 97b4f8ec3e376f399b7518e34f3c58247ad99f4b
+
+- Both NBA schedule adapters now request the two UTC dates overlapping the selected Central
+  day, filter by America/Chicago, deduplicate identical games and reject conflicting IDs.
+  Malformed rows and either-date request failures cannot silently produce a partial slate.
+  This uses two requests per uncached complete day; caching and primary failure cooldown
+  remain intact, and first-request plan denial stops before requesting the second date.
+- Unified Basketball navigation with NBA/college links; existing URLs and Beta labels retained.
+- 729 automated tests passed. New cases exercise both DST transitions, year end, caching,
+  duplicates, missing half-day responses and mixed malformed/valid data.
+- Populated NBA/college pages at 1440 and 390 pixels: no JavaScript errors or page overflow;
+  scenario interaction and links between leagues passed.
+- Live public ESPN check via the revised adapter returned 10 October 30 games, including
+  five October 31 UTC tipoffs that belong to October 30 Central. This checks the public
+  adapter locally, not authenticated Railway pages or the paid API-NBA response.
+- Railway primary 2753e137-d9b5-4c26-b29d-e85d585ef802 and secondary
+  2dce1b6a-a3f4-4884-b11c-7b17d3260ad4 both reached SUCCESS on 97b4f8e.
