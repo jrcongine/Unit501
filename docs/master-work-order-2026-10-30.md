@@ -244,3 +244,20 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
 - 737 tests passed. Populated NBA record cards and basketball navigation checked at
   desktop/mobile sizes; no JavaScript errors or page overflow. College basketball and MLB
   record-card parity and authenticated production acceptance remain pending under 10/40/43.
+
+## College basketball freshness and season records — continuation
+
+- Player tables now re-evaluate history whenever rendered instead of retaining a calculation
+  made when props were loaded. Local timers withdraw projections/hit percentages when history
+  exceeds 30 minutes or a loaded availability report exceeds 15 minutes, while fresh quotes
+  remain visible. Expired deadlines are not rescheduled in a tight loop.
+- Reloading props refreshes an expired availability report. Invalid reports cannot become
+  accepted availability state. Successful refresh can restore an eligible estimate; failed
+  refresh cannot silently reuse stale availability. No background provider polling added.
+- College basketball matchup cards now expose provider-supplied overall records only, with
+  ambiguous, malformed and home/away-only records withheld. Cache source timestamps are
+  retained. Records expire locally and are hidden for started, historical or TBD games.
+- 741 local tests passed. Populated NBA/college screens and records passed 1440px/390px
+  interaction checks without JavaScript errors or page-level overflow.
+- College record-card parity is now implemented; MLB card parity, broad live feed acceptance,
+  independent model calibration and private production-screen checks still need work.

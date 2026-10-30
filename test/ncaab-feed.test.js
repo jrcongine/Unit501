@@ -40,3 +40,14 @@ test('unverified completed college games remain visible as history gaps',()=>{
  const r=summarize([good,bad],'1',selected,Date.parse('2026-11-03T20:00:00Z'));
  assert.equal(r.games,1);assert.equal(r.unverifiedGames,1);
 });
+
+test('college slate records use only an unambiguous overall record and retain cache timestamps',async()=>{
+ const e=event(1,'2026-11-04T01:00:00Z',{status:'Scheduled'}),rows=e.competitions[0].competitors;
+ rows[0].records=[{name:'overall',type:'total',summary:'4-1'},{name:'Home',type:'home',summary:'2-0'}];rows[1].records=[{name:'overall',type:'total',summary:'3-2'}];
+ assert.equal(convert(e).awayRecord,'4-1');assert.equal(convert(e).homeRecord,'3-2');
+ for(const records of [[{name:'Home',type:'home',summary:'2-0'}],[{name:'overall',type:'total',summary:'4-1'},{name:'overall',type:'total',summary:'3-1'}],[{name:'overall',type:'home',summary:'2-0'}],[{name:'overall',type:'total',summary:'unknown'}]]){
+  const bad=structuredClone(e);bad.competitions[0].competitors[0].records=records;assert.equal(convert(bad).awayRecord,null);
+ }
+ let clock=1000;const feed=createNCAAB({now:()=>clock,fetcher:async()=>({ok:true,json:async()=>({leagues:[{slug:'mens-college-basketball'}],events:[e]})})});
+ assert.equal((await feed.games('2026-11-03')).checkedAt,1000);clock=2000;assert.equal((await feed.games('2026-11-03')).checkedAt,1000);
+});

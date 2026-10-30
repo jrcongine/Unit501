@@ -1,16 +1,16 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function setup(quotes={}){
- const nodes=new Map(),requests=[];
+ const nodes=new Map(),requests=[],timers=[];let clock=Date.now();
  class E{constructor(){this.children=[];this.events={};this.value='';this._text='';this.classList={add(){},remove(){}};}set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join(' ');}append(...x){this.children.push(...x);}replaceChildren(...x){this._text='';this.children=x;}addEventListener(k,f){this.events[k]=f;}}
  const html=fs.readFileSync(require.resolve('../public/ncaab.html'),'utf8');for(const x of html.matchAll(/id="([^"]+)"/g))nodes.set(x[1],new E());
  const future=new Date(Date.now()+86400000).toISOString(),game={id:'10',awayId:'1',homeId:'2',away:'Away',home:'Home',tipoff:future,timeKnown:true,status:'Scheduled',stage:2,neutral:false};
  const rec={games:5,scored:80,allowed:70,wins:3,losses:2};const side=(id,name)=>({id,name,season:rec,recent5:rec,recent10:rec,recentGames:Array.from({length:5},(_,i)=>({id:String(i+1),tipoff:new Date(Date.now()-86400000*(i+1)).toISOString(),opponent:'Opponent',scored:80,allowed:70,venue:'home'}))});
  const data={gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
- const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date,Intl,URLSearchParams,AbortSignal,setTimeout:()=>0,clearTimeout(){}};context.window=context;
+ const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,...quotes}:data};};
  vm.createContext(context);for(const p of ['star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
- const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context};
+ const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
  const h=setup();h.nodes.get('ncaab-scope').value='season';await h.nodes.get('ncaab-load').events.click();assert.equal(h.nodes.get('ncaab-games').children.length,1);
@@ -62,7 +62,7 @@ test('college odds displays server error and old props cannot unlock a newer req
 
 test('college props sort by percentage, filter exact player, and suppress stale quotes',async()=>{
  const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
- const at=Date.now(),q=(name,market)=>({name,market,label:market,line:10.5,updatedAt:at});
+ const at=h.now(),q=(name,market)=>({name,market,label:market,line:10.5,updatedAt:at});
  const quotes=[q('A','player_assists'),q('B','player_points'),q('A','player_points'),{...q('Expired','player_points'),updatedAt:at-1800001}];
  h.context.Unit501NBAPlayerModel={withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',teams:[],props:String(url).includes('/props?')?quotes:[]})});
@@ -91,4 +91,36 @@ test('college history gap displays warning and withholds projection, simulation 
  assert.doesNotMatch(h.nodes.get('ncaab-teams').textContent,/full day\(s\) off/);
  assert.match(h.nodes.get('ncaab-prediction').textContent,/withheld/);
  h.nodes.get('ncaab-sim').events.click();assert.doesNotMatch(h.nodes.get('ncaab-simulation').textContent,/%/);
+});
+
+test('college player estimates expire with history even while quote remains fresh',async()=>{
+ const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ const checked=h.now()-1790000,quote={name:'Player A',market:'player_points',label:'Points',line:10.5,updatedAt:h.now()};
+ const history={gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:checked,teams:[{available:true,players:[{name:'Player A',results:[1,2].map(i=>({gameId:String(i),tipoff:new Date(h.now()-86400000*i).toISOString(),player_points:12}))}]},{available:true,players:[]}]};
+ h.context.fetch=async url=>({ok:true,json:async()=>String(url).includes('/props?')?{gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',props:[quote]}:history});
+ await h.nodes.get('ncaab-load-props').events.click();const board=h.nodes.get('ncaab-props');assert.match(board.textContent,/12.0/);assert.ok(h.timers.at(-1).delay<=10001);
+ h.advance(10002);h.timers.at(-1).fn();assert.match(board.textContent,/Verified history unavailable/);assert.doesNotMatch(board.textContent,/100.0%/);
+ assert.ok(h.timers.at(-1).delay>1000);assert.match(board.textContent,/10.5/);
+});
+
+test('college stale availability withdraws player estimates without extra requests',async()=>{
+ const h=setup(),original=h.context.fetch;let calls=0;
+ h.context.fetch=async url=>{calls++;if(String(url).includes('/injuries?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now()-890000,teams:[{team:'Away',players:[]},{team:'Home',players:[]}]})};return original(url);};
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ h.context.Unit501NBAPlayerModel.project=()=>({available:true,projection:12,median:12,recentValues:[12],above:2,below:0,equal:0,games:2});
+ h.context.fetch=async url=>{calls++;return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[],message:'Loaded',props:[{name:'Player A',market:'player_points',line:10.5,updatedAt:h.now()}]})};};
+ await h.nodes.get('ncaab-load-props').events.click();const before=calls;assert.match(h.nodes.get('ncaab-props').textContent,/12.0/);
+ h.advance(10002);h.timers.at(-1).fn();assert.match(h.nodes.get('ncaab-props').textContent,/Refresh availability/);assert.equal(calls,before);assert.ok(h.timers.at(-1).delay>1000);
+ const propsFetch=h.context.fetch;let refreshes=0;
+ h.context.fetch=async url=>{if(String(url).includes('/injuries?')){refreshes++;return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{team:'Away',players:[]},{team:'Home',players:[]}]})};}return propsFetch(url);};
+ await h.nodes.get('ncaab-load-props').events.click();assert.equal(refreshes,1);assert.match(h.nodes.get('ncaab-props').textContent,/12.0/);assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/Refresh availability/);
+});
+
+test('college cards show supplied overall records and expire them without fetching',async()=>{
+ const h=setup(),original=h.context.fetch;
+ h.game.awayRecord='4-1';h.game.homeRecord='3-2';
+ h.context.fetch=async url=>{const r=await original(url);if(!String(url).includes('/games?'))return r;return {ok:true,json:async()=>({...await r.json(),checkedAt:h.now()-3590000})};};
+ await h.nodes.get('ncaab-load').events.click();const card=h.nodes.get('ncaab-games').children[0];assert.match(card.textContent,/Season · Away 4-1 · Home 3-2/);const calls=h.requests.length;
+ h.advance(10002);h.timers.at(-1).fn();assert.doesNotMatch(card.textContent,/4-1/);assert.equal(h.requests.length,calls);
+ h.game.status='Final';await h.nodes.get('ncaab-load').events.click();assert.doesNotMatch(h.nodes.get('ncaab-games').textContent,/4-1/);
 });
