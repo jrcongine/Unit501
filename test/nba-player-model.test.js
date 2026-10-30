@@ -107,3 +107,29 @@ test('basketball minutes trend states the historical comparison sample and hides
  assert.equal(minuteChangeText({...r,available:false}),null);
  assert.equal(minuteChangeText(project(data(),q,game,null,now)),null);
 });
+
+test('NBA and college injury gates normalize accents, punctuation and unique missing suffixes',()=>{
+ const {injuryStatus}=require('../public/nba-player-model');
+ for(const official of [true,false]){
+  const report={gameId:game.id,tipoff:game.tipoff,reportAt:now,checkedAt:now,teams:[{available:true,players:[{name:'José O’Neal Jr.',status:'OUT'}]},{available:true,players:[]}]};
+  const quote={...q,name:'Jose ONeal'};
+  assert.equal(injuryStatus(report,quote,game,now,official),'Out');
+  assert.equal(project(data(),quote,game,injuryStatus(report,quote,game,now,official),now).reason,'OUT');
+  report.teams[0].players[0].status='Questionable';assert.equal(injuryStatus(report,quote,game,now,official),'Questionable');
+  report.teams[0].players.push({name:'Jose ONeal',status:'Active'});
+  assert.equal(injuryStatus(report,quote,game,now,official),'Unverified');
+  assert.equal(project(data(),q,game,'Unverified',now).available,false);
+ }
+});
+
+test('injury identity cannot cross suffix conflicts, stale reports or matchups',()=>{
+ const {injuryStatus}=require('../public/nba-player-model');
+ const report={gameId:game.id,tipoff:game.tipoff,reportAt:now,checkedAt:now,teams:[{available:true,players:[{name:'Jalen Smith Jr.',status:'Out'}]},{available:true,players:[]}]};
+ assert.equal(injuryStatus(report,{...q,name:'Jalen Smith III'},game,now),'Unverified');
+ assert.equal(injuryStatus(report,q,{...game,id:99},now),'Unverified');
+ assert.equal(injuryStatus({...report,reportAt:now-7200001},q,game,now),'Unverified');
+ assert.equal(injuryStatus({...report,checkedAt:now-900001},q,game,now,false),'Unverified');
+ report.teams[0].available=false;assert.equal(injuryStatus(report,q,game,now),'Unverified');
+ assert.equal(injuryStatus(null,q,game,now),null);
+ assert.equal(injuryStatus(report,{...q,name:'Different Player'},game,now),null);
+});

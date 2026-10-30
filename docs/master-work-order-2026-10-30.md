@@ -504,3 +504,10 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
 - Workload schedules reconcile duplicate/conflicting observations, and cached evidence retains its actual source timestamp instead of renewing on each read.
 - Regression coverage checks the real client simulation: a supported college LB absence adds 0.35 to the opponent projection, leaves its own score unchanged, and withdraws that change when the status becomes Questionable. This uses controlled fixtures, not private production evidence.
 - Baylor–UCF's actual production roster/workload matches still require authenticated observation. This batch does not establish that every listed absence has an estimated impact or calibrate those point assumptions. Master tasks remain partially covered.
+
+### Cross-sport injury identity follow-up — October 30
+
+- NFL and college football share accent normalization for official report/depth roster matching. Empty names, suffix conflicts, ambiguous candidates and absent provider identities still cannot establish a match.
+- NBA and college basketball now use one injury-status matcher for prop gating, handling accents, punctuation, case and unique omitted suffixes. Duplicate or conflicting identities withhold a projection instead of silently dropping an Out report. Stale or wrong-matchup report data cannot apply; an absent report still means unknown, not healthy.
+- Actual client-script regression cases verify formatted Out names suppress NBA and college basketball prop estimates. Existing NFL/college matching and all broader regression checks run together.
+- This does not fabricate roster records for the five missing Baylor/UCF players, prove the other four meet workload thresholds, or introduce basketball team-score injury weights. Those gaps remain pending. MLB currently has no injury-to-player-projection module in this repository; parity there requires implementing and validating that functionality, not claiming a shared helper alone completes it.

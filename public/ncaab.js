@@ -113,8 +113,7 @@
   const player=$('ncaab-prop-player').value,sort=$('ncaab-prop-sort').value,catalog=['player_points','player_rebounds','player_assists','player_threes'];
   const fresh=r=>Number.isFinite(r.q.updatedAt)&&r.q.updatedAt<=Date.now()+60000&&Date.now()-r.q.updatedAt<=1800000&&Date.parse(selected.tipoff)>Date.now();
   const rows=propRows.filter(r=>fresh(r)&&(!player||r.q.name===player)).map(r=>{
-   const names=(injuryData?.teams||[]).flatMap(t=>t.players||[]).filter(p=>String(p.name).toLowerCase()===r.q.name.toLowerCase());
-   const status=names.length===1&&/^out$/i.test(names[0].status)?'Out':null;
+   const status=window.Unit501NBAPlayerModel.injuryStatus(injuryData,r.q,selected,Date.now(),false);
    const staleInjuries=injuryData&&(!Number.isFinite(injuryData.checkedAt)||injuryData.checkedAt>Date.now()+60000||Date.now()-injuryData.checkedAt>900000);
    const prediction=staleInjuries?{available:false,reason:'Refresh availability'}:window.Unit501NBAPlayerModel.project(r.history,r.q,selected,status,Date.now(),{regulationMinutes:40});
    return {...r,p:window.Unit501NBAPlayerModel.withScenario?.(prediction,playerScenarios.get(r.q.name))||prediction};

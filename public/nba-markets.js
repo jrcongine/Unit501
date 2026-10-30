@@ -42,9 +42,7 @@
   const query=search.value.trim().toLowerCase();
   const source=(props.props||[]).filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
-   const matching=injuries&&Number.isFinite(injuries.reportAt)&&injuries.reportAt<=Date.now()+60000&&Date.now()-injuries.reportAt<=7200000?
-    injuries.teams.filter(t=>t.available).flatMap(t=>t.players).filter(player=>normalizedName(player.name)===normalizedName(p.name)):[];
-   const status=matching.length===1?matching[0].status:null;
+   const status=root.Unit501NBAPlayerModel.injuryStatus(injuries,p,selected,Date.now());
    const name=normalizedName(p.name),splits=root.Unit501NBARotationContext?.compare(history,p,injuries,selected,Date.now())||[];
    const scenario=injuryScenarios.get(name);
    if(scenario&&status==='Out')injuryScenarios.delete(name);

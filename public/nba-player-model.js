@@ -1,10 +1,30 @@
 (function(root){
  'use strict';
  const key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ // Name formatting may vary across report and sportsbook feeds. A missing suffix
+ // is compatible only when the entire report contains one candidate; collisions
+ // and conflicting statuses must never silently become an uninjured projection.
+ const nameParts=value=>{const name=String(value||'').trim(),suffix=/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i.exec(name);return {base:key(suffix?name.slice(0,suffix.index):name),suffix:suffix?key(suffix[1]):''};};
+ function injuryStatus(report,quote,game,now=Date.now(),official=true){
+  if(!report)return null;
+  const stamp=official?report.reportAt:report.checkedAt,age=official?7200000:900000;
+  if(!game||String(report.gameId)!==String(game.id)||report.tipoff!==game.tipoff||!Number.isFinite(stamp)||stamp>now+60000||now-stamp>age||
+   !Array.isArray(report.teams)||report.teams.length!==2||report.teams.some(t=>!Array.isArray(t.players)))return 'Unverified';
+  const wanted=nameParts(quote?.name);if(!wanted.base)return 'Unverified';
+  const matches=report.teams.flatMap(t=>t.players.map(p=>({...p,teamAvailable:official?t.available===true:t.available!==false}))).filter(p=>nameParts(p.name).base===wanted.base);
+  if(!matches.length)return null; // Absence from an injury list is not confirmed health.
+  if(matches.length!==1)return 'Unverified';
+  const p=matches[0],found=nameParts(p.name);
+  if(wanted.suffix&&found.suffix&&wanted.suffix!==found.suffix)return 'Unverified';
+  if(!p.teamAvailable)return 'Unverified';
+  const status=String(p.status||'').trim();
+  return /^out$/i.test(status)?'Out':status||'Unverified';
+ }
  const markets=new Set(['player_points','player_rebounds','player_assists','player_threes']);
  function project(history,quote,game,status,now=Date.now(),options={}){
   const regulationMinutes=options.regulationMinutes??48;
   if(![40,48].includes(regulationMinutes))return {available:false,reason:'Unsupported regulation minutes'};
+  if(status==='Unverified')return {available:false,reason:'Player injury match unverified'};
   if(status==='Out')return {available:false,reason:'OUT'};
   if(!history)return {available:false,reason:'Player history unavailable'};
   if(!game||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||
@@ -67,5 +87,5 @@
   if(!change||![change.recent,change.previous].every(Number.isFinite))return null;
   return 'Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1)+' · last '+change.recentGames+' vs earlier '+change.previousGames+' games';
  }
- const api={project,withScenario,minuteChangeText};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
+ const api={project,withScenario,minuteChangeText,injuryStatus};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
 })(typeof window!=='undefined'?window:globalThis);

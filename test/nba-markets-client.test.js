@@ -218,8 +218,8 @@ test('NBA absence scenario expires locally and cannot be reapplied from an old c
  assert.deepEqual(h.inputs().map(n=>n.value),[40,40]);
  h.advance(10001);h.timers.at(-1)();
  assert.doesNotMatch(h.board.textContent,/minutes scenario|Try 40/);
- assert.deepEqual(h.inputs().map(n=>n.value),['','']);
- assert.match(h.board.textContent,/Points 20\.5.*?15\.8Projection/);
+ assert.deepEqual(h.inputs().map(n=>n.value),[]);
+ assert.match(h.board.textContent,/Player injury match unverified/);
  oldButton.events.click();assert.doesNotMatch(h.board.textContent,/minutes scenario/);
  // A refreshed report must not silently restore an expired selection.
  h.report.reportAt+=10001;h.context.Unit501NBAMarkets.setInjuries(h.game,h.report);
@@ -330,4 +330,14 @@ test('NBA manual scenarios update a player across markets and reset on game sele
  selects()[0].value='dud';selects()[0].events.change();
  await h.select();await h.nodes.get('nba-load-props').events.click();
  assert.ok(selects().every(n=>n.value==='off'));
+});
+
+test('NBA prop display carries suffix-formatted Out and conflicting identities into projection gating',async()=>{
+ const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();
+ const report={gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[{available:true,players:[{name:'Player A Jr.',status:'OUT'}]},{available:true,players:[]}]};
+ h.context.Unit501NBAMarkets.setInjuries(h.game,report);
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT/);
+ report.teams[1].players.push({name:'Player A',status:'Active'});
+ h.context.Unit501NBAMarkets.setInjuries(h.game,report);
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/Player injury match unverified/);
 });

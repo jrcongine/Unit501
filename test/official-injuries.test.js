@@ -91,3 +91,15 @@ test('suffix matching permits equivalent offensive line labels but preserves ide
   assert.equal(matchPlayer({...row,name:'Player One III'},[p],'16'),null);
  }
 });
+
+test('shared football name matching handles accents without inventing identities or resolving collisions',()=>{
+ const {matchPlayer}=require('../player-name-match');
+ for(const league of ['1','2']){
+  const row={name:'José O’Neal Jr.',position:'WR'},p={id:'8',name:'Jose ONeal',position:'WR'};
+  assert.equal(matchPlayer(row,[p],'1',{league,season:'2026'}),p);
+  assert.equal(matchPlayer(row,[p,{...p,id:'9',name:'José ONeal'}],'1',{league}),null);
+  assert.equal(matchPlayer(row,[{...p,name:'Jose ONeal III'}],'1',{league}),null);
+  assert.equal(matchPlayer(row,[],'1',{league}),null);
+  assert.equal(matchPlayer({name:'',position:'WR'},[{id:'8',name:'',position:'WR'}],'1',{league}),null);
+ }
+});

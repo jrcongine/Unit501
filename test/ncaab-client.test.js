@@ -64,7 +64,7 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
  const at=h.now(),q=(name,market)=>({name,market,label:market,line:10.5,updatedAt:at});
  const quotes=[q('A','player_assists'),q('B','player_points'),q('A','player_points'),{...q('Expired','player_points'),updatedAt:at-1800001}];
- h.context.Unit501NBAPlayerModel={withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
+ h.context.Unit501NBAPlayerModel={injuryStatus:h.context.Unit501NBAPlayerModel.injuryStatus,withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',teams:[],props:String(url).includes('/props?')?quotes:[]})});
  await h.nodes.get('ncaab-load-props').events.click();
  const board=h.nodes.get('ncaab-props'),sort=h.nodes.get('ncaab-prop-sort');sort.value='most';sort.events.change();
@@ -228,4 +228,22 @@ test('college history refresh rejects older in-flight responses',async()=>{
  pending[1]({ok:true,json:async()=>({...h.data,source:'Newest'})});await second;
  pending[0]({ok:true,json:async()=>({...h.data,source:'Old'})});await first;
  assert.match(h.nodes.get('ncaab-context-status').textContent,/Newest/);
+});
+
+test('college prop display suppresses a formatted Out name and rejects a foreign-game injury report',async()=>{
+ const h=setup(),base=h.context.fetch;
+ let report={gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{team:'Away',players:[{name:'José O’Neal Jr.',status:'Out'}]},{team:'Home',players:[]}]};
+ h.context.fetch=async url=>{
+  if(String(url).includes('/injuries?'))return {ok:true,json:async()=>report};
+  if(String(url).includes('/props?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',props:[{name:'Jose ONeal',market:'player_points',label:'Points',line:10.5,updatedAt:h.now()}]})};
+  if(String(url).includes('/player-history?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[]})};
+  return base(url);
+ };
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ await h.nodes.get('ncaab-load-props').events.click();
+ assert.match(h.nodes.get('ncaab-props').textContent,/OUT/);
+ report={...report,gameId:'999'};
+ await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();await h.nodes.get('ncaab-load-props').events.click();
+ assert.match(h.nodes.get('ncaab-injury-status').textContent,/Injury report unavailable/);
+ assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/OUT/);
 });
