@@ -230,3 +230,17 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   This is a data-integrity safeguard, not evidence of improved calibrated accuracy.
   Tasks 70/80/81/94 remain pending for independent model/backtest validation; private
   production feed/screen acceptance remains unverified.
+
+## Current season records on matchup cards — continuation
+
+- NFL, college football and NBA slate cards now show available current season records
+  from the existing standings request. Exact unique names and matching league/season
+  are required; unrelated provider team IDs are never matched numerically.
+- NBA explicitly converts the schedule's start-year season to standings' end-year season.
+  Historical dates, missing source timestamps, timestamps over an hour old or in the future,
+  ambiguous team matches and failed refreshes withhold the record. A local timer clears
+  stale card records without fetching providers. No new paid requests are introduced.
+- Football selected-team record headings now apply the same freshness/date safeguard.
+- 737 tests passed. Populated NBA record cards and basketball navigation checked at
+  desktop/mobile sizes; no JavaScript errors or page overflow. College basketball and MLB
+  record-card parity and authenticated production acceptance remain pending under 10/40/43.

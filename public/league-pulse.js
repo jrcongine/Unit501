@@ -161,6 +161,7 @@
   status.textContent='Loading '+names[league]+' power index and league headlines…';
   power.replaceChildren();news.replaceChildren();
   snapshots.delete(league);
+  window.Unit501SharedUI?.updateGameRecords(null,league);
   renderMatchup();
   try{
    const response=await fetch('/api/league-pulse?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(30000)});
@@ -168,6 +169,7 @@
    if(key!==sequence)return;
    if(!response.ok||data.error)throw Error(data.error||'League updates are unavailable.');
    snapshots.set(league,data);
+   window.Unit501SharedUI?.updateGameRecords(data,league);
    renderBoard(data);renderNews(data);renderMatchup();
    status.textContent=names[league]+' · updated '+
     new Date(data.checkedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+
@@ -197,5 +199,6 @@
  document.addEventListener('unit501:nba-clear',()=>{
   activeGame=null;if(matchup)matchup.replaceChildren();
  });
+ setInterval(()=>window.Unit501SharedUI?.updateGameRecords(),60000);
  window.Unit501LeaguePulse={show:load};
 })();

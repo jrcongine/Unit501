@@ -31,3 +31,15 @@ test('legitimate NFL ties remain visible and names normalize punctuation/spacing
  assert.equal(seasonStanding(current,'nfl',2026,'New York Giants').record,'4-2-1');
  assert.equal(seasonStanding(current,'nfl',2026,'green bay packers').record,'4-3');
 });
+
+test('current standings withhold historical, stale, future-dated and wrong-season records',()=>{
+ const {currentStanding}=require('../public/unit501-shared-ui');
+ const now=Date.parse('2026-10-30T20:00Z');const report={...current,power:{...current.power,asOf:'2026-10-30T19:30Z'}};
+ const get=(r=report,date='2026-10-30',season=2026)=>currentStanding(r,'nfl',season,'Carolina Panthers',date,now);
+ assert.equal(get().record,'3-3');assert.equal(get(report,'2026-10-31').record,'3-3');
+ assert.equal(get(report,'2026-10-29'),null);assert.equal(get(report,'2026-10-30',2025),null);
+ for(const asOf of [null,undefined,'bad','2026-10-30T18:00Z','2026-10-30T20:02Z'])assert.equal(get({...report,power:{...report.power,asOf}}),null);
+ const nba={league:'nba',season:2027,power:{available:true,asOf:report.power.asOf,teams:[{name:'Chicago Bulls',record:'4-1'}]}};
+ assert.equal(currentStanding(nba,'nba',2027,'Chicago Bulls','2026-10-30',now).record,'4-1');
+ assert.equal(currentStanding(nba,'nba',2026,'Chicago Bulls','2026-10-30',now),null);
+});

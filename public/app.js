@@ -568,9 +568,9 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
     fetch('/api/league-pulse?league='+pulseLeague,{signal:AbortSignal.timeout(12000)})
       .then(r=>r.ok?r.json():null).then(result=>{
         if(selected!==game||!heading.isConnected)return;
-        const standing=window.Unit501SharedUI.seasonStanding(result,pulseLeague,game.season,name);
+        const standing=window.Unit501SharedUI.currentStanding(result,pulseLeague,game.season,name,window.Unit501SharedUI.dateCentral(new Date(game.kickoff)));
         if(standing){
-          seasonRecord.textContent=' · Season '+standing.record;
+          seasonRecord.textContent=' · Current season '+standing.record;
           seasonRecord.title=game.season+' season wins–losses'+(pulseLeague==='nfl'?'–ties':'')+' · ESPN standings, not last five';
         }
       }).catch(()=>{});
@@ -877,7 +877,7 @@ async function load() {
       const detailText=`${game.time} | ${game.status}`+
         (hasScore ? ` | ${game.a} ${game.awayScore} - ${game.h} ${game.homeScore}` : '');
       const card=window.Unit501SharedUI.gameCard({
-        away:game.a,home:game.h,detailText,container:games,
+        away:game.a,home:game.h,detailText,container:games,seasonRecord:{league:league==='1'?'nfl':'ncaaf',season:game.season,date},
         onSelect:()=>choose(game)
       });
       games.appendChild(card);

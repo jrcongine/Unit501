@@ -73,3 +73,15 @@ test('all game cards have white matchup bars with contrasting dark text and clea
  assert.match(css,/\.game \.open-game\{[^}]*background:#14374a/);
  assert.match(nbaCss,/\.nba-game \.open-game\{[^}]*top:auto;bottom:12px/);
 });
+
+test('game-card records require exact identities and disappear on expiry or failed refresh',()=>{
+ const {doc,container}=dom(),now=Date.parse('2026-10-30T20:00Z');
+ const card=shared.gameCard({doc,container,away:'Chicago Bulls',home:'Boston Celtics',onSelect(){},seasonRecord:{league:'nba',season:2027,date:'2026-10-30'}});
+ container.append(card);const record=card.children[3];
+ const report={league:'nba',season:2027,power:{available:true,asOf:new Date(now).toISOString(),teams:[{id:1,name:'Chicago Bulls',record:'4-1'},{id:2,name:'Boston Celtics',record:'2-2'}]}};
+ shared.updateGameRecords(report,'nba',now);assert.match(record.textContent,/Chicago Bulls 4-1.*Boston Celtics 2-2/);assert.equal(record.hidden,false);
+ shared.updateGameRecords(undefined,undefined,now+3600001);assert.equal(record.hidden,true);assert.equal(record.textContent,'');
+ shared.updateGameRecords(report,'nba',now);shared.updateGameRecords(null,'nba',now);assert.equal(record.hidden,true);
+ const ambiguous=structuredClone(report);ambiguous.power.teams.push({name:'Chicago Bulls',record:'0-0'});
+ shared.updateGameRecords(ambiguous,'nba',now);assert.match(record.textContent,/Chicago Bulls unavailable/);
+});

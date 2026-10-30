@@ -34,6 +34,23 @@
    return /^\d+-\d+(?:-\d+)?$/.test(String(standing.record||''))?standing:null;
  }
 
+ const recordCards=new Set(),recordReports=new Map();
+ function currentStanding(report,league,season,name,date,now=Date.now()){
+   const at=Date.parse(report?.power?.asOf);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date))||date<dateCentral(new Date(now))||!Number.isFinite(at)||at>now+60000||now-at>3600000)return null;
+   return seasonStanding(report,league,season,name);
+ }
+ function updateGameRecords(report,league=report?.league,now=Date.now()){
+   if(league)recordReports.set(league,report);
+   for(const entry of recordCards){
+     if(entry.card.isConnected===false){recordCards.delete(entry);continue;}
+     const {scope,away,home,node}=entry,data=recordReports.get(scope.league);
+     const a=currentStanding(data,scope.league,scope.season,away,scope.date,now),h=currentStanding(data,scope.league,scope.season,home,scope.date,now);
+     node.textContent=a||h?'Current season · '+away+' '+(a?.record||'unavailable')+' · '+home+' '+(h?.record||'unavailable'):'';
+     node.hidden=!(a||h);
+     node.title=a||h?'ESPN standings · '+scope.season+' season · checked '+timeCentral(data.power.asOf):'';
+   }
+ }
  function selection(container,current,classname='game'){
    for(const other of container.querySelectorAll('.'+classname)){
      other.classList.remove('selected');
@@ -42,7 +59,7 @@
    current.classList.add('selected');
    current.setAttribute('aria-pressed','true');
  }
- function gameCard({away,home,detailText,actionLabel='Open Game Lab →',onSelect,container,doc=(typeof document!=='undefined'?document:null),cardClass='card game'}){
+ function gameCard({away,home,detailText,seasonRecord=null,actionLabel='Open Game Lab →',onSelect,container,doc=(typeof document!=='undefined'?document:null),cardClass='card game'}){
    if(!doc||!container||typeof onSelect!=='function')throw Error('Game card requires document, container and selection callback');
    const card=doc.createElement('div');
    card.className=cardClass;
@@ -51,6 +68,10 @@
    const action=doc.createElement('span');action.className='open-game';action.textContent=actionLabel;
    action.setAttribute('aria-hidden','true');
    card.append(title,details,action);
+   if(seasonRecord){
+     const node=doc.createElement('small');node.className='game-records';node.hidden=true;card.append(node);
+     recordCards.add({card,node,scope:seasonRecord,away,home});
+   }
    card.setAttribute('role','button');
    card.setAttribute('tabindex','0');
    card.setAttribute('aria-pressed','false');
@@ -66,5 +87,5 @@
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
    return {winner,underdog,upset:!!underdog&&winner===underdog};
  }
- return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,seasonStanding});
+ return Object.freeze({dateCentral,timeCentral,matchup,gameCard,selection,upsetOutlook,seasonStanding,currentStanding,updateGameRecords});
 });

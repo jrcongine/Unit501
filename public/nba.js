@@ -233,7 +233,7 @@ function choose(game){
     const score=game.awayScore!==null&&game.homeScore!==null?
       ' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'';
     const card=shared.gameCard({
-      away:game.away,home:game.home,container:games,
+      away:game.away,home:game.home,container:games,seasonRecord:{league:'nba',season:Number(data.season)+1,date},
       detailText:shared.timeCentral(game.tipoff)+' | '+game.status+score,
       actionLabel:'Open NBA Game Lab →',cardClass:'card game nba-game',
       onSelect:()=>choose(game)

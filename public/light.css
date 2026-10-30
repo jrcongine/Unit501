@@ -116,3 +116,5 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .basketball-leagues{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .basketball-leagues a{padding:10px 18px;border:1px solid #b6c1ce;border-radius:9px;background:#fff;font-weight:750;text-decoration:none}
 .basketball-leagues a[aria-current="page"]{background:#e8e0f1;border-color:#7953ad;color:#573678}
+
+.game-records{display:block;margin:8px 0;color:#344b61;font-size:13px;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
