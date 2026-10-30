@@ -97,3 +97,22 @@ test('unverified minutes stay missing until official participation and statistic
   assert.equal(p.available,mode==='verified');assert.equal(p.coverage.played,mode==='verified'?2:1);assert.equal(p.coverage.missing,mode==='verified'?0:1);assert.equal(p.coverage.dnp,0);assert.equal(p.unverified.length,mode==='verified'?0:1);
  }
 });
+
+test('known team-history gaps cannot become apparently complete NBA player samples',async()=>{
+ for(const field of ['unverifiedGames','invalid','conflictingGames']){
+  const f=feeds(),read=f.publicFeed.context;
+  f.publicFeed.context=async()=>{const d=await read();d.away.coverage[field]=1;return d;};
+  const report=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
+  assert.equal(report.teams[0].available,false);assert.equal(report.teams[0].games,0);assert.deepEqual(report.teams[0].players,[]);
+  assert.equal(report.teams[1].available,true);assert.ok(report.teams[1].players.some(p=>p.name==='Player B'));
+  assert.equal(f.getCalls(),2,'Only the intact opposing team needs box-score requests');
+ }
+});
+test('NBA player histories recover after source gaps clear without caching a partial sample',async()=>{
+ const f=feeds(),read=f.publicFeed.context;let gap=true;
+ f.publicFeed.context=async()=>{const d=await read();for(const side of [d.away,d.home])side.coverage.unverifiedGames=gap?1:0;return d;};
+ const get=createPlayerHistory({...f,now:()=>now});
+ const blocked=await get(selected,'2026-10-26',2026);assert.ok(blocked.teams.every(t=>!t.available));assert.equal(f.getCalls(),0);
+ gap=false;const recovered=await get(selected,'2026-10-26',2026);assert.ok(recovered.teams.every(t=>t.available));assert.equal(f.getCalls(),4);
+ assert.equal(recovered.teams[0].players.find(p=>p.name==='Player A').results[0].player_rebounds,0);
+});

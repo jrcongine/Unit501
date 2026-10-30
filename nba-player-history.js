@@ -106,7 +106,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
   const slate=await publicFeed.games(date),matches=slate.games.filter(g=>g.statusCode===1&&teamCode(g.away)===teamCode(selected.away)&&teamCode(g.home)===teamCode(selected.home)&&teamCode(g.away)&&teamCode(g.home)&&Math.abs(Date.parse(g.tipoff)-Date.parse(selected.tipoff))<=15*60000&&g.stage===selected.stage);
   if(matches.length!==1||slate.season!==season)throw Error('Public NBA matchup could not be verified');
   const match=matches[0],context=await publicFeed.context(match,season);
-  const sides=[context.away,context.home],historical=sides.map(s=>s?.available&&s.coverage?.conflictingGames===0&&Array.isArray(s.recentGames)?s.recentGames.slice(0,10):[]);
+  const sides=[context.away,context.home],historical=sides.map(s=>s?.available&&s.coverage?.conflictingGames===0&&!(s.coverage.unverifiedGames>0)&&!(s.coverage.invalid>0)&&Array.isArray(s.recentGames)?s.recentGames.slice(0,10):[]);
   const jobs=new Map();for(const games of historical)for(const g of games)jobs.set(String(g.id),g.id);
   // Bound public-source concurrency for each matchup; all viewers share cached games.
   const ids=[...jobs.values()],results=new Map();let next=0;

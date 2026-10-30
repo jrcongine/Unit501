@@ -18,3 +18,14 @@ test('college basketball distinguishes actual zeros, DNP and unverified particip
  const rounded=copy();rounded.boxscore.players[0].statistics[0].athletes[0].stats[0]='0';assert.equal(extract(rounded,game,'1')[0].available,false);
  const duplicate=copy();duplicate.boxscore.players[0].statistics[0].athletes.push(structuredClone(duplicate.boxscore.players[0].statistics[0].athletes[0]));assert.throws(()=>extract(duplicate,game,'1'),/identity/);
 });
+
+test('college player history skips box-score requests for known incomplete team histories',async()=>{
+ const {createPlayers}=require('../ncaab-players');
+ for(const field of ['conflicts','unverifiedGames']){
+  let calls=0;
+  const bad={id:'1',name:'Away',recentGames:[{id:'bad-box'}],[field]:1};
+  const feed={context:async()=>({away:bad,home:{id:'2',name:'Home',recentGames:[],conflicts:0,unverifiedGames:0}})};
+  const get=createPlayers({feed,fetcher:async()=>{calls++;throw Error('Must not fetch unverifiable history');}});
+  const report=await get.history(game);assert.equal(calls,0);assert.equal(report.teams[0].available,false);assert.deepEqual(report.teams[0].players,[]);
+ }
+});

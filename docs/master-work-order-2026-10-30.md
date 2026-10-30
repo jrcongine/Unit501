@@ -459,3 +459,20 @@ without page overflow or JavaScript errors at both sizes. Tables retain internal
   of complete paid-provider coverage. Task 10 gains additional validation coverage.
 - Preserved concurrent weather commit b718bf8734e2ad1eff70e6d742d67c34135f6623, verified
   deployed on primary Railway before this batch. No layout or model weights changed.
+
+## Player samples inherit team-history gaps — continuation
+
+- NBA player-history collection now checks known unverified and malformed team-history
+  counts as well as conflicting games before selecting box scores. Previously, filtered
+  team results could leave a shorter player sample looking complete. An affected team now
+  returns unavailable with no player results; the intact opponent remains usable.
+- College basketball already withheld these samples. It now also skips unnecessary
+  box-score/official-source requests for the blocked teams, matching NBA behavior.
+- 791 automated tests passed. New cases cover each known NBA gap type, isolation of the
+  intact opponent, zero requests when both teams are blocked, recovery when source gaps
+  clear, preservation of real zero statistics, and college request suppression.
+- Tasks 1/7/8/11/53/93 gain additional protection. This does not certify that all historical
+  games have been returned by upstream providers; unknown source coverage remains unknown.
+  No model weight, theme, or weather change. Prior commit a0e5eac is verified live on primary.
+- Preserved concurrent compact FanDuel-header commit fd09cad and re-ran all 791 tests
+  successfully against the combined version before publication.
