@@ -56,3 +56,10 @@ test('basketball histories with missing games or market values are partial, incl
  p.coverage.missing=0;p.results[0].player_assists=null;observe();assert.equal(row(h,sport+':player-history').status,'partial');
  }
 });
+test('official football participation distinguishes unsupported coverage from verified response',()=>{
+ const h=createHealth(),u=new URL('http://local/api/football/participation?league=1');
+ h.observe(u,200,{response:[{available:false}]});
+ assert.equal(h.snapshot().feeds.find(r=>r.id==='nfl:participation').status,'unavailable');
+ h.observe(u,200,{response:[{available:true,checkedAt:Date.now()}]});
+ assert.equal(h.snapshot().feeds.find(r=>r.id==='nfl:participation').status,'working');
+});

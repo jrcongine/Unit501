@@ -116,6 +116,8 @@ async function providerAPI(endpoint) {
 
 }
 
+const footballGamebooks=require('./football-gamebook').createGamebooks({api});
+
 const server = http.createServer(async (req, res) => {
   if(!require('./private-access').allowRequest(req,res))return;
 
@@ -123,6 +125,11 @@ const server = http.createServer(async (req, res) => {
 
     const u = new URL(req.url, 'http://localhost');
     res.healthURL=u;
+    if(u.pathname==='/api/football/participation'){
+      const q=Object.fromEntries(['game','league','season','date'].map(k=>[k,u.searchParams.get(k)||'']));
+      if(!/^\d{1,12}$/.test(q.game)||!['1','2'].includes(q.league)||!/^20\d{2}$/.test(q.season)||!/^20\d{2}-\d{2}-\d{2}$/.test(q.date))return send(res,400,{error:'Valid historical game, league, season and date required'});
+      return send(res,200,{response:[await footballGamebooks(q)]});
+    }
     if(u.pathname==='/api/data-health')return send(res,200,{...dataHealth.snapshot(),footballUsage:footballMeter.snapshot(),lineHistory:trackedOdds.status()});
     if(u.pathname==='/api/line-history/status')return send(res,200,trackedOdds.status());
     if(u.pathname==='/api/league-pulse'){

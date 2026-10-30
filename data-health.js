@@ -1,12 +1,12 @@
 'use strict';
 // Passive request telemetry. Never fetches providers or retains URLs/payloads.
 const SPORTS={nfl:'NFL',ncaaf:'College football',nba:'NBA',ncaab:'College basketball'};
-const KINDS={games:'Schedule',odds:'FanDuel lines',props:'FanDuel props',injuries:'Availability',context:'Team history','player-history':'Player history'};
+const KINDS={games:'Schedule',odds:'FanDuel lines',props:'FanDuel props',injuries:'Availability',context:'Team history','player-history':'Player history',participation:'Official participation'};
 const SOURCES={covers:'Covers',wagertalk:'WagerTalk',boyds:'Boyd’s Bets',pickswise:'Pickswise'};
 function route(url){
  const p=url.pathname,q=url.searchParams;
  const sport=q.get('league')==='1'?'nfl':q.get('league')==='2'?'ncaaf':null;
- const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/availability':'injuries'};
+ const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/availability':'injuries','/api/football/participation':'participation'};
  if(football[p]&&sport)return sport+':'+football[p];
  const match=p.match(/^\/api\/(nba|ncaab)\/(games|odds|props|injuries|context|player-history)$/);
  if(match)return match[1]+':'+match[2];
@@ -33,6 +33,7 @@ function assessment(data,kind,now){
  collect(data);
  const at=times.length?Math.min(...times):null;
  let status='working';
+ if(kind==='participation'&&(!Array.isArray(data.response)||data.response.length!==1||data.response[0].available!==true))status='unavailable';
  if(data.available===false||data.current===false)status='unavailable';
  if(data.available!==false && (kind==='props'&&Array.isArray(data.props)&&!data.props.length||kind==='games'&&Array.isArray(data.games)&&!data.games.length||Array.isArray(data.response)&&!data.response.length))status='empty';
  if(kind==='injuries'){
@@ -48,6 +49,7 @@ function createHealth({now=Date.now}={}){
  const add=(id,label,ttl)=>rows.set(id,{id,label,ttl,status:'unchecked',lastResponseAt:null,lastSuccessAt:null,sourceAt:null});
  for(const [sport,label] of Object.entries(SPORTS))for(const [kind,name] of Object.entries(KINDS)){
   if(['nfl','ncaaf'].includes(sport)&&['context','player-history'].includes(kind))continue;
+  if(['nba','ncaab'].includes(sport)&&kind==='participation')continue;
   add(sport+':'+kind,label+' · '+name,['games','odds','props'].includes(kind)?30*60000:60*60000);
  }
  add('weather','Weather · Open-Meteo',30*60000);

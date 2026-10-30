@@ -5,10 +5,11 @@
   function validate(history,key){
     const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>a.gameDate-b.gameDate);
     const counts=new Map();games.forEach(g=>counts.set(g.gameDate,(counts.get(g.gameDate)||0)+1));
-    const records=[];let missingActual=0,insufficient=0,withheld=0,ambiguous=0;
+    const records=[];let missingActual=0,insufficient=0,withheld=0,ambiguous=0,dnp=0;
     const valid=g=>Number.isFinite(g[key])&&(key.endsWith('Yds')||g[key]>=0);
     for(const target of games){
       if(counts.get(target.gameDate)>1){ambiguous++;continue;}
+      if(form.isDNP(target)){dnp++;continue;}
       if(!valid(target)){missingActual++;continue;}
       // Dates are kickoff seconds. A full day buffer avoids overlapping-game results.
       const cutoff=target.gameDate-86400;
@@ -20,7 +21,7 @@
     }
     const n=records.length;
     const avg=fn=>n?records.reduce((sum,r)=>sum+fn(r),0)/n:null;
-    return {records,count:n,missingActual,insufficient,withheld,ambiguous,
+    return {records,count:n,missingActual,insufficient,withheld,ambiguous,dnp,
       mae:avg(r=>Math.abs(r.prediction-r.actual)),bias:avg(r=>r.prediction-r.actual),
       meanMAE:avg(r=>Math.abs(r.meanPrediction-r.actual))};
   }

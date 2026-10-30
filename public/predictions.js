@@ -824,13 +824,14 @@ results.appendChild(workload);
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recorded season games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
       card.append(heading, context);
+      if(model.form.coverage.dnp){const note=document.createElement('p');note.textContent=`${model.form.coverage.dnp} verified DNP game(s) excluded from averages, medians and Above/Below percentages; ${model.form.coverage.teamGames} completed team games checked.`;card.append(note);}
       const audit=Unit501PlayerBacktest.validate(history,def.key);
       const historical=document.createElement('p');
       historical.style.cssText='margin:8px 0;opacity:.82';
       historical.textContent=audit.count
         ? `Historical baseline check: ${audit.count} replayed games${audit.count<30?' — limited evidence':''}. Average absolute miss ${audit.mae.toFixed(1)}; bias ${audit.bias>=0?'+':''}${audit.bias.toFixed(1)} (positive means too high). Earlier-game mean miss ${audit.meanMAE.toFixed(1)}.`
         : 'Historical baseline check: not enough eligible earlier games to measure error.';
-      historical.textContent+=` Skipped: ${audit.insufficient} insufficient history, ${audit.withheld} withheld, ${audit.missingActual} missing actual stats, ${audit.ambiguous} ambiguous dates. Uses only games starting more than 24 hours earlier. Recorded appearances only; missing stats are not zeros. Excludes matchup, injury and lineup adjustments; no historical betting lines or profit measurement.`;
+      historical.textContent+=` Skipped: ${audit.dnp} verified DNP, ${audit.insufficient} insufficient history, ${audit.withheld} withheld, ${audit.missingActual} missing actual stats, ${audit.ambiguous} ambiguous dates. Uses only games starting more than 24 hours earlier. Recorded appearances only; missing stats are not zeros. Excludes matchup, injury and lineup adjustments; no historical betting lines or profit measurement.`;
       card.append(historical);
       const band=Unit501PlayerBacktest.range(history,def.key,selected?.kickoff/1000);
       const uncertainty=document.createElement('p');
@@ -983,6 +984,17 @@ if (league === '1' && stage !== 'regular season') return false;
       }
       completeCalendar(map,past);
       Unit501PlayerStats.applyReviewedHistory(map,past,{league,season});
+      let reconciled=0;
+      for(const [id,g] of past){
+        if(task!==sequence)return;
+        const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000));
+        try{
+          const reports=await json(`/api/football/participation?game=${id}&league=${league}&season=${season}&date=${day}`);
+          if(task!==sequence)return;
+          if(reports.length===1)reconciled+=Unit501PlayerStats.applyParticipation(map,past,reports[0],{league,season});
+        }catch{/* Original unknown games remain withheld if official evidence is unavailable. */}
+      }
+
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
@@ -996,7 +1008,7 @@ if (league === '1' && stage !== 'regular season') return false;
       loadedFor = gameId;
       lineScope = `${league}:${season}:${date}:${gameId}`;
       picker.disabled = false;
-      status.textContent = `${choices.length} players loaded. All supported projections are listed below; select a player for a detailed breakdown.`;
+      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against official gamebooks. All supported projections are listed below; select a player for a detailed breakdown.`;
       showPlayer();
       loadProps();
     } catch (e) {

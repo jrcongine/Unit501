@@ -1,6 +1,7 @@
 /* Recorded performance, not a player talent grade or calibrated forecast. */
 (function(root){
   'use strict';
+  const isDNP=g=>g.participation==='dnp'&&g.verification?.participation===true;
   function compareCovers(a,b,mode) {
     const history=row=>{
       const values=row.values.filter(Number.isFinite);
@@ -74,7 +75,7 @@
     return {alerts,active:alerts.length>0,changed:alerts.some(a=>a.source==='manual'||a.source==='box-score'||a.source==='absence')};
   }
   function summarize(history,key) {
-    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    const games=history.filter(g=>Number.isFinite(g.gameDate)&&!isDNP(g)).sort((a,b)=>b.gameDate-a.gameDate);
     const valid=g=>Number.isFinite(g[key]) && (key.endsWith('Yds') || g[key]>=0);
     const gameDetails=games.filter(valid);
     const values=gameDetails.map(g=>g[key]);
@@ -90,13 +91,13 @@
     const trend=earlier.length<2?'Insufficient history for a trend':mean(recent)>mean(earlier)?'Trending up':mean(recent)<mean(earlier)?'Trending down':'Holding steady';
     const latestConsecutiveMissing=games.findIndex(valid);
     return {values,gameDetails,average,recentWeighted,weighted,trend,
-      coverage:{recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
+      coverage:{dnp:history.filter(g=>Number.isFinite(g.gameDate)&&isDNP(g)).length,teamGames:history.filter(g=>Number.isFinite(g.gameDate)).length,recorded:values.length,total:games.length,missing:games.length-values.length,latestMissing:!valid(games[0]),latestConsecutiveMissing},
       sample:values.length<5?'Limited sample':values.length<9?'Developing sample':'Larger sample'};
   }
   function workloadSummary(history,key) {
     const metric=key.startsWith('pass')?'attempts':key.startsWith('rush')||key==='carries'?'carries':'targets';
     const label={attempts:'Pass attempts',carries:'Carries',targets:'Targets'}[metric];
-    const games=history.filter(g=>Number.isFinite(g.gameDate)).sort((a,b)=>b.gameDate-a.gameDate);
+    const games=history.filter(g=>Number.isFinite(g.gameDate)&&!isDNP(g)).sort((a,b)=>b.gameDate-a.gameDate);
     const values=games.map(g=>Number.isFinite(g[metric])&&g[metric]>=0?g[metric]:null);
     const recorded=values.filter(v=>v!==null);
     const recent=values.slice(0,3);
@@ -150,7 +151,8 @@
     return {baseline:guarded.weighted,outlierAdjustment:{count,cap,originalBaseline:form.weighted,adjustedBaseline:guarded.weighted}};
   }
   function project(history,key) {
-    const form=summarize(history,key);
+    const original=history;history=history.filter(g=>!isDNP(g));
+    const form=summarize(original,key);
     if(!form)return null;
     if(form.coverage.missing>0)
       return {...form,withheld:true,reason:`Only ${form.coverage.recorded} of ${form.coverage.total} completed team games have this stat, so the sample is incomplete. Projection withheld until the missing games can be verified; missing records are not zeros.`};
@@ -202,7 +204,7 @@
     return {sample,count,flags,needsReview,
       label:`${sample} (${count} recorded games)${flags.length?' • Review: '+flags.join(', '):' • No additional data flags'}`};
   }
-  const api={roleContext,compareRecent,compareCovers,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
+  const api={isDNP,roleContext,compareRecent,compareCovers,efficiencySummary,summarize,workloadSummary,workloadWarning,project,reviewChecks,dataSupport};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.Unit501PlayerForm=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

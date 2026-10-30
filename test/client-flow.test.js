@@ -973,3 +973,30 @@ test('pregame checklist follows selection, line edits and refresh clearing witho
  h.run('gameQuotes=null;document.dispatchEvent(new Event("unit501:odds-updated"))');assert.match(panel.textContent,/Spread · Unconfirmed/);
  await h.run('selected=null;document.dispatchEvent(new Event("unit501:selection-changed"))');assert.ok(panel.classList.contains('hidden'));
 });
+test('official historical DNP reaches the prop UI and is excluded without inventing a zero',async()=>{
+ const h=harness(),original=h.context.fetch;let historical;
+ h.context.fetch=async url=>{
+  const u=new URL(url,'http://local');
+  if(u.pathname==='/api/football/participation'){
+   const id=u.searchParams.get('game'),g=historical.find(g=>String(g.game.id)===id);
+   const report=id==='2'?{available:true,gameId:id,league:'1',season:String(g.league.season),gameDate:g.game.date.timestamp,source:'https://static.clubs.nfl.com/test',checkedAt:Date.now(),teams:[
+    {id:'1',name:'Team A',scored:Number(g.scores.away.total),allowed:Number(g.scores.home.total),players:[{name:'R.1',participation:'dnp'}]},
+    {id:'2',name:'Team B',scored:Number(g.scores.home.total),allowed:Number(g.scores.away.total),players:[]}
+   ]}:{available:false};return {ok:true,json:async()=>({response:[report]})};
+  }
+  const r=await original(url);
+  if(u.pathname==='/api/team-games'){
+   const data=await r.json(),third=structuredClone(data.response[0]);third.game.id=3;third.game.date.timestamp-=4*86400;data.response.push(third);historical=data.response;
+   return {ok:true,json:async()=>data};
+  }
+  if(u.pathname==='/api/player-stats'&&u.searchParams.get('game')==='2'){
+   const data=await r.json();data.response[0].groups=[];return {ok:true,json:async()=>data};
+  }
+  return r;
+ };
+ h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.match(h.nodes.get('predict-status').textContent,/1 player-game records verified/);
+ assert.match(h.nodes.get('predict-results').textContent,/1 verified DNP game\(s\) excluded/);
+ assert.match(h.nodes.get('predict-results').textContent,/100.0 average/);
+});

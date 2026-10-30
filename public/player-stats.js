@@ -90,7 +90,34 @@
       verification:{source:review.source,participationSource:review.participationSource,reviewedAt:'2026-10-29',markets:['rec','recYds']}});
     return true;
   }
-  const api={definitions,extract,teamYards,accumulate,completeCalendar,applyReviewedHistory};
+  // Match exact team/game identities and unique initial+surname abbreviations.
+  // Collisions remain unresolved; no fuzzy matching or current-roster assumptions.
+  function applyParticipation(records,calendar,report,scope) {
+    if(!report?.available||String(report.league)!==String(scope?.league)||String(report.season)!==String(scope?.season)||!/^https:\/\/static\.clubs\.nfl\.com\//.test(report.source||'')||!Array.isArray(report.teams)||report.teams.length!==2)return 0;
+    const past=calendar.get(String(report.gameId));if(!past||past.date!==report.gameDate)return 0;
+    const short=name=>{const parts=String(name||'').trim().split(/\s+/);return parts.length>1?normalize(parts[0][0]+parts.slice(1).join('')).replace(/ /g,''):'';};
+    const abbreviation=name=>normalize(name).replace(/ /g,'');
+    const keys=[...definitions.map(d=>d.key),'attempts','targets'];let updated=0;
+    for(const team of report.teams){
+      const opponent=past.teams.get(String(team.id)),other=report.teams.filter(t=>String(t.id)!==String(team.id));
+      if(!opponent||other.length!==1||other[0].name!==opponent.name||team.scored!==opponent.scored||team.allowed!==opponent.allowed||!Array.isArray(team.players))continue;
+      const candidates=[...records.values()].filter(r=>r.teamId===String(team.id)&&r.team===team.name);
+      for(const record of candidates){
+        const name=short(record.name);if(!name||candidates.filter(r=>short(r.name)===name).length!==1)continue;
+        const matches=team.players.filter(p=>abbreviation(p.name)===name);if(matches.length!==1)continue;
+        const row=matches[0],line=record.games.get(String(report.gameId));if(!line||!['played','dnp'].includes(row.participation))continue;
+        if(row.participation==='played'&&keys.some(k=>!Number.isFinite(row[k])||(!k.endsWith('Yds')&&row[k]<0)))continue;
+        const conflict=line.participation==='conflict'||(row.participation==='dnp'
+          ? line.participation==='played'||keys.some(k=>Number.isFinite(line[k])&&line[k]!==0)
+          : line.participation==='dnp'||keys.some(k=>line[k]!==undefined&&line[k]!==row[k]));
+        if(conflict){for(const k of keys)delete line[k];line.participation='conflict';line.verification={source:report.source,participation:false,reason:'Official gamebook conflicts with the recorded history.'};continue;}
+        for(const k of keys){if(row.participation==='dnp')delete line[k];else line[k]=row[k];}
+        line.participation=row.participation;line.verification={source:report.source,participation:true,markets:row.participation==='played'?keys:[],checkedAt:report.checkedAt};updated++;
+      }
+    }
+    return updated;
+  }
+  const api={definitions,extract,teamYards,accumulate,completeCalendar,applyReviewedHistory,applyParticipation};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
