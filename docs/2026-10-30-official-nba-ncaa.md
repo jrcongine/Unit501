@@ -40,3 +40,9 @@ Validation: 708 tests passed, zero failures. New integration cases cover both ba
 The NFL/CFB shared form calculation now collapses duplicate kickoff records into one unresolved game instead of counting both. Its values cannot enter the average, recency weighting, workload/role comparison or projection. Coverage records the unresolved game as missing. This is deliberately conservative even for identical duplicate rows: identity must be resolved before counting the game.
 
 Football replay and historical-error ranges no longer discard ambiguous prior games to manufacture a smaller complete history. Later forecasts/ranges remain withheld; chronologically earlier valid predictions remain unchanged. Explicit conflict rows cannot be graded as actual outcomes. Tests cover every supported football statistic, identical/conflicting duplicates, baseline withholding, replay eligibility and historical range withholding. Full suite: 710 passed, zero failed; whitespace check clean. Existing authentication and source-coverage limitations remain unchanged.
+
+## Follow-up: conflicting workload evidence
+
+Explicit conflict rows now retain their dated game slot without contributing numerical evidence to the shared NFL/CFB workload and role calculations. Previously, projection withholding worked, but retained conflicting numbers could inflate workload averages or trigger usage-increase and absence-based opportunity alerts. The source records remain unchanged for reconciliation. Manual role reviews remain available.
+
+Regression coverage checks passing attempts, carries and targets, latest/prior conflicts, missing-game counts, averages, role alerts, manual reviews and source preservation. The official-absence test also rejects conflicting latest workload. Full suite: 711 passed, zero failures. Production-screen authentication and broader official-source coverage remain outstanding.

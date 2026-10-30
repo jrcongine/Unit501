@@ -2,11 +2,11 @@
 (function(root){
   'use strict';
   const isDNP=g=>g.participation==='dnp'&&g.verification?.participation===true;
-  // A duplicate kickoff is unresolved evidence, not an extra game or a game to omit.
+  // Conflicts retain their game slot, but their numbers cannot establish workload or role.
   function datedHistory(history){
     const dates=new Map();
     for(const g of history){if(!Number.isFinite(g.gameDate))continue;
-      dates.set(g.gameDate,dates.has(g.gameDate)?{gameDate:g.gameDate,participation:'conflict'}:g);
+      dates.set(g.gameDate,dates.has(g.gameDate)||g.participation==='conflict'?{gameDate:g.gameDate,participation:'conflict'}:g);
     }
     return [...dates.values()].sort((a,b)=>b.gameDate-a.gameDate);
   }

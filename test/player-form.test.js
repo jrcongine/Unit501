@@ -227,6 +227,25 @@ test('official absence flags a same-position workload opportunity before new rol
   {...team,roster:{...team.roster,checkedAt:now-3600001}}
  ])assert.equal(roleContext(history,'rushYds',invalid,'brown',game,'',now).active,false);
  assert.equal(roleContext(history.map((g,i)=>i===0?{...g,carries:undefined}:g),'rushYds',team,'brown',game,'',now).active,false);
+ assert.equal(roleContext(history.map((g,i)=>i===0?{...g,participation:'conflict'}:g),'rushYds',team,'brown',game,'',now).active,false);
+});
+
+test('conflicting football records cannot establish workload averages or usage promotions',()=>{
+ const {workloadSummary,workloadWarning,roleContext}=require('../public/player-form');
+ for(const [key,metric] of [['passYds','attempts'],['rushYds','carries'],['recYds','targets']]){
+  const history=[20,2,2,2].map((value,i)=>({gameDate:4-i,[metric]:value}));
+  assert.equal(roleContext(history,key,null,'1',{}).active,true);
+  const conflicted=history.map((g,i)=>i===0?{...g,participation:'conflict'}:g);
+  const original=JSON.stringify(conflicted),summary=workloadSummary(conflicted,key);
+  assert.deepEqual(summary.recent,[null,2,2]);
+  assert.equal(summary.average,2);assert.equal(summary.recorded,3);
+  assert.equal(summary.total,4);assert.equal(summary.missing,1);
+  assert.equal(roleContext(conflicted,key,null,'1',{}).active,false);
+  assert.match(workloadWarning(conflicted,key),/Workload unverified: latest completed team game/);
+  assert.equal(roleContext(history.map((g,i)=>i===1?{...g,participation:'conflict'}:g),key,null,'1',{}).active,false);
+  assert.equal(roleContext(conflicted,key,null,'1',{},'new').alerts[0].source,'manual');
+  assert.equal(JSON.stringify(conflicted),original,'retain source conflict evidence');
+ }
 });
 
 test('recent Above and Below ordering uses game percentage, not total hits',()=>{
