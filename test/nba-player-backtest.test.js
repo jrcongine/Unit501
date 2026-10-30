@@ -60,3 +60,9 @@ test('official replay restores an omitted appearance and rejects conflicting act
   assert.equal(result.metrics.player_points.mae,0);
  }
 });
+test('optional official source failure preserves validated replay and missing-record gates',async()=>{
+ const {games,responses}=fixture();responses.get(10).boxscore.players[0].statistics[0].athletes[0].athlete={id:'99',displayName:'Other Player'};
+ const options={limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})};
+ const baseline=await replay(games,2025,options),failed=await replay(games,2025,{...options,official:async()=>{throw Error('Official source timeout');}});
+ assert.deepEqual(failed,baseline);assert.equal(failed.metrics.player_points.samples,2);assert.equal(failed.officialGames,0);
+});

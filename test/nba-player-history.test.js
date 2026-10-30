@@ -75,3 +75,16 @@ test('a missing row is recorded separately from explicit DNP',async()=>{
  const result=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
  const p=result.teams[0].players.find(p=>p.name==='Player A');assert.equal(p.coverage.missing,1);assert.equal(p.coverage.dnp,0);
 });
+test('official source failure preserves validated secondary histories and coverage',async()=>{
+ const f=feeds(),baseline=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
+ const failed=await createPlayerHistory({...f,now:()=>now,official:async()=>{throw Error('Official source timeout');}})(selected,'2026-10-26',2026);
+ assert.deepEqual(failed.teams,baseline.teams);
+ assert.ok(failed.teams.every(t=>t.verification.verified===0));
+});
+test('official reconciliation restores a known missing zero appearance before coverage',async()=>{
+ const f=feeds(),base=f.fetcher;
+ f.fetcher=async url=>{const r=await base(url),d=await r.json();if(String(url).endsWith('event=1'))d.boxscore.players[0].statistics[0].athletes[0]={athlete:{id:'555',displayName:'Other'},didNotPlay:false,stats:['5','0','0','0','0-0']};return {ok:true,headers:new Headers(),json:async()=>d};};
+ const official=async data=>data.header.id==='1'?{available:true,gameId:'1',tipoff:teamGames[0][0].tipoff,teams:[{id:'4',players:[{name:'Player A',participation:'played',minutes:5,values:{player_points:0,player_rebounds:0,player_assists:0,player_threes:0}}]}]}:{available:false};
+ const result=await createPlayerHistory({...f,now:()=>now,official})(selected,'2026-10-26',2026),p=result.teams[0].players.find(p=>p.name==='Player A');
+ assert.deepEqual(p.coverage,{total:2,played:2,dnp:0,missing:0});assert.equal(p.results.find(r=>String(r.gameId)==='1').player_points,0);assert.equal(result.teams[0].verification.filled,1);
+});

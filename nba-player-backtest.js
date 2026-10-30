@@ -20,7 +20,7 @@ async function replay(raw,season,options={}){
   const pending=(async()=>{
    const r=await fetcher(ROOT+game.id,{signal:AbortSignal.timeout(15000),redirect:'error'});
    if(!r.ok||Number(r.headers?.get?.('content-length')||0)>5000000)throw Error('Box score unavailable');
-   const data=await r.json();if(options.official)officialReports.set(String(game.id),await options.official(data));return data;
+   const data=await r.json();try{if(options.official)officialReports.set(String(game.id),await options.official(data));}catch{}return data;
   })();cache.set(game.id,pending);return pending;
  }
  const priorFor=(game,id)=>games.filter(g=>g.id!==game.id&&(g.awayId===id||g.homeId===id)&&Date.parse(g.tipoff)+5*3600000<Date.parse(game.tipoff)).slice(-10).reverse();

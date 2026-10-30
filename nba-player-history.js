@@ -107,7 +107,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
   const jobs=new Map();for(const games of historical)for(const g of games)jobs.set(String(g.id),g.id);
   // Bound public-source concurrency for each matchup; all viewers share cached games.
   const ids=[...jobs.values()],results=new Map();let next=0;
-  await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{const data=await box(id);results.set(String(id),{data,official:official?await official(data):null});}catch{results.set(String(id),{error:true});}}}));
+  await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{const data=await box(id);let report=null;try{if(official)report=await official(data);}catch{}results.set(String(id),{data,official:report});}catch{results.set(String(id),{error:true});}}}));
   const teams=sides.map((side,i)=>{
    const games=historical[i],players=new Map();
    if(games.length<2)return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};
