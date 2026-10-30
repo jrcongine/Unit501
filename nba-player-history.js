@@ -83,7 +83,7 @@ function reconcileCoverage(players,games){
   p.coverage={total:games.length,played:p.results.length,dnp:(p.inactive||[]).length,missing:p.missing.length};
  }
 }
-function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
+function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}){
  const cache=new Map();
  async function box(id){
   const key=String(id);if(!/^\d{1,12}$/.test(key))throw Error('Invalid historical NBA game');
@@ -107,7 +107,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
   const jobs=new Map();for(const games of historical)for(const g of games)jobs.set(String(g.id),g.id);
   // Bound public-source concurrency for each matchup; all viewers share cached games.
   const ids=[...jobs.values()],results=new Map();let next=0;
-  await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{results.set(String(id),{data:await box(id)});}catch{results.set(String(id),{error:true});}}}));
+  await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{const data=await box(id);results.set(String(id),{data,official:official?await official(data):null});}catch{results.set(String(id),{error:true});}}}));
   const teams=sides.map((side,i)=>{
    const games=historical[i],players=new Map();
    if(games.length<2)return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};
@@ -124,11 +124,12 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
       player.inactive.push({gameId:game.id,tipoff:game.tipoff});players.set(row.id,player);
      }
     }
+    const verification=require('./nba-official-history').reconcile(players,games,new Map([...results].map(([id,r])=>[id,r.official])),side.id);
     reconcileCoverage(players,games);
-    return {name:side.name,available:true,games:games.length,players:[...players.values()]};
+    return {name:side.name,available:true,games:games.length,verification,players:[...players.values()]};
    }catch{return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};}
   });
-  return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:'ESPN completed NBA box scores',teams};
+  return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:official?'NBA official reconciliation with ESPN completed box scores':'ESPN completed NBA box scores',teams};
  };
 }
 module.exports={conflictingDNP,METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};

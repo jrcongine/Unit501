@@ -51,7 +51,7 @@ function parseBox(data,event,g,q){
  }
  return {available:true,gameId:String(q.game),gameDate:Number(g.game.date.timestamp),league:q.league,season:q.season,source:ROOT+(q.league==='1'?'nfl':'college-football')+'/summary?event='+event.id,nameFormat:'full',teams};
 }
-function createParticipation({api,fetcher=fetch,now=Date.now,official}={}){
+function createParticipation({api,fetcher=fetch,now=Date.now,official,ncaa}={}){
  const cache=new Map();
  async function read(url){const old=cache.get(url);if(old&&now()-old.at<6*3600000)return old.pending;
   const item={at:now(),pending:(async()=>{const r=await fetcher(url,{signal:AbortSignal.timeout(12000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>8000000)throw Error('Secondary statistics unavailable');const text=await r.text();if(text.length>8000000)throw Error('Secondary response too large');return JSON.parse(text);})()};cache.set(url,item);item.pending.catch(()=>{if(cache.get(url)===item)cache.delete(url);});if(cache.size>150)cache.delete(cache.keys().next().value);return item.pending;
@@ -65,6 +65,7 @@ function createParticipation({api,fetcher=fetch,now=Date.now,official}={}){
   try{
    const r=await api('/games?id='+encodeURIComponent(q.game)),g=r.response?.[0],time=Number(g?.game?.date?.timestamp);
    if(r.errors&&Object.keys(r.errors).length||r.paging?.total>1||r.response?.length!==1||String(g.game?.id)!==q.game||String(g.league?.id)!==q.league||String(g.league?.season)!==q.season||!['FT','AOT','FINAL'].includes(g.game?.status?.short)||!/^regular season$/i.test(g.game?.stage||'')||!Number.isFinite(time)||time*1000>=now()||day(time*1000)!==q.date)throw Error('Completed game unverified');
+   if(q.league==='2'&&ncaa){const result=await ncaa({sport:'MFB',id:q.game,season:Number(q.season),tipoff:new Date(time*1000).toISOString(),teams:['away','home'].map(side=>({side,id:String(g.teams[side].id),name:g.teams[side].name,score:integer(g.scores[side].total)}))});if(result.available)return result;}
    const root=ROOT+(q.league==='1'?'nfl':'college-football'),utc=new Date(time*1000).toISOString().slice(0,10);
    const slates=await Promise.all([...new Set([q.date,utc])].map(date=>read(root+'/scoreboard?dates='+date.replaceAll('-','')+'&limit=1000'+(q.league==='2'?'&groups=80':''))));
    if(slates.some(s=>!Array.isArray(s.events)||s.events.length>=1000))throw Error('Schedule unavailable');

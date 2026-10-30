@@ -49,3 +49,14 @@ test('replay excludes explicit DNP while retaining genuine zero-stat appearances
   else assert.ok(result.metrics.player_points.mae>0);
  }
 });
+test('official replay restores an omitted appearance and rejects conflicting actuals',async()=>{
+ for(const conflict of [false,true]){
+  const {games,responses}=fixture();
+  responses.get(10).boxscore.players[0].statistics[0].athletes[0].athlete={id:'99',displayName:'Other Player'};
+  const official=async data=>({available:true,gameId:data.header.id,tipoff:data.header.competitions[0].date,source:'https://www.nba.com/game/test/box-score',teams:[1,2].map(id=>({id:String(id),players:[{name:'Player '+id,participation:conflict&&id===1&&Number(data.header.id)>=16?'dnp':'played',minutes:30,values:{player_points:20,player_rebounds:5,player_assists:4,player_threes:2}}]}))});
+  const result=await replay(games,2025,{limit:2,official,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+  assert.ok(result.officialGames>0);
+  assert.equal(result.metrics.player_points.samples,conflict?2:4);
+  assert.equal(result.metrics.player_points.mae,0);
+ }
+});

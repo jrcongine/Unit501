@@ -18,10 +18,10 @@ function extract(data,game,teamId){const c=verify(data,game);if(c.status?.type?.
  if(min===null||min===0){out.push({id,name,available:false,minutes:min});continue;}
  const values={};for(const [market,k] of Object.entries(fields))values[market]=stat(row.stats?.[keys.indexOf(k)],market==='player_threes');out.push({id,name,minutes:min,...values});}return out;}
 
-function createPlayers({feed,fetcher=fetch,now=Date.now}={}){const cache=new Map();async function box(id){const old=cache.get(id);if(old&&now()-old.at<300000)return old.pending;const item={at:now()};item.pending=(async()=>{const r=await fetcher(ROOT+id,{signal:AbortSignal.timeout(12000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>5000000)throw Error('College basketball summary unavailable');return r.json();})();cache.set(id,item);item.pending.catch(()=>{if(cache.get(id)===item)cache.delete(id);});if(cache.size>200)cache.delete(cache.keys().next().value);return item.pending;}
+function createPlayers({feed,fetcher=fetch,now=Date.now,official}={}){const cache=new Map();async function box(id){const old=cache.get(id);if(old&&now()-old.at<300000)return old.pending;const item={at:now()};item.pending=(async()=>{const r=await fetcher(ROOT+id,{signal:AbortSignal.timeout(12000),redirect:'error'});if(!r.ok||Number(r.headers?.get?.('content-length')||0)>5000000)throw Error('College basketball summary unavailable');return r.json();})();cache.set(id,item);item.pending.catch(()=>{if(cache.get(id)===item)cache.delete(id);});if(cache.size>200)cache.delete(cache.keys().next().value);return item.pending;}
  return {injuries:async game=>({gameId:game.id,tipoff:game.tipoff,checkedAt:now(),source:'ESPN game report',teams:injuries(await box(game.id),game)}),history:async game=>{
  const context=await feed.context(game),sides=[context.away,context.home],jobs=new Map();for(const side of sides)for(const g of side.recentGames||[])jobs.set(g.id,g);
- let next=0;const ids=[...jobs.keys()],results=new Map();await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{results.set(id,await box(id));}catch{}}}));
+ let next=0;const ids=[...jobs.keys()],results=new Map(),officialReports=new Map();await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{while(next<ids.length){const id=ids[next++];try{const data=await box(id);results.set(id,data);if(official)officialReports.set(String(id),await official(data));}catch{}}}));
  const teams=sides.map(side=>{const players=new Map();if(side.conflicts>0||side.unverifiedGames>0)return {name:side.name,available:false,games:0,players:[]};let games=0;for(const prior of side.recentGames||[]){try{const data=results.get(prior.id),header=data?.header?.competitions?.[0],competitors=header?.competitors;if(!Array.isArray(competitors)||competitors.length!==2)continue;
  const own=competitors.find(t=>String(t.id)===side.id),other=competitors.find(t=>String(t.id)!==side.id);if(!own||!other||Number(own.score)!==prior.scored||Number(other.score)!==prior.allowed||String(other.id)!==prior.opponentId)continue;
  const historical={id:prior.id,tipoff:prior.tipoff,season:game.season,stage:game.stage,awayId:String(competitors.find(t=>t.homeAway==='away')?.id),homeId:String(competitors.find(t=>t.homeAway==='home')?.id)};
@@ -30,7 +30,8 @@ function createPlayers({feed,fetcher=fetch,now=Date.now}={}){const cache=new Map
  const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
  const p=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};p.inactive.push({gameId:prior.id,tipoff:prior.tipoff});players.set(row.id,p);
  }games++;}catch{}}
+ const verification=require('./nba-official-history').reconcile(players,side.recentGames||[],officialReports,side.id);
  reconcileCoverage(players,side.recentGames||[]);
- return {name:side.name,available:games>=2&&games===(side.recentGames||[]).length,games,players:[...players.values()]};});return {gameId:game.id,tipoff:game.tipoff,checkedAt:now(),teams,source:'ESPN completed college basketball box scores'};}};
+ return {name:side.name,available:games>=2&&games===(side.recentGames||[]).length,games,verification,players:[...players.values()]};});return {gameId:game.id,tipoff:game.tipoff,checkedAt:now(),teams,source:official?'NCAA official reconciliation with ESPN completed college basketball box scores':'ESPN completed college basketball box scores'};}};
 }
 module.exports={verify,injuries,extract,createPlayers};

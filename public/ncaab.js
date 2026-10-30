@@ -5,7 +5,7 @@
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));date.value=parts.year+'-'+parts.month+'-'+parts.day;
  const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
  let games=[],selected=null,context=null,serial=0,injuryData=null,injuryPromise=null;
- async function api(kind,game){const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/'+kind+'?'+q,{signal:AbortSignal.timeout(30000)}),data=await r.json();if(!r.ok)throw Error(data.error||'Data source unavailable for this matchup.');if(data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error('Response does not match the selected game.');return data;}
+ async function api(kind,game){const q=new URLSearchParams({date:date.value,game:game.id}),r=await fetch('/api/ncaab/'+kind+'?'+q,{signal:AbortSignal.timeout(kind==='player-history'?120000:30000)}),data=await r.json();if(!r.ok)throw Error(data.error||'Data source unavailable for this matchup.');if(data.gameId!==game.id||data.tipoff!==game.tipoff)throw Error('Response does not match the selected game.');return data;}
  async function loadExtras(game,task){
   $('ncaab-load-props').disabled=false;
   $('ncaab-line-history').textContent='No verified FanDuel observations yet.';
@@ -45,7 +45,7 @@
   }catch{if(task===serial)status.textContent='College basketball slate unavailable. Check the date and try again.';}finally{if(task===serial)load.disabled=false;}
  });
  $('ncaab-load-props').addEventListener('click',async()=>{const game=selected,task=serial;if(!game)return;const button=$('ncaab-load-props');button.disabled=true;$('ncaab-props').replaceChildren();$('ncaab-props-status').textContent='Loading FanDuel props and recent player history…';
-  try{const [quotes,history]=await Promise.all([api('props',game),api('player-history',game).catch(()=>null),injuryPromise||Promise.resolve()]);if(task!==serial)return;$('ncaab-props-status').textContent=quotes.message;const rows=[];
+  try{const [quotes,history]=await Promise.all([api('props',game),api('player-history',game).catch(()=>null),injuryPromise||Promise.resolve()]);if(task!==serial)return;$('ncaab-props-status').textContent=quotes.message+(history?' · '+history.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NCAA official statistics.':'');const rows=[];
    for(const q of quotes.props){const names=(injuryData?.teams||[]).flatMap(t=>t.players).filter(p=>p.name.toLowerCase()===q.name.toLowerCase());const status=names.length===1&&/^out$/i.test(names[0].status)?'Out':null;
     const p=window.Unit501NBAPlayerModel.project(history,q,game,status);rows.push({q,p});}
    rows.sort((a,b)=>(b.p.available?Math.abs(b.p.projection-b.q.line):-1)-(a.p.available?Math.abs(a.p.projection-a.q.line):-1));

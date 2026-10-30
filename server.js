@@ -17,7 +17,8 @@ const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:pub
 const nbaContext = nbaSources.context;
 const ncaab = require('./ncaab-feed').createNCAAB();
 const ncaabMarkets=require('./ncaab-markets').createMarkets();
-const ncaabPlayers=require('./ncaab-players').createPlayers({feed:ncaab});
+const ncaaOfficial=require('./ncaa-official-history').createNCAA();
+const ncaabPlayers=require('./ncaab-players').createPlayers({feed:ncaab,official:data=>ncaaOfficial(require('./ncaa-official-history').basketballScope(data))});
 const nbaTravel = require('./nba-travel').createNBATravel({publicFeed:publicNBA});
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
@@ -35,7 +36,7 @@ require('./odds-monitor').setObserver(lineHistory.noteQuota);
 const trackedOdds = require('./tracked-odds').createTrackedOdds({history: lineHistory,
   footballLines: fanduel.getLines, footballProps: require('./fanduel-props').getProps, nbaOdds, ncaabOdds: ncaabMarkets});
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
-const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA});
+const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA,official:require('./nba-official-history').createOfficialNBA()});
 const injurySlate = require('./nba-slate-cache').createSlateCache(nbaGames);
 const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
@@ -116,7 +117,7 @@ async function providerAPI(endpoint) {
 
 }
 
-const footballGamebooks=require('./football-participation').createParticipation({api});
+const footballGamebooks=require('./football-participation').createParticipation({api,ncaa:ncaaOfficial});
 
 const server = http.createServer(async (req, res) => {
   if(!require('./private-access').allowRequest(req,res))return;

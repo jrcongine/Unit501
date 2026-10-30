@@ -124,7 +124,7 @@
    if(!response.ok||String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||!Number.isFinite(data.checkedAt)||
      !Array.isArray(data.teams)||data.teams.length!==2||data.teams.some(t=>typeof t.available!=='boolean'||!Array.isArray(t.players)))throw Error('History unavailable');
    history=data;renderProps();
-   if(historyStatus)historyStatus.textContent=data.teams.every(t=>t.available)?'Recent NBA box scores loaded · 2–4 games is a small sample.':'Some player history is missing; estimates appear only for verified players.';
+   if(historyStatus)historyStatus.textContent=data.teams.every(t=>t.available)?'Recent NBA box scores loaded · '+data.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NBA official statistics · 2–4 games is a small sample.':'Some player history is missing; estimates appear only for verified players.';
   }catch{
    if(serial!==sequence||task!==historyTask)return;
    history=null;renderProps();if(historyStatus)historyStatus.textContent='Player history unavailable. FanDuel lines are still shown.';
