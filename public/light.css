@@ -112,3 +112,7 @@ tbody tr:nth-child(even){background:#f2f5f8}
 .nba-prop-filters select{width:100%;min-width:0}
 :is(#nba-prop-lines,#ncaab-props) td label{display:block;margin-top:6px;font-size:12px;letter-spacing:normal}
 :is(#nba-prop-lines,#ncaab-props) td select{width:165px;min-width:0;font-size:12px}
+
+.basketball-leagues{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.basketball-leagues a{padding:10px 18px;border:1px solid #b6c1ce;border-radius:9px;background:#fff;font-weight:750;text-decoration:none}
+.basketball-leagues a[aria-current="page"]{background:#e8e0f1;border-color:#7953ad;color:#573678}

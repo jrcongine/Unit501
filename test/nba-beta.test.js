@@ -32,18 +32,18 @@ test('NBA API adapter uses separate NBA endpoint and shares cached requests with
  let calls=0,clock=100000;
  const get=createNBAFeed({now:()=>clock,key:()=> 'fake-test-key',fetcher:async(url,options)=>{
   calls++;
-  assert.equal(url,'https://v2.nba.api-sports.io/games?league=standard&season=2026&date=2026-10-20');
+  assert.match(url,/games\?league=standard&season=2026&date=2026-10-(20|21)$/);
   assert.equal(options.headers['x-apisports-key'],'fake-test-key');
   return {ok:true,json:async()=>({response:[final,valid],errors:[]})};
  }});
  const [a,b]=await Promise.all([get('2026-10-20'),get('2026-10-20')]);
- assert.equal(calls,1);
+ assert.equal(calls,2);
  assert.deepEqual(a,b);
  assert.equal(a.games.length,2);
  assert.equal(a.games.find(game=>game.id===1001).status,'Scheduled');
  assert.equal(a.games.find(game=>game.id===1002).status,'Final');
- clock+=60000;await get('2026-10-20');assert.equal(calls,1);
- clock+=900000;await get('2026-10-20');assert.equal(calls,2);
+ clock+=60000;await get('2026-10-20');assert.equal(calls,2);
+ clock+=900000;await get('2026-10-20');assert.equal(calls,4);
 });
 test('NBA provider errors, invalid shapes and missing keys fail closed rather than generating games',async()=>{
  await assert.rejects(createNBAFeed({key:()=>null,fetcher:async()=>{throw Error('should not fetch')}})('2026-10-20'),/credential/);

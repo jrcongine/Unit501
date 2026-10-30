@@ -1,9 +1,8 @@
 'use strict';
 // Public ESPN NBA source, with its own identifiers and end-year season convention.
-const {normalizeGame,validDate,inferSeason}=require('./nba-feed');
+const {normalizeGame,validDate,inferSeason,centralDate,utcDates}=require('./nba-feed');
 const {summarize}=require('./nba-context');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
-const day=at=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(p=>[p.type,p.value]));return p.year+'-'+p.month+'-'+p.day;};
 const score=value=>{const v=typeof value==='object'&&value!==null?value.value:value;if(typeof v!=='number'&&(typeof v!=='string'||v.trim()===''))return null;const n=Number(v);return Number.isInteger(n)&&n>=0?n:null;};
 function convert(event,season,defaultStage=null){
  if(Number(event?.season?.year)!==season+1||!Array.isArray(event.competitions)||event.competitions.length!==1)return null;
@@ -30,11 +29,18 @@ function createPublicNBA({fetcher=fetch,now=Date.now}={}){
  }
  async function games(date){
   if(!validDate(date))throw Error('Invalid NBA date.');
-  const season=inferSeason(date),data=await read('/scoreboard?dates='+date.replace(/-/g,'')+'&limit=1000',60000);
-  if(!data.leagues?.some(l=>l.slug==='nba'||l.abbreviation==='NBA'))throw Error('Public source league could not be verified.');
-  const raw=data.events.map(e=>convert(e,season)).filter(Boolean),all=raw.map(normalizeGame).filter(g=>day(g.tipoff)===date),unique=new Map();
-  for(const g of all){if(unique.has(g.id)&&JSON.stringify(unique.get(g.id))!==JSON.stringify(g))throw Error('Public NBA schedule contains conflicting game IDs.');unique.set(g.id,g);}
-  if(data.events.length&&!raw.length)throw Error('Public NBA game format or season could not be verified.');
+  const season=inferSeason(date),unique=new Map();
+  for(const utcDate of utcDates(date)){
+   const data=await read('/scoreboard?dates='+utcDate.replace(/-/g,'')+'&limit=1000',60000);
+   if(!data.leagues?.some(l=>l.slug==='nba'||l.abbreviation==='NBA'))throw Error('Public source league could not be verified.');
+   const raw=data.events.map(e=>convert(e,season));
+   if(raw.some(g=>!g))throw Error('Public NBA game format or season could not be verified; schedule incomplete.');
+   for(const g of raw.map(normalizeGame)){
+    if(centralDate(g.tipoff)!==date)continue;
+    if(unique.has(g.id)&&JSON.stringify(unique.get(g.id))!==JSON.stringify(g))throw Error('Public NBA schedule contains conflicting game IDs.');
+    unique.set(g.id,g);
+   }
+  }
   return {league:'nba',season,date,checkedAt:new Date(now()).toISOString(),provider:'espn',source:'ESPN public NBA feed',experimental:true,
    games:[...unique.values()].map(g=>({...g,provider:'espn',source:'ESPN public NBA feed'})).sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff))};
  }

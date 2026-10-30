@@ -7,6 +7,14 @@ function validDate(date){
  const parsed=new Date(date+'T00:00:00.000Z');
  return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().slice(0,10)===date;
 }
+function centralDate(at){
+ const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(at)).map(x=>[x.type,x.value]));
+ return p.year+'-'+p.month+'-'+p.day;
+}
+function utcDates(date){
+ const next=new Date(date+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);
+ return [date,next.toISOString().slice(0,10)];
+}
 function inferSeason(date){
  const [year,month]=date.split('-').map(Number);
  return month<7?year-1:year;
@@ -60,7 +68,9 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
   const work=(async()=>{
    const apiKey=key();
    if(!apiKey)throw Error('NBA API credential unavailable');
-   const url=HOST+'/games?'+new URLSearchParams({league:'standard',season:String(season),date});
+   const unique=new Map();
+   for(const utcDate of utcDates(date)){
+   const url=HOST+'/games?'+new URLSearchParams({league:'standard',season:String(season),date:utcDate});
    const response=await fetcher(url,{headers:{'x-apisports-key':apiKey,Accept:'application/json'},signal:AbortSignal.timeout(12000)});
    if(!response.ok)throw Error('NBA provider returned HTTP '+response.status);
    const data=await response.json();
@@ -68,8 +78,16 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
    if(!data||!Array.isArray(data.response)||
       (data.errors&&(Array.isArray(data.errors)?data.errors.length:Object.keys(data.errors).length)))throw Error('NBA provider response unavailable');
    // A schedule can genuinely be empty. Missing/invalid records must not become invented games.
-   const games=data.response.map(normalizeGame).filter(Boolean).sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff));
-   if(data.response.length&&games.length===0)throw Error('NBA provider format unrecognized');
+   const normalized=data.response.map(normalizeGame);
+   if(normalized.some(g=>!g))throw Error('NBA provider format unrecognized; schedule incomplete');
+   for(const g of normalized){
+    if(centralDate(g.tipoff)!==date)continue;
+    const old=unique.get(g.id);
+    if(old&&JSON.stringify(old)!==JSON.stringify(g))throw Error('NBA schedule contains conflicting game IDs');
+    unique.set(g.id,g);
+   }
+   }
+   const games=[...unique.values()].sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff));
    const result={league:'nba',season,date,checkedAt:new Date(now()).toISOString(),games,experimental:true};
    cache.set(id,{result,at:now()});
    return result;
@@ -78,4 +96,4 @@ function createNBAFeed({fetcher=fetch,now=Date.now,key=()=>process.env.NBA_API_S
   try{return await work;}catch(error){failures.set(id,{at:now(),error});throw error;}finally{pending.delete(id);}
  };
 }
-module.exports={createNBAFeed,normalizeGame,validDate,inferSeason};
+module.exports={createNBAFeed,normalizeGame,validDate,inferSeason,centralDate,utcDates};

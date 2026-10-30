@@ -12,8 +12,8 @@ test('public NBA conversion handles end-year seasons and scheduled zero scores s
  assert.equal(convert({...event(),competitions:[...event().competitions,...event().competitions]},2026),null);
 });
 test('public NBA fallback supplies real-shaped slates and remains compatible with NBA bookmaker matching',async()=>{
- let calls=0;const feed=createPublicNBA({now:()=>now,fetcher:async url=>{calls++;assert.match(url,/basketball\/nba\/scoreboard\?dates=20261024/);return {ok:true,json:async()=>payload([event()])};}});
- const [a,b]=await Promise.all([feed.games('2026-10-24'),feed.games('2026-10-24')]);assert.deepEqual(a,b);assert.equal(calls,1);assert.equal(a.provider,'espn');
+ let calls=0;const feed=createPublicNBA({now:()=>now,fetcher:async url=>{calls++;assert.match(url,/basketball\/nba\/scoreboard\?dates=2026102[45]/);return {ok:true,json:async()=>payload([event()])};}});
+ const [a,b]=await Promise.all([feed.games('2026-10-24'),feed.games('2026-10-24')]);assert.deepEqual(a,b);assert.equal(calls,2);assert.equal(a.provider,'espn');
  assert.equal(a.games[0].provider,'espn');assert.equal(a.games[0].home,'Philadelphia 76ers');
  assert.equal(matches({sport_key:'basketball_nba',away_team:'Milwaukee Bucks',home_team:'Philadelphia 76ers',commence_time:'2026-10-24T23:30:00Z'},a.games[0]),true);
 });
