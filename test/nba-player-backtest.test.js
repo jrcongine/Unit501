@@ -30,3 +30,22 @@ test('later results cannot change earlier player estimates',async()=>{
  const run=({games,responses})=>replay(games,2025,{limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
  assert.deepEqual(await run(original),await run(changed));
 });
+test('replay withholds a player missing from a prior box rather than shrinking denominator',async()=>{
+ const {games,responses}=fixture();
+ // Keep another valid appearance so this is a missing player, not a failed team box.
+ const group=responses.get(10).boxscore.players[0].statistics[0];
+ group.athletes[0].athlete={id:'99',displayName:'Other Player'};
+ const result=await replay(games,2025,{limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+ for(const metric of Object.values(result.metrics))assert.equal(metric.samples,2);
+});
+test('replay excludes explicit DNP while retaining genuine zero-stat appearances',async()=>{
+ for(const dnp of [true,false]){
+  const {games,responses}=fixture(),group=responses.get(10).boxscore.players[0].statistics[0];
+  group.athletes.push({didNotPlay:false,athlete:{id:'99',displayName:'Other Player'},stats:['10','1','1','1','0-1']});
+  group.athletes[0].didNotPlay=dnp;group.athletes[0].stats=dnp?[]:['10','0','0','0','0-0'];
+  const result=await replay(games,2025,{limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+  assert.equal(result.metrics.player_points.samples,4);
+  if(dnp)assert.ok(result.metrics.player_points.mae<1e-10);
+  else assert.ok(result.metrics.player_points.mae>0);
+ }
+});

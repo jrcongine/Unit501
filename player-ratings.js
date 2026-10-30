@@ -80,7 +80,7 @@ function buildRatings(games,boxes,rosters,before,league='1') {
    const rows=history.map(g=>{const yards=g[normalize(group)+':yards'],usage=aliases.map(name=>g[normalize(group)+':'+normalize(name)]).find(Number.isFinite);return {...g,usage:Number.isFinite(yards)?usage:undefined,yards};});
    const paired=rows.filter(g=>g.usage>0&&Number.isFinite(g.yards));
    const usage=summarize(rows,'usage');
-   if(usage&&paired.length>=2){const estimate=efficiencySummary(paired,'yards','usage');profiles[key]={usage:usage.weighted,efficiency:estimate.efficiency,dampened:estimate.dampened,efficiencyCap:estimate.cap,games:paired.length,totalGames:rows.length,latestMissing:!Number.isFinite(rows.sort((a,b)=>b.gameDate-a.gameDate)[0]?.usage),coverage:usage.coverage};}
+   if(usage&&usage.coverage.missing===0&&paired.length>=2){const estimate=efficiencySummary(paired,'yards','usage');profiles[key]={usage:usage.weighted,efficiency:estimate.efficiency,dampened:estimate.dampened,efficiencyCap:estimate.cap,games:paired.length,totalGames:rows.length,latestMissing:!Number.isFinite(rows.sort((a,b)=>b.gameDate-a.gameDate)[0]?.usage),coverage:usage.coverage};}
   }
   const components=(specs[p.role]||[]).map(([group,name,direction])=>({name,direction,key:normalize(group)+':'+normalize(name)}))
    .map(c=>{

@@ -1,7 +1,7 @@
 'use strict';
 // Offline research replay: verified ESPN box scores, observed participants only.
 const {normalizeGame}=require('./nba-feed');
-const {extractBox,METRICS}=require('./nba-player-history');
+const {extractBox,extractInactive,reconcileCoverage,METRICS}=require('./nba-player-history');
 const {project}=require('./public/nba-player-model');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=';
 
@@ -32,11 +32,17 @@ async function replay(raw,season,options={}){
    const prior=priorFor(target,id);if(prior.length<5)throw Error('Insufficient earlier games');
    const players=new Map();
    for(const g of prior){
-    const rows=extractBox(await box(g),perspective(g,id),id,season,2);
-    for(const p of rows){const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[]};
+    const data=await box(g),rows=extractBox(data,perspective(g,id),id,season,2);
+    for(const p of rows){const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
      if(item.name!==p.name||p.available===false)item.available=false;
      item.results.push({gameId:g.id,tipoff:g.tipoff,minutes:p.minutes,...p.values});players.set(p.id,item);}
+    for(const p of extractInactive(data,id,rows)){
+     const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
+     if(item.name!==p.name)item.available=false;
+     item.inactive.push({gameId:g.id,tipoff:g.tipoff});players.set(p.id,item);
+    }
    }
+   reconcileCoverage(players,prior);
    const actual=extractBox(await box(target),perspective(target,id),id,season,2);
    const now=Date.parse(target.tipoff)-1;
    const history={gameId:target.id,tipoff:target.tipoff,checkedAt:now,teams:[{available:true,players:[...players.values()]},{available:true,players:[]}]};

@@ -13,6 +13,18 @@ function minutes(value){
  const m=/^(\d{1,2})(?::([0-5]\d))?$/.exec(String(value??'').trim());
  if(!m)return null;const v=Number(m[1])+(Number(m[2]||0)/60);return v<=60?v:null;
 }
+function conflictingDNP(row,keys){
+ if(row.didNotPlay!==true||!Array.isArray(row.stats))return false;
+ return keys.some((key,i)=>{
+  const value=row.stats[i];
+  if(key==='minutes')return minutes(value)>0;
+  if(key==='threePointFieldGoalsMade-threePointFieldGoalsAttempted'){
+   const pair=/^(\d+)-(\d+)$/.exec(String(value??'').trim());
+   return pair&&pair.some((v,j)=>j>0&&Number(v)>0);
+  }
+  return stat(value)>0;
+ });
+}
 function extractBox(data,prior,teamId,season,stage){
  const header=data?.header,competition=header?.competitions?.length===1?header.competitions[0]:null;
  if(String(header?.id)!==String(prior.id)||Number(header?.season?.year)!==season+1||Number(header?.season?.type)!==stage||
@@ -32,6 +44,7 @@ function extractBox(data,prior,teamId,season,stage){
   const id=String(row.athlete?.id||''),name=String(row.athlete?.displayName||'').trim(),stats=row.stats;
   if(!/^\d{1,12}$/.test(id)||!name||name.length>100||(!row.didNotPlay&&!Array.isArray(stats)))throw Error('NBA player identity unavailable');
   if(seen.has(id))throw Error('Duplicate NBA player box score');seen.add(id);
+  if(conflictingDNP(row,keys))throw Error('Conflicting NBA participation');
   if(row.didNotPlay)continue;
   const min=minutes(stats[keys.indexOf('minutes')]);
   // Quarantine a malformed appearance without hiding unrelated verified players.
@@ -60,7 +73,12 @@ function extractInactive(data,teamId,active){
 }
 function reconcileCoverage(players,games){
  for(const p of players.values()){
-  const known=new Set([...(p.results||[]),...(p.inactive||[])].map(g=>String(g.gameId)));
+  const appearances=p.results||[],inactive=p.inactive||[];
+  const ids=[...appearances,...inactive].map(g=>String(g.gameId));
+  const expected=new Set(games.map(g=>String(g.id)));
+  // Duplicate, contradictory or out-of-window rows cannot establish coverage.
+  if(expected.size!==games.length||new Set(ids).size!==ids.length||ids.some(id=>!expected.has(id)))p.available=false;
+  const known=new Set(ids);
   p.missing=games.filter(g=>!known.has(String(g.id))).map(g=>({gameId:g.id,tipoff:g.tipoff}));
   p.coverage={total:games.length,played:p.results.length,dnp:(p.inactive||[]).length,missing:p.missing.length};
  }
@@ -113,4 +131,4 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now}={}){
   return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:'ESPN completed NBA box scores',teams};
  };
 }
-module.exports={METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};
+module.exports={conflictingDNP,METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};

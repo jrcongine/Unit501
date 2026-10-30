@@ -4,7 +4,7 @@
   function evaluate(players,scenarios,teamContext,game){
     const result={applied:false,teams:{},props:{},details:[],withheld:[]};
     const used=new Set(),replaced=new Set(scenarios.map(s=>String(s.teamId)+':'+String(s.playerId)));
-    const valid=p=>p&&p.games>=2&&!p.latestMissing&&p.coverage?.recorded*2>=p.coverage?.total&&Number.isFinite(p.usage)&&p.usage>0&&Number.isFinite(p.efficiency);
+    const valid=p=>p&&p.games>=2&&!p.latestMissing&&Number.isInteger(p.coverage?.total)&&p.coverage.total>0&&p.coverage.recorded===p.coverage.total&&!(p.coverage.missing>0)&&Number.isFinite(p.usage)&&p.usage>0&&Number.isFinite(p.efficiency);
     for(const s of scenarios){
       const original=players.find(p=>String(p.teamId)===String(s.teamId)&&String(p.id)===String(s.playerId));
       const key=String(s.teamId)+':'+String(s.playerId);
@@ -85,7 +85,7 @@
       .filter(p=>p&&team.roster.rows.some(r=>String(r.id)===String(p.id))&&!assess(data,game,p.teamId,p.id,now,true).blocked)
       .map(p=>({id:String(p.id),name:p.name,roleState:announced.length===1?'confirmed':'estimated',workloadState:'unknown',usage:{},source:announced.length===1?announced[0].url:team.depth.url,profiles:p.profiles||{}}));
     if(!candidates.length)return unknown('No eligible replacement matched the current roster and availability checks.');
-    const valid=p=>p&&p.games>=2&&!p.latestMissing&&p.coverage?.recorded*2>=p.coverage?.total&&Number.isFinite(p.usage)&&p.usage>0&&Number.isFinite(p.efficiency);
+    const valid=p=>p&&p.games>=2&&!p.latestMissing&&Number.isInteger(p.coverage?.total)&&p.coverage.total>0&&p.coverage.recorded===p.coverage.total&&!(p.coverage.missing>0)&&Number.isFinite(p.usage)&&p.usage>0&&Number.isFinite(p.efficiency);
     const workloadGaps=[];
     for(const category of categories){
       for(const player of [original,...candidates]){
@@ -94,7 +94,7 @@
         const reason=!profile?'No paired workload and yardage profile (need at least two recorded games).':
           profile.latestMissing?'Latest team game has no recorded workload; the baseline may already reflect the absence.':
           !(profile.games>=2)?'Fewer than two recorded workload and yardage games.':
-          !(profile.coverage?.recorded*2>=profile.coverage?.total)?'Workload is recorded in fewer than half of the team games.':
+          !(Number.isInteger(profile.coverage?.total)&&profile.coverage.total>0&&profile.coverage.recorded===profile.coverage.total&&!(profile.coverage.missing>0))?'Incomplete workload history; missing games must be verified.':
           !(Number.isFinite(profile.usage)&&profile.usage>0)?'No usable positive recent workload.':'Recorded efficiency is unavailable.';
         workloadGaps.push({category,playerId:String(player.id),player:player.name,reason});
       }

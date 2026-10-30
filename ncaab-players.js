@@ -1,5 +1,5 @@
 'use strict';
-const {stat,minutes,extractInactive,reconcileCoverage}=require('./nba-player-history');
+const {stat,minutes,extractInactive,reconcileCoverage,conflictingDNP}=require('./nba-player-history');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=';
 const fields={player_points:'points',player_rebounds:'rebounds',player_assists:'assists',player_threes:'threePointFieldGoalsMade-threePointFieldGoalsAttempted'};
 function verify(data,game){const c=data?.header?.competitions?.length===1?data.header.competitions[0]:null;
@@ -13,7 +13,7 @@ function extract(data,game,teamId){const c=verify(data,game);if(c.status?.type?.
  const seen=new Set(),out=[];for(const row of rows){
  const id=String(row.athlete?.id||''),name=String(row.athlete?.displayName||'').trim();
  if(!/^\d{1,12}$/.test(id)||!name||seen.has(id)||typeof row.didNotPlay!=='boolean')throw Error('Player identity or participation unverified');
- seen.add(id);if(row.didNotPlay)continue;
+ seen.add(id);if(conflictingDNP(row,keys))throw Error('Conflicting college participation');if(row.didNotPlay)continue;
  const min=minutes(row.stats?.[keys.indexOf('minutes')]);
  if(min===null||min===0){out.push({id,name,available:false,minutes:min});continue;}
  const values={};for(const [market,k] of Object.entries(fields))values[market]=stat(row.stats?.[keys.indexOf(k)],market==='player_threes');out.push({id,name,minutes:min,...values});}return out;}

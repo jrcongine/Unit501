@@ -48,3 +48,22 @@ test('basketball coverage separates verified DNP from missing traded or absent p
  assert.deepEqual(p.coverage,{total:3,played:1,dnp:1,missing:1});
  assert.equal(p.missing[0].gameId,'3');assert.equal(p.results.length,1);
 });
+test('basketball duplicate, conflicting and out-of-window participation cannot certify coverage',()=>{
+ for(const p of [
+  {results:[{gameId:'1'},{gameId:'1'}],inactive:[]},
+  {results:[{gameId:'1'}],inactive:[{gameId:'1'}]},
+  {results:[{gameId:'2'}],inactive:[]}
+ ]){reconcileCoverage(new Map([['7',p]]),[{id:'1'}]);assert.equal(p.available,false);}
+});
+test('Smith review never certifies a later game from blank statistics',()=>{
+ const {p,records,calendar}=smith();p.games.set('8',{gameDate:Date.parse('2026-10-29T23:00:00Z')/1000});
+ assert.equal(applyReviewedHistory(records,calendar,{league:'1',season:'2026'}),true);
+ assert.equal(p.games.get('8').recYds,undefined);
+ assert.equal(project([...p.games.values()],'recYds').withheld,true);
+});
+test('basketball DNP cannot override recorded minutes, points or shot attempts',()=>{
+ const {conflictingDNP}=require('../nba-player-history');
+ const keys=['minutes','points','threePointFieldGoalsMade-threePointFieldGoalsAttempted'];
+ for(const stats of [['1','0','0-0'],['0','1','0-0'],['0','0','0-1']])assert.ok(conflictingDNP({didNotPlay:true,stats},keys));
+ for(const stats of [[],['0','0','0-0'],['--','--','--']])assert.equal(conflictingDNP({didNotPlay:true,stats},keys),false);
+});

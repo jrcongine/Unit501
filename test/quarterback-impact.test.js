@@ -20,3 +20,11 @@ test('college unique experienced backup is estimated automatically, ambiguity an
  await enrich(q,[t]);assert.equal(t.quarterback.rows.length,1);assert.equal(t.quarterback.rows[0].role,'recent backup estimate');
  t.official.rows[1].status='Questionable';await enrich(q,[t]);assert.equal(t.quarterback.rows.length,0);
 });
+test('QB replacement withholds any missing earlier appearance or stat rather than ignoring it',()=>{
+ for(const index of [0,1,2])for(const field of ['row','yards','attempts']){
+  const data=boxes(),players=data.get('1')[0].groups[0].players;
+  if(field==='row')players.splice(index%2,1);
+  else players[index%2].statistics=players[index%2].statistics.filter(s=>field==='yards'?s.name!=='yards':s.name!=='comp/att');
+  assert.equal(estimate(games,data,{id:'1'},...roster),null);
+ }
+});

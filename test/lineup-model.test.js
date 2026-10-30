@@ -145,6 +145,14 @@ test('partial workload diagnostics preserve supported allocations and identify l
  const r=recommend(f.rows,f.rows[0],f.data,game,assess,f.now);
  assert.equal(r.state,'estimated');assert.equal(r.allocations.reduce((n,a)=>n+a.shares.rushing,0),100);
  assert.ok(r.allocations.every(a=>a.shares.receiving===undefined));
- assert.equal(r.workloadGaps.length,1);assert.match(r.workloadGaps[0].reason,/fewer than half/);
+ assert.equal(r.workloadGaps.length,1);assert.match(r.workloadGaps[0].reason,/Incomplete workload history/);
  const clean=replacementFixture();assert.deepEqual(recommend(clean.rows,clean.rows[0],clean.data,game,assess,clean.now).workloadGaps,[]);
+});
+
+test('cached partial replacement histories cannot bypass complete-coverage gates',()=>{
+ const sparse=structuredClone(players);
+ for(const p of sparse)for(const profile of Object.values(p.profiles))profile.coverage={recorded:4,total:5,missing:1};
+ const result=evaluate(sparse,[scenario],context,game);
+ assert.equal(result.applied,false);assert.deepEqual(result.props,{});
+ assert.ok(result.withheld.length);
 });

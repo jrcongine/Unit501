@@ -103,7 +103,7 @@ test('replacement profiles parse combined attempts, keep missing latest games un
  const p=buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8');
  assert.equal(p.profiles.passing.usage,30);assert.equal(p.profiles.passing.games,10);assert.equal(p.profiles.passing.latestMissing,false);
  const latest=f.games.at(-1);f.boxes.set(String(latest.game.id),[{team:{id:1},groups:[]}]);
- assert.equal(buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8').profiles.passing.latestMissing,true);
+ assert.equal(buildRatings(f.games,f.boxes,f.rosters,20000).find(p=>p.id==='8').profiles.passing,undefined);
 });
 test('college production includes completed non-NFL stages; NFL retains the regular-season gate',()=>{
  const f=fixture();for(const g of f.games)g.game.stage='NCAA';
@@ -181,4 +181,14 @@ test('replacement efficiency damps isolated spikes while preserving recorded pro
  assert.ok(p.profiles.passing.efficiency<6);
  assert.equal(f.boxes.get('10')[0].groups[0].players[0].statistics[0].value,1000);
  assert.equal(p.profiles.passing.games,10);
+});
+test('replacement profiles require complete usage and yardage including older games in NFL and college',()=>{
+ for(const league of ['1','2']){
+  const f=fixture();
+  for(const rows of f.boxes.values())for(const p of rows[0].groups[0].players)p.statistics.push({name:'attempts',value:20});
+  assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000,league)[0].profiles.passing);
+  f.boxes.get('1')[0].groups[0].players[0].statistics=f.boxes.get('1')[0].groups[0].players[0].statistics.filter(s=>s.name!=='attempts');
+  assert.equal(buildRatings(f.games,f.boxes,f.rosters,20000,league)[0].profiles.passing,undefined);
+  assert.ok(buildRatings(f.games,f.boxes,f.rosters,20000,league)[1].profiles.passing);
+ }
 });

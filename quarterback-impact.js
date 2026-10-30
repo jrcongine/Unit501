@@ -11,6 +11,9 @@ function estimate(games,boxes,team,original,replacement){
  const history=id=>records.get(String(team.id)+':'+id)?.games||new Map();
  const from=history(original.id),to=history(replacement.id),latest=String(games[0]?.game.id);
  const paired=h=>games.map(g=>h.get(String(g.game.id))).filter(r=>r&&Number.isFinite(r.attempts)&&r.attempts>0&&Number.isFinite(r.passYds)&&r.passYds>=0);
+ // Missing appearances are not evidence of zero workload or DNP.
+ const complete=h=>games.every(g=>{const r=h.get(String(g.game.id));return r&&Number.isFinite(r.attempts)&&r.attempts>=0&&Number.isFinite(r.passYds);});
+ if(!complete(from)||!complete(to))return null;
  const a=paired(from),b=paired(to),sum=(rows,k)=>rows.reduce((s,r)=>s+r[k],0);
  const attempts=sum(a,'attempts'),backupAttempts=sum(b,'attempts');
  const recent=games.slice(0,3).map(g=>from.get(String(g.game.id))).filter(r=>r?.attempts>=15&&Number.isFinite(r.passYds));

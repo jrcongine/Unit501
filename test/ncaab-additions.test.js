@@ -13,7 +13,7 @@ test('college basketball distinguishes actual zeros, DNP and unverified particip
  const copy=()=>structuredClone(summary);
  const zero=copy();zero.boxscore.players[0].statistics[0].athletes[0].stats=['3','0','0','0','0-0'];
  assert.equal(extract(zero,game,'1')[0].player_points,0);
- const dnp=copy();dnp.boxscore.players[0].statistics[0].athletes[0].didNotPlay=true;assert.equal(extract(dnp,game,'1').length,0);
+ const dnp=copy();dnp.boxscore.players[0].statistics[0].athletes[0].didNotPlay=true;dnp.boxscore.players[0].statistics[0].athletes[0].stats=[];assert.equal(extract(dnp,game,'1').length,0);
  const unknown=copy();delete unknown.boxscore.players[0].statistics[0].athletes[0].didNotPlay;assert.throws(()=>extract(unknown,game,'1'),/participation/);
  const rounded=copy();rounded.boxscore.players[0].statistics[0].athletes[0].stats[0]='0';assert.equal(extract(rounded,game,'1')[0].available,false);
  const duplicate=copy();duplicate.boxscore.players[0].statistics[0].athletes.push(structuredClone(duplicate.boxscore.players[0].statistics[0].athletes[0]));assert.throws(()=>extract(duplicate,game,'1'),/identity/);
