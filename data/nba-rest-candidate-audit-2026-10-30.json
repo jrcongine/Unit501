@@ -1,0 +1,102 @@
+{
+  "method": "Research candidate, not production. Archived NBA 2024-25, existing recent5 baseline. Fit residual home margin on games before 2025-01-01 UTC; evaluate later games with frozen coefficients. Home-minus-away full Central calendar days off, capped at 3 per team; ridge penalty 20 on rest slope only, no tuning. Training fits home advantage and home advantage plus rest as an ablation. Date-block bootstrap uses 1000 seeded draws; team dependence across dates remains. This season has already been inspected, so this is not independent external validation. No odds, ROI, injuries, travel paths or calibrated win probabilities.",
+  "trainingGames": 432,
+  "validationGames": 750,
+  "cutoff": "2025-01-01T00:00:00.000Z",
+  "weights": {
+    "baseline": {
+      "homeMargin": 0,
+      "restPointsPerDay": 0
+    },
+    "homeOnly": {
+      "homeMargin": 2.1113425925925933,
+      "restPointsPerDay": 0
+    },
+    "homeAndRest": {
+      "homeMargin": 2.0933580903310682,
+      "restPointsPerDay": 0.9711631221223412
+    }
+  },
+  "validation": {
+    "baseline": {
+      "games": 750,
+      "marginMAE": 12.03693333333332,
+      "winnerDecisions": 744,
+      "winnerAccuracy": 0.6384408602150538
+    },
+    "homeOnly": {
+      "games": 750,
+      "marginMAE": 12.03875617283951,
+      "winnerDecisions": 750,
+      "winnerAccuracy": 0.64
+    },
+    "homeAndRest": {
+      "games": 750,
+      "marginMAE": 12.01064406197471,
+      "winnerDecisions": 750,
+      "winnerAccuracy": 0.632
+    }
+  },
+  "pairedMarginError": {
+    "homeVsBaseline": {
+      "meanChange": 0.0018228395061726842,
+      "lower95": -0.13888826326326342,
+      "upper95": 0.15339849802569067,
+      "dateBlocks": 98
+    },
+    "homeAndRestVsBaseline": {
+      "meanChange": -0.026289271358620192,
+      "lower95": -0.17822261700099168,
+      "upper95": 0.1401968982067721,
+      "dateBlocks": 98
+    },
+    "restVsHomeOnly": {
+      "meanChange": -0.02811211086479291,
+      "lower95": -0.08023905917748539,
+      "upper95": 0.02543036307925021,
+      "dateBlocks": 98
+    }
+  },
+  "validationHalves": [
+    {
+      "baseline": {
+        "games": 375,
+        "marginMAE": 12.237600000000004,
+        "winnerDecisions": 373,
+        "winnerAccuracy": 0.6005361930294906
+      },
+      "homeOnly": {
+        "games": 375,
+        "marginMAE": 12.30292530864199,
+        "winnerDecisions": 375,
+        "winnerAccuracy": 0.6026666666666667
+      },
+      "homeAndRest": {
+        "games": 375,
+        "marginMAE": 12.316590093546742,
+        "winnerDecisions": 375,
+        "winnerAccuracy": 0.5973333333333334
+      }
+    },
+    {
+      "baseline": {
+        "games": 375,
+        "marginMAE": 11.836266666666667,
+        "winnerDecisions": 371,
+        "winnerAccuracy": 0.6765498652291105
+      },
+      "homeOnly": {
+        "games": 375,
+        "marginMAE": 11.774587037037039,
+        "winnerDecisions": 375,
+        "winnerAccuracy": 0.6773333333333333
+      },
+      "homeAndRest": {
+        "games": 375,
+        "marginMAE": 11.704698030402687,
+        "winnerDecisions": 375,
+        "winnerAccuracy": 0.6666666666666666
+      }
+    }
+  ]
+}
