@@ -7,6 +7,18 @@ const raw=require('./fixtures/cfb-pitt-miami-20261024.json');
 const q={game:'123',league:'2',season:'2026',date:'2026-10-24'},time=Date.parse(raw.header.competitions[0].date)/1000;
 function game(){const g={league:{id:2,season:2026},game:{id:123,date:{timestamp:time},status:{short:'FT'},stage:'Regular Season'},teams:{},scores:{}};for(const t of raw.header.competitions[0].competitors){g.teams[t.homeAway]={id:t.id,name:t.team.displayName};g.scores[t.homeAway]={total:Number(t.score)};}return g;}
 const parse=d=>parseBox(d,d.header,game(),q);
+test('verified appearance survives absent offensive categories without inventing statistics',()=>{
+ const d=structuredClone(raw);
+ for(const team of d.boxscore.players)team.statistics=team.statistics.filter(g=>g.name==='defensive');
+ const report=parse(d),team=report.teams[0],other=report.teams[1],player=team.players[0];
+ assert(player);assert.deepEqual(player.markets,[]);
+ const line={gameDate:time},record={name:player.name,team:team.name,teamId:team.id,games:new Map([['123',line]])};
+ const records=new Map([['player',record]]),calendar=new Map([['123',{date:time,teams:new Map([[team.id,{name:other.name,scored:team.scored,allowed:team.allowed}]])}]]);
+ assert.equal(applyParticipation(records,calendar,report,q),1);
+ assert.equal(line.participation,'played');assert.equal(line.rec,undefined);assert.equal(line.carries,undefined);
+ line.participation='dnp';applyParticipation(records,calendar,report,q);
+ assert.equal(line.participation,'conflict');
+});
 test('real college box score verifies played zero receiving via another recorded event',()=>{
  const r=parse(raw),p=r.teams[1].players.find(p=>p.name==='Javian Mallory');assert.equal(p.rushYds,47);assert.equal(p.recYds,0);assert.equal(p.rec,0);assert.equal(p.participation,'played');assert.equal(p.targets,undefined);assert(!p.markets.includes('targets'));
  assert(r.teams.every(t=>t.players.length>30));

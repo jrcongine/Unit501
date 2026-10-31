@@ -7,7 +7,7 @@ test('runtime verification authenticates only loopback assets and saved health w
   calls.push(url);assert.equal(opts.headers.Authorization,'Basic '+Buffer.from('jr:'+password).toString('base64'));assert.equal(opts.redirect,'error');
   return {ok:true,text:async()=>'<safe asset>',json:async()=>({feeds:[{id:'nba:props',status:'partial',secret:password},{id:'nfl:injuries',status:'stale'},{id:password,status:'working'},{id:'nba:context',status:password}]})};
  }});
- assert.equal(r.status,'verified');assert.equal(calls.length,6);assert.ok(calls.every(u=>u.startsWith('http://127.0.0.1:8080/')));
+ assert.equal(r.status,'verified');assert.equal(calls.length,7);assert.ok(calls.includes('http://127.0.0.1:8080/player-stats.js'));assert.ok(calls.every(u=>u.startsWith('http://127.0.0.1:8080/')));
  assert.deepEqual(r.feeds,[{id:'nba:props',status:'partial'},{id:'nfl:injuries',status:'stale'}]);assert(!JSON.stringify(r).includes(password));
 });
 test('runtime verification fails closed on missing auth, mismatched assets and failed health',async()=>{

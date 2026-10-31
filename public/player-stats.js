@@ -108,7 +108,7 @@
         const matches=team.players.filter(p=>(report.nameFormat==='full'?normalize(p.name):abbreviation(p.name))===name);if(matches.length!==1)continue;
         const row=matches[0],line=record.games.get(String(report.gameId));if(!line||!['played','dnp'].includes(row.participation))continue;
         const verifiedKeys=report.nameFormat==='full'?keys.filter(k=>row.markets?.includes(k)):keys;
-        if(row.participation==='played'&&(!verifiedKeys.length||verifiedKeys.some(k=>!Number.isFinite(row[k])||(!k.endsWith('Yds')&&row[k]<0))))continue;
+        if(row.participation==='played'&&verifiedKeys.some(k=>!Number.isFinite(row[k])||(!k.endsWith('Yds')&&row[k]<0)))continue;
         const conflict=line.participation==='conflict'||(row.participation==='dnp'
           ? line.participation==='played'||keys.some(k=>Number.isFinite(line[k])&&line[k]!==0)
           : line.participation==='dnp'||verifiedKeys.some(k=>line[k]!==undefined&&line[k]!==row[k]));

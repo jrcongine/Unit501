@@ -10,6 +10,22 @@ function boxes(values){
   return [String(g.game.id),[team]];
  }));
 }
+test('empty or other-team-only provider boxes still recover verified workload across football leagues',async()=>{
+ for(const league of ['1','2'])for(const missing of [[],[{team:{id:11,name:'Home'},groups:[]}]]){
+  const now=Date.parse('2026-10-30T18:00:00Z'),kickoff=now+3600000;
+  const schedule=[1,2].map(id=>({league:{id:league,season:2026},teams:{away:{id:10,name:'Away'},home:{id:11,name:'Home'}},scores:{away:{total:20},home:{total:21}},game:{id,stage:'Regular Season',status:{short:'FT'},date:{timestamp:(now-id*86400000)/1000}}}));
+  let calls=0;
+  const enrich=createCollegeInjuryUsage(async path=>({response:path.startsWith('/games?')?schedule:missing}),()=>now,async q=>{
+   calls++;const g=schedule.find(g=>String(g.game.id)===q.game);
+   return {available:true,league,season:'2026',gameId:q.game,gameDate:g.game.date.timestamp,nameFormat:'full',source:'https://site.api.espn.com/apis/site/v2/sports/football/'+(league==='1'?'nfl':'college-football')+'/summary?event=123',teams:[{id:'10',name:'Away',scored:20,allowed:21,players:[{name:'Test Runner',participation:'played',markets:['carries'],carries:10}]},{id:'11',name:'Home',scored:21,allowed:20,players:[]}]};
+  });
+  const team={id:'10',official:{available:true,kickoff,rows:[{id:'7',status:'Out'}]},roster:{rows:[{id:'7',name:'Test Runner',position:'RB'}]}};
+  await enrich({league,season:'2026',game:'4'},[team]);
+  assert.equal(calls,2);assert.equal(team.injuryUsage.available,true);
+  assert.equal(team.injuryUsage.rows[0].id,'7');assert.deepEqual(team.injuryUsage.rows[0].values,[10,10]);
+  assert.ok(team.injuryUsage.history[0].games.every(g=>g.state==='played'));
+ }
+});
 test('college role requires repeated meaningful workload including latest team game',()=>{
  const roster=[{id:'7',position:'WR'}];
  assert.equal(buildUsage(games,boxes([4,3,0]),10,roster).length,1);

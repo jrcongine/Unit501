@@ -77,7 +77,9 @@ function createCollegeInjuryUsage(api,now=Date.now,participation=null,absenceHis
     const reports=[];
     // Bounded concurrency for season participation; cached provider reads share results.
     for(let i=0;i<games.length;i+=4)reports.push(...await Promise.all(games.slice(i,i+4).map(async g=>{try{return {id:String(g.game.id),...await read('/games/statistics/players?id='+g.game.id)};}catch{return {id:String(g.game.id),checkedAt:now(),rows:[{team:{id:t.id},groups:[]}]};}})));
-    const boxes=new Map(reports.map(r=>[r.id,r.rows]));
+    // An empty response or absent team is missing data, not a reason to skip
+    // independent recovery. Duplicate team records still fail closed below.
+    const boxes=new Map(reports.map(r=>[r.id,r.rows.some(row=>String(row.team?.id)===String(t.id))?r.rows:[...r.rows,{team:{id:t.id},groups:[]}]]));
     const roster=t.roster?.rows||[];
     const absences=absenceHistory?await absenceHistory(games,q,t).catch(()=>[]):[];
     let usage=buildUsageReport(games,boxes,t.id,roster,[],q,absences);
