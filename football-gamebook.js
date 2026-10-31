@@ -5,6 +5,7 @@ const sources=[{league:'1',season:'2026',date:'2026-10-29',away:'Carolina Panthe
  url:'https://static.clubs.nfl.com/image/upload/packers/ia7jnbokrjesqdfxqreh',
  page:'https://www.packers.com/game-day/2026/reg-week8/packers-vs-panthers/'}];
 sources.push(
+ {league:'1',season:'2025',date:'2025-12-25',away:'Detroit Lions',home:'Minnesota Vikings',awayScore:10,homeScore:23,url:'https://static.www.nfl.com/image/upload/v1766760008/gamecenter/f91b6ce0-311e-11f0-b670-ae1250fadad1.pdf',page:'https://www.nfl.com/games/lions-at-vikings-2025-reg-17'},
  {league:'1',season:'2026',date:'2026-10-18',away:'Dallas Cowboys',home:'Green Bay Packers',awayScore:13,homeScore:23,url:'https://static.clubs.nfl.com/image/upload/packers/fgwfiyxcsyutwuntwjcb',page:'https://www.packers.com/game-day/2026/reg-week6/packers-vs-cowboys/'},
  {league:'1',season:'2026',date:'2026-10-11',away:'Chicago Bears',home:'Green Bay Packers',awayScore:7,homeScore:31,url:'https://static.clubs.nfl.com/image/upload/packers/pqpptpb5ckujllxac1md',page:'https://www.packers.com/game-day/2026/reg-week5/packers-vs-bears/'},
  {league:'1',season:'2026',date:'2026-09-20',away:'Green Bay Packers',home:'New York Jets',awayScore:20,homeScore:17,url:'https://static.clubs.nfl.com/image/upload/packers/zu3fdftopjkj8hkcwckc',page:'https://www.packers.com/game-day/2026/reg-week2/packers-at-jets/'}

@@ -94,7 +94,7 @@
   // Match exact team/game identities and unique initial+surname abbreviations.
   // Collisions remain unresolved; no fuzzy matching or current-roster assumptions.
   function applyParticipation(records,calendar,report,scope) {
-    if(!report?.available||String(report.league)!==String(scope?.league)||String(report.season)!==String(scope?.season)||!(/^https:\/\/static\.clubs\.nfl\.com\//.test(report.source||'')||/^https:\/\/www\.ncaa\.com\/game\/\d+$/.test(report.source||'')||/^https:\/\/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/(nfl|college-football)\/summary\?event=\d+$/.test(report.source||''))||!Array.isArray(report.teams)||report.teams.length!==2)return 0;
+    if(!report?.available||String(report.league)!==String(scope?.league)||String(report.season)!==String(scope?.season)||!(/^https:\/\/static\.(?:clubs\.nfl\.com\/|www\.nfl\.com\/image\/upload\/)/.test(report.source||'')||/^https:\/\/www\.ncaa\.com\/game\/\d+$/.test(report.source||'')||/^https:\/\/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/(nfl|college-football)\/summary\?event=\d+$/.test(report.source||''))||!Array.isArray(report.teams)||report.teams.length!==2)return 0;
     const past=calendar.get(String(report.gameId));if(!past||past.date!==report.gameDate)return 0;
     const short=name=>{const parts=String(name||'').trim().split(/\s+/);return parts.length>1?normalize(parts[0][0]+parts.slice(1).join('')).replace(/ /g,''):'';};
     const abbreviation=name=>normalize(name).replace(/ /g,'');

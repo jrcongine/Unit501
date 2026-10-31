@@ -60,7 +60,7 @@ test('unverified DNP and missing market rows still withhold projections',()=>{
  assert.equal(form.project([...base,{gameDate:3,participation:'played',verification:{participation:true}}],'rec').withheld,true);
 });
 test('three previously omitted Smith games are independently verified played zeros from real official gamebooks',()=>{
- for(const s of sources.slice(1)){
+ for(const s of sources.slice(1).filter(s=>s.home==='Green Bay Packers'||s.away==='Green Bay Packers')){
   const input=require('./fixtures/nfl-gamebook-'+s.date.replaceAll('-','')+'.json');
   const teams=parse(input,s),smith=teams.find(t=>t.name==='Green Bay Packers').players.find(p=>p.name==='J.Smith');
   assert.equal(smith.participation,'played');assert.equal(smith.rec,0);assert.equal(smith.recYds,0);assert.equal(smith.targets,0);

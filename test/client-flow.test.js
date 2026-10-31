@@ -1145,3 +1145,27 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Fixed history threshold; no betting line used/);
 });
+
+test('first matchup this season displays prior-season actuals without changing the projected sample',async()=>{
+ const h=harness(), base=h.context.fetch;
+ h.context.fetch=async url=>{
+  const u=new URL(url,'http://localhost');
+  const original=await base(url);
+  if(u.pathname==='/api/player-stats'){
+   const data=await original.json();data.response.push({team:{id:5,name:'Other'},groups:[]});
+   return {ok:true,json:async()=>data};
+  }
+  if(u.pathname!=='/api/team-games')return original;
+  const {response}=await original.json();
+  const team=u.searchParams.get('team'),prior=u.searchParams.get('season')==='2025';
+  const games=response.map(g=>({...g,league:{...g.league,season:prior?2025:2026},
+   teams:prior?g.teams:{...g.teams,[team==='1'?'home':'away']:{id:5,name:'Other'}},
+   game:{...g.game,date:{timestamp:prior?Date.parse('2025-12-25T21:30Z')/1000:g.game.date.timestamp}}}));
+  return {ok:true,json:async()=>({response:prior?games.slice(0,1):games})};
+ };
+ await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ const board=h.nodes.get('saved-line-comparisons');
+ assert.match(board.textContent,/100 vs Team B · Dec 25, 2025/);
+ assert.match(board.textContent,/2\/2/);
+});

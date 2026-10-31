@@ -653,7 +653,7 @@ cell.append(details);
     const starPower=window.Unit501StarPower?.adjust(adjusted,starScenarios.get(record.id) || 'off',selected) ||
       {adjusted,applied:false,label:'Standard projection',factor:1,warning:'Modifier unavailable.'};
     adjusted=starPower.adjusted;
-    const meetings = history.map(g => ({
+    const meetings = history.concat(record.opponentHistory || []).map(g => ({
       time:g.gameDate*1000, opponentId:g.opponentId, stats:g,
       status:g.participation==='dnp' && g.verification?.participation ? 'dnp' :
         g.participation==='played' || (!g.participation && [...definitions.map(d=>d.key),"attempts","targets"].some(k=>Number.isFinite(g[k])&&g[k]!==0)) ? 'played' : 'unknown'
@@ -940,6 +940,52 @@ results.appendChild(workload);
     status.textContent = 'Tap Load Player Projections for this matchup.';
     button.disabled = typeof selected === 'undefined' || !selected;
   }
+  async function priorOpponentHistory(records, teamIds, league, season, kickoff, task) {
+    const year=String(Number(season)-1);
+    const schedule=await json(`/api/team-games?team=${teamIds[0]}&season=${year}&league=${league}`);
+    const calendar=new Map();
+    for(const event of schedule){
+      const away=event.teams?.away||event.teams?.visitors, home=event.teams?.home;
+      if(![away,home].every(team=>teamIds.includes(String(team?.id)))||String(away.id)===String(home.id))continue;
+      const g=event.game, date=gameTime(event);
+      if(String(event.league?.id)!==league||String(event.league?.season)!==year||
+        !Number.isFinite(date)||date>=kickoff||!/^\d+$/.test(String(g?.id))||
+        /pre[\s-]*season|exhibition/i.test(g.stage||'')||!['FT','AOT','FINAL'].includes(g.status?.short))continue;
+      const teams=new Map();
+      for(const [team,opponent,side,other] of [[away,home,'away','home'],[home,away,'home','away']]){
+        teams.set(String(team.id),{id:String(opponent.id),name:opponent.name,scored:n(event.scores?.[side]?.total),allowed:n(event.scores?.[other]?.total)});
+      }
+      calendar.set(String(g.id),{date,teams});
+    }
+    if(!calendar.size||task!==sequence)return;
+    // Keep previous-season statistics separate from the projection sample.
+    const archive=new Map([...records].map(([id,record])=>[id,{...record,games:new Map()}]));
+    completeCalendar(archive,calendar);
+    for(const [id,meeting] of calendar){
+      if(task!==sequence)return;
+      const box=new Map();
+      try {
+        const rows=await json(`/api/player-stats?game=${id}&league=${league}`);
+        for(const row of rows){
+          const opponent=meeting.teams.get(String(row.team?.id));
+          if(opponent)accumulate(box,row,id,meeting.date,opponent.name);
+        }
+        for(const [key,historical] of box){
+          const current=archive.get(key);
+          if(current && playerName(current.name)===playerName(historical.name))
+            Object.assign(current.games.get(id),historical.games.get(id));
+        }
+      }catch{/* Keep the unknown game slot until participation can be verified. */}
+      const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(meeting.date*1000));
+      try{
+        const reports=await json(`/api/football/participation?game=${id}&league=${league}&season=${year}&date=${date}`);
+        if(reports.length===1)Unit501PlayerStats.applyParticipation(archive,calendar,reports[0],{league,season:year});
+      }catch{/* An unavailable report cannot establish a played zero. */}
+    }
+    if(task!==sequence)return;
+    for(const [id,record] of records)record.opponentHistory=[...archive.get(id).games.values()];
+    showPlayer();
+  }
   document.addEventListener('unit501:selection-changed', reset);
   button.addEventListener('click', async () => {
     if (typeof selected === 'undefined' || !selected || !selected.id) {
@@ -1051,6 +1097,7 @@ if (league === '1' && stage !== 'regular season') return false;
       status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against gamebooks or completed box scores. All supported projections are listed below; select a player for a detailed breakdown.`;
       showPlayer();
       loadProps();
+      priorOpponentHistory(map,teamIds,league,season,kickoff,task).catch(()=>{});
     } catch (e) {
       if (task === sequence) status.textContent = 'Could not load projections: ' + e.message;
     } finally {
