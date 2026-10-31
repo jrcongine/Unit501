@@ -4,7 +4,7 @@ const {fbsName}=require('./team-identity');
 const {matchPlayer,clean}=require('./player-name-match');
 const {localEpoch}=require('./college-availability');
 const root='https://www.ourlads.com/ncaa-football-depth-charts/';
-const position=p=>({LCB:'CB',RCB:'CB',NB:'CB',LDE:'DE',RDE:'DE',LDT:'DT',RDT:'DT',LT:'T',RT:'T',LG:'G',RG:'G',MLB:'LB',WLB:'LB',SLB:'LB',ILB:'LB',OLB:'LB',EDGE:'DE',EDG:'DE'})[p]||(/^WR-/.test(p)?'WR':p);
+const {normalize:position,compatible:compatiblePosition}=require('./public/football-position');
 function directory(html,season){
  const entries=new Map();
  for(const m of html.matchAll(/class=['"]ncaa-tm-school['"][^>]*>([^<]+)<\/div>[\s\S]*?href=['"]depth-chart\.aspx\?s=([a-z0-9-]+)&(?:amp;)?id=(\d+)['"]/g)){
@@ -55,7 +55,7 @@ function createCollegeDepth(now=Date.now,fetchPage=async url=>{const r=await fet
     const urls=directory(index.html,q.season).get(school);if(urls?.size!==1)throw Error('Depth school ambiguous');
     const url=[...urls][0],page=await read(url),parsed=parse(page.html,school,q.season,now()),rows=[],unresolved=[];
     for(const row of parsed.rows){const p=matchPlayer(row,t.roster?.rows||[],t.id,q);
-     if(!p||(!row.reserve&&position(p.position)!==row.position)){unresolved.push({...row,reason:'Provider identity or position unresolved.'});continue;}
+     if(!p||(!row.reserve&&!compatiblePosition(p.position,row.position))){unresolved.push({...row,reason:'Provider identity or position unresolved.'});continue;}
      rows.push({...row,position:String(p.position).toUpperCase(),id:String(p.id)});
     }
     t.depth={available:true,checkedAt:Math.min(index.checkedAt,page.checkedAt),publishedAt:parsed.publishedAt,gameId:String(q.game),kickoff:t.official.kickoff,league:q.league,season:q.season,source:'Ourlads',url,rows,unresolved,message:'Ourlads published depth order; not a confirmed game-day lineup or replacement-quality estimate.'};

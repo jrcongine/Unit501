@@ -349,7 +349,8 @@ test('verified second-string contributors have smaller sensitivity; depth alone 
  }
 });
 test('role and overlap adjustment flows into football scores and simulations',()=>{
- const {d,g,context}=exposureFixture('1');
+ const {d,g,t,context}=exposureFixture('1','DB');
+ t.depth.rows[0].position='CB';
  const teams=Array.from({length:32},(_,i)=>({id:String(i+1),games:3,metrics:Object.fromEntries(['pointsFor','pointsAgainst'].map(k=>[k,{average:24,games:3,rank:i+1,pool:32}]))}));
  const stats={...context,teams:teams.map(t=>t.id==='1'?{...t,recentGames:context.teams[0].recentGames}:t),coverage:{pointsFor:{ranked:true,expected:32},pointsAgainst:{ranked:true,expected:32}}};
  const model=require('../public/team-model'),injury=evaluate(d,g,null,now,stats);
@@ -358,4 +359,17 @@ test('role and overlap adjustment flows into football scores and simulations',()
  let seed=1;const rng=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
  const a=model.simulate(before,0,48,10000,rng);seed=1;const b=model.simulate(after,0,48,10000,rng);
  assert.notEqual(a.win,b.win);
+});
+
+for(const league of ['1','2'])test('league '+league+' recognizes compatible broad roster and specific published starter roles',()=>{
+ for(const [provider,chart] of [['DB','CB'],['DB','FS'],['S','SS'],['DL','DE'],['LB','OLB']]){
+  const {d,g,t,context}=exposureFixture(league,provider);
+  t.depth.rows[0].position=chart;
+  const r=evaluate(d,g,null,now,context);assert.equal(r.applied.length,1,provider+'/'+chart);assert.match(r.applied[0].role,/first-string/);
+  t.injuryUsage.history[0].games[0].state='unknown';assert.equal(evaluate(d,g,null,now,context).applied.length,0);
+  t.injuryUsage.history[0].games[0].state='played';
+  t.official.rows[0].status='Questionable';assert.equal(evaluate(d,g,null,now,context).applied.length,0);
+  t.official.rows[0].status='Out';
+  t.depth.rows[0].position='WR';assert.equal(evaluate(d,g,null,now,context).applied.length,0);
+ }
 });

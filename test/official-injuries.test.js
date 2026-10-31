@@ -111,3 +111,14 @@ test('malformed NFL injury rows cannot silently disappear from a verified report
   assert.equal(t[0].official.available,false);
  }
 });
+
+test('unique suffix-formatted identities accept broad defensive position labels, never conflicting specific positions',()=>{
+ const {matchPlayer}=require('../player-name-match');
+ for(const [report,provider] of [['CB','DB'],['DB','CB'],['FS','S'],['OLB','LB'],['DE','DL']]){
+  const p={id:'7',name:'Test Defender Jr.',position:provider};
+  assert.equal(matchPlayer({name:'Test Defender',position:report},[p],'1'),p,report+'/'+provider);
+  assert.equal(matchPlayer({name:'Test Defender III',position:report},[p],'1'),null);
+  assert.equal(matchPlayer({name:'Test Defender',position:report},[p,{...p,id:'8'}],'1'),null);
+ }
+ for(const [report,provider] of [['CB','S'],['DE','DT'],['WR','TE']])assert.equal(matchPlayer({name:'Test Defender',position:report},[{id:'7',name:'Test Defender Jr.',position:provider}],'1'),null);
+});

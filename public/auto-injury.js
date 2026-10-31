@@ -9,8 +9,8 @@
   T:['offense',0.35],OT:['offense',0.35],G:['offense',0.3],OG:['offense',0.3],C:['offense',0.3],
   WR:['offense',0.35],RB:['offense',0.25],FB:['offense',0.15],TE:['offense',0.2]
  };
- const position = value => {const p=String(value||'').trim().toUpperCase();return ({EDG:'EDGE',MLB:'LB',LT:'T',RT:'T',OT:'T',LG:'G',RG:'G',OG:'G',LDE:'DE',RDE:'DE',LDT:'DT',RDT:'DT'})[p]||p;};
- const roleMatches=(chart,provider)=>{const c=position(chart),p=position(provider);return c===p||(c==='DL'&&['DE','DT','NT'].includes(p))||(c==='DB'&&['CB','S','FS','SS'].includes(p));};
+ const positions=typeof module!=='undefined'&&module.exports?require('./football-position'):root.Unit501FootballPosition;
+ const position=positions.normalize,roleMatches=positions.compatible;
  const empty=()=>({awayOffense:0,awayDefense:0,homeOffense:0,homeDefense:0});
  const fresh=(record,age,now)=>record?.available===true&&Number.isFinite(record.checkedAt)&&record.checkedAt<=now&&now-record.checkedAt<=age;
  const matchGame=(r,game)=>r&&String(r.gameId)===String(game.id)&&r.kickoff===game.kickoff&&

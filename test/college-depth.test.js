@@ -34,3 +34,11 @@ test('scouting icon links do not create false shared slots; multiple named playe
  assert.equal(parse(blank,'Arizona','2026',now).rows.length,4);
  assert.throws(()=>parse(html.replace("<i class='fa fa-file-text'></i>",'Other, Player'),'Arizona','2026',now),/Shared/);
 });
+
+test('college depth resolves a unique generic defensive roster position without confusing specific positions',async()=>{
+ for(const [position,expected] of [['DB',true],['CB',true],['S',false],['WR',false]]){
+  const load=createCollegeDepth(()=>now,async url=>url.endsWith('default.aspx')?index:page());
+  const team={id:'10',official:{available:true,teamName:'Arizona',kickoff:now+3600000},roster:{rows:[{id:'7',name:"Jay'Vion Cole",position}]}};
+  await load({league:'2',season:'2026',game:'99'},[team]);assert.equal(team.depth.rows.some(r=>r.id==='7'),expected,position);
+ }
+});
