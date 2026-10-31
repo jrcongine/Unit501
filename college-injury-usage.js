@@ -1,5 +1,5 @@
 'use strict';
-const {accumulate}=require('./public/player-stats');
+const {accumulate,applyParticipation}=require('./public/player-stats');
 const {reconcileGames}=require('./football-schedule-integrity');
 const defensive=new Set(['CB','DB','S','FS','SS','DE','EDGE','EDG','DT','NT','DL','LB','ILB','OLB','MLB']);
 const numeric=v=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&/^\d+(?:\.\d+)?$/.test(v.trim())?Number(v):null;
@@ -10,10 +10,27 @@ function tackles(team,id){
  if(stats.length!==1)return null;
  const value=numeric(stats[0].value);return Number.isInteger(value)&&value>=0?value:null;
 }
-function buildUsageReport(games,boxes,teamId,roster){
+function buildUsageReport(games,boxes,teamId,roster,reports=[],scope={}){
  const records=new Map();
  for(const g of games){const rows=boxes.get(String(g.game.id));const matches=rows.filter(t=>String(t.team?.id)===String(teamId));if(matches.length!==1)throw Error('Team box score missing or ambiguous');const t=matches[0];accumulate(records,t,String(g.game.id),Number(g.game.date.timestamp),'');}
  if(new Set(games.map(g=>String(g.game.id))).size!==games.length)throw Error('Duplicate workload games');
+ // Seed missing player/game records from this team's roster, never inferred zeros.
+ // The shared reconciler verifies source, matchup, score and unique player name.
+ const calendar=new Map();
+ for(const g of games){
+  const side=['away','home'].find(side=>String(g.teams?.[side]?.id)===String(teamId));
+  if(!side)continue;
+  const other=side==='away'?'home':'away',name=g.teams[side].name;
+  calendar.set(String(g.game.id),{date:Number(g.game.date.timestamp),teams:new Map([[String(teamId),{name:g.teams[other].name,scored:g.scores?.[side]?.total,allowed:g.scores?.[other]?.total}]])});
+  for(const p of roster){
+   const key=String(teamId)+':'+p.id;
+   if(!records.has(key))records.set(key,{name:p.name,team:name,teamId:String(teamId),games:new Map()});
+   const record=records.get(key);
+   if(!record.games.has(String(g.game.id)))record.games.set(String(g.game.id),{gameDate:Number(g.game.date.timestamp)});
+  }
+ }
+ for(const report of reports)applyParticipation(records,calendar,report,scope);
+
  const rows=[],assessments=[];
  for(const p of roster){
   const metric=p.position==='RB'?'carries':['WR','TE'].includes(p.position)?'rec':defensive.has(p.position)?'tackles':null;
@@ -32,7 +49,7 @@ function buildUsageReport(games,boxes,teamId,roster){
  return {rows,assessments};
 }
 function buildUsage(...args){return buildUsageReport(...args).rows;}
-function createCollegeInjuryUsage(api,now=Date.now){
+function createCollegeInjuryUsage(api,now=Date.now,participation=null){
  const cache=new Map();
  async function read(path){const old=cache.get(path);if(old&&now()-old.at<3600000)return old.pending;const item={at:now(),pending:api(path).then(d=>{if(d.errors&&Object.keys(d.errors).length||!Array.isArray(d.response)||d.paging?.total>1)throw Error('Incomplete usage data');return {rows:d.response,checkedAt:now()};})};cache.set(path,item);item.pending.catch(()=>cache.delete(path));if(cache.size>250)cache.delete(cache.keys().next().value);return item.pending;}
  return async(q,teams)=>{
@@ -48,7 +65,15 @@ function createCollegeInjuryUsage(api,now=Date.now){
     if(games.length<2)throw Error('Too few games');
     const reports=await Promise.all(games.map(async g=>({id:String(g.game.id),...await read('/games/statistics/players?id='+g.game.id)})));
     const boxes=new Map(reports.map(r=>[r.id,r.rows]));
-    t.injuryUsage={available:true,checkedAt:Math.min(schedule.checkedAt,...reports.map(r=>r.checkedAt)),...scope,...buildUsageReport(games,boxes,t.id,t.roster?.rows||[]),message:'Recent offensive workload or repeated defensive tackles; not confirmed starters or snap counts. Blocking positions still require depth evidence.'};
+    const roster=t.roster?.rows||[];
+    let usage=buildUsageReport(games,boxes,t.id,roster);
+    const outIds=new Set(t.official.rows.filter(p=>String(p.status).toLowerCase()==='out').map(p=>String(p.id)));
+    // Only spend reconciliation calls for missing offensive workload of an Out player.
+    if(participation&&usage.assessments.some(a=>outIds.has(a.id)&&['carries','rec'].includes(a.metric)&&a.games.some(g=>g.value===null))){
+     const settled=await Promise.allSettled(games.map(g=>participation({league:q.league,season:q.season,game:String(g.game.id),date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Number(g.game.date.timestamp)*1000))})));
+     usage=buildUsageReport(games,boxes,t.id,roster,settled.filter(r=>r.status==='fulfilled').map(r=>r.value),q);
+    }
+    t.injuryUsage={available:true,checkedAt:Math.min(schedule.checkedAt,...reports.map(r=>r.checkedAt)),...scope,...usage,message:'Recent offensive workload or repeated defensive tackles; not confirmed starters or snap counts. Blocking positions still require depth evidence.'};
    }catch{}
   }));
  };

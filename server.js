@@ -68,7 +68,7 @@ const getLeaguePulse=require('./league-pulse').createLeaguePulse({
   // Uses the same schedule cache as Game Lab; no extra box-score downloads.
   collegeSchedule:season=>api('/games?league=2&season='+season)
 });
-const getAvailability = require('./availability').createAvailability(api);
+const getAvailability = require('./availability').createAvailability(api,Date.now,q=>footballGamebooks(q));
 const getPlayerRatings = require('./player-ratings').createRatings(api);
 
 const rosterMaintenance=require('./roster-maintenance').createRosterMaintenance(api,getAvailability);

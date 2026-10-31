@@ -89,3 +89,37 @@ test('workload diagnostics distinguish actual zero, missing data, low usage and 
   assert.equal(report.rows.length,reason==='eligible'?1:0);
  }
 });
+
+test('verified historical reports recover missing offensive workload for either football league',()=>{
+ const {buildUsageReport}=require('../college-injury-usage');
+ for(const league of ['1','2']){
+  const schedule=games.map(g=>({...g,teams:{away:{id:10,name:'Away'},home:{id:11,name:'Home'}},scores:{away:{total:20},home:{total:21}}}));
+  const empty=new Map(games.map(g=>[String(g.game.id),[{team:{id:10,name:'Away'},groups:[]}]]));
+  const reports=games.map(g=>({available:true,league,season:'2026',gameId:String(g.game.id),gameDate:g.game.date.timestamp,nameFormat:'full',source:'https://site.api.espn.com/apis/site/v2/sports/football/'+(league==='1'?'nfl':'college-football')+'/summary?event=123',teams:[{id:'10',name:'Away',scored:20,allowed:21,players:[{name:'Test Receiver',participation:'played',markets:['rec'],rec:4}]},{id:'11',name:'Home',scored:21,allowed:20,players:[]}]}));
+  const roster=[{id:'7',name:'Test Receiver',position:'WR'}],scope={league,season:'2026'};
+  assert.equal(buildUsageReport(schedule,empty,10,roster,reports,scope).rows.length,1);
+  for(const change of [{league:'wrong'},{gameDate:999},{gameId:'999'}]){
+   assert.equal(buildUsageReport(schedule,empty,10,roster,reports.map(r=>({...r,...change})),scope).rows.length,0);
+  }
+  const dnp=structuredClone(reports);dnp[0].teams[0].players[0].participation='dnp';
+  assert.equal(buildUsageReport(schedule,empty,10,roster,dnp,scope).rows.length,0);
+  const ambiguous=[...roster,{id:'8',name:'Test Receiver',position:'WR'}];
+  assert.equal(buildUsageReport(schedule,empty,10,ambiguous,reports,scope).rows.length,0);
+  const conflict=boxes([1,1,1]);for(const rows of conflict.values()){rows[0].team.name='Away';rows[0].groups[0].players[0].player.name='Test Receiver';}
+  const result=buildUsageReport(schedule,conflict,10,roster,reports,scope);
+  assert.equal(result.rows.length,0);assert.ok(result.assessments[0].games.every(g=>g.value===null));
+ }
+});
+
+test('missing workload invokes reconciliation for all matchups; failures preserve unknowns',async()=>{
+ for(const league of ['1','2']){
+  const now=Date.parse('2026-10-30T18:00:00Z'),kickoff=now+3600000;
+  const schedule=[1,2].map(id=>({league:{id:league,season:2026},teams:{away:{id:10,name:'Away'},home:{id:11,name:'Home'}},scores:{away:{total:20},home:{total:21}},game:{id,stage:'Regular Season',status:{short:'FT'},date:{timestamp:(now-id*86400000)/1000}}}));
+  let calls=0;
+  const enrich=createCollegeInjuryUsage(async path=>({response:path.startsWith('/games?')?schedule:[{team:{id:10,name:'Away'},groups:[]}]}),()=>now,async()=>{calls++;throw Error('unavailable');});
+  const team={id:'10',official:{available:true,kickoff,rows:[{id:'7',status:'Out'}]},roster:{rows:[{id:'7',name:'Test Receiver',position:'WR'}]}};
+  await enrich({league,season:'2026',game:'4'},[team]);
+  assert.equal(calls,2);assert.equal(team.injuryUsage.available,true);assert.equal(team.injuryUsage.rows.length,0);
+  assert.ok(team.injuryUsage.assessments[0].games.every(g=>g.value===null));
+ }
+});

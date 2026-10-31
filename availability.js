@@ -1,9 +1,9 @@
 'use strict';
 // Team-season player lists are provider rosters, not verified transaction histories.
-function createAvailability(api, now = Date.now) {
+function createAvailability(api, now = Date.now, participation = null) {
   const cache = new Map();
   const quarterbacks=require('./quarterback-impact').createQuarterbackImpact(api,now);
-  const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now);
+  const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now,participation);
   const college = require('./college-availability').createCollegeAvailability(api,now);
   const collegeNotes = require('./college-injury-notes').createCollegeInjuryNotes(api,now);
   const official = require('./official-injuries').createOfficialInjuries(api,now,undefined,require('./depth-charts').createDepthCharts(now));
