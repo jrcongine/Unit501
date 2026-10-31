@@ -6,22 +6,22 @@
  const selector=byId('league-pulse-league'),refresh=byId('league-pulse-refresh');
  const status=byId('league-pulse-status'),power=byId('league-pulse-power'),news=byId('league-pulse-headlines');
  const matchup=byId('league-pulse-matchup')||byId('nba-league-pulse-matchup');
- const names={nfl:'NFL',ncaaf:'College football',nba:'NBA',mlb:'MLB',nhl:'NHL'};
+ const names={nfl:'NFL',ncaaf:'College football',nba:'NBA',ncaab:'College basketball',mlb:'MLB',nhl:'NHL'};
  const snapshots=new Map();
- let sequence=0,activeGame=null;
+ let sequence=0,activeGame=null,loadingLeague=null,loadedLeague=null,loadedAt=0;
  function el(tag,text,className){
   const node=document.createElement(tag);
   if(text!==null&&text!==undefined)node.textContent=String(text);
   if(className)node.className=className;
   return node;
  }
- const logoSports={nfl:'nfl',ncaaf:'ncaa',nba:'nba',mlb:'mlb',nhl:'nhl'};
+ const logoSports={nfl:'nfl',ncaaf:'ncaa',nba:'nba',ncaab:'ncaa',mlb:'mlb',nhl:'nhl'};
  function teamLogo(team,league){
   if(!team||!/^[0-9]{1,7}$/.test(String(team.id||''))||!logoSports[league])return null;
   const img=el('img',null,'league-pulse-logo');
   img.src='https://a.espncdn.com/i/teamlogos/'+logoSports[league]+'/500/'+team.id+'.png';
   img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';
-  img.onerror=()=>img.remove();
+  img.onerror=()=>{img.style.visibility='hidden';};
   return img;
  }
  function rankLabel(data){
@@ -60,8 +60,15 @@
  function renderBoard(data){
   power.replaceChildren();
   const board=data?.power;
+  if(power.previousElementSibling)power.previousElementSibling.textContent=board?.kind==='poll'?'AP Top 25 Rankings':'League-wide Power Rankings';
   if(!board?.available||!Array.isArray(board.teams)){
    power.append(el('p',board?.message||'Overall power rankings are not verified for this league.','league-pulse-empty'));return;
+  }
+  if(board.kind==='poll'){
+   power.append(el('p',board.metric+' · '+(board.seasonLabel||board.season)+' season · published '+new Date(board.asOf).toLocaleDateString('en-US',{timeZone:'America/Chicago'}),'league-pulse-note'),el('p',board.basis,'league-pulse-explainer'));
+   const list=el('ol',null,'league-pulse-list');
+   for(const team of board.teams){const r=el('li',null,'league-pulse-team league-pulse-poll');r.append(el('strong','#'+team.rank,'league-pulse-rank'),teamLogo(team,data.league)||el('span'),el('span',team.name,'league-pulse-name'),el('strong',team.points+' votes','league-pulse-index'));list.append(r);}
+   power.append(list);return;
   }
   const context=el('p','UNIT 501 '+rankLabel(data)+' · current '+board.season+' season · '+board.teams.length+' teams · '+board.basis,'league-pulse-note');
   const formula=el('p',(board.explanation||'Calculated from season results and points scored versus points allowed.')+' ↑/↓/→ = win/loss streak momentum, NOT movement in rank. Display only; it does not affect predictions.','league-pulse-explainer');
@@ -153,8 +160,10 @@
   if(unadjusted)matchup.append(el('p','Schedule strength unverified — these ranks can overrate teams facing weaker opponents.','league-pulse-note'));
   matchup.append(title,grid,el('p','Current-season ranking context only. Not a historical pregame rating or an automatic score/prop adjustment.','league-pulse-note'));
  }
- async function load(league){
+ async function load(league,force=false){
   if(!names[league])return;
+  if(!force&&(loadingLeague===league||loadedLeague===league&&Date.now()-loadedAt<60000))return;
+  loadingLeague=league;loadedLeague=null;
   panel.hidden=false;
   selector.value=league;
   const key=++sequence;
@@ -168,7 +177,7 @@
    const data=await response.json();
    if(key!==sequence)return;
    if(!response.ok||data.error)throw Error(data.error||'League updates are unavailable.');
-   snapshots.set(league,data);
+   loadedLeague=league;loadedAt=Date.now();snapshots.set(league,data);
    window.Unit501SharedUI?.updateGameRecords(data,league);
    renderBoard(data);renderNews(data);renderMatchup();
    status.textContent=names[league]+' · updated '+
@@ -179,10 +188,10 @@
    status.textContent='League pulse could not load. Try Refresh; no ranks or headlines were invented.';
    power.replaceChildren();news.replaceChildren();power.append(el('p','Verified power rankings unavailable.','league-pulse-empty'));
    renderMatchup();
-  }
+  }finally{if(key===sequence)loadingLeague=null;}
  }
  selector.addEventListener('change',()=>load(selector.value));
- refresh.addEventListener('click',()=>load(selector.value));
+ refresh.addEventListener('click',()=>load(selector.value,true));
  document.addEventListener('unit501:slate-loaded',event=>{
   const league=event.detail?.league;
   if(league&&names[league])load(league);
@@ -200,5 +209,5 @@
   activeGame=null;if(matchup)matchup.replaceChildren();
  });
  setInterval(()=>window.Unit501SharedUI?.updateGameRecords(),60000);
- window.Unit501LeaguePulse={show:load};
+ window.Unit501LeaguePulse={show:(league,force=true)=>load(league,force)};
 })();

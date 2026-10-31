@@ -6,11 +6,11 @@
   function el(tag,value,className){const node=document.createElement(tag);if(value)node.textContent=value;if(className)node.className=className;return node;}
   // Handle raw fraction entities in old cached or upstream pick text. textContent remains safe.
   function bettingText(value){return String(value||'').replace(/(\d)(?:&frac12;|½)/gi,'$1.5').replace(/(\d)(?:&frac14;|¼)/gi,'$1.25').replace(/(\d)(?:&frac34;|¾)/gi,'$1.75');}
-  async function load(){
+  async function load(syncPulse=true){
     // User-initiated refresh or league switch may supersede an in-flight request.
     loading=true;lastAttempt=Date.now();
     const version=++request, league=byId('war-feed-league').value;
-    if(typeof window!=='undefined')window.Unit501LeaguePulse?.show(league);
+    if(syncPulse&&typeof window!=='undefined')window.Unit501LeaguePulse?.show(league,false);
     loaded=true; list.replaceChildren();byId('war-feed-status').textContent='Loading public selections…';
     try{
       const response=await fetch('/api/outside-picks?league='+encodeURIComponent(league),{signal:AbortSignal.timeout(35000)});
@@ -92,5 +92,6 @@
   }
   room.addEventListener('toggle',()=>{refreshIfDue();watch();});
   document.addEventListener?.('visibilitychange',refreshIfDue);
+  if(room.dataset?.autoload==='true')load(false);
   if(room.open){refreshIfDue();watch();}
 })();

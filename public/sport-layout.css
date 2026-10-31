@@ -37,3 +37,5 @@ body[data-sport] :is(.nba-form-table,.player-ratings-table){font-variant-numeric
 body[data-sport] :is(.nba-form-table,.player-ratings-table) :is(th,td){padding:12px;vertical-align:top;font-size:14px;line-height:1.5}
 body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px solid var(--border)}
 @media(max-width:700px){body[data-sport] main{padding:16px 12px}body[data-sport] header{align-items:flex-start;flex-direction:column}body[data-sport] .quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-sport] .controls{grid-template-columns:minmax(0,1fr)}body[data-sport] .results{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.league-pulse-poll{grid-template-columns:30px 30px minmax(0,1fr) 80px}.league-pulse-poll .league-pulse-name{overflow-wrap:anywhere}@media(max-width:520px){.league-pulse-poll{grid-template-columns:27px 25px minmax(0,1fr) 65px}}

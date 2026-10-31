@@ -1,4 +1,4 @@
-/* Shared navigation only: no provider requests or changes to model inputs. */
+/* Shared navigation and basketball startup. No automatic matchup/prop requests. */
 (function(){
  'use strict';
  const doc=document;
@@ -31,5 +31,12 @@
   };
   link.addEventListener('click',event=>{if(link.getAttribute('aria-disabled')==='true')event.preventDefault();});
   new MutationObserver(sync).observe(target,{attributes:true,attributeFilter:['class','hidden']});sync();
+ }
+ // All clients are registered before this final page script runs. Restore the
+ // requested date first, then start each independent dashboard feed once.
+ if(league){
+  const college=league.value==='ncaab.html',prefix=college?'ncaab':'nba';
+  window.Unit501LeaguePulse?.show(prefix,false);
+  doc.getElementById(prefix+'-load')?.click();
  }
 })();

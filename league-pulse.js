@@ -9,6 +9,7 @@ const LEAGUES=Object.freeze({
  nfl:{name:'NFL',sport:'football/nfl',teams:32,scale:16},
  ncaaf:{name:'College football · FBS',sport:'football/college-football',teams:fbs.teams.length,scale:30},
  nba:{name:'NBA',sport:'basketball/nba',teams:30,scale:18},
+ ncaab:{name:'College basketball',sport:'basketball/mens-college-basketball',poll:true},
  mlb:{name:'MLB',sport:'baseball/mlb',teams:30,scale:3},
  nhl:{name:'NHL',sport:'hockey/nhl',teams:32,scale:2.5}
 });
@@ -16,7 +17,7 @@ const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 const fbsNames=new Map(fbs.teams.flatMap(team=>team.aliases.map(alias=>[normalize(alias),team.name])));
 function seasonYear(league,when){
  const d=new Date(when),year=d.getUTCFullYear(),month=d.getUTCMonth();
- if(league==='nba'||league==='nhl')return month>=6?year+1:year;
+ if(league==='nba'||league==='nhl'||league==='ncaab')return month>=6?year+1:year;
  if(league==='nfl'||league==='ncaaf')return month<2?year-1:year;
  return month<2?year-1:year;
 }
@@ -101,6 +102,23 @@ function buildPowerBoard(raw,league,year,at){
   count:sorted.length,top:sorted.slice(0,10),middle:sorted.slice(10,-10),bottom:sorted.slice(-10),
   teams:sorted};
 }
+function buildCollegePoll(raw,year,now){
+ const polls=(raw?.rankings||[]).filter(r=>r.type==='ap'&&Number(r.season?.year)===Number(year));
+ if(polls.length!==1)return null;
+ const poll=polls[0],at=Date.parse(poll.date),ranks=poll.ranks;
+ if(!Number.isFinite(at)||at>now||now-at>45*86400000||!Array.isArray(ranks)||ranks.length<25||ranks.length>30)return null;
+ const teams=[],seen=new Set();
+ for(const r of ranks){
+  const id=String(r.team?.id||''),name=r.team?.displayName||[r.team?.location,r.team?.name].filter(Boolean).join(' ');
+  if(!/^\d{1,7}$/.test(id)||seen.has(id)||!name||!Number.isInteger(r.current)||r.current<1||r.current>25||!Number.isFinite(r.points)||r.points<0)return null;
+  seen.add(id);teams.push({id,name,rank:r.current,points:r.points});
+ }
+ teams.sort((a,b)=>a.rank-b.rank);
+ if(teams[0].rank!==1||teams.at(-1).rank!==25)return null;
+ for(let i=1;i<teams.length;i++)if(teams[i].rank!==i+1&&!(teams[i].rank===teams[i-1].rank&&teams[i].points===teams[i-1].points))return null;
+ return {available:true,kind:'poll',league:'ncaab',season:year,seasonLabel:poll.season.displayName||String(year),asOf:new Date(at).toISOString(),provider:'AP poll via ESPN',metric:'AP Top 25',count:teams.length,teams,
+  basis:'Published AP Top 25 ('+String(poll.occurrence?.displayValue||'current poll')+'). Poll votes, not a UNIT 501 power index or a betting projection.'};
+}
 function articleLink(value){
  try{
   const u=new URL(value);
@@ -152,10 +170,10 @@ function createLeaguePulse({request,collegeSchedule,now=Date.now,ttl=15*60000}={
   const config=Object.hasOwn(LEAGUES,league)?LEAGUES[league]:null;
   if(!config)return null;
   const year=seasonYear(league,now());
-  const standingsURL=ROOT+config.sport+'/standings?season='+year+(league==='ncaaf'?'&level=2':'');
+  const standingsURL=config.poll?NEWS+config.sport+'/rankings?season='+year:ROOT+config.sport+'/standings?season='+year+(league==='ncaaf'?'&level=2':'');
   const headlinesURL=NEWS+config.sport+'/news?limit=18';
   const [power,news]=await Promise.all([
-   resource('power:'+league+':'+year,standingsURL,(data,when)=>buildPowerBoard(data,league,year,when),ttl),
+   resource('power:'+league+':'+year,standingsURL,(data,when)=>config.poll?buildCollegePoll(data,year,when):buildPowerBoard(data,league,year,when),ttl),
    resource('news:'+league,headlinesURL,(data,when)=>parseHeadlines(data,league,when),Math.min(ttl,10*60000))
   ]);
   let board=power;
@@ -175,4 +193,4 @@ function createLeaguePulse({request,collegeSchedule,now=Date.now,ttl=15*60000}={
     source:'ESPN',message:Array.isArray(news)&&news.length?'Article headlines and original links only. Read the source before acting on reports.':'Current league headlines could not be verified.'}};
  };
 }
-module.exports={LEAGUES,seasonYear,buildPowerBoard,parseHeadlines,createLeaguePulse};
+module.exports={LEAGUES,seasonYear,buildPowerBoard,buildCollegePoll,parseHeadlines,createLeaguePulse};

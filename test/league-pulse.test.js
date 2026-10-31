@@ -22,8 +22,8 @@ function fixture(names,year,league){
 }
 const nfl=Array.from({length:32},(_,i)=>'NFL Team '+(i+1));
 const nba=Array.from({length:30},(_,i)=>'NBA Team '+(i+1));
-test('five league categories and correct calendar-to-season mapping are supported',()=>{
- assert.deepEqual(Object.keys(LEAGUES),['nfl','ncaaf','nba','mlb','nhl']);
+test('six league categories and correct calendar-to-season mapping are supported',()=>{
+ assert.deepEqual(Object.keys(LEAGUES),['nfl','ncaaf','nba','ncaab','mlb','nhl']);
  assert.equal(seasonYear('nfl',Date.parse('2027-01-07T00:00:00Z')),2026);
  assert.equal(seasonYear('ncaaf',Date.parse('2026-10-25T00:00:00Z')),2026);
  assert.equal(seasonYear('nba',Date.parse('2026-10-25T00:00:00Z')),2027);
@@ -121,7 +121,7 @@ test('league pulse caches standings and headlines independently and preserves ne
 });
 
 test('duplicate standings cannot hide conflicting records or scoring totals in any league',()=>{
- for(const league of Object.keys(LEAGUES)){
+ for(const league of Object.keys(LEAGUES).filter(k=>!LEAGUES[k].poll)){
   const names=league==='ncaaf'?membership.teams.map(t=>t.name):Array.from({length:LEAGUES[league].teams},(_,i)=>league+' Team '+i);
   for(const change of ['record','scoring']){
    const raw=fixture(names,2026,league);
@@ -141,4 +141,14 @@ test('duplicate standings cannot hide conflicting records or scoring totals in a
   raw.children.push({standings:{entries:[structuredClone(raw.children[0].standings.entries[0])]}});
   assert.deepEqual(buildPowerBoard(raw,league,2026,0),expected);
  }
+});
+
+test('college basketball uses a dated current-season AP poll, never an invented power index',async()=>{
+ const {buildCollegePoll}=require('../league-pulse'),now=Date.parse('2026-10-31T14:00:00Z');
+ const poll={type:'ap',season:{year:2027},date:'2026-10-19T07:00:00Z',occurrence:{displayValue:'Preseason'},ranks:Array.from({length:25},(_,i)=>({current:i+1,points:1500-i*50,team:{id:String(i+1),displayName:'College '+i}}))};
+ const raw={rankings:[poll]},board=buildCollegePoll(raw,2027,now);assert.equal(board.kind,'poll');assert.equal(board.teams.length,25);assert.equal(board.teams[0].score,undefined);assert.match(board.basis,/not a UNIT 501/);
+ for(const mutate of [p=>p.season.year=2026,p=>p.date='2026-08-01',p=>p.date='2026-11-01',p=>p.ranks.pop(),p=>p.ranks[1].team.id='1',p=>p.ranks[1].current=1]){const p=structuredClone(poll);mutate(p);assert.equal(buildCollegePoll({rankings:[p]},2027,now),null);}
+ const urls=[],pulse=createLeaguePulse({now:()=>now,request:async url=>{urls.push(url);return url.includes('/rankings')?raw:{articles:[]};}});
+ const result=await pulse('ncaab');assert.equal(result.power.kind,'poll');assert.equal(result.season,2027);assert.ok(urls.some(u=>u.includes('/mens-college-basketball/rankings?season=2027')));
+ assert.equal(seasonYear('ncaab',now),2027);
 });

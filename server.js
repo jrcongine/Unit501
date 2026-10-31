@@ -136,7 +136,7 @@ const server = http.createServer(async (req, res) => {
     if(u.pathname==='/api/line-history/status')return send(res,200,trackedOdds.status());
     if(u.pathname==='/api/league-pulse'){
       const league=u.searchParams.get('league')||'nfl';
-      if(!Object.hasOwn(require('./league-pulse').LEAGUES,league))return send(res,400,{error:'Choose NFL, college football, NBA, MLB or NHL.'});
+      if(!Object.hasOwn(require('./league-pulse').LEAGUES,league))return send(res,400,{error:'Choose NFL, college football, NBA, college basketball, MLB or NHL.'});
       return send(res,200,await getLeaguePulse(league));
     }
     if(u.pathname==='/api/betting-splits'){

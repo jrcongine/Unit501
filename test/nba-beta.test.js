@@ -61,7 +61,7 @@ test('NBA uses the common command center while football keeps its own league sel
  assert.match(html,/Basketball Command Center/);
  assert.match(html,/nba-date/);
  assert.doesNotMatch(html,/Run simulation|Projected score:/i);
- assert.match(base,/href="nba.html"/);
+ assert.match(base,/href="ncaab.html"/);
  assert.match(base,/<option value="2">College Football<\/option>/);
  assert.match(base,/<option value="1">NFL<\/option>/);
  assert.match(server,/\/api\/nba\/games/);

@@ -4,11 +4,11 @@
 <link rel="stylesheet" href="sport-layout.css">
 </head>
 <body data-sport="basketball"><main>
-<nav class="sport-switch" aria-label="Sport"><a href="/">🏈 Football</a><a href="nba.html" aria-current="page">🏀 Basketball</a></nav>
+<nav class="sport-switch" aria-label="Sport"><a href="/">🏈 Football</a><a href="ncaab.html" aria-current="page">🏀 Basketball</a></nav>
 
 <header><div><small>UNIT 501</small><h1>Basketball Command Center</h1></div><span class="sport-model-status">Experimental models</span></header>
 <p class="unit-tagline">Always Buy the Hook.</p>
-<nav class="quick-nav" aria-label="Command center sections"><a href="#nba-slate-section" class="nav-slate">🏀 Game slate</a><a href="/#war-room" class="nav-war">⚔ 501 War Room</a><a href="#nba-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1" data-lab-link>🎯 Game Lab · select game</a><a href="#nba-player-lab" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1" data-player-link>📊 Player props · select game</a><a href="data-health.html" class="nav-lab">Data Health</a></nav><p class="quick-help">Start with a date and league, load the slate, then tap a game card. Colored headers and highlighted rows open more tools.</p>
+<nav class="quick-nav" aria-label="Command center sections"><a href="#nba-slate-section" class="nav-slate">🏀 Game slate</a><a href="#war-room" class="nav-war">⚔ 501 War Room</a><a href="#nba-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1" data-lab-link>🎯 Game Lab · select game</a><a href="#nba-player-lab" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1" data-player-link>📊 Player props · select game</a><a href="data-health.html" class="nav-lab">Data Health</a></nav><p class="quick-help">Start with a date and league, load the slate, then tap a game card. Colored headers and highlighted rows open more tools.</p>
 
 <section class="card controls"><div class="date-control"><input id="nba-date" type="date" aria-label="Game date" required><button type="button" data-date-picker>Choose date ▾</button></div><select class="sport-league" aria-label="League"><option value="nba.html" selected>NBA</option><option value="ncaab.html">College Basketball</option></select><button id="nba-load" type="button" class="load-slate">Load Slate</button></section><p id="nba-status" class="war-muted" role="status" aria-live="polite">Choose a date to see scheduled NBA games.</p>
 <details class="card"><summary>First-half deficit watch · 20+ points</summary>
@@ -16,12 +16,54 @@
 <button id="nba-alert-permission" type="button">Enable browser notifications</button>
 <p id="nba-alert-status" role="status">Off. Watches today's games while this tab is open, including in the background. Browser throttling can delay checks; current-season NBA data required.</p>
 <div id="nba-alert-list" aria-live="polite"></div></details>
+<details id="war-room" data-autoload="true" class="card war-room">
+<summary><strong>⚔ 501 WAR ROOM</strong> <span class="war-muted">Outside picks • sources • scouting</span></summary>
+<p class="war-muted">Published expert picks, separate from Unit 501 predictions.</p>
+<h3>Public pick feed</h3>
+<div class="war-record-actions">
+<label>Public picks <select id="war-feed-league"><option value="nfl">NFL</option><option value="ncaaf">College football</option><option value="mlb">MLB</option><option value="nba" selected>NBA</option><option value="ncaab">College basketball</option><option value="nhl">NHL</option></select></label>
+<button id="war-feed-refresh" type="button">Refresh picks</button>
+</div>
+<p class="war-muted">Covers, WagerTalk, Boyd's Bets and Pickswise · published selections for the selected league. Missing feeds contribute no votes. Source prices may differ from FanDuel. Unverified analysts and dates remain labeled.</p>
+<p id="war-feed-status" role="status" aria-live="polite">Open the War Room to load public picks.</p>
+<p class="war-muted"><a href="#league-pulse">View that league’s overall power rankings and current headlines below the slate</a> · NFL, college football, NBA, MLB and NHL, without changing pages.</p>
+<div id="war-feed" class="war-feed-grid"></div>
+<nav class="war-sources" aria-label="Outside handicapper sources">
+<a href="https://www.covers.com/picks" target="_blank" rel="noopener noreferrer">Covers ↗</a>
+<a href="https://www.wagertalk.com/free-sports-picks" target="_blank" rel="noopener noreferrer">WagerTalk ↗</a>
+<a href="https://www.boydsbets.com/free-sports-picks/" target="_blank" rel="noopener noreferrer">Boyd&#39;s Bets ↗</a>
+<a href="https://www.pickswise.com/" target="_blank" rel="noopener noreferrer">Pickswise ↗</a>
+<a href="https://www.sportsbookreview.com/picks/" target="_blank" rel="noopener noreferrer">Sportsbook Review · free picks ↗</a>
+<a href="https://pickdawgz.com/free-picks/" target="_blank" rel="noopener noreferrer">PickDawgz · free previews ↗</a>
+</nav>
+<p class="war-muted">Free research links only. The automatic feed above shows picks when available.</p>
+<details id="war-youtube-desk" class="war-youtube-desk">
+<summary>▶ YouTube scouting desk <span class="war-muted">5 channels · latest videos</span></summary>
+<p class="war-muted">One-tap links to the channels' videos. This does not retrieve or verify picks automatically.</p>
+<nav class="war-youtube-grid" aria-label="Betting research YouTube channels">
+<a href="https://www.youtube.com/@kylekirms/videos" target="_blank" rel="noopener noreferrer"><strong>Kyle Kirms</strong><span>The Sauce · independent handicapper</span><small>Latest uploads ↗</small></a>
+<a href="https://www.youtube.com/@theactionnetwork/videos" target="_blank" rel="noopener noreferrer"><strong>Action Network</strong><span>Multiple analysts · football & more</span><small>Latest uploads ↗</small></a>
+<a href="https://www.youtube.com/@SportsLine/videos" target="_blank" rel="noopener noreferrer"><strong>SportsLine</strong><span>The Early Edge · daily show</span><small>Latest uploads ↗</small></a>
+<a href="https://www.youtube.com/@BettingPros/videos" target="_blank" rel="noopener noreferrer"><strong>BettingPros</strong><span>Daily Juice · picks and commentary</span><small>Latest uploads ↗</small></a>
+<a href="https://www.youtube.com/@WagerTalk/videos" target="_blank" rel="noopener noreferrer"><strong>WagerTalk TV</strong><span>Handicapper panels · daily picks</span><small>Latest uploads ↗</small></a>
+</nav>
+<p class="war-muted">Check the original publication date, market, price and line before considering any outside selection.</p>
+</details>
+<details id="war-archive" class="war-archive" hidden>
+<summary>Previous War Room records <span class="war-muted" id="war-archive-count"></span></summary>
+<p class="war-muted">Previous decisions saved on this device. Export remains available.</p>
+<button id="war-export" type="button" class="war-secondary">Download old decisions</button>
+<p id="war-message" role="status" aria-live="polite"></p>
+</details>
+</details>
+
+
 <div id="nba-slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div><section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
   <div class="league-pulse-heading">
     <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
     <div class="league-pulse-actions"><label for="league-pulse-league">League
-      <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
+      <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="ncaab">College Basketball</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
       </label><button id="league-pulse-refresh" type="button">Refresh updates</button></div>
   </div>
   <p id="league-pulse-status" role="status" aria-live="polite">Load a slate to see league updates, or choose another league.</p>
@@ -91,4 +133,4 @@
 <p class="war-muted">Estimates assume the player plays. Recent minutes changes describe past appearances, not confirmed promotions. Opponent matchups and injury replacement minutes are not automatically adjusted. Two to four games is a small sample; accuracy is not established.</p>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="line-watch.js"></script><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba-player-model.js"></script><script src="basketball-history-comparison.js"></script><script src="basketball-injury-model.js"></script><script src="nba-win-calibration.js"></script><script src="nba.js"></script><script src="star-power.js"></script><script src="nba-rotation-context.js"></script><script src="nba-markets.js"></script><script src="sport-layout.js"></script></body></html>
+</main><script src="line-watch.js"></script><script src="league-pulse.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba-player-model.js"></script><script src="basketball-history-comparison.js"></script><script src="basketball-injury-model.js"></script><script src="nba-win-calibration.js"></script><script src="nba.js"></script><script src="star-power.js"></script><script src="nba-rotation-context.js"></script><script src="nba-markets.js"></script><script src="outside-picks.js"></script><script src="sport-layout.js"></script></body></html>
