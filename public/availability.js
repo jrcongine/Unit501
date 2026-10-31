@@ -204,7 +204,7 @@
     render('Loading current provider reports…',true);
     const q=new URLSearchParams({league:game.league,season:game.season,away:game.awayId,home:game.homeId,game:game.id});
     try {
-      const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(35000)});const result=await r.json();
+      const r=await fetch('/api/availability?'+q,{signal:AbortSignal.timeout(120000)});const result=await r.json();
       if(task!==version)return;
       if(!r.ok || result.error)throw new Error('Roster and injury reports could not be loaded. Availability remains unknown.');
       data=result;render(data.message);

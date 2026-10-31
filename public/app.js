@@ -78,8 +78,9 @@ function renderAutomaticInjuries(result,applied=false){
   const hasAbsence=window.Unit501Availability?.snapshot()?.teams?.some(t=>(t.official?.rows||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.official?.unresolved||[]).some(p=>String(p.status).toLowerCase()==='out')||(t.roster?.rows||[]).some(p=>/\binjured reserve\b/i.test(p.group||'')));
   $('auto-injury-status').textContent=who.length?(applied?'Applied: ':'Ready: ')+who.join(' · ')+(result.partial?' · Partial coverage; other team unvalued.':''):!result.ready?'Injury data incomplete—no adjustment yet.':hasAbsence?'Unavailable players listed; no supported point change.':'No confirmed injury adjustment.';
   const list=$('injury-adjustment-reasons');list.replaceChildren();
-  for(const reason of result.withheld){const row=document.createElement('li');row.textContent=reason;list.append(row);}
-  $('injury-adjustment-details').hidden=!result.withheld.length;
+  const details=[...result.applied.filter(p=>p.baseline||p.replacementDetail).map(p=>p.name+': '+(p.baseline?.detail||'')+(p.replacementDetail||'')),...result.withheld];
+  for(const reason of details){const row=document.createElement('li');row.textContent=reason;list.append(row);}
+  $('injury-adjustment-details').hidden=!details.length;
 }
 function previewAutomaticInjuries(){
   if(!$('autoInjuries').checked||!selected||!window.Unit501AutoInjury)return;

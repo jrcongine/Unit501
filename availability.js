@@ -3,8 +3,9 @@
 function createAvailability(api, now = Date.now, participation = null) {
   const cache = new Map();
   const quarterbacks=require('./quarterback-impact').createQuarterbackImpact(api,now);
-  const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now,participation);
   const college = require('./college-availability').createCollegeAvailability(api,now);
+  const collegeUsage=require('./college-injury-usage').createCollegeInjuryUsage(api,now,participation,college.history);
+  const collegeDepth=require('./college-depth').createCollegeDepth(now);
   const collegeNotes = require('./college-injury-notes').createCollegeInjuryNotes(api,now);
   const official = require('./official-injuries').createOfficialInjuries(api,now,undefined,require('./depth-charts').createDepthCharts(now));
   async function read(path, ttl) {
@@ -48,12 +49,14 @@ function createAvailability(api, now = Date.now, participation = null) {
     }));
     await Promise.all([official(q,teams),college(q,teams),collegeNotes(q,teams)]);
     const rosterOwnership=await ownershipTask;
+    const usageTask=collegeUsage(q,teams);
+    await collegeDepth(q,teams);
     let qbTimer;
     const qbTask=Promise.race([
       quarterbacks(q,teams,rosterOwnership),
       new Promise(resolve=>{qbTimer=setTimeout(resolve,12000);qbTimer.unref?.();})
     ]).finally(()=>clearTimeout(qbTimer));
-    await Promise.all([collegeUsage(q,teams),qbTask]);
+    await Promise.all([usageTask,qbTask]);
     return {current:true,teams,rosterOwnership,message:'Current provider reports—not confirmed game-day lineups. Roster lists do not verify trades or starting roles.'};
   };
 }

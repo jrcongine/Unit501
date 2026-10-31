@@ -306,3 +306,56 @@ test('automatic football scoring rejects duplicate team or player identities wit
   if(league==='1')assert.equal(r.injury.homeDefense,.5);
  }
 });
+
+function exposureFixture(league='2',position='CB',rank=1){
+ const d=build(),g={...game,league};
+ for(const t of d.teams){t.official.league=league;Object.assign(t.depth,{source:'Ourlads',publishedAt:now-1000,league});}
+ add(d,'1',{id:'7',name:'Test Contributor',position,rank});
+ const games=[1,2,3].map((id,i)=>({id:String(id),kickoff:now-(i+1)*100000}));
+ const t=d.teams[0];
+ t.injuryUsage={available:true,baselineRequired:true,checkedAt:now,gameId:g.id,kickoff:g.kickoff,league,season:g.season,rows:[],assessments:[{id:'7',metric:position==='TE'?'rec':'tackles',games:[2,4,5].map(value=>({value}))}],history:[{id:'7',games:games.map(g=>({id:g.id,at:g.kickoff,state:'played'}))}]};
+ const context={before:g.kickoff,season:g.season,teams:[{id:'1',games:3,recentGames:games}]};
+ return {d,g,t,context};
+}
+test('college listed starter survives low latest tackle count and uses matched season exposure',()=>{
+ const {d,g,t,context}=exposureFixture();
+ const r=evaluate(d,g,null,now,context);
+ assert.equal(r.injury.awayDefense,.5);assert.equal(r.applied[0].role,'listed first-string');
+ assert.equal(r.applied[0].baseline.played,3);
+ t.depth.publishedAt=now-8*86400000;assert.equal(evaluate(d,g,null,now,context).injury.awayDefense,0);
+});
+test('both football leagues reduce repeated absences and never treat missing history as DNP',()=>{
+ for(const league of ['1','2']){
+  const {d,g,t,context}=exposureFixture(league);
+  t.injuryUsage.history[0].games[0].state='absent';
+  const partial=evaluate(d,g,null,now,context);assert.equal(partial.injury.awayDefense,.33);assert.equal(partial.applied[0].baseline.absent,1);
+  for(const row of t.injuryUsage.history[0].games)row.state='absent';
+  const prior=evaluate(d,g,null,now,context);assert.equal(prior.injury.awayDefense,0);assert.ok(prior.withheld.some(s=>s.includes('already absent throughout')));
+  t.injuryUsage.history[0].games[0].state='unknown';
+  const unknown=evaluate(d,g,null,now,context);assert.equal(unknown.injury.awayDefense,0);assert.ok(unknown.withheld.some(s=>s.includes('participation records unverified')));
+  for(const row of t.injuryUsage.history[0].games)row.state='played';
+  for(const mutate of [x=>x.before++,x=>x.season='2025',x=>x.teams[0].recentGames[0].id='wrong',x=>x.teams[0].recentGames[0].kickoff++,x=>x.teams[0].games=9]){
+   const c=structuredClone(context);mutate(c);assert.equal(evaluate(d,g,null,now,c).injury.awayDefense,0);
+  }
+  delete t.injuryUsage.history;assert.equal(evaluate(d,g,null,now,context).injury.awayDefense,0);
+ }
+});
+test('verified second-string contributors have smaller sensitivity; depth alone does not prove contribution',()=>{
+ for(const league of ['1','2']){
+  const {d,g,t,context}=exposureFixture(league,'TE',2);
+  const result=evaluate(d,g,null,now,context);assert.equal(result.injury.awayOffense,.1);
+  assert.match(result.applied[0].role,/second-string/);
+  t.injuryUsage.assessments[0].games=[{value:null},{value:null},{value:null}];assert.equal(evaluate(d,g,null,now,context).injury.awayOffense,0);
+ }
+});
+test('role and overlap adjustment flows into football scores and simulations',()=>{
+ const {d,g,context}=exposureFixture('1');
+ const teams=Array.from({length:32},(_,i)=>({id:String(i+1),games:3,metrics:Object.fromEntries(['pointsFor','pointsAgainst'].map(k=>[k,{average:24,games:3,rank:i+1,pool:32}]))}));
+ const stats={...context,teams:teams.map(t=>t.id==='1'?{...t,recentGames:context.teams[0].recentGames}:t),coverage:{pointsFor:{ranked:true,expected:32},pointsAgainst:{ranked:true,expected:32}}};
+ const model=require('../public/team-model'),injury=evaluate(d,g,null,now,stats);
+ const before=model.project(stats,g,{now,venueMode:'neutral'}),after=model.project(stats,g,{now,venueMode:'neutral',injury:injury.injury});
+ assert.equal(after.available,true);assert.equal(after.home-before.home,.5);
+ let seed=1;const rng=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+ const a=model.simulate(before,0,48,10000,rng);seed=1;const b=model.simulate(after,0,48,10000,rng);
+ assert.notEqual(a.win,b.win);
+});

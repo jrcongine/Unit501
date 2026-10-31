@@ -161,3 +161,13 @@ test('observed official conference abbreviations resolve without weakening schoo
   assert.equal(matchReports({r},{...g,teams:{...g.teams,away:{id:1,name:canonical}}},'2026',now).length,1);
  }
 });
+
+test('historical conference absence evidence matches exact games and never interprets omitted players as absent',async()=>{
+ const historical=report();historical.publishDate='2026-10-03';historical.footer.date='2026-10-03';
+ const prior={...g,game:{id:90,date:{timestamp:(kickoff-7*86400000)/1000}}};
+ const get=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='SEC'?{current:report(),prior:historical}:{}),t=teams();
+ await get(q,t);
+ const history=await get.history([prior],q,t[0]);assert.equal(history.length,1);assert.equal(history[0].rows[0].status,'out');assert.equal(history[0].gameId,'90');
+ const wrong={...prior,teams:{...prior.teams,home:{id:3,name:'Auburn'}}};assert.equal((await get.history([wrong],q,t[0])).length,0);
+ const other=await get.history([prior],q,t[1]);assert.equal(other[0].rows[0].status,'game time decision');
+});

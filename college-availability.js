@@ -35,7 +35,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
 }){
  const cache=new Map();
  async function read(conf){let item=cache.get(conf);if(!item||now()-item.at>=900000){item={at:now(),pending:readPublic(conf).then(data=>({data,checkedAt:now()}))};cache.set(conf,item);item.pending.catch(()=>cache.delete(conf));}return item.pending;}
- return async(q,teams)=>{
+ const enrich=async(q,teams)=>{
   if(q.league!=='2')return;
   const unavailable=()=>({available:false,rows:[],message:'Official Big 12/SEC/ACC/Big Ten/American/MAC report not verified for this exact matchup. Other conference coverage is unsupported; availability remains unknown.'});
   for(const team of teams)team.official=unavailable();
@@ -71,9 +71,27 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
      if(!player){unmatched++;unresolved.push({name:match[2],position:match[1],status:r.status});continue;}
      rows.push({id:player.id,teamId:String(team.id),name:match[2],position:match[1],status:r.status,description:'Conference availability report',date:new Date(report.publishedAt).toISOString()});
     }
-    team.official={available:true,diagnostics,source:conf,publisher:conf==='B10'?'Big Ten':conf==='B12'?'Big 12':conf,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,unresolved,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
+    team.official={available:true,teamName:identity,diagnostics,source:conf,publisher:conf==='B10'?'Big Ten':conf==='B12'?'Big 12':conf,checkedAt,publishedAt:report.publishedAt,gameId:String(q.game),kickoff,season:q.season,url:sources[conf],rows,unmatched,unresolved,message:'Exact-matchup conference availability report. Available does not establish starting role or workload. Partial-game exclusions remain conditional.'};
    }
   }catch{for(const team of teams){team.official.reasonCode='game-verification-failed';team.official.message='Game identity, timing, or provider response could not be verified; availability remains unknown.';}}
  };
+ // Reuse conference snapshots already fetched for the current game. Only an
+ // exact historical matchup and explicit Out entry can establish an absence.
+ enrich.history=async(games,q,team)=>{
+  if(q.league!=='2'||!sources[team.official?.source])return [];
+  const {data,checkedAt}=await read(team.official.source),out=[];
+  for(const g of games){
+   const matches=matchReports(data,g,q.season,now());if(!matches.length)continue;
+   const latest=Math.max(...matches.map(r=>r.publishedAt)),current=matches.filter(r=>r.publishedAt===latest);if(current.length!==1)continue;
+   const side=['away','home'].find(s=>String(g.teams?.[s]?.id)===String(team.id));if(!side)continue;
+   const sections=current[0].games.filter(t=>reportSchool(t.teamName,q.season)===fbsName(g.teams[side],q.season));if(sections.length!==1)continue;
+   const rows=[];
+   for(const r of sections[0].rows){const m=/^([A-Z]{1,5})\s+#\d+\s+(.+)$/.exec(r.name||'');if(!m)continue;
+    const p=matchPlayer({name:m[2],position:m[1]},team.roster?.rows||[],team.id,q);if(p)rows.push({id:String(p.id),status:String(r.status||'').toLowerCase()});}
+   out.push({gameId:String(g.game.id),at:Number(g.game.date.timestamp)*1000,teamId:String(team.id),checkedAt,source:sources[team.official.source],rows});
+  }
+  return out;
+ };
+ return enrich;
 }
 module.exports={createCollegeAvailability,matchReports,localEpoch,sources};

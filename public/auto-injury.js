@@ -39,6 +39,23 @@
   if(row.rank!==1&&!(pos==='RB'&&row.rank===2))return null;
   return {pos,reserve:row.rank===2};
  }
+ // Scale only against the games actually used in the scoring context. This
+ // is an exposure correction to hand-set sensitivities, not a causal estimate.
+ function baselineExposure(t,id,game,context,now){
+  if(!Array.isArray(t.injuryUsage?.history))return {factor:t.injuryUsage?.baselineRequired?null:1,detail:'Historical absence overlap unverified'};
+  if(!fresh(t.injuryUsage,3600000,now)||!matchGame(t.injuryUsage,game))return {factor:null,detail:'Participation history expired or mismatched'};
+  const teams=context?.teams?.filter(x=>String(x.id)===String(t.id))||[],team=teams.length===1?teams[0]:null;
+  const games=team?.recentGames;
+  if(context?.before!==game.kickoff||String(context?.season)!==String(game.season)||!Array.isArray(games)||games.length!==team.games||games.length<2||
+    new Set(games.map(g=>String(g.id))).size!==games.length||games.some(g=>!g.id||!Number.isFinite(g.kickoff)||g.kickoff>=game.kickoff))return {factor:null,detail:'Matching scoring-baseline games required to check prior absences'};
+  const histories=t.injuryUsage.history.filter(r=>String(r.id)===id),history=histories.length===1?histories[0].games:[];
+  let absent=0,played=0,unknown=0;
+  for(const g of games){const matches=history.filter(r=>String(r.id)===String(g.id)&&r.at===g.kickoff),state=matches.length===1?matches[0].state:'unknown';
+   if(state==='absent')absent++;else if(state==='played')played++;else unknown++;
+  }
+  const detail=absent+' of '+games.length+' baseline games already absent'+(unknown?'; '+unknown+' participation records unverified':'');
+  return {factor:unknown?null:played/games.length,absent,played,unknown,games:games.length,detail};
+ }
  function evaluate(data,game,lineup,now=Date.now(),context=null){
   const injury=empty(),applied=[],withheld=[];
   const quarterback={away:0,home:0};
@@ -109,6 +126,8 @@
      withheld.push(label+': '+name+' has conflicting or conditional reports; '+details+'; no estimate.');continue;
     }
     const pos=position(base.position);
+    const exposure=baselineExposure(t,id,game,context,now);
+    if(exposure.factor===0){withheld.push(label+': '+name+' — already absent throughout the scoring baseline; no additional injury penalty.');continue;}
     if(pos==='QB'){
      const report=t.quarterback;
      const candidates=fresh(report,3600000,now)&&matchGame(report,game)?(report.rows||[]).filter(r=>String(r.playerId)===id):[];
@@ -125,12 +144,13 @@
        !(stats?.games>=2)||!metrics.every(m=>m?.games===stats.games&&Number.isFinite(m.average)&&m.average>=0)||metrics[1].average+metrics[2].average<=0){
       withheld.push(label+': '+name+' (QB) requires confirmed replacement or a unique backup estimate with passing-workload evidence; no automatic points.');continue;
      }
-     const points=Math.round(Math.max(-4,Math.min(4,r.yardChange*metrics[0].average/(metrics[1].average+metrics[2].average)*.5))*100)/100;
+     if(exposure.factor===null){withheld.push(label+': '+name+' — '+exposure.detail+'; no additional penalty until overlap is verified.');continue;}
+     const points=Math.round(exposure.factor*Math.max(-4,Math.min(4,r.yardChange*metrics[0].average/(metrics[1].average+metrics[2].average)*.5))*100)/100;
      quarterback[side]=points;
-     applied.push({teamId,side,playerId:id,name,position:'QB',category:'quarterback',points,replacement:r.replacement,role:r.role,evidence:r.source});
+     applied.push({teamId,side,playerId:id,name,position:'QB',category:'quarterback',points,baseline:exposure,replacement:r.replacement,role:r.role,evidence:r.source});
      continue;
     }
-    const depthRows=String(game.league)==='1'&&fresh(t.depth,3600000,now)&&matchGame(t.depth,game)?t.depth.rows||[]:[];
+    const depthRows=fresh(t.depth,3600000,now)&&matchGame(t.depth,game)&&(String(game.league)==='1'||t.depth.source==='Ourlads'&&Number.isFinite(t.depth.publishedAt)&&t.depth.publishedAt<=now&&now-t.depth.publishedAt<=7*86400000)?t.depth.rows||[]:[];
     const slots=depthRows.filter(r=>String(r.id)===id&&roleMatches(r.position,pos)&&r.rank===1);
     const usageRows=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?t.injuryUsage.rows||[]:[];
     const usage=usageRows.filter(r=>String(r.id)===id&&position(r.position)===pos&&(['RB','WR','TE'].includes(pos)||(String(game.league)==='2'&&weights[pos]?.[0]==='defense'&&r.metric==='tackles'&&r.role==='recent defensive contributor'&&Array.isArray(r.values)&&Number.isInteger(r.values[0])&&r.values[0]>=3&&r.values.filter(v=>Number.isInteger(v)&&v>=3).length>=2)));
@@ -139,7 +159,10 @@
     const rbDepth=pos==='RB'?depthRows.filter(r=>String(r.id)===id&&position(r.position)==='RB'):[];
     const rb2=rbDepth.length===1&&rbDepth[0].rank===2&&
       depthRows.filter(r=>position(r.position)==='RB'&&r.slot===rbDepth[0].slot&&r.rank===2).length===1;
-    if(slots.length>1||!(slots.length===1||usage.length===1||rb2)){
+    const playerDepth=depthRows.filter(r=>String(r.id)===id&&roleMatches(r.position,pos));
+    const assessment=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?(t.injuryUsage.assessments||[]).filter(r=>String(r.id)===id):[];
+    const contributor=playerDepth.length===1&&playerDepth[0].rank===2&&assessment.length===1&&assessment[0].games?.slice(0,3).filter(g=>Number.isFinite(g.value)&&g.value>0).length>=2;
+    if(slots.length>1||!(slots.length===1||usage.length===1||rb2||contributor)){
      const assessments=fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game)?(t.injuryUsage.assessments||[]).filter(r=>String(r.id)===id):[];
      const review=assessments.length===1?assessments[0]:null;
      let reason='has no unique starter, RB2, or recent regular workload evidence';
@@ -151,10 +174,19 @@
       if(review.games.some(g=>!Number.isFinite(g.value)))reason+='; unknown statistics do not establish zero or DNP';
       reason+='; failure to qualify does not establish zero impact';
      }
-     withheld.push(label+': '+name+' (OUT) '+reason+'; no estimate.');continue;
+     if(playerDepth.length===1)reason+='; published role: '+(playerDepth[0].reserve?'reserve listing (not proof of nonparticipation)':'depth '+playerDepth[0].rank);
+     withheld.push(label+': '+name+' (OUT) '+reason+'; '+exposure.detail+'; no estimate.');continue;
     }
     const reserve=slots.length===0&&usage.length!==1&&rb2;
-    const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':usage[0]?.role||'recent regular contributor';
+    const reducedContributor=slots.length===0&&usage.length!==1&&!reserve&&contributor;
+    const role=slots.length===1?'listed first-string':reserve?'listed RB2; 0.10-point depth assumption':reducedContributor?'listed second-string with recent contributions; half positional assumption':usage[0]?.role||'recent regular contributor';
+    if(exposure.factor===null){withheld.push(label+': '+name+' ('+role+') — '+exposure.detail+'; no additional penalty until overlap is verified.');continue;}
+    const depth=slots.length===1?slots[0]:playerDepth.length===1?playerDepth[0]:null;
+    const replacements=depth?depthRows.filter(r=>r.slot===depth.slot&&Number.isInteger(r.rank)&&r.rank>depth.rank).sort((a,b)=>a.rank-b.rank):[];
+    const next=replacements[0],unique=next&&replacements.filter(r=>r.rank===next.rank).length===1;
+    const replacement=unique?roster.get(String(next.id)):null;
+    const replacementStatuses=replacement?(t.official.rows||[]).filter(r=>String(r.id)===String(next.id)).map(r=>status(r.status)):[];
+    const replacementDetail=replacement?'; next listed: '+replacement.name+' ('+(replacementStatuses.join('/')||'availability unconfirmed')+'); replacement quality unverified':'; replacement unverified';
     const weight=weights[pos];
     if(!weight){withheld.push(label+': '+name+' (OUT, '+pos+') has no supported positional sensitivity assumption.');continue;}
     const lineupProps=lineup?.gameId===String(game.id)&&lineup?.kickoff===game.kickoff?
@@ -164,17 +196,18 @@
     }
     const field=side+(weight[0]==='offense'?'Offense':'Defense');
     const available=Math.max(0,2-injury[field]);
-    const points=Math.round(Math.min(reserve?0.10:weight[1],available)*100)/100;
+    const points=Math.round(Math.min((reserve?0.10:weight[1]*(reducedContributor ? .5 : 1))*exposure.factor,available)*100)/100;
     if(points<=0){withheld.push(label+': positional sensitivity capped at 2 points for '+weight[0]+'.');continue;}
     injury[field]+=points;
     applied.push({teamId,side,playerId:id,name,position:pos,category:weight[0],points,role,
-      status:player.rosterIR?'Injured reserve':'Out',evidence:player.rosterIR?null:t.official.url||null});
+      baseline:exposure,replacementDetail,depthEvidence:t.depth?.url||null,status:player.rosterIR?'Injured reserve':'Out',evidence:player.rosterIR?null:t.official.url||null});
    }
    const handledNames=new Set();
    for(const p of t.official.unresolved||[])if(status(p.status)==='out'){
     const key=nameKey(p.name);if(handledNames.has(key))continue;handledNames.add(key);
     const role=missingRosterRole(t,p,game,now);
     if(!role){withheld.push(label+': '+p.name+' (OUT) — provider roster identity missing; impact not estimated.');continue;}
+    if(t.injuryUsage?.baselineRequired){withheld.push(label+': '+p.name+' — published role found, but missing provider identity prevents historical absence-overlap verification; no additional penalty.');continue;}
     const [category,weight]=weights[role.pos],field=side+(category==='offense'?'Offense':'Defense');
     const points=Math.round(Math.min(role.reserve?0.10:weight,Math.max(0,2-injury[field]))*100)/100;
     if(points<=0){withheld.push(label+': positional sensitivity capped at 2 points for '+category+'.');continue;}
@@ -188,7 +221,7 @@
   }
   state.ready=true;
   state.message=(state.partial?'Partial coverage: verified adjustments applied independently; the other team remains unvalued. ':'')+'Experimental positional injury sensitivity: fresh, matched official Out reports or explicit injured-reserve entries from current NFL provider rosters, with starter, RB2 depth, or recent workload evidence; capped at 2 points per team and side. '+
-    'Weights are hand-set assumptions, not validated player values. An absence may already be reflected in season averages; do not use this as a proven betting edge.';
+    'Weights are hand-set assumptions, not validated player values. Verified baseline absences reduce the extra sensitivity in proportion to games already missed; unknown overlap is withheld when participation history is supplied. Replacement quality remains uncalibrated; do not use this as a proven betting edge.';
   return state;
  }
  const api={evaluate};

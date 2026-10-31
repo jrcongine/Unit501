@@ -53,7 +53,7 @@ function summarize(games, boxes, query, roster) {
       team.games++;
       const venue = String(game.game?.venue?.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
       if (side === 'home' && venue) team.homeVenues[venue] = (team.homeVenues[venue] || 0) + 1;
-      team.recentGames.push({kickoff:time(game), opponent:String(opponent?.name || 'Opponent'), side, scored:readScore(game.scores?.[side]?.total), allowed:readScore(game.scores?.[other]?.total)});
+      team.recentGames.push({id,kickoff:time(game), opponent:String(opponent?.name || 'Opponent'), side, scored:readScore(game.scores?.[side]?.total), allowed:readScore(game.scores?.[other]?.total)});
       team.opponents.push({id:String(opponent?.id || ''),
         scored:readScore(game.scores?.[side]?.total), allowed:readScore(game.scores?.[other]?.total)});
       const ownStats = readYards(uniqueRow(own.id));

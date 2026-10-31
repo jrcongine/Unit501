@@ -123,3 +123,15 @@ test('missing workload invokes reconciliation for all matchups; failures preserv
   assert.ok(team.injuryUsage.assessments[0].games.every(g=>g.value===null));
  }
 });
+
+test('season participation preserves explicit absences, actual appearances, conflicts and unknowns separately',()=>{
+ const {buildUsageReport}=require('../college-injury-usage');
+ const roster=[{id:'7',name:'Test Defender',position:'CB'}],b=new Map(games.map((g,i)=>[String(g.game.id),defenseBox(i===0?2:null)]));
+ const reports=games.slice(1).map(g=>({gameId:String(g.game.id),at:g.game.date.timestamp*1000,teamId:'10',source:'https://big12sports.com/',rows:[{id:'7',status:'out'}]}));
+ const r=buildUsageReport(games,b,'10',roster,[],{},reports);
+ assert.deepEqual(r.history[0].games.map(g=>g.state),['played','absent','absent']);
+ const conflict=[...reports,{...reports[0],gameId:'3',at:3000}];
+ assert.equal(buildUsageReport(games,b,'10',roster,[],{},conflict).history[0].games[0].state,'conflict');
+ assert.deepEqual(buildUsageReport(games,b,'10',roster).history[0].games.map(g=>g.state),['played','unknown','unknown']);
+ const wrong=reports.map(r=>({...r,teamId:'999'}));assert.deepEqual(buildUsageReport(games,b,'10',roster,[],{},wrong).history[0].games.map(g=>g.state),['played','unknown','unknown']);
+});
