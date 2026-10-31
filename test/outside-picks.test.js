@@ -151,3 +151,41 @@ test('college basketball feed uses its own source routes and never borrows NBA p
  assert.ok(urls.some(u=>u==='https://www.pickswise.com/college-basketball/picks/'));
  assert.ok(!urls.some(u=>u.includes('/nba')));assert.ok(result.sources.every(s=>s.picks.length===0));
 });
+
+test('NBA consensus panel distinguishes missing source coverage from verified agreement',async()=>{
+  const nodes=new Map();
+  class Node {
+    constructor(){this.children=[];this.listeners={};this.dataset={};this.open=false;this._text='';this.value='nba';}
+    set textContent(value){this._text=String(value);}
+    get textContent(){return this._text+this.children.map(child=>child.textContent).join('');}
+    setAttribute(name,value){(this.attrs??={})[name]=String(value);}
+    append(...children){this.children.push(...children);}
+    replaceChildren(){this.children=[];this._text='';}
+    addEventListener(event,fn){this.listeners[event]=fn;}
+  }
+  for(const id of ['war-room','war-feed','war-feed-league','war-feed-refresh','war-feed-status'])nodes.set(id,new Node());
+  nodes.get('war-room').dataset.autoload='true';
+  const checkedAt='2026-10-31T14:00:00Z';
+  const makeSource=(name,picks=[],status='empty')=>({name,source:name,status,checkedAt,picks,message:'Source checked'});
+  const pick={pick:'Browns +3.5',matchup:'Browns vs Steelers',author:'A',eventLabel:'Nov 1',url:'https://example.com/picks'};
+  let payload={sources:[makeSource('Covers'),makeSource('WagerTalk'),makeSource("Boyd's Bets"),makeSource('Pickswise',[], 'unavailable')],consensus:[]};
+  const context={Date,AbortSignal,encodeURIComponent,
+    document:{getElementById:id=>nodes.get(id),createElement:()=>new Node()},
+    fetch:async()=>({ok:true,json:async()=>payload})};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/outside-picks.js'),'utf8'),context);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(nodes.get('war-feed').textContent,/0\/4 sources with readable picks/);
+  assert.match(nodes.get('war-feed').textContent,/Consensus cannot be assessed/);
+  assert.match(nodes.get('war-feed').textContent,/1 unavailable/);
+  payload={sources:[makeSource('Covers',[pick],'available'),makeSource('WagerTalk'),
+    makeSource("Boyd's Bets"),makeSource('Pickswise')],consensus:[]};
+  await nodes.get('war-feed-refresh').listeners.click();
+  assert.match(nodes.get('war-feed').textContent,/1\/4 sources with readable picks/);
+  assert.match(nodes.get('war-feed').textContent,/Cross-source agreement cannot be assessed/);
+  payload.consensus=[{pick:'Browns +3.5',matchup:'Browns vs Steelers',date:'2026-11-01',count:2,sources:[
+    {source:'Covers',author:'A',pick:'Browns +3.5',url:'https://example.com/a'},
+    {source:'Covers',author:'B',pick:'Browns +3.5',url:'https://example.com/b'}
+  ]}];
+  await nodes.get('war-feed-refresh').listeners.click();
+  assert.match(nodes.get('war-feed').textContent,/Same-source agreement only/);
+});

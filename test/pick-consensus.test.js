@@ -77,3 +77,32 @@ test('public-feed pipeline combines the two source formats from the reported exa
  assert.equal(result.length,5);
  assert.ok(result.every(group=>group.count===2));
  });
+
+test('NBA totals group verified 76ers-Hornets picks across full names, nicknames and abbreviations',()=>{
+ const wager={league:'nba',author:'Jeff Michaels',pick:'Total Under 216.5 (-115)',
+   matchup:'(523) Philadelphia 76ers at (524) Charlotte Hornets: Total',
+   eventAt:'2026-10-31T22:10:00Z',url:'https://www.wagertalk.com/free-sports-picks/nba'};
+ const boyd={league:'nba',author:'Calvin King',pick:'UNDER 216.5 -105',
+   matchup:'76ers vs Hornets',eventDate:'2026-10-31',
+   url:'https://www.boydsbets.com/free-nba-picks/'};
+ const covers={league:'nba',author:'Another Analyst',pick:'Under 216.5 (-110)',
+   matchup:'PHI vs CHA',eventDate:'2026-10-31',
+   url:'https://www.covers.com/picks/nba'};
+ const compare=(w,b,c)=>consensus([source('wagertalk',[w]),source('boyds',[b]),source('covers',c?[c]:[])]);
+ const result=compare(wager,boyd,covers);
+ assert.equal(result.length,1);
+ assert.equal(result[0].count,3);
+ assert.equal(result[0].pick,'under 216.5');
+ assert.deepEqual(result[0].sources.map(s=>s.author),['Jeff Michaels','Calvin King','Another Analyst']);
+ for(const other of [
+  {...boyd,pick:'OVER 216.5 -105'},
+  {...boyd,pick:'UNDER 217.5 -105'},
+  {...boyd,matchup:'76ers vs Bulls'},
+  {...boyd,eventDate:'2026-11-01'},
+  {...boyd,league:'ncaab'}
+ ])assert.deepEqual(compare(wager,other),[],JSON.stringify(other));
+});
+test('Unverified Pickswise author labels cannot create false multi-source consensus',()=>{
+ const placeholder={...p,author:'Pickswise (analyst unverified)',authorVerified:false};
+ assert.deepEqual(consensus([source('pickswise',[placeholder]),source('covers',[{...p,author:'Verified Analyst'}])]),[]);
+});

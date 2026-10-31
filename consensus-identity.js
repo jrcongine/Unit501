@@ -35,6 +35,52 @@ function eventTimestamp(p,source){
  });
  return matches.length===1?matches[0]:null;
 }
+// NBA names are canonicalized only through exact, league-scoped aliases.
+// No fuzzy matching: two distinct teams, players, dates or lines must never merge.
+const nbaNames=[
+ ['ATL','Atlanta Hawks','Hawks'],
+ ['BOS','Boston Celtics','Celtics'],
+ ['BKN','Brooklyn Nets','Nets','BRK'],
+ ['CHA','Charlotte Hornets','Hornets'],
+ ['CHI','Chicago Bulls','Bulls'],
+ ['CLE','Cleveland Cavaliers','Cavaliers','Cavs'],
+ ['DAL','Dallas Mavericks','Mavericks','Mavs'],
+ ['DEN','Denver Nuggets','Nuggets'],
+ ['DET','Detroit Pistons','Pistons'],
+ ['GSW','Golden State Warriors','Warriors','GS'],
+ ['HOU','Houston Rockets','Rockets'],
+ ['IND','Indiana Pacers','Pacers'],
+ ['LAC','Los Angeles Clippers','LA Clippers','Clippers'],
+ ['LAL','Los Angeles Lakers','LA Lakers','Lakers'],
+ ['MEM','Memphis Grizzlies','Grizzlies'],
+ ['MIA','Miami Heat','Heat'],
+ ['MIL','Milwaukee Bucks','Bucks'],
+ ['MIN','Minnesota Timberwolves','Timberwolves','Wolves'],
+ ['NOP','New Orleans Pelicans','Pelicans','NO'],
+ ['NYK','New York Knicks','Knicks','NY'],
+ ['OKC','Oklahoma City Thunder','Thunder'],
+ ['ORL','Orlando Magic','Magic'],
+ ['PHI','Philadelphia 76ers','76ers','Sixers'],
+ ['PHX','Phoenix Suns','Suns'],
+ ['POR','Portland Trail Blazers','Trail Blazers','Blazers'],
+ ['SAC','Sacramento Kings','Kings'],
+ ['SAS','San Antonio Spurs','Spurs','SA'],
+ ['TOR','Toronto Raptors','Raptors'],
+ ['UTA','Utah Jazz','Jazz'],
+ ['WAS','Washington Wizards','Wizards']
+];
+const nbaAliases=new Map(nbaNames.flatMap(([code,...names])=>
+ [code,...names].map(name=>[clean(name),'nba:'+code.toLowerCase()])
+));
+function matchupTeams(p){
+ const names=String(p.matchup||'').replace(/\(\d+\)/g,'')
+  .replace(/:\s*(total|spread|moneyline).*$/i,'')
+  .split(/\s+(?:vs\.?|at|@)\s+/i).map(clean);
+ if(names.length!==2||names.some(name=>!name))return null;
+ // Other leagues retain their existing exact team-name matching behavior.
+ return names.map(name=>p.league==='nba'?(nbaAliases.get(name)||name):name).sort();
+}
+
 // Explicit aliases from the reported example. Unreviewed team aliases stay
 // separate; no fuzzy player/team matching or cross-league alias substitution.
 const mlbTeams=new Map([
@@ -57,4 +103,4 @@ function pitcherOuts(p){
  if(teams.length!==2||teams.some(t=>!t)||teams[0]===teams[1])return null;
  return {teams:teams.sort(),pick:player+' '+side+' '+line+' outs recorded'};
 }
-module.exports={eventIdentity,eventTimestamp,pitcherOuts};
+module.exports={eventIdentity,eventTimestamp,pitcherOuts,matchupTeams};
