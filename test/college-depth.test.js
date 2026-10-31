@@ -24,3 +24,13 @@ test('all schools use discovery, unique roster matching, source expiry and exact
  team.roster.rows.push({id:'9',name:"Jay'Vion Cole",position:'CB'});await load(q,[team]);assert.equal(team.depth.rows.some(r=>r.id==='7'),false);
  clock+=8*86400000;await load(q,[team]);assert.equal(team.depth.available,false);
 });
+
+
+test('scouting icon links do not create false shared slots; multiple named players still fail closed',()=>{
+ const icon="<a href='https://www.ourlads.com/ncaa-football-depth-charts/player/test/123#analysis'><i class='fa fa-file-text'></i></a>";
+ const html=page().replace('Quarterback, Test</a>','Quarterback, Test</a>'+icon);
+ assert.equal(parse(html,'Arizona','2026',now).rows.length,4);
+ const blank=html.replace('</tr>','<td></td><td><a href=\"https://www.ourlads.com/ncaa-football-depth-charts/player//0\"></a><span></span></td></tr>');
+ assert.equal(parse(blank,'Arizona','2026',now).rows.length,4);
+ assert.throws(()=>parse(html.replace("<i class='fa fa-file-text'></i>",'Other, Player'),'Arizona','2026',now),/Shared/);
+});

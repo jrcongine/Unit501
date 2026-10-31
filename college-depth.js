@@ -30,7 +30,8 @@ function parse(html,school,season,now){
    if(cells.length<3||cells.length%2!==1)throw Error('Depth columns unrecognized');
    const label=clean(cells[0]),pos=position(label),slotId=label+':'+slot++;
    for(let i=2;i<cells.length;i+=2){
-    const links=[...cells[i].matchAll(/<a[^>]*href=['"]https:\/\/www\.ourlads\.com\/ncaa-football-depth-charts\/player\/[^'"]+['"][^>]*>([\s\S]*?)<\/a>/g)];
+    const links=[...cells[i].matchAll(/<a[^>]*href=['"]https:\/\/www\.ourlads\.com\/ncaa-football-depth-charts\/player\/[^'"]+['"][^>]*>([\s\S]*?)<\/a>/g)].filter(m=>clean(m[1]));
+    if(!links.length&&!clean(cells[i]))continue;
     if(links.length!==1)throw Error('Shared or unrecognized depth cell');
     const name=clean(links[0][1]);if(!name)continue;
     const parts=name.split(',');if(parts.length!==2||parts.some(p=>!p.trim()))throw Error('Depth name format changed');
