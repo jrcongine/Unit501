@@ -22,6 +22,7 @@
  const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
  const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
  function renderProjection(){
+  shared.resultTiles('nba',null);
   shared.showMarketComparison(byId('nba-market-gap'),null);
   const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
   detail.textContent='';
@@ -47,6 +48,7 @@
    alert.textContent=(outlook.upset?'⚠ UPSET REVIEW · ':'Model lean only · ')+(outlook.winner==='away'?game.away:game.home)+
     (outlook.upset?' meets the score-margin and simulation thresholds.':' projected ahead; upset review threshold not met.');
   }
+  shared.resultTiles('nba',result,sim.available?{cover:sim.spread?.away,over:sim.total?.over,win:sim.awayWin}:{});
   if(sim.available){
    const percent=n=>(n*100).toFixed(1)+'%';
    let message='10,000 simulations · '+game.away+' win '+percent(sim.awayWin)+' · '+game.home+' win '+percent(sim.homeWin)+' · tie '+percent(sim.tie);
@@ -60,6 +62,7 @@
   }else simulation.textContent=sim.reason;
   detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation+' '+window.Unit501BasketballInjuryModel.describe(result);
  }
+ byId('nba-sim').addEventListener('click',renderProjection);
  function renderHeadToHead(){
   renderProjection();
   headToHead.replaceChildren();
@@ -251,7 +254,7 @@ function choose(game){
     const card=shared.gameCard({
       away:game.away,home:game.home,awayLogo:game.awayLogo,homeLogo:game.homeLogo,container:games,seasonRecord:{league:'nba',season:Number(data.season)+1,date},
       detailText:shared.timeCentral(game.tipoff)+' | '+game.status+score,
-      actionLabel:'Open NBA Game Lab →',cardClass:'card game nba-game',
+      actionLabel:'Open Game Lab →',cardClass:'card game nba-game',
       onSelect:()=>choose(game)
     });
     games.append(card);

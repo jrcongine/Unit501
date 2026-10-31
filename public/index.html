@@ -15,11 +15,13 @@
 <link rel="stylesheet" href="style.css">
 
 <link rel="stylesheet" href="light.css">
+<link rel="stylesheet" href="sport-layout.css">
 </head>
 
-<body>
+<body data-sport="football">
 
 <main>
+<nav class="sport-switch" aria-label="Sport"><a href="/" aria-current="page">🏈 Football</a><a href="nba.html">🏀 Basketball</a></nav>
 
 <header>
 
@@ -39,7 +41,7 @@
 <nav class="quick-nav" aria-label="Command center sections">
   <a href="#slate-section" class="nav-slate"><span aria-hidden="true">🏈</span> Game slate</a>
   <a href="#war-room" class="nav-war"><span aria-hidden="true">⚔</span> 501 War Room</a>
-  <a href="nba.html" class="nav-war"><span aria-hidden="true">🏀</span> Basketball · Beta</a>
+
   <a href="#lab" id="quick-lab" class="nav-lab is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">🎯</span> Game Lab · select game</a>
   <a href="#player-lab" id="quick-player" class="nav-player is-unavailable" aria-disabled="true" tabindex="-1"><span aria-hidden="true">📊</span> Player props · select game</a>
 <a href="data-health.html" class="nav-lab">Data Health</a></nav>
@@ -47,9 +49,9 @@
 
 <section class="card controls">
 
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">   <input     id="date"     type="date"     aria-label="Game date"     style="min-width:0;flex:1;"   >   <button     type="button"     onclick="const field = document.getElementById('date'); try { field.showPicker(); } catch { field.focus(); }"   >     Choose date ▾   </button> </div>
+<div class="date-control"><input id="date" type="date" aria-label="Game date"><button type="button" data-date-picker>Choose date ▾</button></div>
 
-<select id="league">
+<select id="league" aria-label="League">
 
 <option value="2">College Football</option>
 
@@ -223,7 +225,7 @@
 <label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
 
 </details>
-<button id="sim">Run 50,000 Sims</button>
+<button id="sim" class="simulation-action">Run 50,000 simulations</button>
 
 <div class="results">
 
@@ -321,6 +323,6 @@
 <script src="auto-prep.js"></script>
 <script src="api-usage.js"></script>
 
-</body>
+<script src="sport-layout.js"></script></body>
 
 </html>

@@ -78,6 +78,7 @@
 
  function teamProjection(){return window.Unit501BasketballInjuryModel.apply(window.Unit501NCAABModel.project(selected,context,scope.value),selected,context,teamPlayerHistory,injuryData,scope.value,Date.now(),true);}
  function render(){
+  window.Unit501SharedUI.resultTiles('ncaab',null);
   const lineSource=syncLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);
   teams.replaceChildren();$('ncaab-simulation').textContent='';
@@ -95,11 +96,12 @@
   const value=id=>String($(id).value).trim()===''?null:Number($(id).value);
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),p,{awaySpread:value('ncaab-spread'),total:value('ncaab-total')},lineSource);
   $('ncaab-prediction').textContent=p.available?`${selected.away} ${p.away.toFixed(1)} · ${selected.home} ${p.home.toFixed(1)} | Total ${p.total.toFixed(1)} (${p.awayGames}/${p.homeGames} games)` :p.reason;
+  window.Unit501SharedUI.resultTiles('ncaab',p);
   if(p.available)$('ncaab-prediction').textContent+=' · '+window.Unit501BasketballInjuryModel.describe(p);
  }
  async function choose(game){
   resetLines();
-  window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-matchup').textContent=game.away+' at '+game.home;
+  window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-player-lab').classList.remove('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);$('ncaab-matchup').textContent=game.away+' at '+game.home;
   $('ncaab-game-info').textContent=(game.timeKnown?central(game.tipoff):'Tipoff TBD')+' · '+game.status+(game.neutral?' · Neutral site':'')+(game.status==='Final'||game.status==='Live'?` · ${game.awayScore??'—'}–${game.homeScore??'—'}`:'');
   teams.replaceChildren();$('ncaab-simulation').textContent='';$('ncaab-prediction').textContent='Team history unavailable.';loadExtras(game,task);
   return loadContext(game,task);
@@ -118,9 +120,9 @@
  $('ncaab-refresh-context').addEventListener('click',()=>{if(selected)return loadContext(selected);});
  load.addEventListener('click',async()=>{
   resetLines();
-  window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
+  window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');$('ncaab-player-lab').classList.add('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
-   for(const game of games){const button=node('button','','ncaab-game-card');button.type='button';button.append(window.Unit501SharedUI.matchupHeading(game.away,game.home,game.awayLogo,game.homeLogo,document),node('p',`${game.timeKnown?central(game.tipoff):'Tipoff TBD'} · ${game.status}`));button.addEventListener('click',()=>choose(game));
+   for(const game of games){const button=node('button','','ncaab-game-card');button.type='button';button.append(window.Unit501SharedUI.matchupHeading(game.away,game.home,game.awayLogo,game.homeLogo,document),node('p',`${game.timeKnown?central(game.tipoff):'Tipoff TBD'} · ${game.status}`));const action=node('span','Open Game Lab →','open-game');button.append(action);button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{for(const card of list.children)card.setAttribute('aria-pressed',card===button?'true':'false');return choose(game);});
     const record=node('small','','game-records');record.hidden=true;
     const current=Number.isFinite(data.checkedAt)&&data.checkedAt<=Date.now()+60000&&Date.now()-data.checkedAt<=3600000&&game.stage===2&&game.status==='Scheduled'&&game.timeKnown&&Date.parse(game.tipoff)>Date.now();
     const valid=value=>typeof value==='string'&&/^\d{1,3}-\d{1,3}$/.test(value);
@@ -206,6 +208,7 @@
   if(!selected||!context)return;render();if(!window.Unit501SharedUI.historyFreshness(context.checkedAt).fresh)return;syncLines();const p=teamProjection();
   const optional=id=>{const value=$(id).value.trim();return value===''?null:Number(value);};
   const sim=window.Unit501NCAABModel.simulate(p,context,{spread:optional('ncaab-spread'),total:optional('ncaab-total')});
+  window.Unit501SharedUI.resultTiles('ncaab',p,sim.available?{cover:sim.awayCover,over:sim.over,win:sim.awayWin}:{});
   if(!sim.available){$('ncaab-simulation').textContent=sim.reason;return;}
   const pct=n=>(n*100).toFixed(1)+'%';let out=`${selected.away} win ${pct(sim.awayWin)} · ${selected.home} win ${pct(sim.homeWin)} · tie ${pct(sim.tie)}`;
   if(sim.awayCover!==null)out+=` · away cover ${pct(sim.awayCover)} · spread push ${pct(sim.spreadPush)}`;

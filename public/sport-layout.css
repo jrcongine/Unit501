@@ -1,0 +1,39 @@
+/* Shared football + basketball presentation. Make cross-sport UI fixes here. */
+body[data-sport]{--surface:#243244;--border:#405168;--accent:#9773c5}
+body[data-sport] main{max-width:1440px;padding:24px 28px}
+.sport-switch{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.sport-switch a{display:inline-flex;align-items:center;min-height:44px;padding:10px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-weight:800;text-decoration:none}
+.sport-switch a[aria-current=page]{background:#352b49;border-color:var(--accent);color:#d2b5f5}
+body[data-sport] header{margin-bottom:18px;align-items:center}
+body[data-sport] .quick-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+.sport-model-status{font-size:13px;color:var(--muted)}
+body[data-sport] .controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(150px,.7fr);align-items:center}
+body[data-sport] .controls :is(input,select,button){width:100%;min-width:0}
+.date-control{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+body[data-sport] .date-control input{flex:1;min-width:145px}
+body[data-sport] .date-control button{width:auto;font-size:13px}
+body[data-sport] .quick-nav a.is-unavailable{background:#1c2a3a;color:#aebdd0;border-color:var(--border);opacity:1}
+body[data-sport] :is(#games,.nba-games){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px;margin:14px 0}
+body[data-sport] :is(.game,.nba-game,.ncaab-game-card){position:relative;min-width:0;min-height:130px;padding:16px 16px 58px;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:14px;background:var(--surface);color:var(--text);text-align:left;white-space:normal}
+body[data-sport] :is(.game,.nba-game,.ncaab-game-card) .game-title{display:block;padding:0;margin:0;font-size:17px;line-height:1.5;background:transparent;color:var(--text)}
+body[data-sport] :is(.game,.nba-game,.ncaab-game-card) p{font-size:14px;line-height:1.5;margin:8px 0;color:var(--muted)}
+body[data-sport] :is(.game,.nba-game,.ncaab-game-card) .open-game{position:absolute;top:auto;bottom:12px;right:12px;transform:none;padding:7px 10px;border:1px solid var(--accent);border-radius:9px;font-size:12px;line-height:1.4;background:#352b49;color:#d2b5f5;font-weight:800}
+body[data-sport] :is(.game.selected,.nba-game.selected,.ncaab-game-card[aria-pressed=true]){background:#352b49;border-color:var(--accent)}
+body[data-sport] :is(#lab,#nba-lab,#ncaab-lab)>h2{font-size:clamp(24px,3vw,32px);overflow-wrap:anywhere}
+body[data-sport] :is(.market-pulse,.nba-market-panel,section.nba-model-status){padding:16px;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+body[data-sport] .results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+body[data-sport] .results>div{min-width:0;padding:16px;border:1px solid var(--border);border-radius:12px;background:#1c2a3a}
+body[data-sport] .results small{color:var(--muted);font-size:12px;letter-spacing:.04em}
+body[data-sport] .results b{display:block;margin-top:8px;font-size:clamp(23px,3vw,32px);font-variant-numeric:tabular-nums;color:var(--text)}
+body[data-sport] :is(#nba-prediction,#ncaab-prediction){font-size:17px;font-weight:750;line-height:1.6;color:var(--text);overflow-wrap:anywhere}
+body[data-sport] :is(#nba-simulation,#ncaab-simulation){font-size:14px;line-height:1.6;color:var(--muted)}
+body[data-sport] :is(.simulation-action,#sim){background:#326c54;color:#fff;border:1px solid #64bc94;padding:14px 18px}
+body[data-sport] :is(.load-slate,#load,#predict,#nba-load-props,#ncaab-load-props){background:#354f70;color:#fff}
+body[data-sport] .simulation-report-details{border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px;color:var(--muted);font-size:13px}
+body[data-sport] .simulation-report-details>summary{cursor:pointer;font-weight:800;color:var(--text)}
+body[data-sport] :is(#player-lab,#nba-player-lab,#ncaab-player-lab)>h2{font-size:26px;margin-top:8px}
+body[data-sport] :is(.nba-prop-filters,.prop-filters){align-items:end;gap:12px}
+body[data-sport] :is(.nba-form-table,.player-ratings-table){font-variant-numeric:tabular-nums}
+body[data-sport] :is(.nba-form-table,.player-ratings-table) :is(th,td){padding:12px;vertical-align:top;font-size:14px;line-height:1.5}
+body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px solid var(--border)}
+@media(max-width:700px){body[data-sport] main{padding:16px 12px}body[data-sport] header{align-items:flex-start;flex-direction:column}body[data-sport] .quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-sport] .controls{grid-template-columns:minmax(0,1fr)}body[data-sport] .results{grid-template-columns:repeat(2,minmax(0,1fr))}}

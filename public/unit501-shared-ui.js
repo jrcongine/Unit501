@@ -143,5 +143,15 @@
    const expiresAt=at+3600001;
    return {fresh:Number.isFinite(at)&&at>0&&at<=now+60000&&now<expiresAt,at,expiresAt};
  }
- return Object.freeze({historyFreshness,dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ // The same four tiles as football. Call with null to withdraw stale results.
+ function resultTiles(prefix,prediction,metrics={},doc=typeof document!=='undefined'?document:null){
+   if(!prediction?.available)metrics={};
+   const percent=n=>Number.isFinite(n)&&n>=0&&n<=1?(n*100).toFixed(1)+'%':'—';
+   const score=prediction?.available&&[prediction.away,prediction.home].every(Number.isFinite)
+     ?Math.round(prediction.away)+'–'+Math.round(prediction.home):'—';
+   for(const [key,value]of Object.entries({score,cover:percent(metrics.cover),over:percent(metrics.over),win:percent(metrics.win)})){
+     const element=doc?.getElementById(prefix+'-'+key);if(element)element.textContent=value;
+   }
+ }
+ return Object.freeze({resultTiles,historyFreshness,dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

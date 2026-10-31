@@ -97,3 +97,25 @@ test('matchup headings use supplied provider logos and keep team names when imag
  const rejected=shared.matchupHeading('Away','Home','https://espncdn.com.evil.test/logo.png',null,doc);
  assert.equal(rejected.textContent,'Away @ Home');
 });
+
+
+test('shared result tiles preserve real zero probabilities, withhold missing lines and clear stale results',()=>{
+ const ids=['score','cover','over','win'],nodes=new Map(ids.map(k=>['nba-'+k,{textContent:''}])),doc={getElementById:id=>nodes.get(id)};
+ shared.resultTiles('nba',{available:true,away:110.4,home:109.6},{cover:null,over:0,win:.512},doc);
+ assert.equal(nodes.get('nba-score').textContent,'110–110');
+ assert.equal(nodes.get('nba-cover').textContent,'—');
+ assert.equal(nodes.get('nba-over').textContent,'0.0%');
+ assert.equal(nodes.get('nba-win').textContent,'51.2%');
+ shared.resultTiles('nba',null,{win:.8},doc);
+ assert.ok([...nodes.values()].every(n=>n.textContent==='—'));
+});
+
+test('all sport pages use the shared layout and retain separate selection and player sections',()=>{
+ for(const [file,prefix]of [['index.html',''],['nba.html','nba-'],['ncaab.html','ncaab-']]){
+  const html=fs.readFileSync(path.join(__dirname,'../public/'+file),'utf8');
+  assert.match(html,/href="sport-layout.css"/);assert.match(html,/src="sport-layout.js"/);
+  assert.match(html,/01 \/ CHOOSE A MATCHUP/);assert.match(html,/02 \/ RUN THE NUMBERS/);assert.match(html,/03 \/ PLAYER MARKETS/);
+  assert.ok(html.includes('id="'+prefix+'player-lab" class="card hidden"'));
+  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
+ }
+});

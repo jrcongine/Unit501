@@ -54,11 +54,11 @@ test('NBA provider errors, invalid shapes and missing keys fail closed rather th
  assert.deepEqual(empty.games,[]);
  await assert.rejects(createNBAFeed({key:()=> 'test'})('not-a-date'),/Invalid NBA date/);
 });
-test('NBA beta is a distinct schedule-only view and football league selector remains untouched',()=>{
+test('NBA uses the common command center while football keeps its own league selector',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/nba.html'),'utf8');
  const base=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
  const server=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
- assert.match(html,/NBA matchup dashboard/);
+ assert.match(html,/Basketball Command Center/);
  assert.match(html,/nba-date/);
  assert.doesNotMatch(html,/Run simulation|Projected score:/i);
  assert.match(base,/href="nba.html"/);
