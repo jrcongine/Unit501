@@ -556,6 +556,8 @@ if (u.pathname === '/api/team-games') {
 server.listen(PORT, () => {
 
   console.log('UNIT 501 running on port ' + PORT);
+  if(process.env.RAILWAY_PROJECT_ID)require('./runtime-verification').verify({port:PORT,password:process.env.UNIT501_PRIVATE_PASSWORD,commit:process.env.RAILWAY_GIT_COMMIT_SHA})
+    .then(result=>console.log('Runtime verification: '+JSON.stringify(result))).catch(()=>console.log('Runtime verification: unavailable'));
   trackedOdds.start();
   console.log('Line history: ' + JSON.stringify(trackedOdds.status()));
   // Heavy full-league roster sweeps are opt-in, and never run on startup.

@@ -52,8 +52,11 @@
    let message='10,000 simulations · '+game.away+' win '+percent(sim.awayWin)+' · '+game.home+' win '+percent(sim.homeWin)+' · tie '+percent(sim.tie);
    if(sim.spread)message+=' · '+game.away+' '+signed(sim.spread.line)+' cover '+percent(sim.spread.away)+' · '+game.home+' cover '+percent(sim.spread.home)+' · push '+percent(sim.spread.push);
    if(sim.total)message+=' · Over '+sim.total.line+' '+percent(sim.total.over)+' · Under '+percent(sim.total.under)+' · push '+percent(sim.total.push);
+   const calibrated=window.Unit501NBAWinCalibration?.apply(game,result,sim);
+   if(calibrated)message+=' · Historically calibrated win estimate: '+game.away+' '+window.Unit501NBAWinCalibration.percent(calibrated.away)+' / '+game.home+' '+window.Unit501NBAWinCalibration.percent(calibrated.home);
    simulation.textContent=message;
    simulationDetail.textContent='Experimental frequencies, not calibrated odds. Resamples each team’s last '+sim.sampleGames[0]+'/'+sim.sampleGames[1]+' completed games around the displayed score, including any supported historical absence adjustment; player minutes and overtime are not modeled.';
+   if(calibrated)simulationDetail.textContent+=' The separate calibrated estimate was tested unchanged on 1,151 games from 2025–26; it applies only to the regular-season Season baseline with no applied injury adjustment. It is not a sportsbook price or a guarantee.';
   }else simulation.textContent=sim.reason;
   detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation+' '+window.Unit501BasketballInjuryModel.describe(result);
  }

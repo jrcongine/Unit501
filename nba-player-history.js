@@ -129,7 +129,9 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
     }
     const verification=require('./nba-official-history').reconcile(players,games,new Map([...results].map(([id,r])=>[id,r.official])),side.id);
     reconcileCoverage(players,games);
-    return {name:side.name,available:true,games:games.length,verification,players:[...players.values()]};
+    return {name:side.name,available:true,games:games.length,gameSource:'espn',
+      gameLog:games.map(g=>({id:String(g.id),tipoff:g.tipoff,opponent:g.opponent,venue:g.venue,for:g.for,against:g.against})),
+      verification,players:[...players.values()]};
    }catch{return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};}
   });
   return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:official?'NBA official reconciliation with ESPN completed box scores':'ESPN completed NBA box scores',teams};

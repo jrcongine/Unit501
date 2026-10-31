@@ -69,3 +69,36 @@ for(const college of [false,true])test((college?'CBB':'NBA')+' injury adjustment
   assert.equal(r.away,100,'mutation '+i);assert.equal(r.injury.applied.length,0,'mutation '+i);
  }
 });
+
+test('NBA reconciles distinct provider game IDs only with an exact verified game fingerprint',()=>{
+ function mapped(){
+  const x=fixture(false);
+  x.context.away.recentGames=x.context.away.recentGames.map(g=>({...g,opponent:'Boston Celtics',venue:'away'}));
+  x.history.teams[0].gameSource='espn';
+  x.history.teams[0].gameLog=structuredClone(x.context.away.recentGames);
+  x.context.away.recentGames=x.context.away.recentGames.map(g=>({...g,id:String(1000+Number(g.id))}));
+  return x;
+ }
+ const run=x=>model.apply(x.base,x.game,x.context,x.history,x.report,'recent10',now,false);
+ assert.equal(run(mapped()).away,95);
+ const mutations=[
+  x=>x.history.teams[0].gameLog[0].opponent='Other opponent',
+  x=>x.history.teams[0].gameLog[0].for=91,
+  x=>x.history.teams[0].gameLog[0].against=101,
+  x=>x.history.teams[0].gameLog[0].venue='home',
+  x=>x.history.teams[0].gameLog[0].tipoff=new Date(now-86400000+60000).toISOString(),
+  x=>x.history.teams[0].gameLog.push({...x.history.teams[0].gameLog[0]}),
+  x=>x.history.teams[0].gameLog[0].id=x.history.teams[0].gameLog[1].id,
+  x=>delete x.history.teams[0].gameLog,
+  x=>x.history.teams[0].gameSource='unknown'
+ ];
+ for(const change of mutations){const x=mapped();change(x);assert.equal(run(x).away,100);}
+ const x=mapped();x.history.teams[0].gameLog[0].id='9999';assert.equal(run(x).away,100,'Fingerprint cannot create a missing participation record');
+});
+
+test('NBA accepts the actual ISO team-context timestamp contract without weakening expiry',()=>{
+ const x=fixture();x.context.checkedAt=new Date(now).toISOString();
+ const run=()=>model.apply(x.base,x.game,x.context,x.history,x.report,'recent10',now);
+ assert.equal(run().away,95);
+ for(const at of [new Date(now-1800001).toISOString(),new Date(now+1).toISOString(),'2026-10-30',String(now),'garbage',null]){x.context.checkedAt=at;assert.equal(run().away,100);}
+});

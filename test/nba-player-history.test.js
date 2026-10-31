@@ -32,7 +32,7 @@ test('NBA histories reject wrong game, opponent, season, unfinished games and du
 test('public NBA history matches the selected matchup and shares completed box scores',async()=>{
  const f=feeds(),get=createPlayerHistory({...f,now:()=>now});
  const [a,b]=await Promise.all([get(selected,'2026-10-26',2026),get(selected,'2026-10-26',2026)]);
- assert.deepEqual(a,b);assert.equal(f.getCalls(),4);assert.ok(a.teams.every(t=>t.available));
+ assert.deepEqual(a,b);assert.equal(a.teams[0].gameSource,'espn');assert.deepEqual(a.teams[0].gameLog.map(g=>g.id),['1','2']);assert.equal(a.teams[0].gameLog[0].for,110);assert.equal(a.teams[0].gameLog[0].tipoff,teamGames[0][0].tipoff);assert.equal(f.getCalls(),4);assert.ok(a.teams.every(t=>t.available));
  assert.equal(a.teams[0].players[0].results.length,2);assert.equal(a.teams[0].players[0].results[0].player_threes,2);
  assert.equal(a.teams[0].players.find(p=>p.name==='Bench DNP').inactive.length,2);
  assert.equal(a.teams[0].players.find(p=>p.name==='Bench DNP').results.length,0);

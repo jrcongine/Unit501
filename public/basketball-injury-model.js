@@ -4,7 +4,8 @@
  'use strict';
  const players=typeof module!=='undefined'&&module.exports?require('./nba-player-model'):root.Unit501NBAPlayerModel;
  const key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/^losangeles/,'la');
- const fresh=(at,age,now)=>Number.isFinite(at)&&at<=now&&now-at<=age;
+ const timestamp=at=>typeof at==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(at)?Date.parse(at):typeof at==='number'?at:NaN;
+ const fresh=(at,age,now)=>{at=timestamp(at);return Number.isFinite(at)&&at<=now&&now-at<=age;};
  const round=n=>Math.round(n*10)/10;
  // Retain the player-history adapter's coverage verdict even when a shorter
  // selected window happens to contain enough usable rows.
@@ -17,6 +18,26 @@
    ids.add(id);
   }
   return true;
+ }
+ // ESPN player histories and API-NBA scoring histories use different IDs.
+ // Cross-source matches require all independently verified game facts, never
+ // just a date, name, or coincidentally equal numeric identifier.
+ function participationIds(games,history,college){
+  if(college||history.gameSource===undefined)return games.map(g=>String(g.id??g.gameId));
+  if(history.gameSource!=='espn'||!Array.isArray(history.gameLog))return null;
+  const log=history.gameLog,seen=new Set(),matched=new Set();
+  for(const r of log){
+   const id=String(r?.id??'');
+   if(!/^\d{1,12}$/.test(id)||seen.has(id))return null;seen.add(id);
+  }
+  const ids=[];
+  for(const g of games){
+   if(!key(g.opponent)||!['home','away'].includes(g.venue))return null;
+   const candidates=log.filter(r=>Date.parse(r.tipoff)===Date.parse(g.tipoff)&&key(r.opponent)===key(g.opponent)&&r.venue===g.venue&&r.for===g.for&&r.against===g.against);
+   if(candidates.length!==1||matched.has(String(candidates[0].id)))return null;
+   const id=String(candidates[0].id);matched.add(id);ids.push(id);
+  }
+  return ids;
  }
  function apply(base,game,context,history,report,scope,now=Date.now(),college=false){
   const out={...base,injury:{applied:[],withheld:[],away:0,home:0}};
@@ -44,11 +65,13 @@
    const games=team.recentGames.slice(0,n),seen=new Set();let valid=true;
    for(const g of games){const id=String(g.id??g.gameId??''),at=Date.parse(g.tipoff);if(!id||seen.has(id)||!Number.isFinite(at)||at>=Math.min(now,Date.parse(game.tipoff))||(college?g.scored:g.for)===(college?g.allowed:g.against)||![college?g.scored:g.for,college?g.allowed:g.against].every(v=>Number.isFinite(v)&&v>=0))valid=false;seen.add(id);}
    if(!valid){no('team game history incomplete or duplicated.');continue;}
+   const ids=participationIds(games,h,college);
+   if(!ids){no('player and scoring histories do not identify the same games; baseline retained.');continue;}
    const absent=[],present=[];
-   for(const g of games){
+   for(const [index,g] of games.entries()){
     const states=matched.map(p=>{
      if(!Array.isArray(p.results)||!Array.isArray(p.inactive))return null;
-     const same=x=>String(x.gameId)===String(g.id??g.gameId);
+     const same=x=>String(x.gameId)===ids[index];
      const active=p.results.filter(same),inactive=p.inactive.filter(same);
      if(active.length+inactive.length!==1)return null;
      const x=active[0]||inactive[0];if(Date.parse(x.tipoff)!==Date.parse(g.tipoff))return null;
