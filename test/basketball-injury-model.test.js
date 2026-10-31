@@ -47,3 +47,25 @@ for(const college of [false,true]){
   x.history.teams[0].players[1].inactive=[];assert.equal(run(x).away,100);
  });
 }
+
+for(const college of [false,true])test((college?'CBB':'NBA')+' injury adjustments reject incomplete samples and invalid scoring evidence',()=>{
+ const mutations=[
+  x=>x.history.teams[0].players[0].missing=[{gameId:'9'}],
+  x=>x.history.teams[0].players[0].coverage={missing:1},
+  x=>x.history.teams[0].players[0].unverified=[{gameId:'9'}],
+  x=>x.context.away.recent10.pointsFor=x.context.away.recent10.scored=undefined,
+  x=>x.context.away.recent10.pointsAgainst=x.context.away.recent10.allowed=NaN,
+  x=>x.context.away.recent10.pointsFor=x.context.away.recent10.scored='100',
+  x=>x.context.away.id='999',
+  x=>x.history.teams[0].id='999',
+  x=>x.context.away.recentGames[0].against=x.context.away.recentGames[0].allowed=90,
+  x=>x.history.teams[0].players[0].inactive.push(null),
+  x=>x.history.teams[0].players[0].results.push(null),
+  x=>x.history.teams[0].players[0].inactive.push({...x.history.teams[0].players[0].inactive[0]})
+ ];
+ for(const [i,mutate] of mutations.entries()){
+  const x=fixture(college);mutate(x);
+  const r=model.apply(x.base,x.game,x.context,x.history,x.report,'recent10',now,college);
+  assert.equal(r.away,100,'mutation '+i);assert.equal(r.injury.applied.length,0,'mutation '+i);
+ }
+});

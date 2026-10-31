@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={checkedAt:clock,gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
- vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','basketball-history-comparison.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,data,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -316,4 +316,22 @@ test('CBB automatically loads absence history and uses it in displayed scores',a
  await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();await h.settle();
  assert.equal(calls,1);assert.match(h.nodes.get('ncaab-prediction').textContent,/Away 95.0.*Absent Player Out/);
  h.advance(1800001);h.nodes.get('ncaab-scope').events.change();assert.doesNotMatch(h.nodes.get('ncaab-prediction').textContent,/Away 95.0/);
+});
+
+test('college history comparison survives an unavailable props feed',async()=>{
+ const h=setup(),base=h.context.fetch;
+ h.context.fetch=async url=>{
+  if(String(url).includes('/props?'))return {ok:false,json:async()=>({error:'No odds coverage'})};
+  if(String(url).includes('/player-history?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{available:true,players:[{name:'History Player',results:[{gameId:1,tipoff:new Date(h.now()-86400000).toISOString(),player_points:0},{gameId:2,tipoff:new Date(h.now()-2*86400000).toISOString(),player_points:12}],inactive:[]}]},{available:true,players:[]}]})};
+  return base(url);
+ };
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ await h.nodes.get('ncaab-load-props').events.click();
+ const panel=h.nodes.get('ncaab-history-comparison'),walk=n=>[n,...n.children.flatMap(walk)],nodes=walk(panel);
+ const selects=nodes.filter(n=>n.events.change);selects[0].value='History Player';selects[0].events.change();
+ const input=nodes.find(n=>n.events.input);input.value='0';input.events.input();
+ assert.match(panel.textContent,/1 above · 0 below · 1 equal · 2 verified appearances/);
+ assert.match(h.nodes.get('ncaab-props-status').textContent,/No odds coverage/);
+ h.advance(1800001);input.events.input();assert.match(panel.textContent,/Verified history unavailable/);
+ await h.nodes.get('ncaab-load').events.click();assert.equal(panel.textContent,'');
 });

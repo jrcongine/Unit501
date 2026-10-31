@@ -4,7 +4,7 @@ const {createCollegeAvailability,matchReports,localEpoch,sources}=require('../co
 const {assess}=require('../public/injury-model');
 const now=Date.parse('2026-10-10T20:00:00Z'),kickoff=Date.parse('2026-10-10T23:30:00Z');
 const q={league:'2',season:'2026',game:'100',away:'1',home:'2'};
-const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:'Georgia'},home:{id:2,name:'Alabama'}}};
+const g={league:{id:2,season:2026},game:{id:Number(q.game),date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:'Georgia'},home:{id:2,name:'Alabama'}}};
 const report=()=>({publishDate:'2026-10-10',postedTime:'14:00:00',conferenceTimeZone:'CT',footer:{date:'2026-10-10',time:'18:30:00'},games:[{teamName:'Georgia',rows:[{name:'QB #1 Player One',status:'Out'}]},{teamName:'Alabama',rows:[{name:'WR #2 Other',status:'Game Time Decision'}]}]});
 const teams=()=>[{id:'1',roster:{available:true,checkedAt:now,rows:[{id:'10',name:'Player One',position:'QB'}]},injuries:{available:false,rows:[]}},{id:'2',roster:{available:true,checkedAt:now,rows:[{id:'20',name:'Other',position:'WR'}]},injuries:{available:false,rows:[]}}];
 test('conference times use actual DST offsets and reject unknown zones or invalid dates',()=>{
@@ -71,7 +71,7 @@ test('Texas Smothers nickname mismatch resolves official Out and highlights Brow
  const now=Date.parse('2026-10-24T21:56:30.918Z'),kickoff=1792884600000;
  const game={id:24745,league:'2',season:'2026',kickoff};
  const q={league:'2',season:'2026',game:'24745',away:'131',home:'195'};
- const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:131,name:'Ole Miss'},home:{id:195,name:'Texas'}}};
+ const g={league:{id:2,season:2026},game:{id:Number(q.game),date:{timestamp:kickoff/1000}},teams:{away:{id:131,name:'Ole Miss'},home:{id:195,name:'Texas'}}};
  const texas={id:'195',roster:{available:true,checkedAt:1792878792604,rows:[{id:'15918',name:'Raleek Brown',position:'RB'},{id:'39057',name:'Daylan Smothers',position:'RB'}]},
   injuries:{available:true,checkedAt:now,rows:[]},injuryUsage:{available:true,checkedAt:1792878945897,gameId:'24745',kickoff,league:'2',season:'2026',rows:[
    {id:'15918',position:'RB',metric:'carries',values:[8,5,17],role:'recent regular contributor'},
@@ -103,7 +103,7 @@ test('Big 12 report reaches availability and automatic scoring only with matched
  const snapshot=require('./fixtures/big12-baylor-ucf-20261030.json'),r=snapshot.report;
  const now=Date.parse('2026-10-30T20:00:00Z'),kickoff=Date.parse('2026-10-30T23:30:00Z');
  const q={league:'2',season:'2026',game:'100',away:'1',home:'2'};
- const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:'Baylor'},home:{id:2,name:'UCF'}}};
+ const g={league:{id:2,season:2026},game:{id:Number(q.game),date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:'Baylor'},home:{id:2,name:'UCF'}}};
  // Synthetic provider IDs test identity reconciliation; these are not live roster IDs.
  const teams=r.games.map((side,i)=>({id:String(i+1),roster:{available:true,checkedAt:now,rows:side.rows.map((p,j)=>{const m=/^([A-Z]+) #\d+ (.+)$/.exec(p.name);return {id:String(1000+i*100+j),name:m[2],position:m[1]};})},injuryUsage:{available:true,checkedAt:now,gameId:'100',kickoff,league:'2',season:'2026',rows:[]}}));
  const read=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>conf==='B12'?{3407:r}:{});
@@ -136,7 +136,7 @@ test('American and MAC official snapshots gate matched Out players and apply ver
  for(const [conf,schools] of [['American',['Tulane','Charlotte']],['MAC',['Kent State','Sacramento State']]]){
   const r=require('./fixtures/'+conf.toLowerCase()+'-availability-20261030.json').report;
   const kickoff=localEpoch(r.footer.date,r.footer.time,r.conferenceTimeZone),now=kickoff-60000;
-  const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:schools[0]},home:{id:2,name:schools[1]}}};
+  const g={league:{id:2,season:2026},game:{id:Number(q.game),date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:schools[0]},home:{id:2,name:schools[1]}}};
   // Synthetic provider identities and workloads isolate reconciliation; not live provider claims.
   const t=r.games.map((side,i)=>({id:String(i+1),roster:{available:true,checkedAt:now,rows:side.rows.map((p,j)=>{const m=/^([A-Z]+) #\d+ (.+)$/.exec(p.name);assert.ok(m);return {id:String(1000+i*1000+j),name:m[2],position:m[1]};})},injuryUsage:{available:true,checkedAt:now,gameId:'100',kickoff,league:'2',season:'2026',rows:[]}}));
   await createCollegeAvailability(async()=>({response:[g]}),()=>now,async c=>c===conf?{r}:{})(q,t);
@@ -170,4 +170,13 @@ test('historical conference absence evidence matches exact games and never inter
  const history=await get.history([prior],q,t[0]);assert.equal(history.length,1);assert.equal(history[0].rows[0].status,'out');assert.equal(history[0].gameId,'90');
  const wrong={...prior,teams:{...prior.teams,home:{id:3,name:'Auburn'}}};assert.equal((await get.history([wrong],q,t[0])).length,0);
  const other=await get.history([prior],q,t[1]);assert.equal(other[0].rows[0].status,'game time decision');
+});
+
+test('college report rejects a mismatched game ID or incomplete provider response before public collection',async()=>{
+ for(const response of [{response:[{...g,game:{...g.game,id:999}}]},{response:[{...g,game:{date:g.game.date}}]},{response:[g],paging:{total:2}}]){
+  let calls=0;const t=teams();
+  await createCollegeAvailability(async()=>response,()=>now,async()=>{calls++;return {r:report()};})(q,t);
+  assert.equal(calls,0);assert.ok(t.every(x=>x.official.available===false));
+  assert.equal(t[0].official.reasonCode,'game-verification-failed');
+ }
 });

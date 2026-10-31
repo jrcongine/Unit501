@@ -18,7 +18,7 @@ function harness(){
    {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:25},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:22}]}]},
    {available:true,players:[{name:'Player B',results:[{gameId:3,tipoff:'2026-10-23T00:00:00Z',player_rebounds:10},{gameId:4,tipoff:'2026-10-21T00:00:00Z',player_rebounds:8}]}]}]})};
   return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
- vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/basketball-history-comparison.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,context,calls,timers,game,data,settle,select:async(g=game)=>{context.Unit501NBAMarkets.select(g,'2026-10-24');await settle();},advance:ms=>{clock+=ms;}};
 }
@@ -340,4 +340,18 @@ test('NBA prop display carries suffix-formatted Out and conflicting identities i
  report.teams[1].players.push({name:'Player A',status:'Active'});
  h.context.Unit501NBAMarkets.setInjuries(h.game,report);
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player injury match unverified/);
+});
+
+test('NBA history comparison survives odds failure and never invents a quote',async()=>{
+ const h=harness();await h.select();const base=h.context.fetch;
+ h.context.fetch=async url=>String(url).includes('/props?')?{ok:false,json:async()=>({error:'Odds unavailable'})}:base(url);
+ await h.nodes.get('nba-load-props').events.click();await h.settle();
+ const panel=h.nodes.get('nba-history-comparison');assert.match(panel.textContent,/no betting line needed/);
+ const walk=n=>[n,...n.children.flatMap(walk)];const nodes=walk(panel),controls=nodes.filter(n=>n.events.change);
+ controls[0].value='Player A';controls[0].events.change();
+ const input=nodes.find(n=>n.events.input);input.value='22';input.events.input();
+ assert.match(panel.textContent,/1 above · 0 below · 1 equal · 2 verified appearances/);
+ assert.match(h.nodes.get('nba-props-status').textContent,/Odds unavailable/);
+ assert.equal(h.nodes.get('nba-prop-lines').textContent,'');
+ h.context.Unit501NBAMarkets.clear();assert.equal(panel.textContent,'');
 });

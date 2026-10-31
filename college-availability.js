@@ -43,7 +43,7 @@ function createCollegeAvailability(api,now=Date.now,readPublic=async conference=
   try{
    const response=await api(`/games?id=${q.game}`),g=response.response?.length===1?response.response[0]:null,kickoff=Number(g?.game?.date?.timestamp)*1000;
    if(response.errors&&Object.keys(response.errors).length)throw Error();
-   if(String(g?.league?.id)!==q.league||String(g?.league?.season)!==q.season||String(g?.teams?.away?.id)!==q.away||String(g?.teams?.home?.id)!==q.home||!Number.isFinite(kickoff)||kickoff<=now()||kickoff>now()+7*86400000)throw Error();
+   if(response.paging?.total>1||String(g?.game?.id)!==q.game||String(g?.league?.id)!==q.league||String(g?.league?.season)!==q.season||String(g?.teams?.away?.id)!==q.away||String(g?.teams?.home?.id)!==q.home||!Number.isFinite(kickoff)||kickoff<=now()||kickoff>now()+7*86400000)throw Error();
    const results=await Promise.allSettled(Object.keys(sources).map(async conf=>{const report=await read(conf);return {conf,...report,matches:matchReports(report.data,g,q.season,now())};}));
    const candidates=results.filter(r=>r.status==='fulfilled').flatMap(r=>r.value.matches.map(m=>({report:m,conf:r.value.conf,checkedAt:r.value.checkedAt})));
    const diagnostics=results.map((r,i)=>({source:Object.keys(sources)[i],

@@ -10,6 +10,7 @@
  if(!gameBoard||!propBoard||!ui)return;
  let selected=null,date='',sequence=0,gameTask=0,propTask=0,quotes=null,props=null,timer=null;
  let comparisonTask=0,comparison=null,injuries=null,history=null,historyTask=0;
+ const historyComparison=root.Unit501BasketballHistoryComparison?.create('nba-history-comparison');
  const minuteOverrides=new Map(),injuryScenarios=new Map(),playerScenarios=new Map();
  const normalizedName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const node=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=String(text);if(cls)n.className=cls;return n;};
@@ -34,7 +35,7 @@
   else card('Moneyline',['No current paired moneyline available. Refresh game lines.']);
  }
  function renderProps(){
-  propBoard.replaceChildren();if(!selected||!props)return;
+  historyComparison?.update(history,selected);propBoard.replaceChildren();if(!selected||!props)return;
   for(const [name,scenario] of injuryScenarios){
    const current=root.Unit501NBARotationContext?.compare(history,scenario.quote,injuries,selected,Date.now())||[];
    if(!current.some(s=>JSON.stringify(s)===scenario.evidence))injuryScenarios.delete(name);
@@ -191,6 +192,7 @@
  async function load(kind){
   if(!selected)return;
   const game=selected,serial=sequence,task=kind==='game'?++gameTask:++propTask;
+  if(kind==='props')loadPlayerHistory(game,serial);
   const status=kind==='game'?gameStatus:propStatus,button=kind==='game'?refresh:loadProps;
   button.disabled=true;status.textContent=kind==='game'?'Loading FanDuel NBA spread and total…':'Loading FanDuel NBA player props…';
   try{
@@ -204,7 +206,7 @@
    if(kind==='game'){quotes=data;renderGames();}
    else{
     if(!Array.isArray(data.props))throw Error('NBA player quotes were not returned as a list.');
-    props=data;if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(data.props.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=data.props.some(p=>p.name===previous)?previous:'';}renderProps();loadPlayerHistory(game,serial);
+    props=data;if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(data.props.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=data.props.some(p=>p.name===previous)?previous:'';}renderProps();
    }
    const coverage=kind==='props'?(data.coverage||[]).map(m=>m.label+': '+m.lines).join(' · '):'';
    status.textContent=(data.message||'NBA FanDuel quotes checked.')+(coverage?' '+coverage+'.':'')+' '+(data.tracking?.message||'Shared tracking status unavailable.')+' Quotes expire after 30 minutes or at tipoff.';
@@ -214,7 +216,7 @@
    kind==='game'?renderGames():renderProps();
   }finally{if(serial===sequence&&task===(kind==='game'?gameTask:propTask))button.disabled=false;}
  }
- function clear(){if(player){player.value='';player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);}minuteOverrides.clear();injuryScenarios.clear();playerScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;
+ function clear(){if(player){player.value='';player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);}minuteOverrides.clear();injuryScenarios.clear();playerScenarios.clear();sequence++;historyTask++;history=null;if(historyStatus)historyStatus.textContent='';if(sort)sort.value='name';selected=null;quotes=null;historyComparison?.update(null,null);
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
