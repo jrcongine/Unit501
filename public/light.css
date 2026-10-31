@@ -179,3 +179,94 @@ tbody tr:nth-child(even){background:#1c2a3a}
 .matchup-heading #refresh-odds{grid-column:2;grid-row:2;justify-self:end;min-height:32px;padding:5px 10px;font-size:12px}
 .matchup-heading>:not(#matchup):not(.matchup-odds):not(#refresh-odds){grid-column:1 / -1;min-width:0;width:100%}
 @media(max-width:700px){.matchup-heading{grid-template-columns:minmax(0,1fr);gap:8px}.matchup-heading #matchup{grid-row:auto}.matchup-heading .matchup-odds{grid-column:1;grid-row:2;text-align:left}.matchup-heading #refresh-odds{grid-column:1;grid-row:3;justify-self:start}}
+
+/* Unit 501 War Room: accessible charcoal/navy, bright readable text and
+   restrained cyan + green accents. Overrides legacy violet consensus rules. */
+#war-room h3,#war-room h4{color:#eaf4ff}
+#war-room .war-feed-grid>.war-consensus{grid-column:1/-1}
+#war-room .war-feed-source.war-consensus{
+  max-height:none;overflow:visible;padding:16px;border:1px solid #3a657d;
+  border-left:4px solid #3bd2c5;border-radius:14px;
+  background:linear-gradient(125deg,#142638 0%,#102033 100%);color:#f7fbff;
+  box-shadow:0 6px 22px #06122145
+}
+#war-room .war-consensus-heading{gap:12px;margin-bottom:8px}
+#war-room .war-consensus-icon{
+  width:45px;height:45px;border:1px solid #287d96;border-radius:10px;
+  background:#153c51;color:#69dff3;font-size:28px
+}
+#war-room .war-consensus .war-consensus-heading h4{
+  position:static;padding:0;margin:0;background:transparent;
+  color:#fff;font-size:clamp(18px,2.2vw,22px);line-height:1.3;font-weight:900
+}
+#war-room .war-consensus-heading small{
+  color:#d2dfec;letter-spacing:normal;font-size:13px;line-height:1.45;font-weight:650
+}
+#war-room .war-consensus-coverage{
+  margin:8px 0 14px;padding:7px 11px;border:1px solid #35566e;border-radius:8px;
+  background:#1b3448;color:#d8ecfa;font-size:13px;font-weight:750;line-height:1.45
+}
+#war-room .war-consensus-card{
+  padding:14px;border:1px solid #3d5f75;border-radius:12px;
+  background:#152b3e;color:#fff;margin:12px 0
+}
+#war-room .war-consensus-top{
+  flex-wrap:wrap;align-items:center;border-bottom:1px solid #426075;
+  padding-bottom:11px;margin-bottom:11px
+}
+#war-room .war-consensus-pick{
+  display:block;color:#fff;font-size:clamp(20px,2.4vw,25px);font-weight:900;line-height:1.3
+}
+#war-room .war-consensus-matchup{color:#c7d8e8;font-size:13px;line-height:1.45}
+#war-room .war-consensus-metric{
+  min-width:92px;padding:8px 11px;border:1px solid #526c81;border-radius:10px;
+  background:#26394d;text-align:center
+}
+#war-room .war-consensus-metric-picks{border-color:#2784ab;background:#123a50}
+#war-room .war-consensus-metric strong{color:#fff;font-size:24px;font-weight:900}
+#war-room .war-consensus-metric-picks strong{color:#82dfff}
+#war-room .war-consensus-metric small{
+  color:#e2edf7;font-size:11px;letter-spacing:normal;font-weight:850
+}
+#war-room .war-consensus-context{
+  margin:0 0 12px;padding:7px 10px;border-radius:6px;
+  background:#21374a;font-size:12px;line-height:1.4;font-weight:750
+}
+#war-room .war-consensus-context-single{border-left:3px solid #eabf76;color:#ffe3ad}
+#war-room .war-consensus-context-multi{border-left:3px solid #43c69b;color:#a5efce}
+#war-room .war-consensus-source-name{
+  color:#8ce8c6;font-size:12px;letter-spacing:.04em;font-weight:900;margin:10px 0 6px
+}
+#war-room .war-consensus-link,#war-room .war-feed-source a.war-consensus-link{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 12px;margin:6px 0;border:1px solid #36566d;border-radius:9px;
+  background:#203649;color:#f8fbff;text-decoration:none;
+  font-size:14px;line-height:1.45
+}
+#war-room .war-consensus-link:nth-of-type(even){background:#263e53}
+#war-room .war-consensus-link:hover,#war-room .war-feed-source a.war-consensus-link:hover{
+  background:#2b4b62;border-color:#6cc5df;color:#fff;text-decoration:underline
+}
+#war-room .war-consensus-link:focus-visible{outline:3px solid #86e5ff;outline-offset:2px}
+#war-room .war-consensus-analyst{min-width:0;flex:1;color:#fff;font-size:14px;font-weight:850}
+#war-room .war-consensus-selection{color:#e0ecf6;font-size:14px;font-weight:750;text-align:right}
+#war-room .war-consensus-external{color:#87e5f4;font-size:18px}
+#war-room .war-consensus-empty{color:#e5edf6;font-size:14px;line-height:1.55}
+#war-room .war-feed-source:not(.war-consensus){
+  max-height:640px;overflow:auto;padding:14px;border:1px solid #445a70;
+  border-radius:12px;background:#1d2d40;color:#f7fbff
+}
+#war-room .war-feed-source:not(.war-consensus) h4{
+  background:#1d2d40;color:#fff;font-size:16px
+}
+#war-room .war-feed-source:not(.war-consensus) .war-record{
+  background:#14283b;border-color:#3d5870;color:#f7fbff
+}
+#war-room .war-feed-source:not(.war-consensus) .war-muted{color:#cbd9e8}
+@media(max-width:580px){
+  #war-room .war-consensus-top{align-items:flex-start;flex-direction:column}
+  #war-room .war-consensus-metrics{align-self:stretch}
+  #war-room .war-consensus-metric{flex:1}
+  #war-room .war-consensus-link{flex-direction:column;align-items:flex-start;gap:5px}
+  #war-room .war-consensus-selection{text-align:left}
+}

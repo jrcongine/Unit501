@@ -22,7 +22,20 @@
       const headingText=el('div',null,'war-consensus-heading-text');
       headingText.append(el('h4','Most repeated selections'),el('small','Picks mentioned by multiple analysts'));
       heading.append(icon,headingText);summary.append(heading);
-      if(!data.consensus?.length)summary.append(el('p','No verified matching selections across the loaded picks. Undated picks and different lines are not combined.','war-consensus-empty'));
+      const feeds=data.sources;
+      const withPicks=feeds.filter(s=>Array.isArray(s.picks)&&s.picks.length>0).length;
+      const totalPicks=feeds.reduce((n,s)=>n+(Array.isArray(s.picks)?s.picks.length:0),0);
+      const unavailable=feeds.filter(s=>s.status==='unavailable').length;
+      const coverage=withPicks+'/'+feeds.length+' sources with readable picks · '+totalPicks+' current selections'+(unavailable?' · '+unavailable+' unavailable':'');
+      summary.append(el('p',coverage,'war-consensus-coverage'));
+      if(!data.consensus?.length){
+        const message=!totalPicks
+          ?'Consensus cannot be assessed: no readable upcoming picks were returned by these sources. That does not prove analysts have no picks.'
+          :withPicks<2
+            ?'Cross-source agreement cannot be assessed: fewer than two sources returned current picks. Missing feed coverage does not mean analysts disagree.'
+            :'No verified matching selections among the loaded picks. Different lines, unknown dates, or incomplete feeds can hide additional agreement.';
+        summary.append(el('p',message,'war-consensus-empty'));
+      }
       for(const pick of data.consensus||[]){
         const card=el('article',null,'war-consensus-card');
         const publishers=[...new Set((pick.sources||[]).map(m=>m.source).filter(Boolean))];
@@ -35,6 +48,10 @@
           metric.append(el('strong',String(n)),el('small',label));metrics.append(metric);
         }
         top.append(details,metrics);card.append(top);
+        const sourceContext=publishers.length<2
+          ?'Same-source agreement only — not independent cross-source consensus.'
+          :'Matching selections from '+publishers.length+' publishing sources.';
+        card.append(el('p',sourceContext,'war-consensus-context '+(publishers.length<2?'war-consensus-context-single':'war-consensus-context-multi')));
         const groups=new Map();
         for(const member of pick.sources||[]){
           const name=member.source||'Other source';
@@ -74,7 +91,7 @@
         list.append(section);
       }
       loadedAt=Date.now();
-      byId('war-feed-status').textContent=count+' public selections loaded. Check the displayed game date and price before using a pick.';
+      byId('war-feed-status').textContent=count+' public selections loaded from '+withPicks+'/'+feeds.length+' sources'+(unavailable?' ('+unavailable+' unavailable)':'')+'. Check the displayed game date and price before using a pick.';
     }catch(error){if(version!==request)return;loaded=false;list.replaceChildren();byId('war-feed-status').textContent='Could not load public picks. Try Refresh picks or use the source links below.';}
     finally{if(version===request)loading=false;}
   }
