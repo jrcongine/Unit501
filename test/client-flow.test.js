@@ -62,7 +62,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','football-position.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','football-travel.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','football-position.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','football-travel.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','last-opponent.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -1072,7 +1072,7 @@ test('projection board lists usable no-line markets without invented comparisons
  const rows=()=>walk(board,'tbody')[0].children;
  const missing=rows().filter(r=>r.textContent.includes('Line unavailable'));
  assert.equal(rows().length,8);assert.equal(missing.length,5);
- for(const row of missing){assert.equal(row.children[7].textContent,'—');assert.equal(row.children[8].textContent,'Line required');assert.notEqual(row.children[4].textContent,'');}
+ for(const row of missing){assert.equal(row.children[8].textContent,'—');assert.equal(row.children[9].textContent,'Line required');assert.notEqual(row.children[4].textContent,'');}
  const target=missing.find(row=>row.children[1].textContent==='Rushing yards');
  const open=walk(target,'button')[0];await open.dispatchEvent({type:'click'});
  const input=h.nodes.get('line-1:7-rushYds');assert.ok(input);input.value='45.5';await input.dispatchEvent({type:'input'});
@@ -1141,7 +1141,7 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  const walk=n=>[n,...n.children.filter(c=>typeof c!=='string').flatMap(walk)];
  const rows=walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr'&&n.children[1]?.textContent==='Rushing TDs');
  assert.equal(rows.length,2);
- for(const row of rows){assert.equal(row.children[6].textContent,'Line unavailable');assert.equal(row.children[7].textContent,'—');assert.match(row.children[8].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
+ for(const row of rows){assert.equal(row.children[7].textContent,'Line unavailable');assert.equal(row.children[8].textContent,'—');assert.match(row.children[9].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Fixed history threshold; no betting line used/);
 });

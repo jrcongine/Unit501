@@ -54,6 +54,7 @@
       const opponent=past.teams.get(record.teamId);
       if(opponent&&!record.games.has(gameId))
         record.games.set(gameId,{gameDate:past.date,opponent:opponent.name});
+      if(opponent?.id)record.games.get(gameId).opponentId=opponent.id;
     }
   }
   // Reviewed official correction, never a blanket missing-to-zero conversion.

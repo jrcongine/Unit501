@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={checkedAt:clock,gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
- vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','basketball-history-comparison.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','last-opponent.js','nba-player-model.js','basketball-history-comparison.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,data,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -297,7 +297,7 @@ test('college verified teammate-absence scenario changes projections, preserves 
  assert.match(board.textContent,/Teammate absence minutes scenario/);assert.match(board.textContent,/40.0 projected min/);
  assert.notEqual(board.textContent,before);assert.match(board.textContent,/2 \(50.0%\).*2 \(50.0%\)/);
  // Inspect the rendered projection cell: the scenario uses .5 points/minute * 40 minutes.
- const playerRow=all(board).find(n=>n.children.length===11&&n.children[0].textContent.startsWith('Player A'));
+ const playerRow=all(board).find(n=>n.children.length===12&&n.children[0].textContent.startsWith('Player A'));
  assert.ok(playerRow.children[2].textContent.startsWith('20.0'));
  status='Available';h.advance(900001);h.timers.filter(t=>t.delay===900001).at(-1).fn();await h.settle();
  assert.doesNotMatch(board.textContent,/Teammate absence minutes scenario|Try 40.0 minutes/);

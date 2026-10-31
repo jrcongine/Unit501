@@ -39,6 +39,6 @@ function createPlayers({feed,fetcher=fetch,now=Date.now,official}={}){const cach
  }games++;}catch{}}
  const verification=require('./nba-official-history').reconcile(players,side.recentGames||[],officialReports,side.id);
  reconcileCoverage(players,side.recentGames||[]);
- return {name:side.name,available:games>=2&&games===(side.recentGames||[]).length,games,verification,players:[...players.values()]};});return {gameId:game.id,tipoff:game.tipoff,checkedAt:now(),teams,source:official?'NCAA official reconciliation with ESPN completed college basketball box scores':'ESPN completed college basketball box scores'};}};
+ return {id:side.id,name:side.name,gameLog:(side.recentGames||[]).map(g=>({id:g.id,tipoff:g.tipoff,opponentId:g.opponentId})),available:games>=2&&games===(side.recentGames||[]).length,games,verification,players:[...players.values()]};});return {gameId:game.id,tipoff:game.tipoff,checkedAt:now(),teams,source:official?'NCAA official reconciliation with ESPN completed college basketball box scores':'ESPN completed college basketball box scores'};}};
 }
 module.exports={verify,injuries,extract,createPlayers};

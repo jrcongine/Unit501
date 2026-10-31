@@ -397,7 +397,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
+    for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Last vs opponent', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       if(name==='Recent above / below / equal'){
@@ -422,7 +422,8 @@ for (let i = rows.length - 1; i >= 0; i--) {
         }
         cell.append(' / Equal');
       }else cell.textContent = name;
-      cell.style.cssText = 'padding:10px;border-bottom:1px solid #45495b';
+      if(name==='Last vs opponent')cell.className='last-opponent-stat';
+        cell.style.cssText = 'padding:10px;border-bottom:1px solid #45495b';
       header.append(cell);
     }
     head.append(header);
@@ -443,7 +444,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       const above = row.values.filter(v => v > row.line).length;
       const below = row.values.filter(v => v < row.line).length;
       const equal = row.values.length - above - below;
-      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), median.toFixed(1), row.line === null ? 'Line unavailable' : String(row.line),
+      const sorted = [...row.values].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); const median = sorted.length % 2   ? sorted[mid]   : (sorted[mid - 1] + sorted[mid]) / 2;  const fields = [null, row.def.title, Unit501InjuryModel.statusLabel(window.Unit501Availability?.assess(row.record.teamId, row.record.playerId)), row.form.coverage.recorded+'/'+row.form.coverage.total, projection.toFixed(1), row.lastOpponent, median.toFixed(1), row.line === null ? 'Line unavailable' : String(row.line),
         row.line === null ? '—' : diff === 0 ? 'Equal' : `${Math.abs(diff).toFixed(1)} ${diff > 0 ? 'above' : 'below'}`,
         row.line === null ? (touchdownHistory(row.def,row.values,row.form.coverage.missing) || 'Line required') : `${above} / ${below} / ${equal} (${row.values.length} games; Above ${row.values.length?(100*above/row.values.length).toFixed(1)+'%':'—'}, Below ${row.values.length?(100*below/row.values.length).toFixed(1)+'%':'—'})`,
         row.workloadHistory.text];
@@ -452,12 +453,13 @@ for (let i = rows.length - 1; i >= 0; i--) {
       fields.push(movement);
       const source = row.line === null ? 'Line unavailable' : row.entry.source === 'auto' ? 'FanDuel automatic' : 'Manual entry';
       const lineTime = row.entry.savedAt ? new Date(row.entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT' : 'Time unavailable';
-      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line === null ? 'unavailable' : row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Data support: ${row.support.label} | ${fields[7]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[8]} | ${source}: ${lineTime} | ${movement}`);
+      report.push(`${row.record.name} — ${row.record.team} | ${row.def.title} | Line ${row.line === null ? 'unavailable' : row.line} | Projection ${projection.toFixed(1)} (${row.workload}% workload) | Last vs opponent: ${row.lastOpponent} | Data support: ${row.support.label} | ${fields[8]} | Median ${median.toFixed(1)} | Above/below/equal: ${fields[9]} | ${source}: ${lineTime} | ${movement}`);
       report.push(row.workloadHistory.text);
       for(const alert of row.role.alerts)report.push(alert.label+': '+alert.detail);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
+        if(index===5)cell.className='last-opponent-stat';
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #293142;vertical-align:top';
         if (index === 0) {
           const shortlistLabel = document.createElement('label');
@@ -500,9 +502,9 @@ const explanation = document.createElement('p');
 explanation.textContent = [availabilityText, row.support.label, `${row.workload}% workload.`, row.weather.reason, row.checks.join(' • ')].join(' ');
 details.append(summary, explanation);
 cell.append(details);
-        } else if (index === 8 && row.line === null) {
+        } else if (index === 9 && row.line === null) {
           cell.textContent = value;
-        } else if (index === 8) {
+        } else if (index === 9) {
           const recent=document.createElement('div');recent.className='prop-recent';
           const largest=Math.max(above,below,equal);
           for(const [label,count,tone] of [['Above',above,'above'],['Below',below,'below'],['Equal',equal,'equal']]){
@@ -651,7 +653,13 @@ cell.append(details);
     const starPower=window.Unit501StarPower?.adjust(adjusted,starScenarios.get(record.id) || 'off',selected) ||
       {adjusted,applied:false,label:'Standard projection',factor:1,warning:'Modifier unavailable.'};
     adjusted=starPower.adjusted;
-    return {role:roleFor(record,def.key),starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
+    const meetings = history.map(g => ({
+      time:g.gameDate*1000, opponentId:g.opponentId, stats:g,
+      status:g.participation==='dnp' && g.verification?.participation ? 'dnp' :
+        g.participation==='played' || (!g.participation && [...definitions.map(d=>d.key),"attempts","targets"].some(k=>Number.isFinite(g[k])&&g[k]!==0)) ? 'played' : 'unknown'
+    }));
+    const lastOpponent=window.Unit501LastOpponent.describe(meetings,opponent,def.key,selected.kickoff);
+    return {lastOpponent,role:roleFor(record,def.key),starPower,beforeScenario,weather,preWeather,baseline:form.baseline*(1+(adjustment??0)),lineupChange,values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, matchupDefense, workload,form,workloadHistory:Unit501PlayerForm.workloadSummary(history,def.key),workloadWarning:Unit501PlayerForm.workloadWarning(history,def.key)};
   }
   function propSnapshot(record,def,model){
     const entry=readLine(lineKey(record,def));
@@ -817,7 +825,8 @@ results.appendChild(workload);
         const amount=document.createElement('strong');amount.textContent=value.toFixed(1);
         metric.append(heading,amount);comparisonPanel.append(metric);
       }
-      card.append(comparisonPanel);
+      const last=document.createElement("p");last.className="last-opponent-stat";last.textContent="Last vs opponent · "+model.lastOpponent;
+      card.append(comparisonPanel,last);
       if(model.starPower.applied){
         const effect=document.createElement('p');
         effect.textContent=model.starPower.label+' · Manual scenario; original model kept separate.';

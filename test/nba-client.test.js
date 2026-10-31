@@ -45,7 +45,7 @@ function harness(){
   return {ok:true,json:async()=>u.pathname==='/api/nba/games'?{games,checkedAt:new Date().toISOString()}:data(games.find(g=>g.id===Number(u.searchParams.get('game'))))};
  };
  vm.createContext(context);
- for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba-model.js','nba-player-model.js','basketball-injury-model.js','nba-win-calibration.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
+ for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba-model.js','last-opponent.js','nba-player-model.js','basketball-injury-model.js','nba-win-calibration.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const load=async()=>{await nodes.get('nba-load').events.click();await settle();};
  const choose=async i=>{nodes.get('nba-games').children[i].events.click();await settle();await settle();};

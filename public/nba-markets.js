@@ -65,13 +65,14 @@
    return b.prediction[field]*a.prediction.games-a.prediction[field]*b.prediction.games||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
   });
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
-  for(const label of ['Player','Stat','Line','Projection','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
+  for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');
   for(const {p,status,prediction,splits,scenario,minutes} of rows){
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
-   for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():' · AVAILABILITY UNCONFIRMED'),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
+   for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():' · AVAILABILITY UNCONFIRMED'),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason,root.Unit501LastOpponent.basketball(history,p,selected)].entries()){
     const cell=node('td',value);
-    if(index===0&&prediction.minuteChange){
+    if(index===4)cell.className='last-opponent-stat';
+        if(index===0&&prediction.minuteChange){
      cell.append(node('strong',root.Unit501NBAPlayerModel.minuteChangeText(prediction),'nba-minutes-trend'));
     }
     if(index===3&&prediction.available){
