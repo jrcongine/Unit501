@@ -5,8 +5,15 @@ const fields={player_points:'points',player_rebounds:'rebounds',player_assists:'
 function verify(data,game){const c=data?.header?.competitions?.length===1?data.header.competitions[0]:null;
  if((game.season!==undefined&&Number(data?.header?.season?.year)!==Number(game.season))||(game.stage!==undefined&&Number(data?.header?.season?.type)!==Number(game.stage))||String(data?.header?.id)!==String(game.id)||!c||Date.parse(c.date)!==Date.parse(game.tipoff)||!Array.isArray(c.competitors)||c.competitors.length!==2||!c.competitors.some(t=>String(t.id)===game.awayId&&t.homeAway==='away')||!c.competitors.some(t=>String(t.id)===game.homeId&&t.homeAway==='home'))throw Error('College game identity unverified');return c;}
 function injuries(data,game){verify(data,game);const lists=Array.isArray(data.injuries)?data.injuries:[];
- return [game.awayId,game.homeId].map((id,i)=>{const groups=lists.filter(x=>String(x.team?.id)===id);const rows=groups.length===1&&Array.isArray(groups[0].injuries)?groups[0].injuries:[];
- return {team:[game.away,game.home][i],players:rows.map(x=>({name:String(x.athlete?.displayName||'').trim().slice(0,100),status:String(x.status||x.type?.description||'Status unconfirmed').slice(0,80),detail:String(x.longComment||x.shortComment||'').slice(0,300),date:x.date||null})).filter(x=>x.name)};});}
+ return [game.awayId,game.homeId].map((id,i)=>{const groups=lists.filter(x=>String(x?.team?.id)===id);
+ const valid=groups.length===1&&Array.isArray(groups[0].injuries);
+ // Preserve reported names/statuses even when duplicate sections are ambiguous.
+ // Missing sections are unknown; they are never a clean bill of health.
+ const rows=groups.flatMap(g=>Array.isArray(g.injuries)?g.injuries:[]);
+ const players=rows.map(x=>({name:String(x?.athlete?.displayName||'').trim().slice(0,100),status:String(x?.status||x?.type?.description||'Status unconfirmed').slice(0,80),detail:String(x?.longComment||x?.shortComment||'').slice(0,300),date:x?.date||null})).filter(x=>x.name);
+ const malformed=players.length!==rows.length;
+ return {team:[game.away,game.home][i],teamId:id,available:valid&&!malformed,players,
+ message:groups.length>1?'Conflicting team report sections; player availability is unverified.':!valid?'Team injury report missing or malformed; availability is unknown.':malformed?'Some injury rows have no verified player name; coverage is incomplete.':'Provider report checked; this does not confirm full health or starting roles.'};});}
 function extract(data,game,teamId){const c=verify(data,game);if(c.status?.type?.completed!==true||c.status.type.state!=='post')throw Error('Game not final');
  const boxes=(data.boxscore?.players||[]).filter(b=>String(b.team?.id)===teamId);if(boxes.length!==1||boxes[0].statistics?.length!==1)throw Error('Box score unavailable');
  const group=boxes[0].statistics[0],keys=group.keys,rows=group.athletes;if(!Array.isArray(keys)||!Array.isArray(rows)||rows.length>40||new Set(keys).size!==keys.length||!keys.includes('minutes'))throw Error('Invalid box score');

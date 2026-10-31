@@ -36,3 +36,11 @@ Baseline reviewed: 325e178776501cf194d9c94449f2a770d90507bc. Both Railway Unit50
 - Initial configured-production `/api/health` returned HTTP 200 with ok=true, private=true and liveData=true. This establishes server response and API-key presence, not upstream provider health or authenticated feature success.
 
 Outstanding work: broader verified college injury coverage; basketball team injury/replacement modeling; calibrated strength/rest/travel factors; authenticated live prop/status verification and held-out accuracy evaluation. The work order is partially completed, not fully resolved.
+
+## Autonomous continuation
+
+Additional fixes completed without owner computer access:
+
+- College basketball duplicate injury sections no longer silently become empty lists. Reported absences/statuses remain visible, while duplicate, missing, malformed and unnamed-row coverage is explicitly unverified.
+- NBA/CBB player projections reject contradictory played/DNP records and invalid DNP timestamps. Verified zero-stat appearances continue to count, and genuine DNPs remain outside the hit-rate denominator.
+- Full suite: 819 passed, zero failures. The existing synthetic DNP fixture was updated to include the timestamp supplied by the actual adapters. No live provider verification is implied.

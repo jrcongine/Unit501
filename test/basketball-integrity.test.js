@@ -21,7 +21,7 @@ test('college conflicting schedules withhold player history even when remaining 
 });
 test('both basketball leagues share zero-inclusive median, counts and unknown-history gate',()=>{
  const now=Date.parse('2026-11-01T12:00:00Z'),game={id:'99',tipoff:'2026-11-02T00:00:00Z'},quote={name:'Test Player',market:'player_points',line:10};
- const p={id:'1',name:quote.name,available:true,results:[0,10,20,0].map((n,i)=>({gameId:String(i+1),tipoff:'2026-10-'+(20+i)+'T00:00:00Z',minutes:10,player_points:n})),inactive:[{gameId:'5'}],coverage:{total:5,played:4,dnp:1,missing:0}};
+ const p={id:'1',name:quote.name,available:true,results:[0,10,20,0].map((n,i)=>({gameId:String(i+1),tipoff:'2026-10-'+(20+i)+'T00:00:00Z',minutes:10,player_points:n})),inactive:[{gameId:'5',tipoff:'2026-10-19T00:00:00Z'}],coverage:{total:5,played:4,dnp:1,missing:0}};
  const history={gameId:game.id,tipoff:game.tipoff,checkedAt:now,teams:[{available:true,players:[p]},{available:true,players:[]}]};
  let out=project(history,quote,game,null,now);assert.equal(out.average,7.5);assert.equal(out.median,5);assert.equal(out.games,4);assert.equal(out.above,1);assert.equal(out.below,2);assert.equal(out.equal,1);assert.equal(out.coverage.dnp,1);
  p.coverage.missing=1;assert.equal(project(history,quote,game,null,now).available,false);

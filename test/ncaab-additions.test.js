@@ -29,3 +29,16 @@ test('college player history skips box-score requests for known incomplete team 
   const report=await get.history(game);assert.equal(calls,0);assert.equal(report.teams[0].available,false);assert.deepEqual(report.teams[0].players,[]);
  }
 });
+
+test('college injury duplicate sections preserve reported absences and flag ambiguity',()=>{
+ const d=structuredClone(summary);d.injuries.push(structuredClone(d.injuries[0]));d.injuries[1].injuries[0].status='Available';
+ const reports=injuries(d,game);
+ assert.equal(reports[0].available,false);assert.match(reports[0].message,/Conflicting/);
+ assert.deepEqual(reports[0].players.map(p=>p.status),['Out','Available']);
+ assert.equal(reports[1].available,false);assert.match(reports[1].message,/missing/);
+ const {injuryStatus}=require('../public/nba-player-model');
+ assert.equal(injuryStatus({gameId:game.id,tipoff:game.tipoff,checkedAt:now,teams:reports},{name:'Test Player'},game,now,false),'Unverified');
+ const malformed=structuredClone(summary);malformed.injuries[0].injuries.push(null);
+ assert.equal(injuries(malformed,game)[0].available,false);
+ assert.equal(injuries(malformed,game)[0].players[0].status,'Out');
+});

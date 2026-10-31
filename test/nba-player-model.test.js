@@ -145,3 +145,14 @@ test('NBA and college histories share unique suffix matching with injury reports
   for(const name of ['Jalen Smith','Jalen Smith Jr.'])assert.equal(project(d,{...q,name},game,null,now,{regulationMinutes}).available,false);
  }
 });
+
+for(const regulationMinutes of [40,48])test(regulationMinutes+' minute basketball excludes DNP and rejects contradictory participation',()=>{
+ const d=data(),player=d.teams[0].players[0];
+ player.inactive=[{gameId:4,tipoff:'2026-10-18T20:00:00Z'}];
+ const p=project(d,q,game,null,now,{regulationMinutes});
+ assert.equal(p.available,true);assert.equal(p.games,3);assert.equal(p.below,1);assert.equal(p.equal,1);
+ player.inactive.push({gameId:1,tipoff:player.results[0].tipoff});
+ assert.equal(project(d,q,game,null,now,{regulationMinutes}).available,false);
+ player.inactive=[{gameId:4,tipoff:game.tipoff}];
+ assert.equal(project(d,q,game,null,now,{regulationMinutes}).available,false);
+});

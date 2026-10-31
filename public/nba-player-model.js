@@ -44,6 +44,11 @@
   if(matches[0].available===false||!matches[0].teamAvailable||!Array.isArray(matches[0].results))return {available:false,reason:'Verified history unavailable'};
   if(matches[0].missing?.length||matches[0].coverage?.missing>0)return {available:false,reason:'Missing player games; participation unverified'};
   const results=matches[0].results;
+  const inactive=matches[0].inactive??[];
+  const playedIds=new Set(results.map(r=>String(r.gameId)));
+  if(!Array.isArray(inactive)||new Set(inactive.map(r=>String(r?.gameId))).size!==inactive.length||inactive.some(r=>
+   !/^\d{1,12}$/.test(String(r?.gameId||''))||!Number.isFinite(Date.parse(r.tipoff))||Date.parse(r.tipoff)>=Math.min(now,Date.parse(game.tipoff))||playedIds.has(String(r.gameId))))
+   return {available:false,reason:'Conflicting or unverified participation history'};
   if(results.length>10||new Set(results.map(r=>String(r.gameId))).size!==results.length||results.some(r=>
    !/^\d{1,12}$/.test(String(r.gameId||''))||!Number.isFinite(Date.parse(r.tipoff))||Date.parse(r.tipoff)>=Math.min(now,Date.parse(game.tipoff))))return {available:false,reason:'Verified history unavailable'};
   const ordered=[...results].sort((a,b)=>Date.parse(b.tipoff)-Date.parse(a.tipoff));
