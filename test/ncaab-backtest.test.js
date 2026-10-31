@@ -25,3 +25,12 @@ test('college replay withholds later estimates after a tied final history record
  assert.equal(backtest(raw).evaluated,1);
  assert.equal(backtest([...raw,event(8,7,1,3,70,70)]).evaluated,0);
 });
+
+test('college simulation replay is reproducible and excludes target/future results',()=>{
+ const prior=Array.from({length:7},(_,i)=>event(i+1,i+1,1,2,75+i,65+i)),target=event(8,10,1,2,60,80);
+ const a=backtest([...prior,target],'season',{simulationRuns:1000}).games.find(g=>g.id==='8');
+ const b=backtest([...prior,event(8,10,1,2,100,50),event(9,11,1,2,150,40)],'season',{simulationRuns:1000}).games.find(g=>g.id==='8');
+ assert.equal(a.simulation.available,true);assert.deepEqual(a.simulation,b.simulation);assert.notEqual(a.winnerCorrect,b.winnerCorrect);
+ assert.equal('simulation' in backtest([...prior,target]).games[0],false);
+ assert.throws(()=>backtest([],'season',{simulationRuns:100001}),/runs/);
+});

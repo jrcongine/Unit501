@@ -1,6 +1,6 @@
 (function(root){
  'use strict';
- const incomplete=s=>s?.conflicts>0||s?.unverifiedGames>0;
+ const incomplete=s=>s?.available===false||s?.conflicts>0||s?.unverifiedGames>0||s?.coverage?.conflictingGames>0||s?.coverage?.unverifiedGames>0||s?.coverage?.invalid>0;
  const round=n=>Math.round(n*10)/10;
  function project(game,data,scope='season',now=Date.now()){
   const no=reason=>({available:false,reason});
@@ -10,8 +10,9 @@
   if([data.away,data.home].some(incomplete))return no('Missing or conflicting team results; estimate withheld.');
   const a=data.away[scope],h=data.home[scope];
   if(!a||!h||![a.games,h.games].every(n=>Number.isInteger(n)&&n>=3)||![a.scored,a.allowed,h.scored,h.allowed].every(n=>Number.isFinite(n)&&n>0))return no('Need three completed games for each team.');
-  const away=round((a.scored+h.allowed)/2),home=round((h.scored+a.allowed)/2);
-  return {available:true,away,home,total:round(away+home),awayGames:a.games,homeGames:h.games,scope};
+  const away=round((a.scored+h.allowed)/2),home=round((h.scored+a.allowed)/2),total=round(away+home);
+  if(![away,home,total].every(Number.isFinite))return no('Scoring history produced an invalid estimate.');
+  return {available:true,away,home,total,awayGames:a.games,homeGames:h.games,scope};
  }
  function simulate(p,data,lines={},runs=10000,random=Math.random){
   if(!p?.available||![p.away,p.home].every(n=>Number.isFinite(n)&&n>=0)||typeof random!=='function'||!Number.isInteger(runs)||runs<1||runs>100000)return {available:false,reason:'Score estimate unavailable.'};

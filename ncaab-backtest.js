@@ -2,8 +2,9 @@
 // Replay the college scoring baseline. No fitted weights, bookmaker results,
 // or simulation confidence is inferred from this descriptive report.
 const {convert,summarize}=require('./ncaab-feed');
-const {project}=require('./public/ncaab-model');
-function backtest(raw,scope='season'){
+const {project,simulate}=require('./public/ncaab-model');
+function backtest(raw,scope='season',options={}){
+ const runs=options.simulationRuns??0;if(!Number.isInteger(runs)||runs<0||runs>100000)throw Error('Invalid simulation runs');
  if(!Array.isArray(raw))throw Error('Expected college basketball event array');
  if(!['season','recent5','recent10'].includes(scope))throw Error('Invalid scope');
  const unique=new Map();let invalid=0;
@@ -17,7 +18,7 @@ function backtest(raw,scope='season'){
   const p=project({...g,status:'Scheduled'},data,scope,now);
   if(!p.available){skipped++;continue;}
   const predictedMargin=p.home-p.away,actualMargin=g.homeScore-g.awayScore;
-  games.push({id:g.id,season:g.season,tipoff:g.tipoff,away:g.away,home:g.home,awayId:g.awayId,homeId:g.homeId,predictedAway:p.away,predictedHome:p.home,actualAway:g.awayScore,actualHome:g.homeScore,predictedMargin,actualMargin,winnerCorrect:predictedMargin===0?null:Math.sign(predictedMargin)===Math.sign(actualMargin)});
+  games.push({...(runs?{simulation:simulate(p,data,{},runs,require('./probability-audit').seededRandom(g.id))}:{}),id:g.id,season:g.season,tipoff:g.tipoff,away:g.away,home:g.home,awayId:g.awayId,homeId:g.homeId,predictedAway:p.away,predictedHome:p.home,actualAway:g.awayScore,actualHome:g.homeScore,predictedMargin,actualMargin,winnerCorrect:predictedMargin===0?null:Math.sign(predictedMargin)===Math.sign(actualMargin)});
  }
  games.sort((a,b)=>Date.parse(a.tipoff)-Date.parse(b.tipoff)||a.id.localeCompare(b.id));
  const mean=fn=>games.length?games.reduce((s,g)=>s+fn(g),0)/games.length:null;

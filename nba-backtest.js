@@ -2,9 +2,10 @@
 // Replay the production NBA scoring baseline using only earlier completed games.
 const {normalizeGame,inferSeason}=require('./nba-feed');
 const {summarize}=require('./nba-context');
-const {project}=require('./public/nba-model');
+const {project,simulate}=require('./public/nba-model');
 
-function backtest(raw, scope='recent5') {
+function backtest(raw, scope='recent5', options={}) {
+ const runs=options.simulationRuns??0;if(!Number.isInteger(runs)||runs<0||runs>100000)throw Error('Invalid simulation runs');
  if (!Array.isArray(raw)) throw Error('Expected an array of NBA provider games');
  if (!['season','recent5','recent10','venue'].includes(scope)) throw Error('Invalid scope');
  const groups=new Map(),history=[];let invalid=0;
@@ -34,7 +35,7 @@ function backtest(raw, scope='recent5') {
   if (!estimate.available) { skipped++; continue; }
   const actualTotal=g.awayScore+g.homeScore, actualMargin=g.homeScore-g.awayScore;
   const predictedMargin=estimate.home-estimate.away;
-  rows.push({id:g.id,tipoff:g.tipoff,away:g.away,home:g.home,awayScore:g.awayScore,homeScore:g.homeScore,
+  rows.push({...(runs?{simulation:simulate(estimate,context,{},runs,require('./probability-audit').seededRandom(g.id))}:{}),id:g.id,tipoff:g.tipoff,away:g.away,home:g.home,awayScore:g.awayScore,homeScore:g.homeScore,
    predictedAway:estimate.away,predictedHome:estimate.home,predictedTotal:estimate.total,
    actualTotal,predictedMargin,actualMargin,
    winnerCorrect:predictedMargin===0?null:Math.sign(predictedMargin)===Math.sign(actualMargin)});

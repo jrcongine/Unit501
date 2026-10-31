@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  const version='nba-scoring-baseline-v1';
- const incomplete=s=>s?.coverage?.conflictingGames>0||s?.coverage?.unverifiedGames>0||s?.coverage?.invalid>0;
+ const incomplete=s=>s?.available===false||s?.coverage?.conflictingGames>0||s?.coverage?.unverifiedGames>0||s?.coverage?.invalid>0;
  const round=n=>Math.round(n*10)/10;
  function project(game,data,scope='recent5',now=Date.now()){
   const unavailable=reason=>({available:false,version,reason});
@@ -20,15 +20,16 @@
   if(records.some(r=>![r.pointsFor,r.pointsAgainst].every(n=>Number.isFinite(n)&&n>0)))
    return unavailable('Scoring history is incomplete. Estimate withheld.');
   // Equal-weight offensive average and opponent defensive average. No fitted coefficients.
-  const [a,h]=records,away=round((a.pointsFor+h.pointsAgainst)/2),home=round((h.pointsFor+a.pointsAgainst)/2);
-  return {available:true,version,scope,away,home,total:round(away+home),homeSpread:round(away-home),
+  const [a,h]=records,away=round((a.pointsFor+h.pointsAgainst)/2),home=round((h.pointsFor+a.pointsAgainst)/2),total=round(away+home);
+  if(![away,home,total].every(Number.isFinite))return unavailable('Scoring history produced an invalid estimate.');
+  return {available:true,version,scope,away,home,total,homeSpread:round(away-home),
    awayGames:a.games,homeGames:h.games,thin:Math.min(a.games,h.games)<10,
    explanation:'Each score averages the team’s scoring and its opponent’s points allowed in the selected view. Experimental; no calibrated win probability. Injuries, minutes, pace and rest are not adjusted. Returned-history coverage is not independently verified.'};
  }
  // Research simulation from the most recent completed team-game scores.
  // Samples offensive/defensive deviations independently; no calibration is implied.
  function simulate(estimate,data,lines={},runs=10000,random=Math.random){
-  if(!estimate?.available||![estimate.away,estimate.home].every(Number.isFinite)||
+  if(!estimate?.available||![estimate.away,estimate.home].every(n=>Number.isFinite(n)&&n>=0)||
      !Number.isInteger(runs)||runs<1||runs>100000||typeof random!=='function')return {available:false,reason:'Valid score estimate required.'};
   if([data?.away,data?.home].some(incomplete))return {available:false,reason:'Missing or conflicting team results. Simulation withheld.'};
   const histories=[data?.away?.recentGames,data?.home?.recentGames];

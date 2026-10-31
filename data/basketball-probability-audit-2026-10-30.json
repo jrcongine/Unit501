@@ -1,0 +1,519 @@
+{
+  "method": "Retrospective evaluation of production Season-view simulations (10,000 deterministic draws per game). Each replay uses pre-tipoff team histories; targets/future scores do not enter their predictions. Outcomes are assumed known five hours after tipoff, not recovered publication timestamps. Calibration trains strictly before 2025-01-01 UTC and evaluates later games. Probabilities are normalized conditional on a non-tied simulated outcome, not an overtime forecast. Fixed ridge logistic recalibration; no test-set tuning. Brier/log-loss lower is better. Log-loss/logit clip probabilities at 1e-6. Reliability intervals are descriptive Wilson intervals; paired Brier differences use 2,000 date-block bootstrap samples. The NBA archive has been inspected in previous research, so this is NOT an untouched final holdout. CBB is ten selected teams, not a league sample. No historical odds, injuries, profits or live-provider acceptance. No calibration or model weights deployed.",
+  "nba": {
+    "splitAt": "2025-01-01T00:00:00.000Z",
+    "valid": 1152,
+    "invalid": 0,
+    "allTies": 0,
+    "unavailableSimulation": 30,
+    "splitEmbargoed": 2,
+    "training": {
+      "games": 400,
+      "brier": 0.21653723037881437,
+      "logLoss": 0.6225263420426582,
+      "reliability": [
+        {
+          "lower": 0.1,
+          "upper": 0.2,
+          "games": 5,
+          "meanProbability": 0.18001420125171516,
+          "observedHomeWin": 0,
+          "observedInterval95": [
+            -2.7755575615628914e-17,
+            0.43449149475208104
+          ]
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.3,
+          "games": 23,
+          "meanProbability": 0.2540280528893507,
+          "observedHomeWin": 0.17391304347826086,
+          "observedInterval95": [
+            0.06978540350612772,
+            0.37138054785295666
+          ]
+        },
+        {
+          "lower": 0.3,
+          "upper": 0.4,
+          "games": 67,
+          "meanProbability": 0.35625807531287024,
+          "observedHomeWin": 0.3582089552238806,
+          "observedInterval95": [
+            0.2539788838135447,
+            0.47781712305247737
+          ]
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "games": 92,
+          "meanProbability": 0.45588122153278254,
+          "observedHomeWin": 0.5434782608695652,
+          "observedInterval95": [
+            0.44199603441263413,
+            0.6414750261706617
+          ]
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "games": 124,
+          "meanProbability": 0.5472300987225387,
+          "observedHomeWin": 0.5967741935483871,
+          "observedInterval95": [
+            0.5087811687903511,
+            0.6789511499540951
+          ]
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "games": 62,
+          "meanProbability": 0.6449345734495169,
+          "observedHomeWin": 0.8225806451612904,
+          "observedInterval95": [
+            0.7095819851661977,
+            0.8979366656563825
+          ]
+        },
+        {
+          "lower": 0.7,
+          "upper": 0.8,
+          "games": 23,
+          "meanProbability": 0.7260497655760234,
+          "observedHomeWin": 0.8260869565217391,
+          "observedInterval95": [
+            0.6286194521470433,
+            0.9302145964938723
+          ]
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.9,
+          "games": 4,
+          "meanProbability": 0.8216972716955592,
+          "observedHomeWin": 1,
+          "observedInterval95": [
+            0.5100999795960008,
+            1
+          ]
+        }
+      ]
+    },
+    "evaluation": {
+      "games": 750,
+      "brier": 0.22110493788367308,
+      "logLoss": 0.6333061489941242,
+      "reliability": [
+        {
+          "lower": 0.1,
+          "upper": 0.2,
+          "games": 1,
+          "meanProbability": 0.1837150127226463,
+          "observedHomeWin": 0,
+          "observedInterval95": [
+            0,
+            0.7934567085261071
+          ]
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.3,
+          "games": 18,
+          "meanProbability": 0.26615335027277687,
+          "observedHomeWin": 0,
+          "observedInterval95": [
+            0,
+            0.1758845505823749
+          ]
+        },
+        {
+          "lower": 0.3,
+          "upper": 0.4,
+          "games": 111,
+          "meanProbability": 0.3628289099546176,
+          "observedHomeWin": 0.2702702702702703,
+          "observedInterval95": [
+            0.19636788511059944,
+            0.35954216838917763
+          ]
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "games": 249,
+          "meanProbability": 0.4552894700884819,
+          "observedHomeWin": 0.4538152610441767,
+          "observedInterval95": [
+            0.3931450843421654,
+            0.5158888720953829
+          ]
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "games": 246,
+          "meanProbability": 0.5478242344149971,
+          "observedHomeWin": 0.6626016260162602,
+          "observedInterval95": [
+            0.6014179481949012,
+            0.7187849323502121
+          ]
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "games": 104,
+          "meanProbability": 0.6382529623939115,
+          "observedHomeWin": 0.7692307692307693,
+          "observedInterval95": [
+            0.6795431042535105,
+            0.8397370251214247
+          ]
+        },
+        {
+          "lower": 0.7,
+          "upper": 0.8,
+          "games": 21,
+          "meanProbability": 0.7342849726001527,
+          "observedHomeWin": 0.9523809523809523,
+          "observedInterval95": [
+            0.7733018341376452,
+            0.9915442305280766
+          ]
+        }
+      ]
+    },
+    "candidate": {
+      "coefficients": {
+        "intercept": 0.29273998511634036,
+        "slope": 1.6006665404787768
+      },
+      "training": {
+        "games": 400,
+        "brier": 0.20855970853270783,
+        "logLoss": 0.6030357474415012,
+        "reliability": [
+          {
+            "lower": 0,
+            "upper": 0.1,
+            "games": 1,
+            "meanProbability": 0.08425411464170421,
+            "observedHomeWin": 0,
+            "observedInterval95": [
+              0,
+              0.7934567085261071
+            ]
+          },
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "games": 13,
+            "meanProbability": 0.14048686492051948,
+            "observedHomeWin": 0,
+            "observedInterval95": [
+              0,
+              0.22810184305529166
+            ]
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "games": 27,
+            "meanProbability": 0.24882247058070275,
+            "observedHomeWin": 0.2222222222222222,
+            "observedInterval95": [
+              0.10607095489408958,
+              0.4075729546307081
+            ]
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "games": 49,
+            "meanProbability": 0.3529146018835403,
+            "observedHomeWin": 0.40816326530612246,
+            "observedInterval95": [
+              0.2821503460597105,
+              0.5475293002795374
+            ]
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "games": 44,
+            "meanProbability": 0.4532625254076362,
+            "observedHomeWin": 0.5,
+            "observedInterval95": [
+              0.35831521095931473,
+              0.6416847890406853
+            ]
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "games": 71,
+            "meanProbability": 0.5461249549801026,
+            "observedHomeWin": 0.5352112676056338,
+            "observedInterval95": [
+              0.4203903355696419,
+              0.6464174290959985
+            ]
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "games": 93,
+            "meanProbability": 0.6460795127538563,
+            "observedHomeWin": 0.6236559139784946,
+            "observedInterval95": [
+              0.5221342705133758,
+              0.715366968623524
+            ]
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "games": 58,
+            "meanProbability": 0.7481543859300777,
+            "observedHomeWin": 0.7758620689655172,
+            "observedInterval95": [
+              0.6533863695244156,
+              0.8640646666712842
+            ]
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "games": 38,
+            "meanProbability": 0.8427929547449116,
+            "observedHomeWin": 0.8421052631578947,
+            "observedInterval95": [
+              0.6958287736272311,
+              0.9255623777627731
+            ]
+          },
+          {
+            "lower": 0.9,
+            "upper": 1,
+            "games": 6,
+            "meanProbability": 0.9271250310699446,
+            "observedHomeWin": 0.8333333333333334,
+            "observedInterval95": [
+              0.43649056343635395,
+              0.9699474141282697
+            ]
+          }
+        ]
+      },
+      "evaluation": {
+        "games": 750,
+        "brier": 0.21340961764715144,
+        "logLoss": 0.6148283219636541,
+        "reliability": [
+          {
+            "lower": 0.1,
+            "upper": 0.2,
+            "games": 7,
+            "meanProbability": 0.16796679367144088,
+            "observedHomeWin": 0,
+            "observedInterval95": [
+              0,
+              0.35433884297520657
+            ]
+          },
+          {
+            "lower": 0.2,
+            "upper": 0.3,
+            "games": 26,
+            "meanProbability": 0.2591071758956921,
+            "observedHomeWin": 0.11538461538461539,
+            "observedInterval95": [
+              0.04003171821149494,
+              0.28976293086898336
+            ]
+          },
+          {
+            "lower": 0.3,
+            "upper": 0.4,
+            "games": 83,
+            "meanProbability": 0.35468140155359446,
+            "observedHomeWin": 0.2891566265060241,
+            "observedInterval95": [
+              0.20267311749093847,
+              0.3942942345615342
+            ]
+          },
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "games": 129,
+            "meanProbability": 0.45465603457369563,
+            "observedHomeWin": 0.3875968992248062,
+            "observedInterval95": [
+              0.3079326844457963,
+              0.473762206311316
+            ]
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6,
+            "games": 174,
+            "meanProbability": 0.5480113143228316,
+            "observedHomeWin": 0.5287356321839081,
+            "observedInterval95": [
+              0.4547469324646389,
+              0.6014828810323157
+            ]
+          },
+          {
+            "lower": 0.6,
+            "upper": 0.7,
+            "games": 175,
+            "meanProbability": 0.6459683501613136,
+            "observedHomeWin": 0.6514285714285715,
+            "observedInterval95": [
+              0.5782606135032324,
+              0.7180910183318665
+            ]
+          },
+          {
+            "lower": 0.7,
+            "upper": 0.8,
+            "games": 117,
+            "meanProbability": 0.7461349586456446,
+            "observedHomeWin": 0.7521367521367521,
+            "observedInterval95": [
+              0.6667207450882539,
+              0.8215217144620998
+            ]
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "games": 36,
+            "meanProbability": 0.8387500269231624,
+            "observedHomeWin": 0.8888888888888888,
+            "observedInterval95": [
+              0.7468487098496367,
+              0.9559343109125816
+            ]
+          },
+          {
+            "lower": 0.9,
+            "upper": 1,
+            "games": 3,
+            "meanProbability": 0.90813061159079,
+            "observedHomeWin": 1,
+            "observedInterval95": [
+              0.43849391955098227,
+              1
+            ]
+          }
+        ]
+      },
+      "brierDeltaInterval95": [
+        -0.012610380080788516,
+        -0.0031442909989557143
+      ],
+      "dateBlocks": 96
+    },
+    "meanSimulationTie": 0.02414696180555553,
+    "status": "research-only",
+    "deploymentEligible": false
+  },
+  "ncaab": {
+    "splitAt": "2025-01-01T00:00:00.000Z",
+    "valid": 26,
+    "invalid": 0,
+    "allTies": 0,
+    "unavailableSimulation": 0,
+    "splitEmbargoed": 0,
+    "training": {
+      "games": 2,
+      "brier": 0.31208035799158557,
+      "logLoss": 0.8211989138623115,
+      "reliability": [
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "games": 1,
+          "meanProbability": 0.5270242708545788,
+          "observedHomeWin": 1,
+          "observedInterval95": [
+            0.20654329147389294,
+            1
+          ]
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "games": 1,
+          "meanProbability": 0.6328148825861544,
+          "observedHomeWin": 0,
+          "observedInterval95": [
+            0,
+            0.7934567085261071
+          ]
+        }
+      ]
+    },
+    "evaluation": {
+      "games": 24,
+      "brier": 0.2309169101131852,
+      "logLoss": 0.6543563356568626,
+      "reliability": [
+        {
+          "lower": 0.3,
+          "upper": 0.4,
+          "games": 2,
+          "meanProbability": 0.3929994855806685,
+          "observedHomeWin": 0,
+          "observedInterval95": [
+            0,
+            0.6576280471103807
+          ]
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.5,
+          "games": 8,
+          "meanProbability": 0.4333771029197178,
+          "observedHomeWin": 0.375,
+          "observedInterval95": [
+            0.13684175946152105,
+            0.6942621454161981
+          ]
+        },
+        {
+          "lower": 0.5,
+          "upper": 0.6,
+          "games": 13,
+          "meanProbability": 0.5426248796449099,
+          "observedHomeWin": 0.6153846153846154,
+          "observedInterval95": [
+            0.35522480972268555,
+            0.8229055341876319
+          ]
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.7,
+          "games": 1,
+          "meanProbability": 0.6431785641235427,
+          "observedHomeWin": 1,
+          "observedInterval95": [
+            0.20654329147389294,
+            1
+          ]
+        }
+      ]
+    },
+    "candidate": null,
+    "meanSimulationTie": 0.022915384615384612,
+    "status": "insufficient",
+    "deploymentEligible": false
+  }
+}

@@ -74,3 +74,10 @@ test('known NBA team-history gaps block estimates and simulations independently'
   assert.equal(simulate(p,d).available,false);
  }
 });
+
+test('NBA simulations reject unavailable sources and negative estimates; overflow cannot become a projection',()=>{
+ const {simulate}=require('../public/nba-model'),d=context();for(const side of ['away','home'])d[side].recentGames=Array.from({length:5},()=>({for:110,against:100}));
+ const p=project(game,d,'season',now);d.away.available=false;assert.equal(simulate(p,d).available,false);
+ d.away.available=true;assert.equal(simulate({...p,away:-1},d).available,false);
+ d.away.season.pointsFor=Number.MAX_VALUE;assert.equal(project(game,d,'season',now).available,false);
+});

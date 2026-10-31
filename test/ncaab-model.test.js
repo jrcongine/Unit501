@@ -38,3 +38,11 @@ test('known team-history gaps withhold college projections and simulations even 
   assert.equal(simulate(p,partial).available,false);
  }
 });
+
+test('college explicit unavailable sources and overflow cannot become predictions or simulations',()=>{
+ const p=project(game,data,'season',now);
+ for(const side of ['away','home'])for(const patch of [{available:false},{coverage:{invalid:1}},{coverage:{conflictingGames:1}},{coverage:{unverifiedGames:1}}]){
+  const d=structuredClone(data);Object.assign(d[side],patch);assert.equal(project(game,d,'season',now).available,false);assert.equal(simulate(p,d).available,false);
+ }
+ const d=structuredClone(data);d.away.season.scored=Number.MAX_VALUE;assert.equal(project(game,d,'season',now).available,false);
+});

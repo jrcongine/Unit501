@@ -42,3 +42,12 @@ test('NBA replay does not hide malformed history when filtering unrelated scopes
  const raw=Array.from({length:6},(_,i)=>game(i+1,i+1,1,2,100,90));
  const report=backtest([...raw,{}],'season');assert.equal(report.invalid,1);assert.equal(report.evaluated,0);
 });
+
+test('optional simulation replay uses production simulation and cannot read target or future outcomes',()=>{
+ const history=Array.from({length:7},(_,i)=>game(i+1,i+1,1,2,100+i,90+i)),target=game(8,10,1,2,95,100);
+ const a=backtest([...history,target],'season',{simulationRuns:1000}).games.find(g=>g.id===8);
+ const b=backtest([...history,{...target,scores:{visitors:{points:180},home:{points:60}}},game(9,11,1,2,200,100)],'season',{simulationRuns:1000}).games.find(g=>g.id===8);
+ assert.equal(a.simulation.available,true);assert.deepEqual(a.simulation,b.simulation);assert.notEqual(a.winnerCorrect,b.winnerCorrect);
+ assert.equal('simulation' in backtest([...history,target],'season').games[0],false);
+ assert.throws(()=>backtest([],'season',{simulationRuns:1.5}),/runs/);
+});
