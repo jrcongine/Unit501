@@ -3,14 +3,15 @@
  const model=typeof module!=='undefined'&&module.exports?require('./nba-player-model'):root.Unit501NBAPlayerModel;
  const markets=new Set(['player_points','player_rebounds','player_assists','player_threes']);
  const key=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- function compare(history,quote,report,game,now=Date.now()){
+ function compare(history,quote,report,game,now=Date.now(),options={}){
+  const college=options.official===false,stamp=college?report?.checkedAt:report?.reportAt,maxAge=college?900000:7200000;
   if(!game||!quote||!history||!report||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||String(report.gameId)!==String(game.id)||report.tipoff!==game.tipoff||
-   !Number.isFinite(report.reportAt)||report.reportAt>now+60000||now-report.reportAt>7200000||!Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||
+   !Number.isFinite(stamp)||stamp>now+60000||now-stamp>maxAge||!Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||
    !Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now||!Array.isArray(history.teams)||history.teams.length!==2||!Array.isArray(report.teams)||report.teams.length!==2)return [];
   if(!markets.has(quote.market))return [];
   // Both adapters return away then home. Require the same named teams, too.
   const teamKey=s=>key(s).replace(/^losangeles/,'la');
-  if(history.teams.some((t,i)=>!teamKey(t?.name)||teamKey(t.name)!==teamKey(report.teams[i]?.name))||
+  if(history.teams.some((t,i)=>!teamKey(t?.name)||teamKey(t.name)!==teamKey(college?report.teams[i]?.team:report.teams[i]?.name))||
    teamKey(history.teams[0].name)===teamKey(history.teams[1].name))return [];
   const cutoff=Math.min(now,Date.parse(game.tipoff));
   const records=rows=>{

@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={checkedAt:clock,gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
- vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','nba-player-model.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,data,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -246,4 +246,59 @@ test('college prop display suppresses a formatted Out name and rejects a foreign
  await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();await h.nodes.get('ncaab-load-props').events.click();
  assert.match(h.nodes.get('ncaab-injury-status').textContent,/Injury report unavailable/);
  assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/OUT/);
+});
+
+test('college availability automatically refreshes, preserves expired evidence on failure, and retries',async()=>{
+ const h=setup(),base=h.context.fetch;let fail=false,calls=0,state='Out';
+ h.context.fetch=async url=>{
+  if(!String(url).includes('/injuries?'))return base(url);
+  calls++;if(fail)throw Error('offline');
+  return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{team:'Away',available:true,players:[{name:'Player A',status:state}]},{team:'Home',available:true,players:[]}]})};
+ };
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
+ assert.equal(calls,1);assert.match(h.nodes.get('ncaab-injuries').textContent,/Player A · Out/);
+ const expire=()=>h.timers.filter(t=>t.delay===900001).at(-1);
+ fail=true;h.advance(900001);expire().fn();await h.settle();assert.equal(calls,2);
+ assert.match(h.nodes.get('ncaab-injury-status').textContent,/unavailable.*earlier check/);
+ assert.match(h.nodes.get('ncaab-injuries').textContent,/Player A · Out/);
+ fail=false;state='Available';h.advance(60000);h.timers.filter(t=>t.delay===60000).at(-1).fn();await h.settle();
+ assert.equal(calls,3);assert.match(h.nodes.get('ncaab-injuries').textContent,/Player A · Available/);
+ h.context.document.hidden=true;h.advance(900001);expire().fn();await h.settle();assert.equal(calls,3);
+ h.advance(60000);h.timers.filter(t=>t.delay===60000).at(-1).fn();await h.settle();assert.equal(calls,3);
+ h.context.document.hidden=false;h.advance(60000);h.timers.filter(t=>t.delay===60000).at(-1).fn();await h.settle();assert.equal(calls,4);
+});
+test('college late injury refresh cannot replace a newly selected report',async()=>{
+ const h=setup(),base=h.context.fetch,pending=[];
+ h.context.fetch=url=>String(url).includes('/injuries?')?new Promise(resolve=>pending.push(resolve)):base(url);
+ await h.nodes.get('ncaab-load').events.click();const choose=h.nodes.get('ncaab-games').children[0].events.click;
+ await choose();await choose();assert.equal(pending.length,2);
+ const answer=name=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{team:'Away',players:[{name,status:'Out'}]},{team:'Home',players:[]}]})});
+ pending[1](answer('Current Player'));await h.settle();pending[0](answer('Old Player'));await h.settle();
+ assert.match(h.nodes.get('ncaab-injuries').textContent,/Current Player/);assert.doesNotMatch(h.nodes.get('ncaab-injuries').textContent,/Old Player/);
+});
+
+test('college verified teammate-absence scenario changes projections, preserves actual hit counts, and expires with evidence',async()=>{
+ const h=setup(),base=h.context.fetch;let status='Out';const at=h.now();
+ const records=Array.from({length:4},(_,i)=>({gameId:String(i+1),tipoff:new Date(at-(i+1)*86400000).toISOString(),minutes:i<2?40:20,player_points:i<2?20:10,player_rebounds:i<2?8:4}));
+ const history={gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:at,teams:[{name:'Away',available:true,players:[
+  {id:'1',name:'Player A',available:true,results:records,inactive:[]},
+  {id:'2',name:'Teammate B',available:true,results:records.slice(2).map(r=>({...r,player_points:5})),inactive:records.slice(0,2).map(({gameId,tipoff})=>({gameId,tipoff}))}
+ ]},{name:'Home',available:true,players:[]}]};
+ h.context.fetch=async url=>{
+  if(String(url).includes('/injuries?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),teams:[{team:'Away',available:true,players:[{name:'Teammate B',status}]},{team:'Home',available:true,players:[]}]})};
+  if(String(url).includes('/props?'))return {ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',props:[{name:'Player A',market:'player_points',label:'Points',line:15.5,updatedAt:at},{name:'Player A',market:'player_rebounds',label:'Rebounds',line:5.5,updatedAt:at}]})};
+  if(String(url).includes('/player-history?'))return {ok:true,json:async()=>history};return base(url);
+ };
+ await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();await h.nodes.get('ncaab-load-props').events.click();
+ const board=h.nodes.get('ncaab-props');
+ // The harness does not track tag names; button event plus exact label identifies the control.
+ const all=n=>n.children.flatMap(c=>[c,...all(c)]),button=()=>all(board).find(c=>c.events?.click&&c.textContent==='Try 40.0 minutes without Teammate B');
+ assert.ok(button());const before=board.textContent;button().events.click();
+ assert.match(board.textContent,/Teammate absence minutes scenario/);assert.match(board.textContent,/40.0 projected min/);
+ assert.notEqual(board.textContent,before);assert.match(board.textContent,/2 \(50.0%\).*2 \(50.0%\)/);
+ // Inspect the rendered projection cell: the scenario uses .5 points/minute * 40 minutes.
+ const playerRow=all(board).find(n=>n.children.length===11&&n.children[0].textContent.startsWith('Player A'));
+ assert.ok(playerRow.children[2].textContent.startsWith('20.0'));
+ status='Available';h.advance(900001);h.timers.filter(t=>t.delay===900001).at(-1).fn();await h.settle();
+ assert.doesNotMatch(board.textContent,/Teammate absence minutes scenario|Try 40.0 minutes/);
 });

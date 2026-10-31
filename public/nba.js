@@ -177,9 +177,9 @@
   const list=byId('nba-injuries-list');list.replaceChildren();
   for(const team of report.teams){
    const card=node('section','', 'nba-team-history');card.append(node('h4',team.name));
-   if(!team.available)card.append(node('p','Report not submitted or unavailable.','nba-sample-note'));
-   else if(!team.players.length)card.append(node('p','No players listed in this report.'));
-   else for(const player of team.players){
+   if(!team.available)card.append(node('p',team.message||'Report not submitted or unavailable.','nba-sample-note'));
+   if(team.available&&!team.players.length)card.append(node('p','No players listed in this report.'));
+   for(const player of team.players){
     const line=node('p',player.name+' · '+player.status,player.status==='Out'?'nba-injury-out':'');card.append(line);
    }
    list.append(card);
@@ -199,7 +199,7 @@
    const at=Number(data.reportAt);
    if(!response.ok||String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||!Number.isFinite(at)||at>Date.now()+60000||Date.now()-at>7200000||
      !Array.isArray(data.teams)||data.teams.length!==2||data.teams.some(t=>!t||typeof t.name!=='string'||typeof t.available!=='boolean'||!Array.isArray(t.players)||
-      t.players.some(p=>typeof p.name!=='string'||!['Out','Doubtful','Questionable','Probable','Available'].includes(p.status))))throw Error('Report unavailable');
+      t.players.some(p=>typeof p.name!=='string'||!['Out','Doubtful','Questionable','Probable','Available','Unverified'].includes(p.status))))throw Error('Report unavailable');
    injuryReport=data;showInjuries(data);window.Unit501NBAMarkets?.setInjuries?.(game,data);
   }catch{
    if(serial!==injuryRequest||injuryGame!==game)return;

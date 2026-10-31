@@ -34,10 +34,12 @@ test('report parser matches exact matchup and treats not-submitted reports as un
  const pending=matchReport(parsed,{...game,away:'Brooklyn Nets',tipoff:'2026-10-27T23:30:00Z'});
  assert.ok(pending.every(t=>!t.available&&t.players.length===0));
 });
-test('conflicting player statuses are withheld rather than guessed',()=>{
+test('conflicting player statuses stay visible without establishing verified availability',()=>{
  const pages=fixture();pages[0].items.push(item('Claxton, Nic',426,420),item('Probable',587,420));
  const teams=matchReport(parseRows(groupItems(pages)),game);
- assert.equal(teams[0].available,false);assert.deepEqual(teams[0].players,[]);
+ assert.equal(teams[0].available,false);assert.deepEqual(teams[0].players.filter(p=>p.name==='Nic Claxton').map(p=>p.status),['Out','Probable']);
+ assert.match(teams[0].message,/Conflicting/);
+ assert.equal(require('../public/nba-player-model').injuryStatus({gameId:game.id,tipoff:game.tipoff,reportAt:now,teams},{name:'Nic Claxton'},game,now),'Unverified');
 });
 test('shared NBA report import caches public requests and checks report timestamp',async()=>{
  let count=0,clock=now;
@@ -89,5 +91,5 @@ test('unparsed or empty team rows stay unknown instead of claiming a clean repor
  assert.equal(result[1].available,true);assert.deepEqual(result[1].players,[]);
  const bad=fixture();bad[0].items.find(i=>i.str==='Out').str='Unknown Status';
  result=matchReport(parseRows(groupItems(bad)),game);
- assert.equal(result[0].available,false);assert.deepEqual(result[0].players,[]);
+ assert.equal(result[0].available,false);assert.ok(result[0].players.some(p=>p.status==='Unverified'));assert.ok(result[0].players.some(p=>p.name==='Noa Essengue'));
 });

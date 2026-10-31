@@ -315,3 +315,12 @@ test('NBA cannot project from missing or future source timestamps',async()=>{
   await h.load();await h.choose(0);assert.match(h.nodes.get('nba-prediction').textContent,/update time is unverified/);
  }
 });
+
+test('NBA ambiguous reports retain named rows with an unverified warning',async()=>{
+ const h=harness(),base=h.context.fetch;h.games[0].tipoff=new Date(Date.now()+86400000).toISOString();h.games[0].statusCode=1;
+ h.context.fetch=async url=>String(url).startsWith('/api/nba/injuries?')?{ok:true,json:async()=>({gameId:h.games[0].id,tipoff:h.games[0].tipoff,reportAt:Date.now(),teams:[
+  {name:'Chicago Bulls',available:false,message:'Conflicting report rows; statuses unverified.',players:[{name:'Player A',status:'Out'},{name:'Player A',status:'Available'},{name:'Player B',status:'Unverified'}]},
+  {name:'Milwaukee Bucks',available:true,players:[]}]})}:base(url);
+ await h.load();await h.choose(0);
+ assert.match(h.nodes.get('nba-injuries-list').textContent,/Conflicting.*Player A · Out.*Player A · Available.*Player B · Unverified/);
+});

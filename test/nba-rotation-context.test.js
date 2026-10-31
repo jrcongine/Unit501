@@ -49,3 +49,14 @@ test('teammate absence splits tolerate unique suffix formatting but reject colli
   const y=structuredClone(x);mutate(y);assert.deepEqual(compare(y.history,y.quote,y.report,game,now),[]);
  }
 });
+
+test('college absence splits use provider team names and a fifteen-minute freshness limit',()=>{
+ const x=input();x.report.checkedAt=now;delete x.report.reportAt;
+ for(const team of x.report.teams){team.team=team.name;delete team.name;}
+ const compareCollege=()=>compare(x.history,x.quote,x.report,game,now,{official:false});
+ assert.equal(compareCollege()[0].without.minutes,35);
+ assert.deepEqual(compare(x.history,x.quote,x.report,game,now),[]);
+ x.report.checkedAt=now-900001;assert.deepEqual(compareCollege(),[]);
+ x.report.checkedAt=now;x.report.teams[0].available=false;assert.deepEqual(compareCollege(),[]);
+ x.report.teams[0].available=true;x.report.teams.reverse();assert.deepEqual(compareCollege(),[]);
+});

@@ -65,7 +65,8 @@ function parseRows(rows){
   if(/NOT YET SUBMITTED/i.test([playerCell,statusCell,reasonCell].join(' '))){team.submitted=false;continue;}
   if(/NO INJURIES TO REPORT/i.test([playerCell,statusCell,reasonCell].join(' '))){team.confirmed=true;continue;}
   if(!playerCell)continue;
-  if(!['Out','Doubtful','Questionable','Probable','Available'].includes(statusCell)){team.conflict=true;continue;}
+  const validStatus=['Out','Doubtful','Questionable','Probable','Available'].includes(statusCell);
+  if(!validStatus)team.conflict=true;
   team.confirmed=true;
   // League prints family name first, including multi-part suffixes.
   const comma=playerCell.lastIndexOf(',');
@@ -73,8 +74,8 @@ function parseRows(rows){
   const name=(playerCell.slice(comma+1).trim()+' '+playerCell.slice(0,comma).trim()).replace(/\s+/g,' ');
   if(name.length>100||!/^[\p{L}\p{M} .,'’\-]+$/u.test(name)){team.conflict=true;continue;}
   const existing=team.players.find(p=>normalize(p.name)===normalize(name));
-  if(existing&&existing.status!==statusCell){team.conflict=true;continue;}
-  if(!existing)team.players.push({name,status:statusCell});
+  if(existing&&existing.status!==statusCell)team.conflict=true;
+  if(!team.players.some(p=>normalize(p.name)===normalize(name)&&p.status===(validStatus?statusCell:'Unverified')))team.players.push({name,status:validStatus?statusCell:'Unverified'});
  }
  return [...games.values()];
 }
@@ -86,7 +87,8 @@ function matchReport(games,game){
  if(found.length!==1)return null;
  const report=found[0];
  return [away,home].map(code=>({code,name:TEAMS[code],available:!!report.teams[code]?.submitted&&!!report.teams[code]?.confirmed&&!report.teams[code]?.conflict,
-  players:report.teams[code]?.submitted&&report.teams[code]?.confirmed&&!report.teams[code]?.conflict?report.teams[code].players:[]}));
+  players:report.teams[code]?.players||[],
+  message:report.teams[code]?.conflict?'Conflicting or unrecognized report rows; listed statuses are unverified.':!report.teams[code]?.submitted?'Report not submitted or unavailable.':!report.teams[code]?.confirmed?'Report incomplete; player availability is unverified.':''}));
 }
 async function extractPDF(bytes){
  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
