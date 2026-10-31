@@ -116,7 +116,7 @@
    const status=window.Unit501NBAPlayerModel.injuryStatus(injuryData,r.q,selected,Date.now(),false);
    const staleInjuries=injuryData&&(!Number.isFinite(injuryData.checkedAt)||injuryData.checkedAt>Date.now()+60000||Date.now()-injuryData.checkedAt>900000);
    const prediction=staleInjuries?{available:false,reason:'Refresh availability'}:window.Unit501NBAPlayerModel.project(r.history,r.q,selected,status,Date.now(),{regulationMinutes:40});
-   return {...r,p:window.Unit501NBAPlayerModel.withScenario?.(prediction,playerScenarios.get(r.q.name))||prediction};
+   return {...r,status,p:window.Unit501NBAPlayerModel.withScenario?.(prediction,playerScenarios.get(r.q.name))||prediction};
   });
   rows.sort((a,b)=>{
    const order=()=>a.q.name.localeCompare(b.q.name)||catalog.indexOf(a.q.market)-catalog.indexOf(b.q.market);
@@ -130,15 +130,16 @@
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   for(const label of ['Player / stat','FanDuel line','Projection','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
-  for(const {q,p} of rows){const tr=node('tr','');
+  for(const {q,p,status} of rows){const tr=node('tr','');
    const observed=window.Unit501LineWatch?.fromServer(q.history,q.line,q.updatedAt);
    const movement=observed?window.Unit501LineWatch.describe(observed):'Movement unknown';
    const pct=field=>p.available?p[field]+' ('+(100*p[field]/p.games).toFixed(1)+'%)':'—';
-   const values=[q.name+' · '+q.label,q.line,p.available?p.projection.toFixed(1):p.reason||'Unavailable',p.available?p.median.toFixed(1):'—',p.available?(p.projection-q.line).toFixed(1):'—',p.available?p.recentValues.join(' · ')+(Number.isFinite(p.projectedMinutes)?' · '+p.projectedMinutes.toFixed(1)+' projected min':' · minutes unavailable')+(p.thin?' · small sample':''):'History incomplete or unavailable',pct('above'),pct('below'),pct('equal'),p.available?p.games:'—',movement];
+   const values=[q.name+' · '+q.label+' · '+(status||'Availability unconfirmed'),q.line,p.available?p.projection.toFixed(1):p.reason||'Unavailable',p.available?p.median.toFixed(1):'—',p.available?(p.projection-q.line).toFixed(1):'—',p.available?p.recentValues.join(' · ')+(Number.isFinite(p.projectedMinutes)?' · '+p.projectedMinutes.toFixed(1)+' projected min':' · minutes unavailable')+(p.thin?' · small sample':''):'History incomplete or unavailable',pct('above'),pct('below'),pct('equal'),p.available?p.games:'—',movement];
    for(const [index,value] of values.entries()){
     const cell=node('td',value);
     if(index===0){const change=window.Unit501NBAPlayerModel.minuteChangeText?.(p);if(change)cell.append(node('strong',change,'nba-minutes-trend'));}
     if(index===2&&p.available){
+     cell.append(node('small',window.Unit501NBAPlayerModel.availabilityNote(status)));
      const label=node('label','Manual scenario '),select=node('select');
      for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
      select.value=playerScenarios.get(q.name)||'off';select.addEventListener('change',()=>{playerScenarios.set(q.name,select.value);renderProps();});label.append(select);cell.append(label);

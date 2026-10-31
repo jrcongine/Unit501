@@ -64,7 +64,7 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  const h=setup();await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();
  const at=h.now(),q=(name,market)=>({name,market,label:market,line:10.5,updatedAt:at});
  const quotes=[q('A','player_assists'),q('B','player_points'),q('A','player_points'),{...q('Expired','player_points'),updatedAt:at-1800001}];
- h.context.Unit501NBAPlayerModel={injuryStatus:h.context.Unit501NBAPlayerModel.injuryStatus,withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
+ h.context.Unit501NBAPlayerModel={availabilityNote:h.context.Unit501NBAPlayerModel.availabilityNote,injuryStatus:h.context.Unit501NBAPlayerModel.injuryStatus,withScenario:h.context.Unit501NBAPlayerModel.withScenario,project:(history,q)=>({available:true,projection:12,median:11,average:11,above:q.name==='A'?1:3,below:q.name==='A'?0:3,equal:0,games:q.name==='A'?1:6,recentValues:[12],projectedMinutes:20})};
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',teams:[],props:String(url).includes('/props?')?quotes:[]})});
  await h.nodes.get('ncaab-load-props').events.click();
  const board=h.nodes.get('ncaab-props'),sort=h.nodes.get('ncaab-prop-sort');sort.value='most';sort.events.change();

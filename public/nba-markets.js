@@ -68,7 +68,7 @@
   const body=node('tbody','');
   for(const {p,status,prediction,splits,scenario,minutes} of rows){
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
-   for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():''),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
+   for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():' · AVAILABILITY UNCONFIRMED'),p.label,p.line,prediction.available?prediction.projection.toFixed(1):prediction.reason].entries()){
     const cell=node('td',value);
     if(index===0&&prediction.minuteChange){
      cell.append(node('strong',root.Unit501NBAPlayerModel.minuteChangeText(prediction),'nba-minutes-trend'));
@@ -76,6 +76,7 @@
     if(index===3&&prediction.available){
      const gap=prediction.projection-p.line;
      cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
+     cell.append(node('small',root.Unit501NBAPlayerModel.availabilityNote(status),'nba-line-history'));
      const label=node('label','Manual scenario '),select=node('select');
      for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
      select.value=playerScenarios.get(normalizedName(p.name))||'off';

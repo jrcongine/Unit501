@@ -44,3 +44,5 @@ Additional fixes completed without owner computer access:
 - College basketball duplicate injury sections no longer silently become empty lists. Reported absences/statuses remain visible, while duplicate, missing, malformed and unnamed-row coverage is explicitly unverified.
 - NBA/CBB player projections reject contradictory played/DNP records and invalid DNP timestamps. Verified zero-stat appearances continue to count, and genuine DNPs remain outside the hit-rate denominator.
 - Full suite: 819 passed, zero failures. The existing synthetic DNP fixture was updated to include the timestamp supplied by the actual adapters. No live provider verification is implied.
+
+NBA/CBB player tables now explicitly label unconfirmed availability alongside each estimate. Conditional statuses explain that the estimate assumes participation, and a listed Available status does not confirm starting role or minutes. This disclosure preserves history-only estimates without presenting missing reports as healthy. Full suite: 820 passed, zero failures.

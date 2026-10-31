@@ -156,3 +156,10 @@ for(const regulationMinutes of [40,48])test(regulationMinutes+' minute basketbal
  player.inactive=[{gameId:4,tipoff:game.tipoff}];
  assert.equal(project(d,q,game,null,now,{regulationMinutes}).available,false);
 });
+
+test('basketball availability wording distinguishes unknown, conditional and listed available',()=>{
+ const {availabilityNote}=require('../public/nba-player-model');
+ assert.match(availabilityNote(null),/unconfirmed/);
+ for(const s of ['Questionable','Doubtful','Probable'])assert.match(availabilityNote(s),/assumes participation/);
+ assert.match(availabilityNote('Available'),/starting role and minutes are not confirmed/);
+});

@@ -26,6 +26,11 @@
   const status=String(p.status||'').trim();
   return /^out$/i.test(status)?'Out':status||'Unverified';
  }
+ function availabilityNote(status){
+  if(!status)return 'Availability unconfirmed; estimate uses historical workload.';
+  if(/^available$|^active$/i.test(status))return 'Listed available; starting role and minutes are not confirmed.';
+  return 'Reported '+status+'; estimate assumes participation and does not price the chance of missing the game.';
+ }
  const markets=new Set(['player_points','player_rebounds','player_assists','player_threes']);
  function project(history,quote,game,status,now=Date.now(),options={}){
   const regulationMinutes=options.regulationMinutes??48;
@@ -98,5 +103,5 @@
   if(!change||![change.recent,change.previous].every(Number.isFinite))return null;
   return 'Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1)+' · last '+change.recentGames+' vs earlier '+change.previousGames+' games';
  }
- const api={project,withScenario,minuteChangeText,injuryStatus,matchPlayer};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
+ const api={project,withScenario,minuteChangeText,injuryStatus,matchPlayer,availabilityNote};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
 })(typeof window!=='undefined'?window:globalThis);
