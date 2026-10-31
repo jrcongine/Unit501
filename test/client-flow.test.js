@@ -801,7 +801,7 @@ test('Game Lab names outright upset picks, separates cover-only, and clears stal
  h.run('$("venueMode").value="neutral"; $("spread").value="10.5"; $("total").value="48.5"; $("awayRating").value="4"; $("homeRating").value="0"; sim()');
  assert.match(h.nodes.get('outright-pick').textContent,/UPSET ALERT.*Team A to win outright.*UNDERDOG UPSET PICK/);
  assert.equal(h.nodes.get('outright-pick').classList.contains('automatic-upset-pick'),true);
- assert.match(h.nodes.get('underdog-outlook').textContent,/Team A \+10.5: projected to win outright/);
+ assert.match(h.nodes.get('underdog-outlook').textContent,/Team A \+10.5: meets the upset review threshold/);
  assert.match(h.nodes.get('win-both').textContent,/Team A win.*Team B win.*tied scores/);
  h.run('$("awayRating").value="-4"; sim()');
  assert.match(h.nodes.get('outright-pick').textContent,/Team B to win outright/);

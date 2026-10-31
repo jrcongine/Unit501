@@ -1040,17 +1040,20 @@ function sim() {
   $('cover').textContent = percent(result.calibrated.cover??result.cover);
   $('over').textContent = percent(result.calibrated.over??result.over);
   $('win').textContent = percent(result.calibrated.win??result.win);
-  const outlook=Unit501TeamModel.outcome(prediction,spread);
+  const outlook=Unit501TeamModel.outcome(prediction,spread,result);
   const teamName=side=>side==='away'?selected.a:selected.h;
   $('outright-pick').classList.toggle('automatic-upset-pick',outlook.upset);
   $('outright-pick').textContent=outlook.winner?
     `${outlook.upset?'⚠ UPSET ALERT · ':''}UNIT501 projects ${teamName(outlook.winner)} to win outright by ${Math.abs(outlook.margin).toFixed(1)} points${outlook.upset?' — UNDERDOG UPSET PICK':''}.`:
     'Projected scores are tied — no outright winner selected.';
+  $('outright-pick').title=outlook.reason;
+  if(outlook.lean&&!outlook.upset)$('outright-pick').textContent+=' Model lean only — upset review threshold not met.';
   if(!outlook.underdog){
     $('underdog-outlook').textContent='Pick’em line — neither team is a spread underdog.';
   }else{
     const dog=teamName(outlook.underdog),dogLine=Math.abs(spread);
-    $('underdog-outlook').textContent=`${dog} +${dogLine}: `+(outlook.upset?'projected to win outright.':
+    $('underdog-outlook').textContent=`${dog} +${dogLine}: `+(outlook.upset?'meets the upset review threshold.':
+      outlook.lean?'slight model lean to win; upset review threshold not met.':
       outlook.underdogCoverOnly?'projected to cover, but lose outright.':
       !outlook.winner?'projected to tie the game and cover; no outright win projected.':
       !outlook.cover?'projected to lose outright and push the spread.':'projected to lose outright and fail to cover.');

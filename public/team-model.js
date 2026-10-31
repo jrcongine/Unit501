@@ -212,14 +212,15 @@
       if (away===home) ties++;
     }
     const calibration=prediction.probabilityCalibration?.modelVersion==='scoring-v2'?prediction.probabilityCalibration:null;
-    const conditional={win:wins/(runs-ties),cover:covers/(runs-spreadPushes),over:overs/(runs-totalPushes)};
+    const excluding=(count,pushes)=>runs>pushes?count/(runs-pushes):null;
+    const conditional={win:excluding(wins,ties),cover:excluding(covers,spreadPushes),over:excluding(overs,totalPushes)};
     const calibrated=Object.fromEntries(['win','cover','over'].map(key=>[key,probability?.apply(conditional[key],calibration?.[key])??null]));
     return {blowout:{threshold:21,away:awayBlowouts/runs,home:homeBlowouts/runs,any:(awayBlowouts+homeBlowouts)/runs},calibrated,conditional,cover:covers/runs,over:overs/runs,win:wins/runs,spreadPush:spreadPushes/runs,totalPush:totalPushes/runs,tie:ties/runs,
       varianceSource:fitted?'Earlier held-out score errors':'Default uncalibrated variance',meanAway:awaySum/runs,meanHome:homeSum/runs};
   }
   // Classify the point forecast independently of cover frequencies. A positive
   // away line identifies the away underdog; it never changes projected scores.
-  function outcome(prediction, awaySpread) {
+  function outcome(prediction, awaySpread, simulation) {
     if (!prediction?.available || ![prediction.away,prediction.home,awaySpread].every(Number.isFinite)) return null;
     const margin=prediction.away-prediction.home;
     const winner=margin>0?'away':margin<0?'home':null;
@@ -227,7 +228,7 @@
     const coverMargin=margin+awaySpread;
     const cover=coverMargin>0?'away':coverMargin<0?'home':null;
     return {winner,underdog,cover,margin,coverMargin,
-      upset:!!underdog&&winner===underdog,
+      ...((typeof module!=='undefined'&&module.exports?require('./unit501-shared-ui'):root.Unit501SharedUI).upsetOutlook(prediction,awaySpread,simulation)),
       underdogCoverOnly:!!underdog&&cover===underdog&&winner!==underdog&&winner!==null};
   }
   const model={project,simulate,venueEffect,weatherEffect,outcome};

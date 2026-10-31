@@ -55,7 +55,7 @@
   for(const {teamId,label,team:t} of teams){
    const start=withheld.length;
    if(!t||!fresh(t.roster,3600000,now)||!fresh(t.official,900000,now)||!matchGame(t.official,game))
-    withheld.push(label+': current matched roster and official game report required; no point estimate.');
+    withheld.push(label+': current matched roster and official game report required; no point estimate.'+(t?.official?.available!==true&&t?.official?.message?' '+t.official.message:''));
    if(!t||(!(fresh(t.depth,3600000,now)&&matchGame(t.depth,game)||fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game))&&!(fresh(t.quarterback,3600000,now)&&matchGame(t.quarterback,game)&&t.quarterback.rows?.length>0)))
     withheld.push(label+': player-role data unavailable, expired, or for a different matchup; no point estimate.');
    if(withheld.length===start)eligible.add(teamId);

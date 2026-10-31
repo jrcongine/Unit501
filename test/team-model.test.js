@@ -320,8 +320,8 @@ test('manual game modes scale margin, preserve totals, and never follow kickoff 
 test('outright underdog picks are separate from covers for both line orientations',()=>{
  const {outcome}=require('../public/team-model');
  const p=(away,home)=>({available:true,away,home});
- assert.equal(outcome(p(27,24),10.5).upset,true);
- assert.equal(outcome(p(24,27),-10.5).upset,true);
+ assert.equal(outcome(p(27,24),10.5,{win:.6,tie:.02}).upset,true);
+ assert.equal(outcome(p(24,27),-10.5,{win:.38,tie:.02}).upset,true);
  assert.equal(outcome(p(24,27),10.5).underdogCoverOnly,true);
  assert.equal(outcome(p(27,24),-10.5).underdogCoverOnly,true);
  assert.equal(outcome(p(14,28),10.5).underdogCoverOnly,false);
@@ -333,4 +333,11 @@ test('outright underdog picks are separate from covers for both line orientation
  assert.equal(outcome(p(27,24),0).upset,false);
  assert.equal(outcome(p(27,24),null),null);
  assert.equal(outcome({available:false},10.5),null);
+});
+
+test('all-tied football simulations retain ties and withhold undefined conditional probabilities',()=>{
+ const r=simulate({available:true,away:24,home:24},0,48,100,()=>.25);
+ assert.equal(r.tie,1);assert.equal(r.win,0);
+ assert.deepEqual(r.conditional,{win:null,cover:null,over:null});
+ assert.deepEqual(r.calibrated,{win:null,cover:null,over:null});
 });

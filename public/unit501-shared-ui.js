@@ -122,11 +122,21 @@
    element.className=comparison?.large?'market-gap market-gap-large':'market-gap';
    element.title='Positive away margin gap means Unit 501 favors the away side more than the entered spread. Positive total gap means a higher model total. Review flags start at 7 spread points or 10 total points; these are display thresholds, not calibrated betting edges.';
  }
- function upsetOutlook(prediction,awaySpread){
+ function upsetOutlook(prediction,awaySpread,simulation){
    if(!prediction?.available||![prediction.away,prediction.home,awaySpread].every(Number.isFinite))return null;
    const winner=prediction.away>prediction.home?'away':prediction.home>prediction.away?'home':null;
    const underdog=awaySpread>0?'away':awaySpread<0?'home':null;
-   return {winner,underdog,upset:!!underdog&&winner===underdog};
+   const margin=prediction.away-prediction.home;
+   const awayWin=simulation?.awayWin??simulation?.win;
+   const tie=simulation?.tie;
+   const valid=Number.isFinite(awayWin)&&Number.isFinite(tie)&&awayWin>=0&&tie>=0&&awayWin+tie<=1+1e-12;
+   // Raw frequencies retain ties as unresolved. Never invent overtime winners
+   // or let conditional/calibrated probabilities silently change this gate.
+   const dogWin=valid?(underdog==='away'?awayWin:Math.max(0,1-awayWin-tie)):null;
+   const lean=!!underdog&&winner===underdog;
+   const upset=lean&&Math.abs(margin)>=2&&dogWin!==null&&dogWin>=.55;
+   return {winner,underdog,margin,lean,upset,dogWin,
+     reason:'Review threshold: at least 2 projected points and 55% raw simulated wins; not a calibrated betting edge.'};
  }
  function historyFreshness(checkedAt,now=Date.now()){
    const at=typeof checkedAt==='number'?checkedAt:typeof checkedAt==='string'&&checkedAt.trim()?Date.parse(checkedAt):NaN;

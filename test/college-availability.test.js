@@ -119,3 +119,15 @@ test('Big 12 report reaches availability and automatic scoring only with matched
  teams[1].official.checkedAt=now-900001;
  const expired=evaluate(data,matchup,null,now);assert.equal(expired.partial,true);assert.equal(expired.injury.homeOffense,0);assert.equal(expired.applied.length,0);
 });
+
+ test('missing college coverage distinguishes upstream failures, missing matches and ambiguous reports',async()=>{
+  const check=async read=>{const t=teams();await createCollegeAvailability(async()=>({response:[g]}),()=>now,read)(q,t);return t[0].official;};
+  const missing=await check(async()=>({}));
+  assert.equal(missing.available,false);assert.equal(missing.reasonCode,'no-matching-report');
+  assert.equal(missing.diagnostics.length,4);assert.ok(missing.diagnostics.every(d=>d.state==='no-exact-match'));
+  const failed=await check(async()=>{throw Error('unavailable');});
+  assert.equal(failed.reasonCode,'sources-unavailable');assert.match(failed.message,/Fetch or parse failed/);
+  const partial=await check(async conf=>{if(conf==='SEC')throw Error('failed');return {};});
+  assert.equal(partial.reasonCode,'no-matching-report');assert.match(partial.message,/SEC/);
+  const ambiguous=await check(async()=>({x:report()}));assert.equal(ambiguous.reasonCode,'ambiguous-report');
+ });

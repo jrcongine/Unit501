@@ -137,7 +137,7 @@ test('NBA upset highlight follows the projected winner and current underdog line
  h.context.Unit501NBAMarkets={select(){},clear(){},spreadFor:()=>spread};
  await h.choose(0);
  const alert=h.nodes.get('nba-upset-pick');
- assert.equal(alert.hidden,false);assert.match(alert.textContent,/UPSET ALERT.*Chicago Bulls.*win outright/);
+ assert.equal(alert.hidden,false);assert.match(alert.textContent,/Model lean only.*Chicago Bulls/);
  const calls=h.requests.length;
  spread=-3.5;
  h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
@@ -163,7 +163,7 @@ test('actual NBA market refresh and reset drive automatic upset headline without
  vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),h.context);
  await h.load();await h.choose(0);
  const alert=h.nodes.get('nba-upset-pick');
- assert.equal(alert.hidden,false);assert.match(alert.textContent,/UPSET ALERT.*Chicago Bulls/);
+ assert.equal(alert.hidden,false);assert.match(alert.textContent,/Model lean only.*Chicago Bulls/);
  assert.equal(h.requests.filter(u=>String(u).startsWith('/api/nba/odds?')).length,1);
  spread=-3.5;await h.nodes.get('nba-refresh-odds').events.click();await h.settle();
  assert.equal(alert.hidden,true);
