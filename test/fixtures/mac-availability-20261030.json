@@ -1,0 +1,315 @@
+{
+  "source": "https://app.hdintelligence.com/api/get-publish-public",
+  "conference": "MAC",
+  "retrievedAt": "2026-10-31",
+  "report": {
+    "publishDate": "2026-10-30",
+    "postedTime": "21:30:00",
+    "conferenceTimeZone": "ET",
+    "footer": {
+      "date": "2026-10-30",
+      "time": "22:30:00"
+    },
+    "games": [
+      {
+        "rows": [
+          {
+            "name": "DL #0 Darian Blachewicz",
+            "status": "Available"
+          },
+          {
+            "name": "RB #0 Mason King",
+            "status": "Out"
+          },
+          {
+            "name": "WR #1 Ardell Banks",
+            "status": "Available"
+          },
+          {
+            "name": "DB #1 A'tiq Muhammad",
+            "status": "Available"
+          },
+          {
+            "name": "DB #2 Joel Cordoba",
+            "status": "Available"
+          },
+          {
+            "name": "QB #2 Nolan Good",
+            "status": "Available"
+          },
+          {
+            "name": "WR #3 Jay Jay Etheridge",
+            "status": "Available"
+          },
+          {
+            "name": "LB #4 Rocco Nicholl",
+            "status": "Available"
+          },
+          {
+            "name": "DL #5 Thomas Aden",
+            "status": "Available"
+          },
+          {
+            "name": "RB #5 Jakorion Caffey",
+            "status": "Available"
+          },
+          {
+            "name": "WR #8 Da'Realyst Clark",
+            "status": "Questionable"
+          },
+          {
+            "name": "QB #10 Ethan Thanthanavong",
+            "status": "Available"
+          },
+          {
+            "name": "LB #10 Hayden Dawahare",
+            "status": "Available"
+          },
+          {
+            "name": "TE #11 Zy'aire Fletcher",
+            "status": "Available"
+          },
+          {
+            "name": "TE #13 Dakota Taylor",
+            "status": "Available"
+          },
+          {
+            "name": "FB #18 Hunter Hopperton",
+            "status": "Available"
+          },
+          {
+            "name": "RB #20 Marques Hicks",
+            "status": "Available"
+          },
+          {
+            "name": "S #38 Clinton Robinson",
+            "status": "Available"
+          },
+          {
+            "name": "K #39 Eli Tucker",
+            "status": "Available"
+          },
+          {
+            "name": "LS #41 Gus Goodell",
+            "status": "Available"
+          },
+          {
+            "name": "P #42 Kolten Ford",
+            "status": "Available"
+          },
+          {
+            "name": "LS #48 Chase Mantooth",
+            "status": "Available"
+          },
+          {
+            "name": "K #49 Tommy Newcomb",
+            "status": "Available"
+          },
+          {
+            "name": "OL #50 Ben Midea",
+            "status": "Available"
+          },
+          {
+            "name": "OL #52 Gavin Kanar",
+            "status": "Available"
+          },
+          {
+            "name": "OL #78 Tyler Meadows",
+            "status": "Out"
+          },
+          {
+            "name": "TE #89 Terik Mulder",
+            "status": "Out"
+          },
+          {
+            "name": "P #97 Jake Stoeckel",
+            "status": "Available"
+          }
+        ],
+        "teamName": "Kent St."
+      },
+      {
+        "rows": [
+          {
+            "name": "RB #0 Daniel Swinney",
+            "status": "Available"
+          },
+          {
+            "name": "S #0 Donovan Turner",
+            "status": "Questionable"
+          },
+          {
+            "name": "RB #1 Jamar Curtis",
+            "status": "Available"
+          },
+          {
+            "name": "S #1 Boogsie Silvera",
+            "status": "Available"
+          },
+          {
+            "name": "WR #2 Matt Coleman",
+            "status": "Available"
+          },
+          {
+            "name": "CB #2 Dionte Thornton",
+            "status": "Available"
+          },
+          {
+            "name": "S #3 Amari Wallace",
+            "status": "Available"
+          },
+          {
+            "name": "ILB #4 Dante Antonini",
+            "status": "Available"
+          },
+          {
+            "name": "WR #4 Kenyon Shabazz",
+            "status": "Available"
+          },
+          {
+            "name": "DL #5 Nick Dimitris",
+            "status": "Available"
+          },
+          {
+            "name": "QB #6 Brian Salazar",
+            "status": "Available"
+          },
+          {
+            "name": "DL #7 Kaden Briggs",
+            "status": "Available"
+          },
+          {
+            "name": "OLB #8 Darson Jeanty",
+            "status": "Available"
+          },
+          {
+            "name": "QB #8 Jackson Sharman",
+            "status": "Available"
+          },
+          {
+            "name": "WR #9 Ajon Bryant",
+            "status": "Out"
+          },
+          {
+            "name": "K #9 Saul Marks",
+            "status": "Available"
+          },
+          {
+            "name": "ILB #10 Derek Houston",
+            "status": "Out"
+          },
+          {
+            "name": "OLB #11 Ivan Moore, Jr.",
+            "status": "Available"
+          },
+          {
+            "name": "CB #12 Malikai Nichols",
+            "status": "Available"
+          },
+          {
+            "name": "RB #14 Curron Borders",
+            "status": "Out"
+          },
+          {
+            "name": "ILB #15 KJ Jefferson",
+            "status": "Available"
+          },
+          {
+            "name": "TE #16 Jordan Williams",
+            "status": "Out"
+          },
+          {
+            "name": "QB #17 Carson Conklin",
+            "status": "Out"
+          },
+          {
+            "name": "OLB #17 Dylan Gooden",
+            "status": "Out"
+          },
+          {
+            "name": "S #25 Naytel Mitchell",
+            "status": "Out"
+          },
+          {
+            "name": "ILB #28 Jiah Walls",
+            "status": "Out"
+          },
+          {
+            "name": "CB #29 Caleb Reese",
+            "status": "Out"
+          },
+          {
+            "name": "P #35 Jay Brockhaus",
+            "status": "Available"
+          },
+          {
+            "name": "P #37 Hamish Adams",
+            "status": "Available"
+          },
+          {
+            "name": "LS #47 Caden Sim",
+            "status": "Available"
+          },
+          {
+            "name": "LS #48 Kellan Sutton",
+            "status": "Available"
+          },
+          {
+            "name": "K #49 Grant Meadors",
+            "status": "Available"
+          },
+          {
+            "name": "OL #53 Elijah Ortiz",
+            "status": "Available"
+          },
+          {
+            "name": "OL #54 Shontrail Key",
+            "status": "Available"
+          },
+          {
+            "name": "DL #58 Jamel Howard",
+            "status": "Questionable"
+          },
+          {
+            "name": "OL #63 Jamin Guilbert",
+            "status": "Questionable"
+          },
+          {
+            "name": "OL #68 Davis May",
+            "status": "Out"
+          },
+          {
+            "name": "OL #71 Bryson Summers",
+            "status": "Out"
+          },
+          {
+            "name": "WR #81 Matthew Auau",
+            "status": "Out"
+          },
+          {
+            "name": "TE #82 Kyle Koontz",
+            "status": "Out"
+          },
+          {
+            "name": "TE #84 Jahlil Lindsey",
+            "status": "Available"
+          },
+          {
+            "name": "TE #85 Elijah Huddle",
+            "status": "Available"
+          },
+          {
+            "name": "DL #90 Austin Chambers",
+            "status": "Out"
+          },
+          {
+            "name": "DL #94 Austin Aten",
+            "status": "Out"
+          }
+        ],
+        "teamName": "Sacramento St."
+      }
+    ]
+  },
+  "note": "Official report excerpt: up to two rows per status and position, preserving publication and game metadata."
+}

@@ -6,7 +6,7 @@ const SOURCES={covers:'Covers',wagertalk:'WagerTalk',boyds:'Boyd’s Bets',picks
 function route(url){
  const p=url.pathname,q=url.searchParams;
  const sport=q.get('league')==='1'?'nfl':q.get('league')==='2'?'ncaaf':null;
- const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/availability':'injuries','/api/football/participation':'participation','/api/team-games':'context','/api/player-stats':'player-history','/api/team-stats':'team-boxes','/api/rankings':'rankings','/api/player-ratings':'ratings','/api/football/comparison':'comparison','/api/game-venue':'venue'};
+ const football={'/api/games':'games','/api/fanduel':'odds','/api/fanduel-props':'props','/api/football/player-lines':'props','/api/availability':'injuries','/api/football/participation':'participation','/api/team-games':'context','/api/player-stats':'player-history','/api/team-stats':'team-boxes','/api/rankings':'rankings','/api/player-ratings':'ratings','/api/football/comparison':'comparison','/api/game-venue':'venue'};
  if(football[p]&&sport)return sport+':'+football[p];
  const match=p.match(/^\/api\/(nba|ncaab)\/(games|odds|props|injuries|context|player-history|comparison|travel|live-watch)$/);
  if(match)return match[1]+':'+match[2];
@@ -40,9 +40,10 @@ function assessment(data,kind,now){
  if(kind==='participation'&&(!Array.isArray(data.response)||data.response.length!==1||data.response[0].available!==true))status='unavailable';
  if(data.available===false||data.current===false)status='unavailable';
  if(data.available!==false && (kind==='props'&&Array.isArray(data.props)&&!data.props.length||kind==='games'&&Array.isArray(data.games)&&!data.games.length||Array.isArray(data.response)&&!data.response.length))status='empty';
+ if(kind==='props'&&Array.isArray(data.props)&&data.props.length&&data.audit&&(data.audit.rejected>0||data.audit.missingMarkets?.length>0))status='partial';
  if(kind==='injuries'){
   if(data.available===false||data.current===false||!Array.isArray(data.teams)||!data.teams.length)status='unavailable';
-  else if(data.teams.some(t=>t.available===false||t.roster?.available===false||t.injuries?.available===false||t.official?.available===false))status='partial';
+  else if(data.teams.some(t=>t.available===false||t.roster?.available===false||t.injuries?.available===false||t.official?.available===false||t.official?.unmatched>0||t.official?.unresolved?.length>0))status='partial';
   else if(data.teams.every(t=>!(t.players?.length||t.injuries?.rows?.length)))status='empty';
  }
  if(kind==='player-history'&&data.teams?.some(t=>t.available===false||t.players?.some(p=>p.available===false||p.coverage?.missing>0||p.missing?.length||p.results?.some(r=>['player_points','player_rebounds','player_assists','player_threes'].some(k=>!Number.isInteger(r[k])||r[k]<0)))))status='partial';
@@ -84,7 +85,8 @@ function createHealth({now=Date.now,file=''}={}){
    const sport=url.searchParams.get('league')==='1'?'nfl':url.searchParams.get('league')==='2'?'ncaaf':null;
    if(sport)for(const kind of ['roster','official','depth']){
     const records=(data?.teams||[]).map(t=>t[kind]),good=records.filter(r=>r?.available===true);
-    const status=code>=500||code===429?'failed':!records.length||!good.length?'unavailable':good.length===records.length?'working':'partial';
+    const incomplete=good.some(r=>r.unmatched>0||r.unresolved?.length>0);
+    const status=code>=500||code===429?'failed':!records.length||!good.length?'unavailable':good.length===records.length&&!incomplete?'working':'partial';
     const stamps=records.map(r=>time(r?.checkedAt)).filter(t=>t!==null&&t<=now()+60000);
     record(sport+':'+kind,{status,at:stamps.length?Math.min(...stamps):null});
    }

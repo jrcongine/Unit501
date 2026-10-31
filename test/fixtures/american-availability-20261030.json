@@ -1,0 +1,315 @@
+{
+  "source": "https://app.hdintelligence.com/api/get-publish-public",
+  "conference": "American",
+  "retrievedAt": "2026-10-31",
+  "report": {
+    "publishDate": "2026-10-30",
+    "postedTime": "16:00:00",
+    "conferenceTimeZone": "CT",
+    "footer": {
+      "date": "2026-10-30",
+      "time": "18:00:00"
+    },
+    "games": [
+      {
+        "rows": [
+          {
+            "name": "CB #0 Shaun Nicholas",
+            "status": "Available"
+          },
+          {
+            "name": "RB #0 Maurice Turner",
+            "status": "Available"
+          },
+          {
+            "name": "WR #1 Zycarl Lewis Jr.",
+            "status": "Available"
+          },
+          {
+            "name": "S #1 Jack Tchienchou",
+            "status": "Available"
+          },
+          {
+            "name": "LB #2 Dickson Agu",
+            "status": "Available"
+          },
+          {
+            "name": "WR #2 Destyn Hill",
+            "status": "Available"
+          },
+          {
+            "name": "QB #3 Kadin Semonza",
+            "status": "Available"
+          },
+          {
+            "name": "DB #3 TJ Smith",
+            "status": "Questionable"
+          },
+          {
+            "name": "QB #4 Jay Beamon",
+            "status": "Available"
+          },
+          {
+            "name": "LB #4 Chris Rodgers",
+            "status": "Out"
+          },
+          {
+            "name": "CB #5 E'zaiah Shine",
+            "status": "Available"
+          },
+          {
+            "name": "DB #6 Josh Sims",
+            "status": "Available"
+          },
+          {
+            "name": "RB #6 Johnnie Daniels",
+            "status": "Available"
+          },
+          {
+            "name": "S #7 Kevin Adams III",
+            "status": "Available"
+          },
+          {
+            "name": "BAN #10 Gerrod Henderson",
+            "status": "Available"
+          },
+          {
+            "name": "LB #11 Dalton Hughes",
+            "status": "Available"
+          },
+          {
+            "name": "DB #12 Anthony Rogers",
+            "status": "Available"
+          },
+          {
+            "name": "TE #13 Ty Thompson",
+            "status": "Out"
+          },
+          {
+            "name": "SPR #13 Kajuan Banks",
+            "status": "Available"
+          },
+          {
+            "name": "CB #14 Armani Cargo",
+            "status": "Out"
+          },
+          {
+            "name": "WR #15 Antwaun Parham",
+            "status": "Out"
+          },
+          {
+            "name": "TE #19 Dawson Johnson",
+            "status": "Available"
+          },
+          {
+            "name": "TE #22 Jakson Judge",
+            "status": "Available"
+          },
+          {
+            "name": "CB #22 Justin Agu",
+            "status": "Out"
+          },
+          {
+            "name": "DB #23 Orion Saunders",
+            "status": "Questionable"
+          },
+          {
+            "name": "SPR #24 Michael Igbinoghene",
+            "status": "Available"
+          },
+          {
+            "name": "RB #25 Jamauri McClure",
+            "status": "Out"
+          },
+          {
+            "name": "P #33 Brooks Moore",
+            "status": "Available"
+          },
+          {
+            "name": "P #34 William Hudlow",
+            "status": "Available"
+          },
+          {
+            "name": "K #35 Cooper Helmke",
+            "status": "Available"
+          },
+          {
+            "name": "BAN #40 Warren Roberts, Jr.",
+            "status": "Available"
+          },
+          {
+            "name": "DL #45 Ed Smith IV",
+            "status": "Available"
+          },
+          {
+            "name": "K #46 Zach Marini",
+            "status": "Available"
+          },
+          {
+            "name": "OL #51 John Bock II",
+            "status": "Questionable"
+          },
+          {
+            "name": "DL #51 Reshad Sterling",
+            "status": "Available"
+          },
+          {
+            "name": "OL #52 Tristen Fortenberry",
+            "status": "Available"
+          },
+          {
+            "name": "OL #55 Dominic Steward",
+            "status": "Available"
+          },
+          {
+            "name": "LS #57 Jason Arredondo",
+            "status": "Available"
+          },
+          {
+            "name": "OL #58 Ryan Mickow",
+            "status": "Out"
+          },
+          {
+            "name": "LS #63 Graham Coady",
+            "status": "Available"
+          },
+          {
+            "name": "DL #70 Kameron Hamilton",
+            "status": "Out"
+          },
+          {
+            "name": "OL #73 Elijah Baker",
+            "status": "Out"
+          }
+        ],
+        "teamName": "Tulane"
+      },
+      {
+        "rows": [
+          {
+            "name": "DB #0 Collin Gill",
+            "status": "Available"
+          },
+          {
+            "name": "WR #0 Cam Pedro",
+            "status": "Available"
+          },
+          {
+            "name": "WR #1 Jaden Barnes",
+            "status": "Available"
+          },
+          {
+            "name": "DB #1 Jameel Croft, Jr.",
+            "status": "Available"
+          },
+          {
+            "name": "DL #2 Jaylon Johnson",
+            "status": "Available"
+          },
+          {
+            "name": "TE #3 Logan Mauldin",
+            "status": "Available"
+          },
+          {
+            "name": "RB #5 Khamani Alexander",
+            "status": "Available"
+          },
+          {
+            "name": "RB #6 D'Mariun Perteet",
+            "status": "Available"
+          },
+          {
+            "name": "DL #7 DJ Burgess",
+            "status": "Available"
+          },
+          {
+            "name": "RB #7 Chance Williams",
+            "status": "Out"
+          },
+          {
+            "name": "QB #9 Cole Gonzales",
+            "status": "Available"
+          },
+          {
+            "name": "LB #10 Jerry Wall III",
+            "status": "Out"
+          },
+          {
+            "name": "QB #10 Jaylen White",
+            "status": "Available"
+          },
+          {
+            "name": "LB #13 Gavin Willis",
+            "status": "Available"
+          },
+          {
+            "name": "DL #14 Kendal Brown",
+            "status": "Out"
+          },
+          {
+            "name": "TE #17 Gus McGee",
+            "status": "Available"
+          },
+          {
+            "name": "LB #19 Kadin Schmitz",
+            "status": "Available"
+          },
+          {
+            "name": "DB #20 Zayden Laing-Taylor",
+            "status": "Out"
+          },
+          {
+            "name": "LB #32 Latrell Sellers",
+            "status": "Out"
+          },
+          {
+            "name": "LS #33 Henry Searcy",
+            "status": "Available"
+          },
+          {
+            "name": "LS #40 Charlie Becker",
+            "status": "Available"
+          },
+          {
+            "name": "P #44 Ian Kelly",
+            "status": "Available"
+          },
+          {
+            "name": "OL #50 Rod Green",
+            "status": "Available"
+          },
+          {
+            "name": "OL #54 Isaac Sikes-Rasby",
+            "status": "Available"
+          },
+          {
+            "name": "OL #55 Mathias Nielsen",
+            "status": "Out"
+          },
+          {
+            "name": "OL #73 Daniel Phillips",
+            "status": "Exempt"
+          },
+          {
+            "name": "WR #82 Shelden Golliday",
+            "status": "Out"
+          },
+          {
+            "name": "K #84 Aiden Bui",
+            "status": "Available"
+          },
+          {
+            "name": "P #95 Bronson Long",
+            "status": "Available"
+          },
+          {
+            "name": "K #99 Charlie Birtwistle",
+            "status": "Available"
+          }
+        ],
+        "teamName": "Charlotte"
+      }
+    ]
+  },
+  "note": "Official report excerpt: up to two rows per status and position, preserving publication and game metadata."
+}

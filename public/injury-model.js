@@ -21,9 +21,13 @@
     if (!game || !Number.isFinite(game.kickoff) || game.kickoff <= now || game.kickoff > now + 7 * day)
       return unknown('Current reports cannot establish availability for a past game or a matchup more than seven days away.');
     if (!data?.current) return unknown('Current injury reports have not been verified.');
-    const team = data.teams?.find(t => String(t.id) === String(teamId));
+    const matchingTeams=(Array.isArray(data.teams)?data.teams:[]).filter(t=>String(t?.id)===String(teamId));
+    if(matchingTeams.length>1)return {blocked:true,state:'conflict',reason:'Duplicate team availability reports; player status cannot be uniquely verified.'};
+    const team=matchingTeams[0];
     if (!team) return unknown('Team availability is unknown.');
-    const roster = team.roster?.rows?.find(p => String(p.id) === String(playerId));
+    const matchingPlayers=(Array.isArray(team.roster?.rows)?team.roster.rows:[]).filter(p=>String(p?.id)===String(playerId));
+    if(matchingPlayers.length>1)return {blocked:true,state:'conflict',reason:'Duplicate player roster identities; projection withheld until resolved.'};
+    const roster=matchingPlayers[0];
     const fresh = (time, age) => Number.isFinite(time) && time <= now && now - time <= age;
     if(requireMembership && team.roster?.available && team.roster.rows?.length && fresh(team.roster.checkedAt,3600000) && !roster)
       return {blocked:true,state:'team-unconfirmed',reason:'Player is absent from this team’s current provider roster. Projection withheld; verify a trade or roster change before using older team stats.'};

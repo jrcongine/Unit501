@@ -15,7 +15,7 @@
  ratingsLabel.append(ratings,' Build Full League Rankings');
  const start=document.createElement('button');start.type='button';start.id='auto-prep-now';start.textContent='Prepare selected game now';
  const status=document.createElement('p');status.id='auto-prep-status';status.setAttribute('role','status');
- const help=document.createElement('p');help.textContent='FanDuel lines, team context, injury reports and weather already refresh on game selection. Prep also starts player projections and runs Game Lab once current lines, scoring and both teams’ injury coverage are ready. If feeds are missing it waits rather than inventing inputs. No picks are selected or bets placed.';
+ const help=document.createElement('p');help.textContent='FanDuel lines, team context, injury reports and weather already refresh on game selection. Prep also starts player projections and runs Game Lab once current lines, scoring and supported injury context are ready. If feeds are missing it waits rather than inventing inputs. No picks are selected or bets placed.';
  panel.append(heading,autoLabel,ratingsLabel,start,status);matchup.after(panel);
  let token=0,prepared=null,simulated=null,ratingStarted=null,edited=false;
  function preserveEdits(event){if(event.target===automatic||event.target===ratings)return;edited=true;status.textContent='Inputs changed. Run Game Lab when ready, or choose Prepare selected game now.';}
@@ -71,8 +71,10 @@
  }
  document.addEventListener('unit501:selection-changed',delayedPrepare);
  document.addEventListener('unit501:simulation-invalidated',()=>{
-  if(current()&&current()===prepared)
+  if(current()&&current()===prepared){
+   simulated=null;
    status.textContent='Simulation needs rerunning. Inputs or supporting data changed; see the Game Lab message.';
+  }
  });
  document.addEventListener('unit501:simulation-completed',()=>{
   if(current()&&current()===prepared){
@@ -80,7 +82,7 @@
    status.textContent='Game prep ready: simulation completed. Weather and injury coverage are shown with the result.';
   }
  });
- for(const event of ['unit501:team-context-updated','unit501:availability-updated','unit501:odds-updated','unit501:weather-updated'])
+ for(const event of ['unit501:team-context-updated','unit501:availability-updated','unit501:odds-updated','unit501:weather-updated','unit501:lineup-updated'])
   document.addEventListener(event,maybeSim);
  start.addEventListener('click',()=>{const game=current();if(!game){status.textContent='Select a game first.';return;}prepare(game,ratings.checked);});
  automatic.addEventListener('change',()=>{

@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const {createCollegeAvailability,matchReports,localEpoch}=require('../college-availability');
+const {createCollegeAvailability,matchReports,localEpoch,sources}=require('../college-availability');
 const {assess}=require('../public/injury-model');
 const now=Date.parse('2026-10-10T20:00:00Z'),kickoff=Date.parse('2026-10-10T23:30:00Z');
 const q={league:'2',season:'2026',game:'100',away:'1',home:'2'};
@@ -19,7 +19,7 @@ test('official college reports require both schools, exact kickoff and a valid p
 });
 test('official college Out gates without provider coverage and uncertain statuses remain conditional',async()=>{
  let calls=0;const get=createCollegeAvailability(async()=>({response:[g]}),()=>now,async conf=>{calls++;return conf==='SEC'?{x:report()}:{};});
- const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,4);
+ const t=teams();await get(q,t);await get(q,teams());assert.equal(calls,Object.keys(sources).length);
  assert.equal(t[0].official.publisher,'SEC');assert.equal(t[0].official.rows[0].id,'10');
  const data={current:true,teams:t},game={id:'100',kickoff};assert.equal(assess(data,game,'1','10',now,true).blocked,true);
  assert.equal(assess(data,game,'2','20',now,true).state,'conditional');
@@ -124,10 +124,40 @@ test('Big 12 report reaches availability and automatic scoring only with matched
   const check=async read=>{const t=teams();await createCollegeAvailability(async()=>({response:[g]}),()=>now,read)(q,t);return t[0].official;};
   const missing=await check(async()=>({}));
   assert.equal(missing.available,false);assert.equal(missing.reasonCode,'no-matching-report');
-  assert.equal(missing.diagnostics.length,4);assert.ok(missing.diagnostics.every(d=>d.state==='no-exact-match'));
+  assert.equal(missing.diagnostics.length,Object.keys(sources).length);assert.ok(missing.diagnostics.every(d=>d.state==='no-exact-match'));
   const failed=await check(async()=>{throw Error('unavailable');});
   assert.equal(failed.reasonCode,'sources-unavailable');assert.match(failed.message,/Fetch or parse failed/);
   const partial=await check(async conf=>{if(conf==='SEC')throw Error('failed');return {};});
   assert.equal(partial.reasonCode,'no-matching-report');assert.match(partial.message,/SEC/);
   const ambiguous=await check(async()=>({x:report()}));assert.equal(ambiguous.reasonCode,'ambiguous-report');
  });
+
+test('American and MAC official snapshots gate matched Out players and apply verified workload',async()=>{
+ for(const [conf,schools] of [['American',['Tulane','Charlotte']],['MAC',['Kent State','Sacramento State']]]){
+  const r=require('./fixtures/'+conf.toLowerCase()+'-availability-20261030.json').report;
+  const kickoff=localEpoch(r.footer.date,r.footer.time,r.conferenceTimeZone),now=kickoff-60000;
+  const g={league:{id:2,season:2026},game:{date:{timestamp:kickoff/1000}},teams:{away:{id:1,name:schools[0]},home:{id:2,name:schools[1]}}};
+  // Synthetic provider identities and workloads isolate reconciliation; not live provider claims.
+  const t=r.games.map((side,i)=>({id:String(i+1),roster:{available:true,checkedAt:now,rows:side.rows.map((p,j)=>{const m=/^([A-Z]+) #\d+ (.+)$/.exec(p.name);assert.ok(m);return {id:String(1000+i*1000+j),name:m[2],position:m[1]};})},injuryUsage:{available:true,checkedAt:now,gameId:'100',kickoff,league:'2',season:'2026',rows:[]}}));
+  await createCollegeAvailability(async()=>({response:[g]}),()=>now,async c=>c===conf?{r}:{})(q,t);
+  assert.ok(t.every(x=>x.official.available));assert.ok(t.every(x=>x.official.unmatched===0));assert.equal(t[0].official.source,conf);
+  const game={id:'100',league:'2',season:'2026',kickoff,awayId:'1',homeId:'2'},data={current:true,teams:t};
+  let checked=0;
+  for(const team of t){
+   const out=team.official.rows.find(p=>p.status==='Out'&&p.position==='RB');if(!out)continue;
+   assert.equal(assess(data,game,team.id,out.id,now,true).blocked,true);
+   team.injuryUsage.rows.push({id:out.id,position:'RB',metric:'carries',values:[10,11,9],role:'recent regular contributor'});checked++;
+  }
+  assert.ok(checked>0);
+  const result=require('../public/auto-injury').evaluate(data,game,null,now);assert.equal(result.applied.length,checked);
+  assert.ok(result.injury.awayOffense>0||result.injury.homeOffense>0);
+  for(const team of t)team.official.checkedAt=now-900001;
+  assert.equal(require('../public/auto-injury').evaluate(data,game,null,now).applied.length,0);
+ }
+});
+test('observed official conference abbreviations resolve without weakening school identity',()=>{
+ for(const [name,canonical] of [['Fla. Atlantic','Florida Atlantic'],['South Fla.','South Florida'],['Army West Point','Army'],['Western Mich.','Western Michigan']]){
+  const r=report();r.games[0].teamName=name;
+  assert.equal(matchReports({r},{...g,teams:{...g.teams,away:{id:1,name:canonical}}},'2026',now).length,1);
+ }
+});

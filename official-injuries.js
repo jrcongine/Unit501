@@ -11,7 +11,8 @@ function parseReport(html, season, week) {
     const rows=[];
     for(const row of match[2].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)) {
       const cells=[...row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map(m=>clean(m[1]));
-      if(cells.length!==5)continue;
+      if(!cells.length)continue; // Header rows contain th cells.
+      if(cells.length!==5||!cells[0]||!cells[1])throw new Error('Official injury row layout could not be verified.');
       rows.push({name:cells[0],position:cells[1],description:cells[2],practice:cells[3],status:cells[4]});
     }
     teams.push({name:clean(match[1]),rows});

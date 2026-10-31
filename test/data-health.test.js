@@ -135,3 +135,22 @@ test('team context telemetry labels known NBA and college history gaps partial',
   assert.equal(assessment({away:side,home:{}},'context',Date.now()).status,'partial');
  }
 });
+
+test('neutral football player-line endpoint records successful, partial and failed feeds per sport',()=>{
+ for(const [league,sport] of [['1','nfl'],['2','ncaaf']]){
+  const h=createHealth(),u=url('/api/football/player-lines?league='+league),id=sport+':props';
+  h.observe(u,200,{props:[{line:1.5,updatedAt:Date.now()}],audit:{rejected:0,missingMarkets:[]}});assert.equal(row(h,id).status,'working');
+  h.observe(u,200,{props:[{line:1.5}],audit:{rejected:0,missingMarkets:['player_receptions']}});assert.equal(row(h,id).status,'partial');
+  h.observe(u,503,{error:'source failed'});assert.equal(row(h,id).status,'failed');
+ }
+ for(const sport of ['nba','ncaab']){
+  const h=createHealth();h.observe(url('/api/'+sport+'/props'),200,{props:[{line:10}],audit:{rejected:1,missingMarkets:[]}});assert.equal(row(h,sport+':props').status,'partial');
+ }
+});
+test('unresolved official identities remain partial in aggregate and official subfeed',()=>{
+ const h=createHealth(),t={roster:{available:true},injuries:{available:true,rows:[{id:'1'}]},official:{available:true,unmatched:1,rows:[],unresolved:[{name:'Unknown',status:'Out'}]}};
+ for(const [league,sport] of [['1','nfl'],['2','ncaaf']]){
+  h.observe(url('/api/availability?league='+league),200,{current:true,teams:[t,t]});
+  assert.equal(row(h,sport+':injuries').status,'partial');assert.equal(row(h,sport+':official').status,'partial');
+ }
+});

@@ -156,3 +156,12 @@ test('automatic refresh checks official and depth timestamps independently of pr
   data.teams[0][key].checkedAt=now+1;assert.equal(refreshDue(data,game,now),true,'future timestamp rejected');
  }
 });
+
+test('duplicate team and player identities block football projections regardless of row order',()=>{
+ for(const league of ['1','2']){
+  const d=fixture();d.teams.push(structuredClone(d.teams[0]));d.teams[1].injuries.rows=[];
+  for(const teams of [d.teams,[...d.teams].reverse()])assert.equal(assess({...d,teams},{...game,league},'1','10',now).state,'conflict');
+  const p=fixture();p.teams[0].roster.rows.push({...p.teams[0].roster.rows[0],group:'Injured Reserve'});
+  assert.equal(assess(p,{...game,league},'1','10',now).state,'conflict');
+ }
+});

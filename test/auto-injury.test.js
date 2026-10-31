@@ -294,3 +294,15 @@ test('NFL and college exclusion reasons expose actual workload without turning m
   assert.doesNotMatch(result.withheld.join(' '),/unknown \/ 7 \/ 0/);
  }
 });
+
+test('automatic football scoring rejects duplicate team or player identities without suppressing the other team',()=>{
+ for(const league of ['1','2']){
+  const d=build();add(d,'1',{id:'7',name:'WR One',position:'WR'});add(d,'2',{id:'8',name:'CB One',position:'CB'});
+  const g={...game,league};for(const t of d.teams){t.official.league=league;t.injuryUsage={...t.depth,league,rows:t.roster.rows.map(p=>({...p,role:'recent regular contributor'}))};}
+  const duplicate=structuredClone(d);duplicate.teams.push(structuredClone(duplicate.teams[0]));
+  assert.equal(evaluate(duplicate,g,null,now).injury.awayOffense,0);
+  const roster=structuredClone(d);roster.teams[0].roster.rows.push({...roster.teams[0].roster.rows[0],position:'RB'});
+  const r=evaluate(roster,g,null,now);assert.equal(r.injury.awayOffense,0);assert.match(r.withheld.join(' '),/duplicate player/);
+  if(league==='1')assert.equal(r.injury.homeDefense,.5);
+ }
+});

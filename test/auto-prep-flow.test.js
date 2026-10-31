@@ -21,14 +21,25 @@ test('failed model preparation can retry; user edits are preserved',()=>{
  const next=harness();next.start();next.nodes.get('lab').dispatchEvent({type:'input'});next.context.ready=true;next.context.forecastContext.settled=true;next.fire('unit501:weather-updated');assert.equal(next.context.calls,0);next.start();assert.equal(next.context.calls,1);
 });
 
-test('invalidated results clear completion banner and manual completion restores it',()=>{
+test('invalidated automatic results refresh on new data and manual completion restores the banner',()=>{
  const h=harness();h.context.ready=true;h.context.forecastContext.settled=true;h.start();
  assert.match(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
  h.fire('unit501:simulation-invalidated');
  assert.match(h.nodes.get('auto-prep-status').textContent,/needs rerunning/);
  h.fire('unit501:availability-updated');
- assert.equal(h.context.calls,1);
- assert.doesNotMatch(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
+ assert.equal(h.context.calls,2);
+ assert.match(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
  h.fire('unit501:simulation-completed');
  assert.match(h.nodes.get('auto-prep-status').textContent,/simulation completed/);
+});
+
+test('fresh data never overwrites edited inputs and expired injury evidence still blocks reruns',()=>{
+ for(const league of ['1','2']){
+  const h=harness(league);h.context.ready=true;h.context.forecastContext.settled=true;h.start();
+  h.fire('unit501:simulation-invalidated');h.context.ready=false;h.fire('unit501:availability-updated');assert.equal(h.context.calls,1);
+  h.context.ready=true;h.fire('unit501:lineup-updated');assert.equal(h.context.calls,2);
+  h.nodes.get('lab').dispatchEvent({type:'input'});h.fire('unit501:simulation-invalidated');
+  for(const event of ['unit501:availability-updated','unit501:weather-updated','unit501:lineup-updated'])h.fire(event);
+  assert.equal(h.context.calls,2);
+ }
 });

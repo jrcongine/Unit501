@@ -103,3 +103,11 @@ test('shared football name matching handles accents without inventing identities
   assert.equal(matchPlayer({name:'',position:'WR'},[{id:'8',name:'',position:'WR'}],'1',{league}),null);
  }
 });
+
+test('malformed NFL injury rows cannot silently disappear from a verified report',async()=>{
+ for(const html of [page.replace('<td>Toe</td>',''),page.replace('<td>Toe</td>','<td>Toe</td><td>Extra</td>'),page.replace('<td>Player One</td>','<td></td>')]){
+  assert.throws(()=>parseReport(html,'2026',5),/row layout/);
+  const t=teams();await createOfficialInjuries(async()=>({response:[g]}),()=>now,async()=>html)(q,t);
+  assert.equal(t[0].official.available,false);
+ }
+});

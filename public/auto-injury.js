@@ -47,9 +47,10 @@
   if(!game||!['1','2'].includes(String(game.league))||!Number.isFinite(now)||!Number.isFinite(game.kickoff)||game.kickoff<=now||
     game.kickoff>now+7*86400000){state.message='Automatic scenarios currently support upcoming NFL and college games within seven days only.';return state;}
   if(!data?.current||!Array.isArray(data.teams)){state.message='Live roster and official injury feeds have not loaded. Zero means unknown, not healthy.';return state;}
+  if(String(game.awayId)===String(game.homeId)){state.message='Distinct matchup teams are required; injury scoring withheld.';return state;}
   const teams=[[String(game.awayId),'away'],[String(game.homeId),'home']].map(([teamId,side])=>({
    teamId,side,label:side==='away'?game.a||'Away':game.h||'Home',
-   team:data.teams.find(t=>String(t.id)===teamId)
+   team:(()=>{const matches=data.teams.filter(t=>String(t?.id)===teamId);return matches.length===1?matches[0]:null;})()
   }));
   const eligible=new Set();
   for(const {teamId,label,team:t} of teams){
@@ -58,6 +59,8 @@
     withheld.push(label+': current matched roster and official game report required; no point estimate.'+(t?.official?.available!==true&&t?.official?.message?' '+t.official.message:''));
    if(!t||(!(fresh(t.depth,3600000,now)&&matchGame(t.depth,game)||fresh(t.injuryUsage,3600000,now)&&matchGame(t.injuryUsage,game))&&!(fresh(t.quarterback,3600000,now)&&matchGame(t.quarterback,game)&&t.quarterback.rows?.length>0)))
     withheld.push(label+': player-role data unavailable, expired, or for a different matchup; no point estimate.');
+   const rosterIds=(t?.roster?.rows||[]).filter(r=>r?.id).map(r=>String(r.id));
+   if(new Set(rosterIds).size!==rosterIds.length)withheld.push(label+': duplicate player roster identities; no automatic score adjustment.');
    if(withheld.length===start)eligible.add(teamId);
   }
   state.partial=eligible.size<teams.length;
