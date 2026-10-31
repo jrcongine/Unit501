@@ -30,7 +30,8 @@
   if(!activeContext){output.textContent='Estimate unavailable until matching team history loads.';return;}
   const {game,data}=activeContext;
   if(!shared.historyFreshness(data.checkedAt).fresh){output.textContent='Team history is stale or its update time is unverified. Refresh team history.';contextStatus.textContent=output.textContent;return;}
-  const result=window.Unit501NBAModel.project(game,data,formWindow.value);
+  const baseline=window.Unit501NBAModel.project(game,data,formWindow.value);
+  const result=window.Unit501BasketballInjuryModel.apply(baseline,game,data,window.Unit501NBAMarkets?.historyFor?.(game),injuryReport,formWindow.value);
   if(!result.available){output.textContent=result.reason;return;}
   output.textContent=game.away+' '+result.away.toFixed(1)+' · '+game.home+' '+result.home.toFixed(1)+' | Total '+result.total.toFixed(1)+' | '+game.home+' spread '+signed(result.homeSpread);
   const line=window.Unit501NBAMarkets?.spreadFor?.(game);
@@ -52,9 +53,9 @@
    if(sim.spread)message+=' · '+game.away+' '+signed(sim.spread.line)+' cover '+percent(sim.spread.away)+' · '+game.home+' cover '+percent(sim.spread.home)+' · push '+percent(sim.spread.push);
    if(sim.total)message+=' · Over '+sim.total.line+' '+percent(sim.total.over)+' · Under '+percent(sim.total.under)+' · push '+percent(sim.total.push);
    simulation.textContent=message;
-   simulationDetail.textContent='Experimental frequencies, not calibrated odds. Resamples each team’s last '+sim.sampleGames[0]+'/'+sim.sampleGames[1]+' completed games; does not account for injuries, player minutes or overtime.';
+   simulationDetail.textContent='Experimental frequencies, not calibrated odds. Resamples each team’s last '+sim.sampleGames[0]+'/'+sim.sampleGames[1]+' completed games around the displayed score, including any supported historical absence adjustment; player minutes and overtime are not modeled.';
   }else simulation.textContent=sim.reason;
-  detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation;
+  detail.textContent=result.awayGames+'/'+result.homeGames+' games (away/home). '+(result.thin?'Small sample. ':'')+result.explanation+' '+window.Unit501BasketballInjuryModel.describe(result);
  }
  function renderHeadToHead(){
   renderProjection();
@@ -171,7 +172,7 @@
  }
  byId('nba-refresh-context').addEventListener('click',()=>{if(contextGame)return loadContext(contextGame);});
  function clearInjuries(message='Select a game to check injuries.'){
-  ++injuryRequest;injuryReport=null;window.Unit501NBAMarkets?.setInjuries?.(injuryGame,null);byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent=message;
+  ++injuryRequest;injuryReport=null;window.Unit501NBAMarkets?.setInjuries?.(injuryGame,null);byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent=message;renderProjection();
  }
  function showInjuries(report){
   const list=byId('nba-injuries-list');list.replaceChildren();
@@ -200,7 +201,7 @@
    if(!response.ok||String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||!Number.isFinite(at)||at>Date.now()+60000||Date.now()-at>7200000||
      !Array.isArray(data.teams)||data.teams.length!==2||data.teams.some(t=>!t||typeof t.name!=='string'||typeof t.available!=='boolean'||!Array.isArray(t.players)||
       t.players.some(p=>typeof p.name!=='string'||!['Out','Doubtful','Questionable','Probable','Available','Unverified'].includes(p.status))))throw Error('Report unavailable');
-   injuryReport=data;showInjuries(data);window.Unit501NBAMarkets?.setInjuries?.(game,data);
+   injuryReport=data;showInjuries(data);renderProjection();window.Unit501NBAMarkets?.setInjuries?.(game,data);
   }catch{
    if(serial!==injuryRequest||injuryGame!==game)return;
    byId('nba-injuries-list').replaceChildren();byId('nba-injuries-status').textContent='Official report unavailable for this matchup. Open the NBA report to check.';

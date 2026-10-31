@@ -45,7 +45,7 @@ function harness(){
   return {ok:true,json:async()=>u.pathname==='/api/nba/games'?{games,checkedAt:new Date().toISOString()}:data(games.find(g=>g.id===Number(u.searchParams.get('game'))))};
  };
  vm.createContext(context);
- for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba-model.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
+ for(const name of ['unit501-shared-ui.js','nba-alerts.js','nba-model.js','nba-player-model.js','basketball-injury-model.js','nba.js','league-pulse.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+name),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const load=async()=>{await nodes.get('nba-load').events.click();await settle();};
  const choose=async i=>{nodes.get('nba-games').children[i].events.click();await settle();await settle();};
@@ -187,7 +187,7 @@ test('NBA simulation follows projections and fresh line updates without new requ
  h.context.Unit501NBAMarkets={select(){},clear(){},spreadFor:()=>lines.awaySpread,linesFor:()=>lines};
  await h.load();await h.choose(0);
  assert.match(h.nodes.get('nba-simulation').textContent,/10,000 simulations.*Chicago Bulls win.*cover.*Over 220.5/);
- assert.match(h.nodes.get('nba-simulation-detail').textContent,/not calibrated.*injuries/);
+ assert.match(h.nodes.get('nba-simulation-detail').textContent,/not calibrated.*historical absence adjustment/);
  assert.match(h.nodes.get('nba-market-gap').textContent,/FanDuel.*Away margin gap.*Total gap/);assert.equal(h.nodes.get('nba-market-gap').hidden,false);
  const count=h.requests.length;lines={};h.context.document.dispatchEvent(new h.context.Event('unit501:nba-lines-updated'));
  assert.doesNotMatch(h.nodes.get('nba-simulation').textContent,/cover|Over/);
@@ -323,4 +323,23 @@ test('NBA ambiguous reports retain named rows with an unverified warning',async(
   {name:'Milwaukee Bucks',available:true,players:[]}]})}:base(url);
  await h.load();await h.choose(0);
  assert.match(h.nodes.get('nba-injuries-list').textContent,/Conflicting.*Player A · Out.*Player A · Available.*Player B · Unverified/);
+});
+
+test('NBA rendered projection uses verified absence history and drops it when stale',async()=>{
+ const h=harness(),now=Date.now(),g=h.games[0];g.tipoff=new Date(now+86400000).toISOString();g.statusCode=1;
+ const rows=Array.from({length:6},(_,i)=>({id:String(i+1),tipoff:new Date(now-(i+1)*86400000).toISOString(),for:i<3?90:110,against:100}));
+ const history={gameId:g.id,tipoff:g.tipoff,checkedAt:now,teams:[{name:g.away,available:true,players:[{name:'Absent Player',results:rows.slice(3).map(r=>({gameId:r.id,tipoff:r.tipoff,minutes:30})),inactive:rows.slice(0,3).map(r=>({gameId:r.id,tipoff:r.tipoff}))}]},{name:g.home,available:true,players:[]}]};
+ h.context.Unit501NBAMarkets={select(){},clear(){},setInjuries(){},historyFor(){return history;}};
+ const old=h.context.fetch;h.context.fetch=async url=>{
+  if(String(url).startsWith('/api/nba/injuries'))return {ok:true,json:async()=>({gameId:g.id,tipoff:g.tipoff,reportAt:now,teams:[{name:g.away,available:true,players:[{name:'Absent Player',status:'Out'}]},{name:g.home,available:true,players:[]}]})};
+  if(!String(url).startsWith('/api/nba/context'))return old(url);
+  const data=h.data(g);Object.assign(data,{tipoff:g.tipoff,stage:2});
+  for(const [side,id] of [[data.away,g.awayId],[data.home,g.homeId]])Object.assign(side,{id,available:true,season:{games:6,pointsFor:100,pointsAgainst:100},recentGames:rows});
+  return {ok:true,json:async()=>data};
+ };
+ await h.load();await h.choose(0);await h.settle();
+ assert.match(h.nodes.get('nba-prediction').textContent,/Chicago Bulls 95.0/);
+ assert.match(h.nodes.get('nba-prediction-detail').textContent,/Absent Player Out.*3 absent \/ 3 played/);
+ history.checkedAt=now-1800001;h.nodes.get('nba-form-window').events.change();
+ assert.match(h.nodes.get('nba-prediction').textContent,/Chicago Bulls 100.0/);
 });

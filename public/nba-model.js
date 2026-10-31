@@ -24,7 +24,7 @@
   if(![away,home,total].every(Number.isFinite))return unavailable('Scoring history produced an invalid estimate.');
   return {available:true,version,scope,away,home,total,homeSpread:round(away-home),
    awayGames:a.games,homeGames:h.games,thin:Math.min(a.games,h.games)<10,
-   explanation:'Each score averages the team’s scoring and its opponent’s points allowed in the selected view. Experimental; no calibrated win probability. Injuries, minutes, pace and rest are not adjusted. Returned-history coverage is not independently verified.'};
+   explanation:'Each score averages the team’s scoring and its opponent’s points allowed in the selected view. Experimental; no calibrated win probability. This baseline does not adjust injuries, minutes, pace or rest; any supported injury adjustment is reported separately. Returned-history coverage is not independently verified.'};
  }
  // Research simulation from the most recent completed team-game scores.
  // Samples offensive/defensive deviations independently; no calibration is implied.

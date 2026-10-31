@@ -132,11 +132,11 @@
    if(serial!==sequence||task!==historyTask)return;
    if(!response.ok||String(data.gameId)!==String(game.id)||data.tipoff!==game.tipoff||!Number.isFinite(data.checkedAt)||
      !Array.isArray(data.teams)||data.teams.length!==2||data.teams.some(t=>typeof t.available!=='boolean'||!Array.isArray(t.players)))throw Error('History unavailable');
-   history=data;renderProps();
+   history=data;renderProps();renderGames();
    if(historyStatus)historyStatus.textContent=data.teams.every(t=>t.available)?'Recent NBA box scores loaded · '+data.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NBA official statistics · 2–4 games is a small sample.':'Some player history is missing; estimates appear only for verified players.';
   }catch{
    if(serial!==sequence||task!==historyTask)return;
-   history=null;renderProps();if(historyStatus)historyStatus.textContent='Player history unavailable. FanDuel lines are still shown.';
+   history=null;renderProps();renderGames();if(historyStatus)historyStatus.textContent='Player history unavailable. FanDuel lines are still shown.';
   }
  }
  function renderComparison(){
@@ -218,10 +218,11 @@
  if(typeof document.dispatchEvent==='function'&&typeof Event==='function')document.dispatchEvent(new Event('unit501:nba-lines-updated'));
  props=null;comparison=null;injuries=null;clearTimeout(timer);gameBoard.replaceChildren();propBoard.replaceChildren();compareBoard.replaceChildren();gameStatus.textContent='';propStatus.textContent='Select a matchup to load its player quotes.';compareStatus.textContent='Select a matchup to compare moneylines, spreads and totals.';refresh.disabled=true;loadProps.disabled=true;compare.disabled=true;}
  function tick(){if(!selected)return;if(!document.hidden){renderGames();renderProps();renderComparison();}timer=setTimeout(tick,60000);}
- root.Unit501NBAMarkets={clear,setInjuries(game,report){
+ root.Unit501NBAMarkets={clear,historyFor(game){return selected&&String(selected.id)===String(game?.id)&&selected.tipoff===game.tipoff?history:null;},setInjuries(game,report){
   if(!selected||String(selected.id)!==String(game?.id)||selected.tipoff!==game.tipoff)return;
   injuries=report&&String(report.gameId)===String(selected.id)&&report.tipoff===selected.tipoff&&Array.isArray(report.teams)?report:null;
   renderProps();
+  if(injuries&&(!history||!fresh(history.checkedAt))&&injuries.teams.some(t=>t.players?.some(p=>/^out$/i.test(p.status))))loadPlayerHistory(selected,sequence);
  },linesFor(game){
   if(!selected||String(selected.id)!==String(game?.id)||selected.tipoff!==game.tipoff)return {};
   const spread=quotes?.spread,total=quotes?.total;
