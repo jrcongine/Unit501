@@ -154,3 +154,23 @@ test('unresolved official identities remain partial in aggregate and official su
   assert.equal(row(h,sport+':injuries').status,'partial');assert.equal(row(h,sport+':official').status,'partial');
  }
 });
+
+test('all four game-odds feeds flag incomplete markets and retain safe actionable details',()=>{
+ const {gameQuotes}=require('../game-quotes'),now=1800000000000;
+ for(const [path,id] of [['/api/fanduel?league=1','nfl:odds'],['/api/fanduel?league=2','ncaaf:odds'],['/api/nba/odds','nba:odds'],['/api/ncaab/odds','ncaab:odds']]){
+  const h=createHealth({now:()=>now}),u=url(path);
+  const data={available:true,...gameQuotes({away_team:'A',home_team:'B',bookmakers:[{key:'fanduel',last_update:new Date(now).toISOString(),markets:[{key:'h2h',outcomes:[{name:'A',price:120},{name:'B',price:-140}]}]}]},now)};
+  h.observe(u,200,data);assert.equal(row(h,id).status,'partial');assert.deepEqual(row(h,id).details,['Spread: market not returned.','Total: market not returned.']);
+  h.observe(u,200,{...data,marketAudit:[{market:'h2h',status:'unavailable',reason:'secret provider URL'}]});assert.deepEqual(row(h,id).details,[]);
+  h.observe(u,503,{error:'private'});assert.equal(row(h,id).status,'failed');assert.deepEqual(row(h,id).details,[]);
+ }
+});
+test('market diagnostics persist without payloads and disappear after successful recovery',()=>{
+ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),dir=fs.mkdtempSync(path.join(os.tmpdir(),'unit-market-health-')),file=path.join(dir,'health.json');
+ const now=1800000000000,u=url('/api/nba/odds');
+ try{
+  const a=createHealth({now:()=>now,file});a.observe(u,200,{available:true,updatedAt:now,marketAudit:[{market:'spreads',status:'unavailable',reason:'future_timestamp'}],secret:'do not save'});a.flush();
+  const b=createHealth({now:()=>now,file});assert.equal(row(b,'nba:odds').status,'partial');assert.deepEqual(row(b,'nba:odds').details,['Spread: source timestamp is in the future.']);assert.doesNotMatch(fs.readFileSync(file,'utf8'),/do not save/);
+  b.observe(u,200,{available:true,updatedAt:now,marketAudit:[{market:'spreads',status:'working',reason:null}]});assert.equal(row(b,'nba:odds').status,'working');assert.deepEqual(row(b,'nba:odds').details,[]);b.flush();
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

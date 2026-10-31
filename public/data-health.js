@@ -9,7 +9,7 @@
   for(const row of snapshot.feeds){
    if(filter==='attention'&&!['failed','unavailable','partial','stale','unchecked','loading'].includes(row.status))continue;
    if(!['all','attention'].includes(filter)&&!row.id.startsWith(filter+':'))continue;
-   const card=node('article','','health-feed');card.append(node('h3',row.label),node('span',row.status.toUpperCase(),'health-badge health-'+row.status),node('p','Source / check: '+date(row.sourceAt)),node('p','Last successful response: '+date(row.lastSuccessAt)));root.append(card);
+   const card=node('article','','health-feed');card.append(node('h3',row.label),node('span',row.status.toUpperCase(),'health-badge health-'+row.status),node('p','Source / check: '+date(row.sourceAt)),node('p','Last successful response: '+date(row.lastSuccessAt)));for(const detail of row.details||[])card.append(node('p',detail));root.append(card);
   }
   if(!root.children.length)root.append(node('p','No feeds match this filter. Unchecked feeds are not confirmed working.'));
  }

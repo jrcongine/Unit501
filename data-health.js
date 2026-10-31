@@ -3,6 +3,9 @@
 const SPORTS={nfl:'NFL',ncaaf:'College football',nba:'NBA',ncaab:'College basketball'};
 const KINDS={games:'Schedule',odds:'FanDuel lines',props:'FanDuel props',injuries:'Availability',context:'Team history','player-history':'Player history',participation:'Player participation'};
 const SOURCES={covers:'Covers',wagertalk:'WagerTalk',boyds:'Boyd’s Bets',pickswise:'Pickswise'};
+const MARKET_LABELS={h2h:'Moneyline',spreads:'Spread',totals:'Total'};
+const MARKET_REASONS={invalid_teams:'team identity could not be verified',ambiguous_bookmaker:'conflicting bookmaker records',missing_bookmaker:'bookmaker not returned',ambiguous_market:'conflicting market records',missing_market:'market not returned',missing_timestamp:'source timestamp missing or invalid',future_timestamp:'source timestamp is in the future',stale_timestamp:'source quote older than 30 minutes',unpaired_outcomes:'paired selections missing',conflicting_outcomes:'team or selection mismatch',invalid_or_conflicting_line:'invalid or conflicting line',missing_or_invalid_price:'paired prices missing or invalid'};
+function safeIssues(issues){return Array.isArray(issues)?[...new Set(issues.filter(i=>typeof i==='string'&&Object.hasOwn(MARKET_LABELS,i.split(':')[0])&&Object.hasOwn(MARKET_REASONS,i.split(':')[1])&&i.split(':').length===2))].slice(0,3):[];}
 function route(url){
  const p=url.pathname,q=url.searchParams;
  const sport=q.get('league')==='1'?'nfl':q.get('league')==='2'?'ncaaf':null;
@@ -35,6 +38,8 @@ function assessment(data,kind,now){
  collect(data);
  const at=times.length?Math.min(...times):null;
  let status='working';
+ const issues=safeIssues((Array.isArray(data.marketAudit)?data.marketAudit:[]).filter(m=>m?.status!=='working').map(m=>m?.market+':'+m?.reason));
+ if(kind==='odds'&&issues.length)status='partial';
  if(kind==='travel'){const sides=[data.away,data.home];status=sides.every(t=>t?.available===true)?'working':sides.some(t=>t?.available===true)?'partial':'unavailable';}
  if(kind==='context'&&[data.away,data.home].some(t=>t?.available===false||t?.conflicts>0||t?.unverifiedGames>0||t?.coverage?.conflictingGames>0||t?.coverage?.unverifiedGames>0||t?.coverage?.invalid>0))status='partial';
  if(kind==='participation'&&(!Array.isArray(data.response)||data.response.length!==1||data.response[0].available!==true))status='unavailable';
@@ -47,12 +52,12 @@ function assessment(data,kind,now){
   else if(data.teams.every(t=>!(t.players?.length||t.injuries?.rows?.length)))status='empty';
  }
  if(kind==='player-history'&&data.teams?.some(t=>t.available===false||t.players?.some(p=>p.available===false||p.coverage?.missing>0||p.missing?.length||p.results?.some(r=>['player_points','player_rebounds','player_assists','player_threes'].some(k=>!Number.isInteger(r[k])||r[k]<0)))))status='partial';
- return {status,at};
+ return {status,at,issues};
 }
 function createHealth({now=Date.now,file=''}={}){
  const store=require('./health-store').createStore(file);
  const startedAt=new Date(now()).toISOString(),rows=new Map();
- const add=(id,label,ttl)=>rows.set(id,{id,label,ttl,status:'unchecked',lastResponseAt:null,lastSuccessAt:null,sourceAt:null});
+ const add=(id,label,ttl)=>rows.set(id,{id,label,ttl,status:'unchecked',lastResponseAt:null,lastSuccessAt:null,sourceAt:null,issues:[]});
  for(const [sport,label] of Object.entries(SPORTS))for(const [kind,name] of Object.entries(KINDS)){
   if(['nba','ncaab'].includes(sport)&&kind==='participation')continue;
   add(sport+':'+kind,label+' · '+name,kind==='injuries'?15*60000:['games','odds','props'].includes(kind)?30*60000:60*60000);
@@ -68,11 +73,12 @@ function createHealth({now=Date.now,file=''}={}){
   const keys=['lastResponseAt','lastSuccessAt','sourceAt'];
   if(!keys.every(k=>saved[k]===null||Number.isFinite(saved[k])&&saved[k]>0&&saved[k]<=now()+60000)||saved.lastResponseAt===null||saved.lastSuccessAt>saved.lastResponseAt)continue;
   for(const key of ['status',...keys])row[key]=saved[key];
+  row.issues=safeIssues(saved.issues);
  }
- function persist(){store.save([...rows.values()].filter(r=>r.status!=='unchecked').map(({id,status,lastResponseAt,lastSuccessAt,sourceAt})=>({id,status,lastResponseAt,lastSuccessAt,sourceAt})));}
+ function persist(){store.save([...rows.values()].filter(r=>r.status!=='unchecked').map(({id,status,lastResponseAt,lastSuccessAt,sourceAt,issues})=>({id,status,lastResponseAt,lastSuccessAt,sourceAt,issues})));}
  function record(id,result){
   const row=rows.get(id);if(!row)return;
-  row.status=result.status;row.lastResponseAt=now();row.sourceAt=result.at;
+  row.status=result.status;row.lastResponseAt=now();row.sourceAt=result.at;row.issues=safeIssues(result.issues);
   if(['working','empty','partial'].includes(result.status))row.lastSuccessAt=now();
   persist();
  }
@@ -111,6 +117,7 @@ function createHealth({now=Date.now,file=''}={}){
    feeds:[...rows.values()].map(row=>{
     const stale=['working','empty','partial','loading'].includes(row.status)&&now()-(row.sourceAt??row.lastResponseAt)>row.ttl;
     return {id:row.id,label:row.label,status:stale?'stale':row.status,
+     details:row.issues.map(i=>{const [market,reason]=i.split(':');return MARKET_LABELS[market]+': '+MARKET_REASONS[reason]+'.';}),
      lastResponseAt:row.lastResponseAt===null?null:new Date(row.lastResponseAt).toISOString(),
      lastSuccessAt:row.lastSuccessAt===null?null:new Date(row.lastSuccessAt).toISOString(),
      sourceAt:row.sourceAt===null?null:new Date(row.sourceAt).toISOString()};

@@ -5,35 +5,8 @@ const BOOKS=Object.freeze({fanduel:'FanDuel',draftkings:'DraftKings',betmgm:'Bet
 const MARKETS={player_points:'Points',player_rebounds:'Rebounds',player_assists:'Assists',player_threes:'Threes made'};
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const team=s=>({laclippers:'losangelesclippers',lalakers:'losangeleslakers'}[normalize(s)]||normalize(s));
-const price=n=>Number.isInteger(n)&&Math.abs(n)>=100;
-const half=n=>Number.isFinite(n)&&Number.isInteger(n*2);
 function matches(e,g){return e?.sport_key===SPORT&&team(e.away_team)===team(g.away)&&team(e.home_team)===team(g.home)&&Math.abs(Date.parse(e.commence_time)-Date.parse(g.tipoff))<=15*60000;}
-function bookFor(e,key='fanduel'){const books=(Array.isArray(e?.bookmakers)?e.bookmakers:[]).filter(b=>b.key===key);return books.length===1?books[0]:null;}
-function fresh(m,b,now){const at=Date.parse(m.last_update||b.last_update);return Number.isFinite(at)&&at<=now+60000&&now-at<=1800000?at:null;}
-function gameLines(e,now=Date.now(),bookKey='fanduel'){
- const book=bookFor(e,bookKey);let spread=null,total=null,moneyline=null;
- for(const kind of ['spreads','totals']){
-  const markets=(Array.isArray(book?.markets)?book.markets:[]).filter(m=>m.key===kind);if(markets.length!==1)continue;
-  const m=markets[0],at=fresh(m,book,now),rows=m.outcomes;
-  if(at===null||!Array.isArray(rows)||rows.length!==2||!rows.every(r=>price(r.price)))continue;
-  if(kind==='spreads'){
-   const away=rows.find(r=>r.name===e.away_team),home=rows.find(r=>r.name===e.home_team);
-   if(away&&home&&half(away.point)&&home.point===-away.point)spread={away:away.point,home:home.point,awayPrice:away.price,homePrice:home.price,updatedAt:at};
-  }else{
-   const over=rows.find(r=>r.name==='Over'),under=rows.find(r=>r.name==='Under');
-   if(over&&under&&half(over.point)&&over.point>0&&under.point===over.point)total={line:over.point,over:over.price,under:under.price,updatedAt:at};
-  }
- }
- const markets=(Array.isArray(book?.markets)?book.markets:[]).filter(m=>m.key==='h2h');
- if(markets.length===1){
-  const m=markets[0],at=fresh(m,book,now),rows=m.outcomes;
-  if(at!==null&&Array.isArray(rows)&&rows.length===2&&rows.every(r=>price(r.price))){
-   const away=rows.filter(r=>r.name===e.away_team),home=rows.filter(r=>r.name===e.home_team);
-   if(away.length===1&&home.length===1)moneyline={away:away[0].price,home:home[0].price,updatedAt:at};
-  }
- }
- return {spread,total,moneyline};
-}
+const gameLines=require('./game-quotes').gameQuotes;
 function auditPlayerLines(e,now=Date.now()){
  const result=require('./prop-quotes').auditProps(e,MARKETS,now);
  return {audit:result.audit,props:result.props.map(({stat,...p})=>({...p,label:stat})).sort((a,b)=>a.name.localeCompare(b.name)||a.label.localeCompare(b.label))};
