@@ -1,4 +1,5 @@
 'use strict';
+const {matchPlayer}=require('./public/nba-player-model');
 const {teamCode}=require('./nba-injuries');
 const nameKey=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const fields={player_points:'points',player_rebounds:'reboundsTotal',player_assists:'assists',player_threes:'threePointersMade'};
@@ -34,7 +35,7 @@ function parseGame(game,card,e){
 function reconcile(players,games,reports,teamId){let verified=0,filled=0,conflicts=0;
  const people=[...players.values()];
  for(const g of games){const report=reports.get(String(g.id));if(!report?.available||String(report.gameId)!==String(g.id)||Date.parse(report.tipoff)!==Date.parse(g.tipoff))continue;const teams=report.teams.filter(t=>String(t.id)===String(teamId));if(teams.length!==1)continue;
-  for(const p of people){const key=nameKey(p.name);if(!key||people.filter(x=>nameKey(x.name)===key).length!==1)continue;const matches=teams[0].players.filter(x=>nameKey(x.name)===key);if(matches.length!==1)continue;const row=matches[0];if(!['played','dnp'].includes(row.participation))continue;const active=(p.results||[]).filter(r=>String(r.gameId)===String(g.id)),inactive=(p.inactive||[]).filter(r=>String(r.gameId)===String(g.id)),unverified=(p.unverified||[]).filter(r=>String(r.gameId)===String(g.id));
+  for(const p of people){if(matchPlayer(people,p.name).player!==p)continue;const row=matchPlayer(teams[0].players,p.name).player;if(!row)continue;if(!['played','dnp'].includes(row.participation))continue;const active=(p.results||[]).filter(r=>String(r.gameId)===String(g.id)),inactive=(p.inactive||[]).filter(r=>String(r.gameId)===String(g.id)),unverified=(p.unverified||[]).filter(r=>String(r.gameId)===String(g.id));
    const conflict=unverified.length>1||unverified.length&&(active.length||inactive.length||row.participation==='dnp')||unverified.some(r=>Object.keys(fields).some(k=>Number.isFinite(r[k])&&r[k]!==row.values?.[k]))||active.length>1||inactive.length>1||active.length&&inactive.length||row.participation==='dnp'&&active.length||row.participation==='played'&&inactive.length||active.some(r=>Object.keys(fields).some(k=>Number.isFinite(r[k])&&r[k]!==row.values[k])||Number.isFinite(r.minutes)&&Math.abs(r.minutes-row.minutes)>=1);
    if(conflict){p.available=false;conflicts++;continue;}
    if(row.participation==='played'){if(unverified.length)p.unverified=p.unverified.filter(r=>String(r.gameId)!==String(g.id));if(active.length)Object.assign(active[0],{minutes:row.minutes,...row.values,source:report.source});else{p.results.push({gameId:g.id,tipoff:g.tipoff,minutes:row.minutes,...row.values,source:report.source});filled++;}}

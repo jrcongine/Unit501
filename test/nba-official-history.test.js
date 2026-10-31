@@ -25,3 +25,10 @@ test('official NBA source follows the published box-score link and shares cached
  let count=0;const get=createOfficialNBA({now:()=>Date.parse('2026-10-31T00:00Z'),fetcher:async url=>{count++;return {ok:true,text:async()=>'<script id="__NEXT_DATA__">'+JSON.stringify({props:{pageProps:url.includes('/games?')?slate:{game:box}}})+'</script>'};}});
  const a=await get(espn),b=await get(espn);assert.equal(a.available,true);assert.deepEqual(a,b);assert.equal(count,2);
 });
+
+test('official reconciliation restores uniquely matched omitted-suffix DNP without guessing collisions',()=>{
+ const p={id:'1',name:'Ernest Udeh',available:true,results:[],inactive:[]},players=new Map([[p.id,p]]),games=[{id:e.id,tipoff:e.tipoff}],reports=new Map([[e.id,report()]]);
+ assert.equal(reconcile(players,games,reports,'5').filled,1);assert.equal(p.inactive.length,1);
+ p.inactive=[];players.set('2',{...p,id:'2',name:'Ernest Udeh III'});assert.equal(reconcile(players,games,reports,'5').verified,0);assert.equal(p.inactive.length,0);
+ players.delete('2');p.name='Ernest Udeh III';assert.equal(reconcile(players,games,reports,'5').verified,0);
+});

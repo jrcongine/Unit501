@@ -74,3 +74,12 @@ test('official evidence repairs unknown minutes in replay histories and actuals 
   assert.equal(result.metrics.player_points.samples,verified?4:2);assert.equal(result.metrics.player_points.mae,0);
  }
 });
+
+test('replay keeps formatted same-ID names and rejects conflicting target suffixes',async()=>{
+ for(const conflict of [false,true]){
+  const {games,responses}=fixture();
+  for(const [id,d] of responses){const p=d.boxscore.players[0].statistics[0].athletes[0].athlete;p.displayName=id===10?"José O'Neal Jr.":'Jose ONeal';if(conflict&&id>=16)p.displayName='Jose ONeal III';}
+  const result=await replay(games,2025,{limit:2,fetcher:async url=>({ok:true,json:async()=>responses.get(Number(url.split('=').at(-1)))})});
+  assert.equal(result.metrics.player_points.samples,conflict?2:4);assert.equal(result.metrics.player_points.mae,0);
+ }
+});

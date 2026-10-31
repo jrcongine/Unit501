@@ -116,3 +116,11 @@ test('NBA player histories recover after source gaps clear without caching a par
  gap=false;const recovered=await get(selected,'2026-10-26',2026);assert.ok(recovered.teams.every(t=>t.available));assert.equal(f.getCalls(),4);
  assert.equal(recovered.teams[0].players.find(p=>p.name==='Player A').results[0].player_rebounds,0);
 });
+
+test('stable NBA player IDs retain history across accent, punctuation and omitted-suffix formatting',async()=>{
+ for(const names of [["José O'Neal Jr.",'Jose ONeal'],['Jose ONeal',"José O'Neal Jr."]]){
+  const f=feeds(),base=f.fetcher;f.fetcher=async url=>{const r=await base(url),d=await r.json();const id=Number(new URL(url).searchParams.get('event'));if(id<=2)d.boxscore.players[0].statistics[0].athletes[0].athlete.displayName=names[id-1];return {...r,json:async()=>d};};
+  const out=await createPlayerHistory({...f,now:()=>now})(selected,'2026-10-26',2026);
+  assert.equal(out.teams[0].available,true);assert.equal(out.teams[0].players[0].results.length,2);assert.equal(out.teams[0].players[0].coverage.missing,0);
+ }
+});

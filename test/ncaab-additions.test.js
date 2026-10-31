@@ -42,3 +42,22 @@ test('college injury duplicate sections preserve reported absences and flag ambi
  assert.equal(injuries(malformed,game)[0].available,false);
  assert.equal(injuries(malformed,game)[0].players[0].status,'Out');
 });
+
+test('college histories retain same-ID formatted names across appearances and explicit DNPs',async()=>{
+ const {createPlayers}=require('../ncaab-players');
+ for(const dnp of [false,true]){
+  const priors=[1,2].map((id,i)=>({id:String(id),tipoff:new Date(now-(i+1)*86400000).toISOString(),opponentId:'2',scored:70,allowed:65}));
+  const feed={context:async()=>({away:{id:'1',name:game.away,recentGames:priors},home:{id:'2',name:game.home,recentGames:[]}})};
+  const fetcher=async url=>{const id=new URL(url).searchParams.get('event'),prior=priors.find(p=>p.id===id),d=structuredClone(summary);d.header.id=id;d.header.competitions[0].date=prior.tipoff;const row=d.boxscore.players[0].statistics[0].athletes[0];row.athlete.displayName=id==='1'?"José O'Neal Jr.":'Jose ONeal';if(dnp&&id==='2'){row.didNotPlay=true;row.stats=[];}return {ok:true,json:async()=>d};};
+  const out=await createPlayers({feed,fetcher,now:()=>now}).history(game),team=out.teams[0],p=team.players[0];
+  assert.equal(team.available,true);assert.equal(p.coverage.missing,0);assert.equal(p.results.length,dnp?1:2);assert.equal(p.inactive.length,dnp?1:0);
+ }
+});
+
+test('college history refuses a conflicting same-ID suffix rather than merging participation',async()=>{
+ const {createPlayers}=require('../ncaab-players');
+ const priors=[1,2,3].map((id,i)=>({id:String(id),tipoff:new Date(now-(i+1)*86400000).toISOString(),opponentId:'2',scored:70,allowed:65}));
+ const feed={context:async()=>({away:{id:'1',name:game.away,recentGames:priors},home:{id:'2',name:game.home,recentGames:[]}})};
+ const fetcher=async url=>{const id=new URL(url).searchParams.get('event'),d=structuredClone(summary);d.header.id=id;d.header.competitions[0].date=priors.find(p=>p.id===id).tipoff;d.boxscore.players[0].statistics[0].athletes[0].athlete.displayName=['Test Player Jr.','Test Player','Test Player III'][Number(id)-1];return {ok:true,json:async()=>d};};
+ const out=await createPlayers({feed,fetcher,now:()=>now}).history(game);assert.equal(out.teams[0].available,false);assert.equal(out.teams[0].players[0].coverage.missing,1);
+});

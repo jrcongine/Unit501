@@ -1,4 +1,5 @@
 'use strict';
+const {retainIdentity}=require('./basketball-player-identity');
 // Offline research replay: verified ESPN box scores, observed participants only.
 const {normalizeGame}=require('./nba-feed');
 const {extractBox,extractInactive,reconcileCoverage,METRICS}=require('./nba-player-history');
@@ -34,11 +35,11 @@ async function replay(raw,season,options={}){
    for(const g of prior){
     const data=await box(g),rows=extractBox(data,perspective(g,id),id,season,2);
     for(const p of rows){const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
-     if(item.name!==p.name)item.available=false;
+     if(!retainIdentity(item,p))item.available=false;
      require('./nba-player-history').recordAppearance(item,p,g);players.set(p.id,item);}
     for(const p of extractInactive(data,id,rows)){
      const item=players.get(p.id)||{id:p.id,name:p.name,available:true,results:[],inactive:[]};
-     if(item.name!==p.name)item.available=false;
+     if(!retainIdentity(item,p))item.available=false;
      item.inactive.push({gameId:g.id,tipoff:g.tipoff});players.set(p.id,item);
     }
    }
@@ -55,7 +56,7 @@ async function replay(raw,season,options={}){
    const now=Date.parse(target.tipoff)-1;
    const history={gameId:target.id,tipoff:target.tipoff,checkedAt:now,teams:[{available:true,players:[...players.values()]},{available:true,players:[]}]};
    for(const p of actual){if(p.available===false)continue;
-    const previous=players.get(p.id);if(!previous||previous.name!==p.name)continue;
+    const previous=players.get(p.id);if(!previous||!retainIdentity({...previous},p))continue;
     for(const metric of Object.keys(METRICS)){
      if(!Number.isInteger(p.values[metric]))continue;
      const estimate=project(history,{name:p.name,market:metric,line:0},{id:target.id,tipoff:target.tipoff},null,now);

@@ -1,4 +1,5 @@
 'use strict';
+const {retainIdentity}=require('./basketball-player-identity');
 // Public NBA box scores only: selected matchup and every historical game must match.
 const {teamCode}=require('./nba-injuries');
 const ROOT='https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=';
@@ -118,11 +119,11 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
     for(const game of games){const result=results.get(String(game.id));if(!result||result.error)throw Error('Missing NBA box score');
      const active=extractBox(result.data,game,side.id,season,match.stage);
      for(const row of active){
-      const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
+      const old=players.get(row.id);if(!retainIdentity(old,row))throw Error('Player identity changed');
       const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};recordAppearance(player,row,game);players.set(row.id,player);
      }
      for(const row of extractInactive(result.data,side.id,active)){
-      const old=players.get(row.id);if(old&&old.name!==row.name)throw Error('Player identity changed');
+      const old=players.get(row.id);if(!retainIdentity(old,row))throw Error('Player identity changed');
       const player=old||{id:row.id,name:row.name,available:true,results:[],inactive:[]};
       player.inactive.push({gameId:game.id,tipoff:game.tipoff});players.set(row.id,player);
      }
