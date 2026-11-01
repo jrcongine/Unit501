@@ -68,3 +68,9 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
  body:not(:has(#all-prop-columns:checked)) :is(#nba-prop-lines,#ncaab-props,[aria-label="Saved player line comparisons"]) table{width:100%;min-width:0;table-layout:fixed}
  body:not(:has(#all-prop-columns:checked)) :is(#nba-prop-lines,#ncaab-props,[aria-label="Saved player line comparisons"]) :is(th,td){padding:6px;overflow-wrap:anywhere;white-space:normal}
 }
+
+#worth-a-look[hidden]{display:none}
+#worth-a-look h2{margin:0 0 8px;font-size:1.15rem}
+#worth-games{display:grid;gap:6px}
+#worth-games button{display:grid;gap:3px;text-align:left;background:#142737;color:#f3f8fc;border:1px solid #385765;border-left:3px solid #50d6d7;border-radius:8px;padding:10px 12px;min-height:44px}
+#worth-games button span{font-size:.9rem;color:#c4e6eb}

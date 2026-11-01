@@ -838,12 +838,14 @@ venueCity: g.game?.venue?.city || '',
         ? date.time + ' CT'
         : 'Time TBD',
     status: status.long || 'Scheduled',
+    scheduled:status.short==='NS',
     awayScore: g.scores?.away?.total,
     homeScore: g.scores?.home?.total
   };
 }
 
 async function load() {
+  window.Unit501Worth?.clear();
   const task = ++slateSequence;
   clearSelection();
 
@@ -917,6 +919,7 @@ async function load() {
       });
       games.appendChild(card);
     });
+    window.Unit501Worth?.load(league,slate.map((g,i)=>({away:g.a,home:g.h,kickoff:g.kickoff,scheduled:g.scheduled,card:games.children[i]})));
   } catch (error) {
     if (task !== slateSequence) return;
     $('status').textContent = 'GAME DATA UNAVAILABLE';

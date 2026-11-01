@@ -119,6 +119,7 @@
  }
  $('ncaab-refresh-context').addEventListener('click',()=>{if(selected)return loadContext(selected);});
  load.addEventListener('click',async()=>{
+  window.Unit501Worth?.clear();
   resetLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');$('ncaab-player-lab').classList.add('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
@@ -128,6 +129,7 @@
     const valid=value=>typeof value==='string'&&/^\d{1,3}-\d{1,3}$/.test(value);
     if(current&&(valid(game.awayRecord)||valid(game.homeRecord))){record.textContent='Season · '+game.away+' '+(valid(game.awayRecord)?game.awayRecord:'unavailable')+' · '+game.home+' '+(valid(game.homeRecord)?game.homeRecord:'unavailable');record.title='ESPN overall records · checked '+central(data.checkedAt);record.hidden=false;}
     button.append(record);list.append(button);}
+   window.Unit501Worth?.load('ncaab',games.map((g,i)=>({away:g.away,home:g.home,id:g.id,kickoff:Date.parse(g.tipoff),scheduled:g.timeKnown&&g.status==='Scheduled',card:list.children[i]})));
    const expiry=Math.min(data.checkedAt+3600001,...games.filter(g=>g.timeKnown&&g.status==='Scheduled'&&Date.parse(g.tipoff)>Date.now()).map(g=>Date.parse(g.tipoff)));
    if(Number.isFinite(expiry)&&expiry>Date.now())recordExpiry=setTimeout(()=>{for(const card of list.children)for(const child of card.children)if(child.className==='game-records'){child.textContent='';child.hidden=true;}},expiry-Date.now());
   }catch{if(task===serial)status.textContent='College basketball slate unavailable. Check the date and try again.';}finally{if(task===serial)load.disabled=false;}

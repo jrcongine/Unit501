@@ -191,7 +191,19 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     timer = setTimeout(loop, 1000); timer.unref?.();
   }
   prune(); rollover(); if (file) save();
-  return {capture, watch, noteQuota, status, tick, start, stop() { running = false; clearTimeout(timer); }, targetKey};
+  function slateSpreads(league) {
+    const rows=[],time=now();
+    for(const [key,{target}] of Object.entries(state.watches)){
+      if(target.kind!=='game'||target.league!==league||target.kickoff<=time)continue;
+      const s=state.series[key+':spread'];
+      if(!s||s.lastAt>time||time-s.lastAt>=1800000)continue;
+      const change=s.timeline.at(-1),prior=s.timeline.at(-2);
+      rows.push({away:target.away,home:target.home,kickoff:target.kickoff,gameId:target.game?.id??null,
+        line:s.lastLine,at:s.lastAt,previous:prior&&change&&change.at<=time&&time-change.at<86400000?prior.line:null});
+    }
+    return rows;
+  }
+  return {capture, slateSpreads, watch, noteQuota, status, tick, start, stop() { running = false; clearTimeout(timer); }, targetKey};
 }
 function footballTarget(q, kind) { return {league: String(q.league), kind, away: q.away, home: q.home, kickoff: Number(q.kickoff)}; }
 function nbaTarget(game, kind) { return {league: 'nba', kind, away: game.away, home: game.home, kickoff: Date.parse(game.tipoff), game: {id: game.id, away: game.away, home: game.home, tipoff: game.tipoff, status: game.status}}; }

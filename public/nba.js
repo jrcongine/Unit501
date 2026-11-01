@@ -239,6 +239,7 @@ function choose(game){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
   ++contextRequest;activeContext=null;contextGame=null;clearTimeout(contextTimer);injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
+  window.Unit501Worth?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{
    const response=await fetch('/api/nba/games?date='+encodeURIComponent(date),{signal:AbortSignal.timeout(30000)});
@@ -259,6 +260,7 @@ function choose(game){
     });
     games.append(card);
    }
+   window.Unit501Worth?.load('nba',data.games.map((g,i)=>({away:g.away,home:g.home,id:g.id,kickoff:Date.parse(g.tipoff),scheduled:g.status==='Scheduled',card:games.children[i]})));
    if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:'nba'}}));
    status.textContent=data.games.length+' NBA game(s) loaded · updated '+new Date(data.checkedAt).toLocaleTimeString()+
     '. '+(data.source||'NBA feed')+(data.fallback?' (fallback)':'')+' · Experimental team estimates available with sufficient history.';

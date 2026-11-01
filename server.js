@@ -148,6 +148,11 @@ const server = http.createServer(async (req, res) => {
       return send(res,200,{response:[await footballGamebooks(q)]});
     }
     if(u.pathname==='/api/data-health')return send(res,200,{...dataHealth.snapshot(),footballUsage:footballMeter.snapshot(),lineHistory:trackedOdds.status()});
+    if(u.pathname==='/api/slate-spreads'){
+      const league=u.searchParams.get('league');
+      if(!['1','2','nba','ncaab'].includes(league))return send(res,400,{error:'Unknown league'});
+      return send(res,200,{rows:lineHistory.slateSpreads(league)});
+    }
     if(u.pathname==='/api/line-history/status')return send(res,200,trackedOdds.status());
     if(u.pathname==='/api/league-pulse'){
       const league=u.searchParams.get('league')||'nfl';
