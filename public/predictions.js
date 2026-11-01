@@ -168,7 +168,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
     const note = document.createElement('p');
-    note.textContent = 'Selected game • All usable projections, including players without a betting line. Enter missing lines on the player cards below for comparisons. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
+    note.textContent = 'Selected game • Props with lines are shown by default. Choose All player data to inspect other markets or enter a missing line. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
     note.style.cssText = 'font-size:.9em;opacity:.8';
     board.append(title, note);
     if (starScenarios.size) {
@@ -178,6 +178,7 @@
       board.append(flag);
     }
     const rows = [];
+    const withheldMarkets = [];
     for (const record of choices) {
       if (window.Unit501Availability?.assess(record.teamId, record.playerId).blocked) continue;
       for (const def of definitions) {
@@ -185,7 +186,11 @@
         const line = n(entry.value);
         if (line !== null && (!Number.isInteger(line * 2) || (!def.key.endsWith('Yds') && line < 0))) continue;
         const model = projectionFor(record, def);
-        if (!model) continue;
+        if (!model) {
+          const review = Unit501PlayerForm.project(Array.from(record.games.values()), def.key);
+          withheldMarkets.push({record, def, line, reason:review?.reason || 'Fewer than two verified stat games. No projection available.'});
+          continue;
+        }
         if(line !== null && window.Unit501ForecastArchive && !model.starPower.applied)Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const availability = window.Unit501Availability?.assess(record.teamId, record.playerId);
         const checks = line === null ? ['Line unavailable — enter a current line for comparisons'] : Unit501PlayerForm.reviewChecks(model, entry, availability);
@@ -199,6 +204,8 @@
   board.dataset.shortlist = '';
   board.dataset.scope = lineScope;
   board.dataset.team = '';
+  board.dataset.player = '';
+  board.dataset.markets = '';
   board.dataset.stat = '';
   board.dataset.review = '';
   board.dataset.support = '';
@@ -232,6 +239,8 @@ function addFilter(key, title, options) {
   filters.append(label);
 }
 
+addFilter('markets', 'Markets', [['', 'Props with lines'], ['all', 'All player data']]);
+addFilter('player', 'Player', [['', 'All players'], ...choices.map(player => [player.id, `${player.name} — ${player.team}`])]);
 addFilter('team', 'Team', [
   ['', 'Both teams'],
   ...matchupTeams.map(team => [team.id, team.name])
@@ -306,8 +315,29 @@ orderingNote.textContent = /^(above|below)-(asc|desc)$/.test(board.dataset.sort)
 orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
 board.append(orderingNote);
 
+const missing = withheldMarkets.filter(row =>
+  (board.dataset.markets === 'all' || row.line !== null) &&
+  (!board.dataset.player || row.record.id === board.dataset.player) &&
+  (!board.dataset.team || row.record.teamId === board.dataset.team) &&
+  (!board.dataset.stat || row.def.key === board.dataset.stat));
+if (missing.length) {
+  const details = document.createElement('details');
+  details.id = 'prop-missing-markets';
+  details.open = Boolean(board.dataset.player) || missing.some(row => row.line !== null);
+  const summary = document.createElement('summary');
+  summary.textContent = `${missing.length} markets need stat verification — projections unavailable`;
+  details.append(summary);
+  for (const row of missing) {
+    const item = document.createElement('p');
+    item.textContent = `${row.record.name} — ${row.def.title}${row.line !== null ? ' | Line '+row.line : ''}: ${row.reason}`;
+    details.append(item);
+  }
+  board.append(details);
+}
 for (let i = rows.length - 1; i >= 0; i--) {
-  if ((board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
+  if ((board.dataset.markets !== 'all' && rows[i].line === null) ||
+      (board.dataset.player && rows[i].record.id !== board.dataset.player) ||
+      (board.dataset.team && rows[i].record.teamId !== board.dataset.team) ||
       (board.dataset.shortlist === 'selected' && !shortlisted.has(lineKey(rows[i].record, rows[i].def))) ||
        (board.dataset.shortlist === 'automatic' && (
         rows[i].entry.source!=='auto'||!Number.isFinite(rows[i].entry.savedAt)||
@@ -379,7 +409,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     board.append(copy, copyStatus);
     if (!rows.length) {
       const empty = document.createElement('p');
-     empty.textContent = 'No projections match these filters. Reset the filters, or review player data below.';
+     empty.textContent = 'No projections match these filters. Reset the filters, review stat-verification notices above, choose All player data, or refresh player lines.';
      board.append(empty); return;
     }
     board.dataset.displayedAutoLines = String(rows.filter(r=>r.line!==null&&r.entry.source==='auto').length);
@@ -522,6 +552,14 @@ cell.append(details);
             warning.title='Missing box-score entries may hide zero catches or yards. A recorded-only hit rate is not a season hit rate.';
             cell.append(warning);
           }
+        } else if (index === 10 || index === 11) {
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = index === 10 ? 'View workload' : observed ? 'View movement' : 'No history';
+          const text = document.createElement('p');
+          text.textContent = value;
+          details.append(summary, text);
+          cell.append(details);
         } else cell.textContent = value;
         tr.append(cell);
       });

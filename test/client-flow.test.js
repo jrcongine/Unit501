@@ -415,6 +415,7 @@ test('weather displays retractable and covered venues as context and skips fixed
 test('prop board sorts largest raw discrepancy across stats or within a stat, with reset on game selection',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
  const board=h.nodes.get('saved-line-comparisons');
  const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
@@ -459,6 +460,7 @@ test('prop board sorts largest raw discrepancy across stats or within a stat, wi
 test('copy prop board respects filters, rechecks stale quotes and offers clipboard fallback',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
  let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
@@ -477,6 +479,7 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
 test('shortlist preserves chosen markets through filters, copies current rows and resets for another matchup',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const select=h.nodes.get('shortlist-1:7-carries');assert.ok(select);
  select.checked=true;await select.dispatchEvent({type:'change'});
  const change=async(key,value)=>{const node=h.nodes.get('prop-filter-'+key);node.value=value;await node.dispatchEvent({type:'change'});};
@@ -571,6 +574,7 @@ test('data-support display and filters keep thin samples visible without claimin
   const h=harness();await h.settle();
   h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
   await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
   const board=h.nodes.get('saved-line-comparisons');
   assert.match(board.textContent,/Data support/);
   assert.match(board.textContent,/Thin sample/);
@@ -645,6 +649,7 @@ test('Game Lab uses server history across devices rather than browser-local hist
 test('automatic research queue omits thin samples and never casts board votes',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const choice=h.nodes.get('prop-filter-shortlist');
  choice.value='automatic';await choice.dispatchEvent({type:'change'});
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Automatic research queue only/);
@@ -1067,6 +1072,7 @@ test('college defensive workload changes the actual forecast even when opponent 
 test('projection board lists usable no-line markets without invented comparisons and supports manual entry',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const board=h.nodes.get('saved-line-comparisons');
  const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
  const rows=()=>walk(board,'tbody')[0].children;
@@ -1138,6 +1144,7 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  };
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const walk=n=>[n,...n.children.filter(c=>typeof c!=='string').flatMap(walk)];
  const rows=walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr'&&n.children[1]?.textContent==='Rushing TDs');
  assert.equal(rows.length,2);
@@ -1164,8 +1171,30 @@ test('first matchup this season displays prior-season actuals without changing t
   return {ok:true,json:async()=>({response:prior?games.slice(0,1):games})};
  };
  await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
- await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});await h.settle();
  const board=h.nodes.get('saved-line-comparisons');
  assert.match(board.textContent,/100 vs Team B · Dec 25, 2025/);
  assert.match(board.textContent,/2\/2/);
 });
+
+ test('bettable board defaults to quoted markets and exposes a quoted player with missing stats',async()=>{
+ const h=harness();await h.settle();const original=h.context.fetch;
+ h.context.fetch=async url=>{
+  const result=await original(url);const data=await result.json();
+  if(String(url).startsWith('/api/player-stats?')&&new URL(url,'http://localhost').searchParams.get('game')==='1')
+   data.response[0].groups.find(g=>g.name==='Receiving').players[0].statistics=data.response[0].groups.find(g=>g.name==='Receiving').players[0].statistics.filter(s=>s.name!=='Yards');
+  return {ok:true,json:async()=>data};
+ };
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const board=h.nodes.get('saved-line-comparisons');
+ const walk=n=>[n,...n.children.filter(c=>typeof c!=='string').flatMap(walk)];
+ const rows=()=>walk(board).filter(n=>n.tag==='tbody').flatMap(n=>n.children);
+ assert.equal(rows().length,2);assert.ok(rows().every(r=>!r.textContent.includes('Line unavailable')));
+ assert.match(h.nodes.get('prop-missing-markets').textContent,/RB 1 — Receiving yards.*Line 22.5.*Fewer than two verified/);
+ const player=h.nodes.get('prop-filter-player');player.value='2:8';await player.dispatchEvent({type:'change'});
+ assert.equal(rows().length,0);assert.match(board.textContent,/No projections match/);
+ const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
+ assert.equal(rows().length,4);assert.ok(rows().every(r=>r.children[0].textContent.includes('RB 2')));
+ });
