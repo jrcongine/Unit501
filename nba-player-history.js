@@ -136,7 +136,7 @@ function createPlayerHistory({publicFeed,fetcher=fetch,now=Date.now,official}={}
       verification,players:[...players.values()]};
    }catch{return {name:side?.name||[match.away,match.home][i],available:false,games:games.length,players:[]};}
   });
-  return {gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:official?'NBA official reconciliation with ESPN completed box scores':'ESPN completed NBA box scores',teams};
+  return {publicGame:{id:match.id,awayId:match.awayId,homeId:match.homeId,tipoff:match.tipoff,season:season+1,stage:match.stage},gameId:selected.id,tipoff:selected.tipoff,checkedAt:now(),source:official?'NBA official reconciliation with ESPN completed box scores':'ESPN completed NBA box scores',teams};
  };
 }
 module.exports={recordAppearance,conflictingDNP,METRICS,stat,minutes,extractBox,extractInactive,reconcileCoverage,createPlayerHistory};

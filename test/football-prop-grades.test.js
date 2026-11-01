@@ -1,0 +1,24 @@
+'use strict';
+const test=require('node:test'),a=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {createFootballProps}=require('../football-prop-grades');
+for(const league of ['1','2'])test(league+' football requires a complete history and exact stat/participation for the final',async t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'football-props-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+ const kickoff=Date.parse('2026-11-01T20:00:00Z');let now=kickoff-60000;
+ const open=()=>createFootballProps({directory,now:()=>now}),unit=open();
+ const away={id:2,name:'A'},home={id:3,name:'B'};
+ const make=(id,ts,status)=>({game:{id,date:{timestamp:ts/1000},status:{short:status},stage:'Regular Season'},league:{id:league,season:2026},teams:{away,home},scores:{away:{total:10},home:{total:20}}});
+ const scheduled=make(22,kickoff,'NS'),past=[make(20,kickoff-7*86400000,'FT'),make(21,kickoff-14*86400000,'FT')];
+ unit.slate({response:[scheduled]});
+ for(const team of [away,home])unit.put('team/'+league+'/2026/'+team.id,{response:past});
+ const q={league,away:'A',home:'B',kickoff};
+ const props={props:[{name:'Pat Jones',stat:'recYds',line:3.5,updatedAt:now,over:-110,under:-110}]};
+ unit.capture(q,props);a.deepEqual(unit.summary().groups,[]);
+ for(const g of past)unit.put('box/'+g.game.id,{response:[{team:away,groups:[{name:'receiving',players:[{player:{id:9,name:'Pat Jones'},statistics:[{name:'yards',value:'10'},{name:'receptions',value:'1'}]}]}]},{team:home,groups:[]}]});
+ unit.capture(q,props);a.equal(unit.summary().groups[0].pending,1);
+ now=kickoff+5*3600000;const restart=open(),player={name:'Pat Jones',participation:'played',recYds:0,markets:[]};
+ const report={available:true,nameFormat:'full',league,season:'2026',gameId:'22',gameDate:kickoff/1000,teams:[{...away,players:[player]},{...home,players:[]}]};
+ await restart.refresh(async()=>report);a.equal(restart.summary().groups[0].pending,1);
+ if(league==='1')player.markets=['recYds'];else player.participation='dnp';
+ await restart.refresh(async()=>report);a.equal(restart.summary().groups[0][league==='1'?'loss':'dnp'],1);
+});

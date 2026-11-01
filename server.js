@@ -51,6 +51,19 @@ const footballLearning=require('./football-learning').createLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-learning-v1'),
   marketRecorder,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
 });
+const footballPropsGrader=require('./football-prop-grades').createFootballProps({
+  directory:process.env.UNIT501_LINE_HISTORY_FILE&&path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-prop-grades-v1'),
+  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+});
+const basketballPropsGrader=require('./basketball-prop-grades').createPropGrades({
+  directory:process.env.UNIT501_LINE_HISTORY_FILE&&path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'basketball-prop-grades-v1'),
+  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+});
+async function withPropGrading(league,game,season,kind,request){
+  const result=await request;
+  observeLearning(()=>basketballPropsGrader.observe(league,game,season,kind,result));
+  return result;
+}
 const basketballLearning=require('./basketball-learning').createBasketballLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'basketball-learning-v1'),
   marketRecorder,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
@@ -148,7 +161,9 @@ const server = http.createServer(async (req, res) => {
     if(u.pathname==='/api/football/participation'){
       const q=Object.fromEntries(['game','league','season','date'].map(k=>[k,u.searchParams.get(k)||'']));
       if(!/^\d{1,12}$/.test(q.game)||!['1','2'].includes(q.league)||!/^20\d{2}$/.test(q.season)||!/^20\d{2}-\d{2}-\d{2}$/.test(q.date))return send(res,400,{error:'Valid historical game, league, season and date required'});
-      return send(res,200,{response:[await footballGamebooks(q)]});
+      const report=await footballGamebooks(q);
+      if(report?.available)observeLearning(()=>footballPropsGrader.put('participation/'+q.game,report));
+      return send(res,200,{response:[report]});
     }
     if(u.pathname==='/api/data-health')return send(res,200,{...dataHealth.snapshot(),footballUsage:footballMeter.snapshot(),lineHistory:trackedOdds.status()});
     if(u.pathname==='/api/hook'){
@@ -193,9 +208,9 @@ const server = http.createServer(async (req, res) => {
       try{const slate=await ncaab.games(date),game=slate.games.find(g=>g.id===id);if(!game)return send(res,404,{error:'Game not found on this slate.'});
        if(!game.timeKnown||game.status!=='Scheduled'||Date.parse(game.tipoff)<=Date.now())return send(res,400,{error:'Confirmed upcoming game required.'});
        if(u.pathname.endsWith('/odds'))return send(res,200,await trackedOdds.ncaab(game,'game'));
-       if(u.pathname.endsWith('/props'))return send(res,200,await trackedOdds.ncaab(game,'props'));
+       if(u.pathname.endsWith('/props'))return send(res,200,await withPropGrading('ncaab',game,game.season,'quotes',trackedOdds.ncaab(game,'props')));
        if(u.pathname.endsWith('/injuries'))return send(res,200,await ncaabPlayers.injuries(game));
-       return send(res,200,await ncaabPlayers.history(game));
+       return send(res,200,await withPropGrading('ncaab',game,game.season,'history',ncaabPlayers.history(game)));
       }catch(error){return send(res,503,{error:error.publicMessage||'Data source unavailable for this matchup.'});}
     }
     if(u.pathname==='/api/ncaab/context'){
@@ -226,7 +241,8 @@ const server = http.createServer(async (req, res) => {
         const slate=await nbaGames(date),game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
-        return send(res,200,await trackedOdds.nba(game,u.pathname.endsWith('/props')?'props':u.pathname.endsWith('/comparison')?'comparison':'game'));
+        if(u.pathname.endsWith('/props'))return send(res,200,await withPropGrading('nba',game,slate.season,'quotes',trackedOdds.nba(game,'props')));
+        return send(res,200,await trackedOdds.nba(game,u.pathname.endsWith('/comparison')?'comparison':'game'));
       }catch(e){return send(res,503,{error:e.message});}
     }
     if(u.pathname==='/api/nba/travel'){
@@ -246,7 +262,7 @@ const server = http.createServer(async (req, res) => {
         const slate=await injurySlate(date),game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected NBA game was not found on this slate.'});
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
-        return send(res,200,await nbaPlayerHistory(game,date,slate.season));
+        return send(res,200,await withPropGrading('nba',game,slate.season,'history',nbaPlayerHistory(game,date,slate.season)));
       }catch(error){console.error('NBA player history:',error.message);return send(res,503,{error:'NBA player history unavailable for this matchup.'});}
     }
     if(u.pathname==='/api/nba/injuries'){
@@ -281,8 +297,8 @@ const server = http.createServer(async (req, res) => {
       if(!['nfl','ncaaf','mlb','nba','nhl','ncaab'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA, college basketball or NHL.'});
       return send(res,200,await outsidePicks(league));
     }
-    if(u.pathname==='/api/basketball/model-review')return send(res,200,basketballLearning.summary());
-    if(u.pathname==='/api/football/model-review')return send(res,200,footballLearning.summary());
+    if(u.pathname==='/api/basketball/model-review')return send(res,200,{...basketballLearning.summary(),playerProps:basketballPropsGrader.summary()});
+    if(u.pathname==='/api/football/model-review')return send(res,200,{...footballLearning.summary(),playerProps:footballPropsGrader.summary()});
     if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
     if (u.pathname === '/api/player-ratings') {
@@ -357,7 +373,10 @@ const server = http.createServer(async (req, res) => {
         return send(res, 400, { error: 'Valid league, teams and kickoff required' });
       }
       if (u.pathname === '/api/football/comparison') return send(res, 200, await footballComparison(query));
-      return send(res, 200, await trackedOdds.football(query, ['/api/fanduel-props','/api/football/player-lines'].includes(u.pathname) ? 'props' : 'game'));
+      const kind=['/api/fanduel-props','/api/football/player-lines'].includes(u.pathname)?'props':'game';
+      const result=await trackedOdds.football(query,kind);
+      if(kind==='props')observeLearning(()=>footballPropsGrader.capture(query,result));
+      return send(res,200,result);
     }
 // Get player statistics for a game
 
@@ -375,21 +394,10 @@ if (u.pathname === '/api/player-stats' || u.pathname === '/api/team-stats') {
 
   }
 
-  return send(
-
-    res,
-
-    200,
-
-    await api(
-
-      (u.pathname === '/api/team-stats' ? '/games/statistics/teams?id=' : '/games/statistics/players?id=') +
-
-      encodeURIComponent(id)
-
-    )
-
-  );
+  const teamStats=u.pathname==='/api/team-stats';
+  const result=await api((teamStats?'/games/statistics/teams?id=':'/games/statistics/players?id=')+encodeURIComponent(id));
+  if(!teamStats)observeLearning(()=>footballPropsGrader.put('box/'+id,result));
+  return send(res,200,result);
 
 }// Get a team's games for a season
 if (u.pathname === '/api/team-games') {
@@ -405,11 +413,9 @@ if (u.pathname === '/api/team-games') {
 
   const params = new URLSearchParams({ team, season });
 
-  return send(
-    res,
-    200,
-    await api('/games?' + params)
-  );
+  const result=await api('/games?'+params);
+  observeLearning(()=>footballPropsGrader.put('team/'+u.searchParams.get('league')+'/'+season+'/'+team,result));
+  return send(res,200,result);
 }
     if (u.pathname === '/api/health') {
 
@@ -459,6 +465,7 @@ if (u.pathname === '/api/team-games') {
 
       const slate=await api('/games?' + params);
       observeLearning(()=>footballLearning.observe(slate));
+      observeLearning(()=>footballPropsGrader.slate(slate));
       return send(res,200,slate);
 
     }
@@ -609,6 +616,8 @@ server.listen(PORT, () => {
   if(process.env.UNIT501_BASKETBALL_ODDS_AUDIT)require('./basketball-odds-audit').run()
     .then(result=>console.log('Basketball odds audit: '+JSON.stringify(result))).catch(()=>console.log('Basketball odds audit: unavailable'));
   trackedOdds.start();
+  if(process.env.UNIT501_LINE_HISTORY_FILE&&process.env.API_SPORTS_KEY)setInterval(()=>footballPropsGrader.refresh(footballGamebooks).catch(()=>console.warn('Football prop final check deferred.')),3600000).unref();
+  if(process.env.UNIT501_LINE_HISTORY_FILE)setInterval(()=>basketballPropsGrader.refresh().catch(()=>console.warn('Basketball prop final check deferred.')),900000).unref();
   if(process.env.UNIT501_LINE_HISTORY_FILE)setInterval(()=>basketballLearning.refresh(async game=>{
     if(game.league==='ncaab')return ncaab.games(game.date);
     if(game.provider==='espn')return publicNBA.games(game.date);

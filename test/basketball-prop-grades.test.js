@@ -1,0 +1,24 @@
+'use strict';
+const test=require('node:test'),a=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {createPropGrades,settle}=require('../basketball-prop-grades');
+for(const league of ['nba','ncaab'])test(league+' locks the original prop, accepts a played zero and excludes DNP and missing stats',async t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'prop-grades-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+ const kickoff=Date.parse('2026-11-01T20:00:00Z');let now=kickoff-1000,calls=0;
+ const game={id:'37',awayId:'1',homeId:'2',tipoff:new Date(kickoff).toISOString(),status:'Scheduled',stage:2,season:2027};
+ const archiveSeason=league==='nba'?2026:2027;
+ const gameData={id:'37',date:game.tipoff,status:{type:{completed:true,state:'post',name:'STATUS_FINAL'}},competitors:[{id:'1',homeAway:'away',score:'82'},{id:'2',homeAway:'home',score:'77'}]};
+ const athlete={athlete:{id:'5',displayName:'Pat Jones'},didNotPlay:false,stats:['18','0']};
+ const box={header:{id:'37',season:{year:2027,type:2},competitions:[gameData]},boxscore:{players:[{team:{id:'1'},statistics:[{keys:['minutes','points'],athletes:[athlete,{athlete:{id:'6',displayName:'Other Player'},didNotPlay:false,stats:['20','10']}]}]}]}};
+ const open=()=>createPropGrades({directory,now:()=>now,fetcher:async()=>{calls++;return {ok:true,json:async()=>box};}});
+ const history={publicGame:game,gameId:'37',tipoff:game.tipoff,checkedAt:now,teams:[{id:1,available:true,players:[{id:5,name:'Pat Jones',results:[1,2].map(i=>({gameId:i,tipoff:new Date(kickoff-i*86400000).toISOString(),minutes:20,player_points:4}))}]},{id:2,available:true,players:[]}]};
+ const q={gameId:'37',tipoff:game.tipoff,bookmaker:'FanDuel',props:[{market:'player_points',name:'Pat Jones',line:2.5,updatedAt:now,over:-110,under:-110}]};
+ const unit=open();unit.observe(league,game,archiveSeason,'quotes',q);unit.observe(league,game,archiveSeason,'history',history);
+ unit.observe(league,game,archiveSeason,'quotes',{...q,props:[{...q.props[0],line:7.5}]});
+ const files=fs.readdirSync(directory);a.equal(files.length,1);const f=JSON.parse(fs.readFileSync(path.join(directory,files[0])));a.equal(f.line,2.5);a.equal(f.projection,4);
+ now=kickoff+4*3600000;const restart=open();await restart.refresh();a.equal(restart.summary().groups[0].loss,1);a.equal(settle(f,box).actual,0);
+ athlete.stats=['0','0'];a.equal(settle(f,box),null);athlete.didNotPlay=true;a.deepEqual(settle(f,box),{outcome:'dnp'});
+ athlete.stats=['0','1'];a.throws(()=>settle(f,box),/Conflicting/);
+ athlete.didNotPlay=false;athlete.stats=['18','--'];a.equal(settle(f,box),null);
+ athlete.stats=['18','4'];a.equal(settle({...f,line:4,projection:6},box).outcome,'push');a.equal(settle({...f,line:4},box).outcome,'noLean');
+ gameData.date=new Date(kickoff+1000).toISOString();a.throws(()=>settle(f,box),/identity/);await restart.refresh();a.equal(calls,1);
+});
