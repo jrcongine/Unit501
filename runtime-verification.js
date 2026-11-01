@@ -3,7 +3,7 @@
 // credential logging, or production-data writes. Failures never stop the app.
 const {createHash}=require('node:crypto');
 const fs=require('node:fs/promises'),path=require('node:path');
-const assets=['index.html','sport-layout.js','sport-layout.css','league-pulse.js','outside-picks.js','unit501-shared-ui.js','nba.js','ncaab.js','player-stats.js','football-position.js','auto-injury.js','nba.html','ncaab.html','basketball-injury-model.js','basketball-history-comparison.js','nba-win-calibration.js'];
+const assets=['index.html','sport-layout.js','sport-layout.css','league-pulse.js','outside-picks.js','unit501-shared-ui.js','nba.js','ncaab.js','player-stats.js','football-position.js','auto-injury.js','nba.html','ncaab.html','basketball-injury-model.js','basketball-history-comparison.js','nba-win-calibration.js','nba-player-model.js','nba-markets.js','last-opponent.js'];
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const states=new Set(['working','empty','partial','failed','unavailable','loading','stale','unchecked']);
 async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}={}){

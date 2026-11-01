@@ -102,3 +102,15 @@ test('NBA accepts the actual ISO team-context timestamp contract without weakeni
  assert.equal(run().away,95);
  for(const at of [new Date(now-1800001).toISOString(),new Date(now+1).toISOString(),'2026-10-30',String(now),'garbage',null]){x.context.checkedAt=at;assert.equal(run().away,100);}
 });
+
+test('NBA provider team IDs use the server-verified mapping without relaxing game fingerprints',()=>{
+ const x=fixture();x.game.provider='api-nba';
+ const h=x.history.teams[0];h.id='4';h.gameSource='espn';h.selectedProvider='api-nba';h.selectedTeamId='1';
+ x.context.away.recentGames=x.context.away.recentGames.map(g=>({...g,opponent:'Boston Celtics',venue:'away'}));
+ h.gameLog=structuredClone(x.context.away.recentGames);
+ const run=()=>model.apply(x.base,x.game,x.context,x.history,x.report,'recent10',now);
+ assert.equal(run().away,95);
+ h.selectedTeamId='999';assert.equal(run().away,100);
+ h.selectedTeamId='1';h.selectedProvider='unknown';assert.equal(run().away,100);
+ h.selectedProvider='api-nba';h.gameLog[0].for=99;assert.equal(run().away,100);
+});

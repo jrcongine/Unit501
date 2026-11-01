@@ -41,7 +41,7 @@
   if(!game||!Number.isFinite(Date.parse(game.tipoff))||Date.parse(game.tipoff)<=now||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||
    !Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||
    !Array.isArray(history.teams)||history.teams.length!==2||history.teams.some(t=>!Array.isArray(t.players))||
-   !quote||!markets.has(quote.market)||!Number.isFinite(quote.line))return {available:false,reason:'Verified history unavailable'};
+   !quote||!markets.has(quote.market)||(!Number.isFinite(quote.line)&&!(options.allowUnpriced===true&&quote.line===null)))return {available:false,reason:'Verified history unavailable'};
   if(!nameParts(quote.name).base)return {available:false,reason:'Verified history unavailable'};
   const {matches,player:matched}=matchPlayer(history.teams.flatMap(t=>t.players.map(p=>({...p,teamAvailable:t.available}))),quote.name);
   if(matches.length===0)return {available:false,reason:'No matched player history'};
@@ -87,8 +87,23 @@
   }
   return {available:true,projection,baseline,delta:projection-baseline,average,median,coverage:matches[0].coverage||null,projectedMinutes,minuteChange,method,games:values.length,
    recentValues:values.slice(0,5),
-   above:values.filter(n=>n>quote.line).length,below:values.filter(n=>n<quote.line).length,equal:values.filter(n=>n===quote.line).length,
+   above:Number.isFinite(quote.line)?values.filter(n=>n>quote.line).length:null,below:Number.isFinite(quote.line)?values.filter(n=>n<quote.line).length:null,equal:Number.isFinite(quote.line)?values.filter(n=>n===quote.line).length:null,
    thin:values.length<5};
+ }
+ function catalogRows(quotes,history,game,now=Date.now()){
+  const rows=(quotes||[]).filter(q=>Number.isFinite(q.updatedAt)&&q.updatedAt<=now+60000&&now-q.updatedAt<=1800000&&Date.parse(game?.tipoff)>now);
+  if(!history||String(history.gameId)!==String(game?.id)||history.tipoff!==game.tipoff||!Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||Date.parse(game.tipoff)<=now)return rows;
+  const all=(history.teams||[]).flatMap(t=>(t.players||[]).map(p=>({...p,teamAvailable:t.available})));
+  const labels={player_points:'Points',player_rebounds:'Rebounds',player_assists:'Assists',player_threes:'Threes'};
+  for(const p of all){
+   if(!p.teamAvailable||p.available===false||!Array.isArray(p.results)||!matchPlayer(all,p.name).player)continue;
+   for(const [market,label] of Object.entries(labels)){
+    if(!p.results.some(r=>Number.isInteger(r[market])&&r[market]>=0))continue;
+    if(rows.some(q=>q.market===market&&matchPlayer([p],q.name).player))continue;
+    rows.push({name:p.name,market,label,line:null,over:null,under:null,unpriced:true,updatedAt:history.checkedAt});
+   }
+  }
+  return rows;
  }
  function withScenario(prediction,mode='off'){
   if(!prediction.available)return prediction;
@@ -103,5 +118,5 @@
   if(!change||![change.recent,change.previous].every(Number.isFinite))return null;
   return 'Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1)+' · last '+change.recentGames+' vs earlier '+change.previousGames+' games';
  }
- const api={project,withScenario,minuteChangeText,injuryStatus,matchPlayer,availabilityNote};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
+ const api={catalogRows,project,withScenario,minuteChangeText,injuryStatus,matchPlayer,availabilityNote};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
 })(typeof window!=='undefined'?window:globalThis);

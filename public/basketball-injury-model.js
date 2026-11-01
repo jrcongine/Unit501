@@ -51,7 +51,10 @@
    const team=context[side],h=history.teams[i],r=report.teams[i],label=game[side];
    const no=text=>out.injury.withheld.push(label+': '+text);
    if(!key(label)||key(team?.name)!==key(label)||key(h?.name)!==key(label)||key(college?r?.team:r?.name)!==key(label)||key(game.away)===key(game.home)||!h.available||r.available!==true||!Array.isArray(h.players)||!Array.isArray(r.players)){no('matched available team reports required.');continue;}
-   if([team,h].some(t=>t.id!=null&&game[side+'Id']!=null&&String(t.id)!==String(game[side+'Id']))){no('conflicting team identifiers; baseline retained.');continue;}
+   // History carries a server-verified mapping from the public matchup to
+   // the selected provider. Numeric IDs are only comparable within a source.
+   const historyId=!college&&game.provider==='api-nba'&&h.gameSource==='espn'&&h.selectedProvider==='api-nba'?h.selectedTeamId:h.id;
+   if([team.id,historyId].some(id=>id!=null&&game[side+'Id']!=null&&String(id)!==String(game[side+'Id']))||(!college&&game.provider==='api-nba'&&h.gameSource==='espn'&&(h.selectedProvider!=='api-nba'||h.selectedTeamId==null))){no('conflicting team identifiers; baseline retained.');continue;}
    const outs=r.players.filter(p=>/^out$/i.test(String(p.status||'').trim()));
    if(!outs.length){no('no confirmed Out pattern to estimate; an empty report does not prove full health.');continue;}
    if(r.players.some(p=>! /^(out|available|active)$/i.test(String(p.status||'').trim()))){no('conditional or conflicting statuses remain; no team adjustment.');continue;}

@@ -240,12 +240,12 @@ test('NBA shared player minutes survive filters, reset together and detach from 
  const input=h.inputs()[1];input.value='36';input.events.change();
  assert.deepEqual(h.inputs().map(n=>n.value),[36,36]);
  h.context.Unit501NBAMarkets.setInjuries(h.game,null);
- assert.deepEqual(h.inputs().map(n=>n.value),[36,36]);
+ assert.deepEqual(h.inputs().map(n=>n.value),[36,36,'','']); // Unpriced Player C history is visible too.
  assert.match(h.board.textContent,/Manual minutes scenario/);
  assert.doesNotMatch(h.board.textContent,/Teammate absence minutes scenario/);
  assert.equal(h.calls.length,calls);
  await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
- assert.deepEqual(h.inputs().map(n=>n.value),['','']);
+ assert.deepEqual(h.inputs().map(n=>n.value),['','','','']);
 });
 
 test('late player history cannot replace the new matchup projection',async()=>{
@@ -352,6 +352,8 @@ test('NBA history comparison survives odds failure and never invents a quote',as
  const input=nodes.find(n=>n.events.input);input.value='22';input.events.input();
  assert.match(panel.textContent,/1 above · 0 below · 1 equal · 2 verified appearances/);
  assert.match(h.nodes.get('nba-props-status').textContent,/Odds unavailable/);
- assert.equal(h.nodes.get('nba-prop-lines').textContent,'');
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/Line unavailable.*23.5/);
+ assert.match(h.nodes.get('nba-prop-lines').textContent,/0 betting lines/);
+ assert.doesNotMatch(h.nodes.get('nba-prop-lines').textContent,/100.0%/);
  h.context.Unit501NBAMarkets.clear();assert.equal(panel.textContent,'');
 });

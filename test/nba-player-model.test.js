@@ -163,3 +163,20 @@ test('basketball availability wording distinguishes unknown, conditional and lis
  for(const s of ['Questionable','Doubtful','Probable'])assert.match(availabilityNote(s),/assumes participation/);
  assert.match(availabilityNote('Available'),/starting role and minutes are not confirmed/);
 });
+
+test('history-backed catalog preserves zero stats without fabricating sportsbook lines',()=>{
+ const model=require('../public/nba-player-model'),h=data();
+ const rows=model.catalogRows([],h,game,now);
+ assert.equal(rows.length,1);assert.equal(rows[0].line,null);
+ const p=model.project(h,rows[0],game,null,now,{allowUnpriced:true});
+ assert.equal(p.available,true);assert.equal(p.games,3);assert.equal(p.projection,10);
+ assert.equal(p.above,null);assert.equal(p.below,null);assert.equal(p.equal,null);
+ assert.equal(model.project(h,rows[0],game,null,now).available,false);
+ const quoted={...q,updatedAt:now};assert.deepEqual(model.catalogRows([quoted],h,game,now),[quoted]);
+ assert.deepEqual(model.catalogRows([],h,game,now+1800001),[]);
+ const bad=structuredClone(h);bad.teams[1].players=structuredClone(bad.teams[0].players);
+ assert.deepEqual(model.catalogRows([],bad,game,now),[]);
+ const missing=structuredClone(h);missing.teams[0].players[0].missing=[{gameId:9}];
+ assert.equal(model.project(missing,rows[0],game,null,now,{allowUnpriced:true}).available,false);
+ for(const line of [undefined,NaN,'',0/0])assert.equal(model.project(h,{...q,line},game,null,now,{allowUnpriced:true}).available,false);
+});

@@ -18,12 +18,13 @@
     if (!history || !game || String(history.gameId)!==String(game.id) || history.tipoff!==game.tipoff || history.teams?.length!==2) return 'Unavailable';
     const candidates = history.teams.flatMap(team => (team.players||[]).map(p => ({...p,team})));
     const player = root.Unit501NBAPlayerModel.matchPlayer(candidates,quote.name).player;
-    if (!player?.team.available || player.available===false) return 'Unavailable';
+    if (!player?.team.available || player.available===false || !Array.isArray(player.results)) return 'Unavailable';
     const opponent = history.teams.find(team => team!==player.team);
     const games = (player.team.gameLog||[]).map(g => {
       const matches = player.results.filter(r => String(r.gameId)===String(g.id));
       const inactive = player.inactive?.some(r => String(r.gameId)===String(g.id));
-      const status = inactive && !matches.length ? 'dnp' : !inactive && matches.length===1 ? 'played' : 'unknown';
+      const unverified = player.unverified?.some(r => String(r.gameId)===String(g.id));
+      const status = unverified ? 'unknown' : inactive && !matches.length ? 'dnp' : !inactive && matches.length===1 ? 'played' : 'unknown';
       return {time:Date.parse(g.tipoff),opponentId:g.opponentId,status,stats:matches[0]};
     });
     return describe(games,opponent,quote.market,Date.parse(game.tipoff));

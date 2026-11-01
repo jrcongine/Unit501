@@ -124,3 +124,11 @@ test('stable NBA player IDs retain history across accent, punctuation and omitte
   assert.equal(out.teams[0].available,true);assert.equal(out.teams[0].players[0].results.length,2);assert.equal(out.teams[0].players[0].coverage.missing,0);
  }
 });
+
+test('verified public matchup carries the selected provider team mapping',async()=>{
+ const f=feeds();
+ const game={...selected,provider:'api-nba',awayId:900,homeId:901};
+ const result=await createPlayerHistory({...f,now:()=>now})(game,'2026-10-26',2026);
+ assert.equal(result.teams[0].id,4);assert.equal(result.teams[0].selectedTeamId,900);
+ assert.equal(result.teams[1].selectedTeamId,901);assert.equal(result.teams[0].selectedProvider,'api-nba');
+});
