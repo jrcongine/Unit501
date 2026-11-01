@@ -217,6 +217,7 @@
  // Refresh only the selected pregame matchup while the page is visible.
  setInterval(()=>{if(!document.hidden&&injuryGame&&injuryGame.statusCode===1&&Date.parse(injuryGame.tipoff)>Date.now())loadInjuries(injuryGame);},15*60000);
 function choose(game){
+  window.Unit501Hook?.select(game.status==='Scheduled'?{league:'nba',away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
    window.Unit501NBAMarkets?.select(game,dateInput.value);
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
    const tip=new Date(game.tipoff);
@@ -239,6 +240,7 @@ function choose(game){
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
   ++contextRequest;activeContext=null;contextGame=null;clearTimeout(contextTimer);injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
+  window.Unit501Hook?.select(null);
   window.Unit501Worth?.clear();
   const serial=++request;load.disabled=true;games.replaceChildren();lab.classList.add('hidden');players.classList.add('hidden');status.textContent='Loading NBA schedule…';
   try{

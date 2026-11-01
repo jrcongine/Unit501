@@ -117,8 +117,8 @@ function createHistory({file = '', now = Date.now, enabled = false, dailyBudget 
     } else {
       const nba = ['nba', 'ncaab'].includes(target.league);
       out.history = {
-        spread: add('spread', nba ? result.spread?.away : result.awaySpread, nba ? result.spread?.updatedAt : Date.parse(result.spreadUpdated)),
-        total: add('total', nba ? result.total?.line : result.total, nba ? result.total?.updatedAt : Date.parse(result.totalUpdated)),
+        spread: add('spread', nba ? result.spread?.away : result.awaySpread, nba ? result.spread?.updatedAt : (finite(result.spreadUpdated)?result.spreadUpdated:Date.parse(result.spreadUpdated))),
+        total: add('total', nba ? result.total?.line : result.total, nba ? result.total?.updatedAt : (finite(result.totalUpdated)?result.totalUpdated:Date.parse(result.totalUpdated))),
         awayMoneyline: add('moneyline:away', result.moneyline?.away, result.moneyline?.updatedAt),
         homeMoneyline: add('moneyline:home', result.moneyline?.home, result.moneyline?.updatedAt)
       };

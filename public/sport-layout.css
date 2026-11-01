@@ -74,3 +74,9 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
 #worth-games{display:grid;gap:6px}
 #worth-games button{display:grid;gap:3px;text-align:left;background:#142737;color:#f3f8fc;border:1px solid #385765;border-left:3px solid #50d6d7;border-radius:8px;padding:10px 12px;min-height:44px}
 #worth-games button span{font-size:.9rem;color:#c4e6eb}
+
+#hook-tool[hidden]{display:none}
+#hook-tool{margin-block:8px}
+#hook-check{min-height:44px}
+#hook-result p{padding:8px 12px;border-left:3px solid #50d6d7}
+#hook-result p>*{display:block}

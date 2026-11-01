@@ -845,6 +845,7 @@ venueCity: g.game?.venue?.city || '',
 }
 
 async function load() {
+  window.Unit501Hook?.select(null);
   window.Unit501Worth?.clear();
   const task = ++slateSequence;
   clearSelection();
@@ -933,6 +934,7 @@ async function choose(game) {
   game.league = $('league').value;
   game.season = $('date').value.slice(0,4);
   const priorLeague=selected?.league;
+  window.Unit501Hook?.select(game.scheduled?{league:game.league,away:game.a,home:game.h,kickoff:game.kickoff}:null);
   selected = game;
   $('autoInjuries').checked=true;injuryModeChanged();
   document.dispatchEvent(new Event('unit501:selection-changed'));

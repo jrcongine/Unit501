@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const dataHealth = require('./data-health').createHealth({file:process.env.UNIT501_DATA_HEALTH_FILE || (process.env.UNIT501_LINE_HISTORY_FILE?path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'feed-health-v1.json'):'')});
 const fanduel = require('./fanduel');
+const getHook=require('./hook-quotes').createHook();
 const footballComparison = require('./football-comparison').createComparison();
 const outsidePicks = require('./outside-picks').createFeed();
 const publicNBA = require('./nba-public').createPublicNBA();
@@ -148,6 +149,21 @@ const server = http.createServer(async (req, res) => {
       return send(res,200,{response:[await footballGamebooks(q)]});
     }
     if(u.pathname==='/api/data-health')return send(res,200,{...dataHealth.snapshot(),footballUsage:footballMeter.snapshot(),lineHistory:trackedOdds.status()});
+    if(u.pathname==='/api/hook'){
+      const q=Object.fromEntries(u.searchParams),kickoff=Number(q.kickoff);
+      if(!['1','2','nba','ncaab'].includes(q.league)||!Number.isSafeInteger(kickoff)||kickoff<=Date.now()||kickoff>Date.now()+7*86400000||
+         !q.away||!q.home||q.away.length>120||q.home.length>120)return send(res,400,{error:'Upcoming matchup required.'});
+      let neutral=false;
+      if(q.league==='ncaab'){
+        const date=require('./nba-feed').centralDate(kickoff);
+        const slate=await ncaab.games(date);
+        const g=slate.games.find(g=>String(g.id)===q.game&&g.timeKnown&&g.status==='Scheduled'&&g.home===q.home&&g.away===q.away&&Date.parse(g.tipoff)===kickoff);
+        if(!g)return send(res,404,{error:'College matchup unavailable.'});
+        neutral=g.neutral===true;
+      }
+      try{return send(res,200,{quotes:await getHook({league:q.league,away:q.away,home:q.home,tipoff:new Date(kickoff).toISOString(),neutral})});}
+      catch{return send(res,503,{error:'FanDuel quote lookup unavailable.'});}
+    }
     if(u.pathname==='/api/slate-spreads'){
       const league=u.searchParams.get('league');
       if(!['1','2','nba','ncaab'].includes(league))return send(res,400,{error:'Unknown league'});
