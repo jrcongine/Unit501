@@ -214,3 +214,19 @@ test('unwritable usage history blocks the provider without spending an attempt',
  assert.equal(meter.snapshot().outboundAttempts,0);
  assert.equal(meter.snapshot().recentDays,null);
 });
+
+test('invalid parameters, missing coverage and auth errors do not freeze unrelated football requests',async()=>{
+ for(const errors of [{season:'Unsupported season'},{parameters:'Invalid team ID'},{token:'Invalid API key'},{endpoint:'This endpoint is not covered by this plan'}]){
+  const meter=createMeter();
+  await meter.track('/injuries',async(_,observe)=>observe(200,new Headers(),{errors}));
+  await meter.track('/games',async()=>{});
+  assert.equal(meter.snapshot().cooldownUntil,null);
+  assert.equal(meter.snapshot().outboundAttempts,2);
+ }
+});
+test('cooldown errors carry a machine-readable retry deadline without spending a request',async()=>{
+ const now=Date.parse('2026-11-01T21:00Z'),meter=createMeter({now:()=>now});
+ await meter.track('/games',async(_,observe)=>observe(429,new Headers({'retry-after':'90'})));
+ await assert.rejects(meter.track('/games',async()=>assert.fail()),error=>error.code==='FOOTBALL_COOLDOWN'&&error.retryAt===now+90000);
+ assert.equal(meter.snapshot().outboundAttempts,1);
+});

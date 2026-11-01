@@ -139,11 +139,16 @@ async function providerAPI(endpoint) {
     if (!r.ok) {
       const error=new Error('Football provider HTTP ' + r.status);
       error.retryable=[502,503,504].includes(r.status);
+      if(r.status===429){error.code='FOOTBALL_COOLDOWN';error.retryAt=Date.parse(footballMeter.snapshot().cooldownUntil);}
       throw error;
     }
     const data=await r.json();
     observeResponse(r.status,r.headers,data);
-    if(data?.errors&&Object.keys(data.errors).length)throw new Error('Football provider returned an API error; retries paused briefly.');
+    if(data?.errors&&Object.keys(data.errors).length){
+      const error=new Error('Football provider rejected this request. Check source coverage or configuration.');
+      if(require('./api-meter').rateLimited(data)){error.code='FOOTBALL_COOLDOWN';error.retryAt=Date.parse(footballMeter.snapshot().cooldownUntil);error.message='Football data is temporarily rate limited.';}
+      throw error;
+    }
     return data;
   }));
 
@@ -464,8 +469,8 @@ if (u.pathname === '/api/team-games') {
       });
 
       const slate=await api('/games?' + params);
-      observeLearning(()=>footballLearning.observe(slate));
-      observeLearning(()=>footballPropsGrader.slate(slate));
+      if(!slate.cache?.stale){observeLearning(()=>footballLearning.observe(slate));
+      observeLearning(()=>footballPropsGrader.slate(slate));}
       return send(res,200,slate);
 
     }
@@ -602,7 +607,7 @@ if (u.pathname === '/api/team-games') {
 
     console.error(e);
 
-    send(res, 500, { error: e.message });
+    send(res, e.code==='FOOTBALL_COOLDOWN'?429:500, { error: e.message,...(e.code==='FOOTBALL_COOLDOWN'?{code:e.code,retryAt:e.retryAt}:{}) });
 
   }
 

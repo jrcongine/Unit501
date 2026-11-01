@@ -12,6 +12,11 @@ function category(endpoint){
   if(route==='/leagues')return 'leagueCoverage';
   return 'other';
 }
+function rateLimited(data){
+  const errors=data?.errors;
+  const text=typeof errors==='string'?errors:errors&&typeof errors==='object'?Object.entries(errors).map(([key,value])=>key+' '+String(value)).join(' '):'';
+  return /rate[ -]?limit|too many requests|requests?[^.]{0,60}(?:per minute|per second)|(?:per minute|per second)[^.]{0,60}(?:limit|requests)/i.test(text);
+}
 function createMeter({now=Date.now,budget=7500,history=null}={}){
   const cap=Number(budget);
   if(!Number.isSafeInteger(cap)||cap<1||cap>7500)throw Error('Invalid football daily soft budget');
@@ -77,9 +82,9 @@ function createMeter({now=Date.now,budget=7500,history=null}={}){
       const seconds=raw!==null&&raw!==undefined&&/^\d+$/.test(raw)?Number(raw):NaN;
       const until=Number.isFinite(seconds)?now()+seconds*1000:Date.parse(raw);
       cooldownUntil=Math.max(cooldownUntil,now()+60000,Number.isFinite(until)?until:0);
-    }else if(data?.errors&&Object.keys(data.errors).length){
-      // API-Sports can return an application error with HTTP 200. Pause retries,
-      // but do not invent daily exhaustion from an unverified error message.
+    }else if(rateLimited(data)){
+      // Only a rate-limit error justifies pausing unrelated endpoints. Invalid
+      // parameters, missing coverage and auth failures must retain their own cause.
       cooldownUntil=Math.max(cooldownUntil,now()+60000);
     }
   }
@@ -97,7 +102,8 @@ function createMeter({now=Date.now,budget=7500,history=null}={}){
     }
     if(cooldownUntil>now()){
       blockedByCooldown++;
-      throw Error('Football provider cooldown active. Try again after '+new Date(cooldownUntil).toISOString()+'.');
+      const error=Error('Football provider cooldown active. Try again after '+new Date(cooldownUntil).toISOString()+'.');
+      error.code='FOOTBALL_COOLDOWN';error.retryAt=cooldownUntil;throw error;
     }
     if(attempts>=cap){
       blocked++;
@@ -117,4 +123,4 @@ function createMeter({now=Date.now,budget=7500,history=null}={}){
   }
   return {track,snapshot,observeHeaders};
 }
-module.exports={category,createMeter};
+module.exports={category,createMeter,rateLimited};

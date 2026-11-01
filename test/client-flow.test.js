@@ -1198,3 +1198,18 @@ test('first matchup this season displays prior-season actuals without changing t
  const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  assert.equal(rows().length,4);assert.ok(rows().every(r=>r.children[0].textContent.includes('RB 2')));
  });
+
+test('slate cooldown preserves the same loaded games and selection, shows a countdown and resets on date changes',async()=>{
+ const h=harness();await h.settle();await h.settle();
+ h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ const prior=h.nodes.get('games').children.slice(),base=h.context.fetch;
+ h.context.fetch=async url=>String(url).startsWith('/api/games?')?{ok:false,status:429,json:async()=>({error:'cooldown active',code:'FOOTBALL_COOLDOWN',retryAt:Date.now()+60000})}:base(url);
+ await h.run('load()');
+ assert.deepEqual(h.nodes.get('games').children,prior);
+ assert.equal(h.run('selected.id'),999);
+ assert.match(h.nodes.get('slate-refresh-status').textContent,/last loaded games.*Try Load Slate in 60s/);
+ assert.equal(h.nodes.get('load').disabled,true);
+ h.nodes.get('date').value='2026-10-11';await h.nodes.get('date').dispatchEvent({type:'change'});
+ assert.equal(h.nodes.get('load').disabled,false);assert.equal(h.nodes.get('slate-refresh-status').hidden,true);
+ assert.doesNotMatch(h.nodes.get('games').textContent,/RB 1/);
+});

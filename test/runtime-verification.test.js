@@ -8,7 +8,7 @@ test('runtime verification authenticates only loopback assets and saved health w
   return {ok:true,text:async()=>'<safe asset>',json:async()=>({playerProps:{configured:true,groups:url.includes("/football/")?[{captured:5,pending:2,unverified:0,win:1,loss:0,push:0,noLean:1,dnp:1}]:[]},marketGradesVersion:1,configured:true,groups:[],footballUsage:{recentDays:[]},feeds:[{id:'nba:props',status:'partial',secret:password},{id:'nfl:injuries',status:'stale'},{id:password,status:'working'},{id:'nba:context',status:password}]})};
  }});
  assert.equal(r.footballPropReview.captured,5);assert.equal(r.footballPropReview.pending,2);assert.equal(r.footballPropGrades,1);assert.equal(r.basketballPropReview.captured,0);
- assert.equal(r.status,'verified');assert.equal(r.footballUsageHistory,'read');assert.equal(r.footballLearning,'configured');assert.equal(r.basketballLearning,'configured');assert.equal(r.basketballMarketGrades,0);assert.equal(calls.length,28);assert.ok(calls.includes('http://127.0.0.1:8080/player-stats.js'));assert.ok(calls.every(u=>u.startsWith('http://127.0.0.1:8080/')));
+ assert.equal(r.status,'verified');assert.equal(r.footballUsageHistory,'read');assert.equal(r.footballLearning,'configured');assert.equal(r.basketballLearning,'configured');assert.equal(r.basketballMarketGrades,0);assert.equal(calls.length,30);assert.ok(calls.includes('http://127.0.0.1:8080/player-stats.js'));assert.ok(calls.every(u=>u.startsWith('http://127.0.0.1:8080/')));
  assert.deepEqual(r.feeds,[{id:'nba:props',status:'partial'},{id:'nfl:injuries',status:'stale'}]);assert(!JSON.stringify(r).includes(password));
 });
 test('runtime verification fails closed on missing auth, mismatched assets and failed health',async()=>{

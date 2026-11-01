@@ -846,16 +846,28 @@ venueCity: g.game?.venue?.city || '',
   };
 }
 
+let successfulSlate=null,successfulSlateAt=0,slateRetryTimer=null;
+const slateNotice=document.createElement('p');slateNotice.id='slate-refresh-status';slateNotice.hidden=true;slateNotice.setAttribute('role','status');slateNotice.style.cssText='flex-basis:100%;margin:0;font-size:13px;color:#baf3fa';$('load').after(slateNotice);
+function resetSlateRetry(){clearTimeout(slateRetryTimer);slateRetryTimer=null;$('load').disabled=false;slateNotice.hidden=true;}
+function pauseSlate(retryAt,scope,prefix){
+  const tick=()=>{
+    if(scope!==$('league').value+':'+$('date').value)return;
+    const seconds=Math.max(0,Math.ceil((retryAt-Date.now())/1000));
+    $('load').disabled=seconds>0;slateNotice.hidden=false;
+    slateNotice.textContent=prefix+(seconds?' Football data is busy. Try Load Slate in '+seconds+'s.':' Football data can be refreshed now.');
+    if(seconds)slateRetryTimer=setTimeout(tick,1000);
+  };tick();
+}
 async function load() {
-  window.Unit501Hook?.select(null);
   window.Unit501Worth?.clear();
   const task = ++slateSequence;
-  clearSelection();
-
-  showMessage('Loading games…');
-
+  resetSlateRetry();
   const date = $('date').value;
   const league = $('league').value;
+  const scope=league+':'+date;
+  const keep=successfulSlate===scope&&Date.now()-successfulSlateAt<=600000;
+  if(!keep){window.Unit501Hook?.select(null);clearSelection();showMessage('Loading games…');}
+  else {slateNotice.hidden=false;slateNotice.textContent='Refreshing games… The last loaded slate stays available.';}
 
   if (!date) {
     showMessage('Choose a date first.');
@@ -875,7 +887,7 @@ async function load() {
     if (task !== slateSequence) return;
 
     if (!response.ok || data.error) {
-      throw new Error(data.error || 'Game request failed');
+      const error=new Error(data.error || 'Game request failed');error.code=data.code;error.retryAt=data.retryAt;throw error;
     }
 
     if (data.errors && Object.keys(data.errors).length) {
@@ -908,7 +920,12 @@ async function load() {
       return;
     }
 
-    $('status').textContent = 'GAME DATA RECEIVED';
+    successfulSlate=scope;successfulSlateAt=data.cache?.stale?data.cache.storedAt:Date.now();
+    $('status').textContent = data.cache?.stale?'CACHED GAMES':'GAME DATA RECEIVED';
+    if(data.cache?.stale){
+      const checked=new Date(data.cache.storedAt).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'});
+      pauseSlate(Number(data.cache.retryAt)||Date.now(),scope,'Showing cached games from '+checked+' CT; scores/status may be delayed.');
+    }else slateNotice.hidden=true;
     document.dispatchEvent(new CustomEvent('unit501:slate-loaded',{detail:{league:league==='1'?'nfl':'ncaaf'}}));
     games.innerHTML = '';
 
@@ -920,13 +937,18 @@ async function load() {
         away:game.a,home:game.h,awayLogo:game.awayLogo,homeLogo:game.homeLogo,detailText,container:games,seasonRecord:{league:league==='1'?'nfl':'ncaaf',season:game.season,date},
         onSelect:()=>choose(game)
       });
+      if(selected&&String(selected.id)===String(game.id)){card.classList.add('selected');card.setAttribute('aria-pressed','true');}
       games.appendChild(card);
     });
     window.Unit501Worth?.load(league,slate.map((g,i)=>({away:g.a,home:g.h,kickoff:g.kickoff,scheduled:g.scheduled,card:games.children[i]})));
   } catch (error) {
     if (task !== slateSequence) return;
-    $('status').textContent = 'GAME DATA UNAVAILABLE';
-    showMessage('Unable to load games: ' + error.message);
+    $('status').textContent = keep?'CACHED GAMES':'GAME DATA UNAVAILABLE';
+    if(error.code==='FOOTBALL_COOLDOWN'&&Number.isFinite(error.retryAt)){
+      if(!keep)showMessage('Football data is temporarily busy. The refresh countdown is above.');
+      pauseSlate(error.retryAt,scope,keep?'Showing the last loaded games; scores/status may be delayed.':'');
+    }else if(keep){slateNotice.hidden=false;slateNotice.textContent='Refresh unavailable. Showing the last loaded games; scores/status may be delayed.';}
+    else showMessage('Unable to load games: ' + error.message);
   }
 }
 
@@ -1132,6 +1154,8 @@ $('sim').onclick = sim;
 for (const id of ['date', 'league']) {
   $(id).addEventListener('change', () => {
     slateSequence++;
+    resetSlateRetry();
+    successfulSlate=null;
     clearSelection();
     showMessage('Tap Load Slate to see games for this date and league.');
   });
