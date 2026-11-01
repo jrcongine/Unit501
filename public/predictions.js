@@ -323,7 +323,7 @@ const missing = withheldMarkets.filter(row =>
 if (missing.length) {
   const details = document.createElement('details');
   details.id = 'prop-missing-markets';
-  details.open = Boolean(board.dataset.player) || missing.some(row => row.line !== null);
+  details.open = Boolean(board.dataset.player);
   const summary = document.createElement('summary');
   summary.textContent = `${missing.length} markets need stat verification — projections unavailable`;
   details.append(summary);

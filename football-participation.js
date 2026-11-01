@@ -43,7 +43,16 @@ function parseBox(data,event,g,q){
     const index=keys.indexOf(field);if(index<0)continue;
     const read=v=>{if(field==='completions/passingAttempts'){const pair=/^(\d+)\/(\d+)$/.exec(String(v));return pair&&Number(pair[1])<=Number(pair[2])?Number(pair[2]):null;}const n=integer(v);return n!==null&&(market.endsWith('Yds')||n>=0)?n:null;};
     const total=read(totals[index]),values=rows.map(r=>read(r.stats?.[index]));
-    if(total===null||values.some(v=>v===null)||values.reduce((a,b)=>a+b,0)!==total)continue;
+    if(total===null||values.some(v=>v===null))continue;
+    const sum=values.reduce((a,b)=>a+b,0);
+    if(sum!==total){
+     // ESPN's team passing-yard total is net of sacks; player yards are gross.
+     // Reconcile the exact sack-loss total rather than silently accepting a gap.
+     const sackIndex=keys.indexOf('sacks-sackYardsLost'),sacks=sackIndex>=0?rows.map(r=>/^(\d+)-(\d+)$/.exec(String(r.stats?.[sackIndex]))):[];
+     const teamSacks=sackIndex>=0?/^(\d+)-(\d+)$/.exec(String(totals[sackIndex])):null;
+     if(market!=='passYds'||sacks.length!==rows.length||!teamSacks||sacks.some(v=>!v)||
+        sacks.reduce((n,v)=>n+Number(v[1]),0)!==Number(teamSacks[1])||sacks.reduce((n,v)=>n+Number(v[2]),0)!==Number(teamSacks[2])||sum-Number(teamSacks[2])!==total)continue;
+    }
     for(const [id,p]of players){if(p.participation!=='played')continue;const i=rows.findIndex(r=>String(r.athlete?.id)===id);p[market]=i<0?0:values[i];p.markets.push(market);}
    }
   }

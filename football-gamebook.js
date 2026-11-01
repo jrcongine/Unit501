@@ -22,7 +22,7 @@ function lines(items,side,width){
 function roster(rows,team){
  const start=rows.indexOf(team),sub=rows.indexOf('Substitutions'),dnp=rows.indexOf('Did Not Play'),inactive=rows.indexOf('Not Active');
  if(start<0||sub<=start||dnp<=sub||inactive<=dnp)throw Error('Participation sections unavailable');
- const positions='3QB|QB|RB|FB|WR|TE|C/G|G/T|C|G|T|OL|LT|LG|RG|RT|OLB|ILB|LB|EDGE|DE|DT|NT|DL|CB|FS|SS|S|DB|LS|K|P';
+ const positions='3QB|QB|RB|FB|WR|TE|C/G|G/T|T/G|C|G|T|OL|LT|LG|RG|RT|OLB|ILB|LB|EDGE|DE|DT|NT|DL|CB|FS|SS|S|DB|LS|K|P';
  const expression=new RegExp('(?:^|[, ]+)('+positions+')\\s+(\\d{1,2})\\s+([A-Z][a-z]{0,3}\\.[A-Za-zÀ-ž][A-Za-zÀ-ž.\x27’ -]*?)(?=,|\\s+(?:'+positions+')\\s+\\d|$)','g');
  function parse(text,participation){
   text=text.replace(/\s+/g,' ').trim();if(!text)return [];
