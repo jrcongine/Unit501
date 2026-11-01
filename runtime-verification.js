@@ -32,8 +32,17 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
    if(!response.ok)throw Error();
    const review=await response.json();
    result[field]=review.configured===true && Array.isArray(review.groups)?'configured':'unconfigured';
-   if(review.playerProps?.configured&&Array.isArray(review.playerProps.groups))
-    result[sport+'PropGrades']=review.playerProps.groups.reduce((sum,g)=>sum+g.win+g.loss+g.push,0);
+   if(review.playerProps?.configured&&Array.isArray(review.playerProps.groups)){
+    const totals={captured:0,pending:0,unverified:0,win:0,loss:0,push:0,noLean:0,dnp:0};
+    for(const group of review.playerProps.groups){
+     for(const key of Object.keys(totals)){
+      if(!Number.isSafeInteger(group[key])||group[key]<0)throw Error('Invalid prop count');
+      totals[key]+=group[key];
+     }
+    }
+    result[sport+'PropReview']=totals;
+    result[sport+'PropGrades']=totals.win+totals.loss+totals.push;
+   }
    if(review.marketGradesVersion===1 && result[field]==='configured'){
     result[sport+'MarketGrades']=review.groups.reduce((n,g)=>n+['spread','total'].reduce((s,m)=>s+g[m].wins+g[m].losses+g[m].pushes,0),0);
    }

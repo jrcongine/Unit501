@@ -5,8 +5,9 @@ const password='test-private-password-only';
 test('runtime verification authenticates only loopback assets and saved health without logging secrets',async()=>{
  const calls=[];const r=await verify({port:8080,password,commit:'a'.repeat(40),readFile:async()=>'<safe asset>',fetcher:async(url,opts)=>{
   calls.push(url);assert.equal(opts.headers.Authorization,'Basic '+Buffer.from('jr:'+password).toString('base64'));assert.equal(opts.redirect,'error');
-  return {ok:true,text:async()=>'<safe asset>',json:async()=>({marketGradesVersion:1,configured:true,groups:[],footballUsage:{recentDays:[]},feeds:[{id:'nba:props',status:'partial',secret:password},{id:'nfl:injuries',status:'stale'},{id:password,status:'working'},{id:'nba:context',status:password}]})};
+  return {ok:true,text:async()=>'<safe asset>',json:async()=>({playerProps:{configured:true,groups:url.includes("/football/")?[{captured:5,pending:2,unverified:0,win:1,loss:0,push:0,noLean:1,dnp:1}]:[]},marketGradesVersion:1,configured:true,groups:[],footballUsage:{recentDays:[]},feeds:[{id:'nba:props',status:'partial',secret:password},{id:'nfl:injuries',status:'stale'},{id:password,status:'working'},{id:'nba:context',status:password}]})};
  }});
+ assert.equal(r.footballPropReview.captured,5);assert.equal(r.footballPropReview.pending,2);assert.equal(r.footballPropGrades,1);assert.equal(r.basketballPropReview.captured,0);
  assert.equal(r.status,'verified');assert.equal(r.footballUsageHistory,'read');assert.equal(r.footballLearning,'configured');assert.equal(r.basketballLearning,'configured');assert.equal(r.basketballMarketGrades,0);assert.equal(calls.length,26);assert.ok(calls.includes('http://127.0.0.1:8080/player-stats.js'));assert.ok(calls.every(u=>u.startsWith('http://127.0.0.1:8080/')));
  assert.deepEqual(r.feeds,[{id:'nba:props',status:'partial'},{id:'nfl:injuries',status:'stale'}]);assert(!JSON.stringify(r).includes(password));
 });
