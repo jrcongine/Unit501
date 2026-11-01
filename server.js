@@ -47,6 +47,7 @@ const footballMeter=require('./api-meter').createMeter({
   history:require('./football-usage-history').createUsageHistory(process.env.UNIT501_LINE_HISTORY_FILE
     ? path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-usage-v1') : null),
   budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
+const footballQueue=require('./provider-queue').createProviderQueue({state:()=>footballMeter.snapshot()});
 const footballLearning=require('./football-learning').createLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-learning-v1'),
   marketRecorder,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
@@ -125,7 +126,7 @@ async function providerAPI(endpoint) {
 
   }
 
-  return withRecovery(()=>footballMeter.track(endpoint,async(observeHeaders,observeResponse)=>{
+  return withRecovery(()=>footballQueue(()=>footballMeter.track(endpoint,async(observeHeaders,observeResponse)=>{
     let r;
     try { r = await fetch(API + endpoint, {
       signal: AbortSignal.timeout(15000),
@@ -150,7 +151,7 @@ async function providerAPI(endpoint) {
       throw error;
     }
     return data;
-  }));
+  })));
 
 }
 

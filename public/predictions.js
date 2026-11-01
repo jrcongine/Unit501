@@ -100,7 +100,7 @@
     const x = Number(v); return Number.isFinite(x) ? x : null;
   };
   const json = async url => {
-    const res = await fetch(url, {signal:AbortSignal.timeout(url.startsWith('/api/football/participation?')?90000:20000)});
+    const res = await fetch(url, {signal:AbortSignal.timeout(90000)});
     const x = await res.json();
     if (!res.ok || x.error || (x.errors && Object.keys(x.errors).length)) {
       throw new Error(x.error || JSON.stringify(x.errors) || 'Data could not be loaded');
