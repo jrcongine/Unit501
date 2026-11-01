@@ -25,12 +25,16 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
   result.feedHealth='read';
   result.footballUsageHistory=Array.isArray(data.footballUsage?.recentDays)?'read':'unavailable';
  }catch{result.feedHealth='unavailable';}
- try{
-  const response=await fetcher('http://127.0.0.1:'+Number(port)+'/api/football/model-review',options);
-  if(!response.ok)throw Error();
-  const review=await response.json();
-  result.footballLearning=review.configured===true && Array.isArray(review.groups)?'configured':'unconfigured';
- }catch{result.footballLearning='unavailable';}
+ for(const sport of ['football','basketball']){
+  const field=sport+'Learning';
+  try{
+   const response=await fetcher('http://127.0.0.1:'+Number(port)+'/api/'+sport+'/model-review',options);
+   if(!response.ok)throw Error();
+   const review=await response.json();
+   result[field]=review.configured===true && Array.isArray(review.groups)?'configured':'unconfigured';
+   if(result[field]==='configured')result[sport+'Graded']=review.groups.reduce((sum,g)=>sum+g.graded,0);
+  }catch{result[field]='unavailable';}
+ }
  result.status=result.assets.every(a=>a.status==='verified')&&result.feedHealth==='read'?'verified':'partial';
  return result;
 }

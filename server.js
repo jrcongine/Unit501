@@ -12,7 +12,8 @@ const fanduel = require('./fanduel');
 const footballComparison = require('./football-comparison').createComparison();
 const outsidePicks = require('./outside-picks').createFeed();
 const publicNBA = require('./nba-public').createPublicNBA();
-const nbaSources = require('./nba-public').createNBASources({primaryGames:require('./nba-feed').createNBAFeed(),primaryContext:require('./nba-context').createNBAContext(),publicFeed:publicNBA});
+const primaryNBAGames=require('./nba-feed').createNBAFeed();
+const nbaSources = require('./nba-public').createNBASources({primaryGames:primaryNBAGames,primaryContext:require('./nba-context').createNBAContext(),publicFeed:publicNBA});
 const nbaGames = nbaSources.games;
 const nbaLiveWatch = require('./nba-live-watch').createLiveWatch({publicFeed:publicNBA});
 const nbaContext = nbaSources.context;
@@ -47,8 +48,12 @@ const footballLearning=require('./football-learning').createLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-learning-v1'),
   revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
 });
+const basketballLearning=require('./basketball-learning').createBasketballLearning({
+  directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'basketball-learning-v1'),
+  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+});
 function observeLearning(action){
-  try { action(); } catch { console.warn('Football learning observation unavailable.'); }
+  try { action(); } catch { console.warn('Model grading observation unavailable.'); }
 }
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
@@ -157,7 +162,7 @@ const server = http.createServer(async (req, res) => {
     if(u.pathname==='/api/ncaab/games'){
       const date=u.searchParams.get('date');
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid date required.'});
-      try{return send(res,200,await ncaab.games(date));}catch{return send(res,503,{error:'College basketball schedule unavailable.'});}
+      try{const slate=await ncaab.games(date);observeLearning(()=>basketballLearning.observe(slate));return send(res,200,slate);}catch{return send(res,503,{error:'College basketball schedule unavailable.'});}
     }
     if(['/api/ncaab/odds','/api/ncaab/props','/api/ncaab/injuries','/api/ncaab/player-history'].includes(u.pathname)){
       const date=u.searchParams.get('date'),id=u.searchParams.get('game');
@@ -175,7 +180,9 @@ const server = http.createServer(async (req, res) => {
       if(!require('./nba-feed').validDate(date)||!/^\d{1,12}$/.test(id||''))return send(res,400,{error:'Valid date and game required.'});
       try{const slate=await ncaab.games(date),game=slate.games.find(g=>g.id===id);
        if(!game)return send(res,404,{error:'Game not found on this slate.'});
-       return send(res,200,await ncaab.context(game));
+       const context=await ncaab.context(game);
+       observeLearning(()=>basketballLearning.capture(slate,game,context));
+       return send(res,200,context);
       }catch{return send(res,503,{error:'College basketball team history unavailable.'});}
     }
     if(u.pathname==='/api/nba/live-watch'){
@@ -186,7 +193,7 @@ const server = http.createServer(async (req, res) => {
     if(u.pathname==='/api/nba/games'){
       const date=u.searchParams.get('date');
       if(!require('./nba-feed').validDate(date))return send(res,400,{error:'Valid NBA date (YYYY-MM-DD) required.'});
-      try{const slate=await nbaGames(date);injurySlate.remember(date,slate);return send(res,200,slate);}
+      try{const slate=await nbaGames(date);injurySlate.remember(date,slate);observeLearning(()=>basketballLearning.observe(slate));return send(res,200,slate);}
       catch(e){console.error('NBA beta:',e.message);return send(res,503,{error:e.code==='NBA_PLAN_ACCESS'?e.message:'NBA schedule unavailable. Verify NBA provider access and try again.',code:e.code==='NBA_PLAN_ACCESS'?e.code:'NBA_UNAVAILABLE'});}
     }
     if(['/api/nba/odds','/api/nba/props','/api/nba/comparison'].includes(u.pathname)){
@@ -238,7 +245,9 @@ const server = http.createServer(async (req, res) => {
         const game=slate.games.find(g=>String(g.id)===id);
         if(!game)return send(res,404,{error:'Selected game not found on this NBA slate.'});
         if(u.searchParams.get('provider')&&u.searchParams.get('provider')!==game.provider)return send(res,409,{error:'NBA source changed. Reload the NBA slate before selecting this game.'});
-        return send(res,200,await nbaContext(game,slate.season));
+        const context=await nbaContext(game,slate.season);
+       observeLearning(()=>basketballLearning.capture(slate,game,context));
+       return send(res,200,context);
       }catch(e){
         console.error('NBA team context:',e.message);
         return send(res,503,{error:'NBA matchup history unavailable. Check NBA data access or try again.'});
@@ -249,6 +258,7 @@ const server = http.createServer(async (req, res) => {
       if(!['nfl','ncaaf','mlb','nba','nhl','ncaab'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA, college basketball or NHL.'});
       return send(res,200,await outsidePicks(league));
     }
+    if(u.pathname==='/api/basketball/model-review')return send(res,200,basketballLearning.summary());
     if(u.pathname==='/api/football/model-review')return send(res,200,footballLearning.summary());
     if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
@@ -576,6 +586,12 @@ server.listen(PORT, () => {
   if(process.env.UNIT501_BASKETBALL_ODDS_AUDIT)require('./basketball-odds-audit').run()
     .then(result=>console.log('Basketball odds audit: '+JSON.stringify(result))).catch(()=>console.log('Basketball odds audit: unavailable'));
   trackedOdds.start();
+  if(process.env.UNIT501_LINE_HISTORY_FILE)setInterval(()=>basketballLearning.refresh(async game=>{
+    if(game.league==='ncaab')return ncaab.games(game.date);
+    if(game.provider==='espn')return publicNBA.games(game.date);
+    const slate=await primaryNBAGames(game.date);
+    return {...slate,provider:'api-nba',games:slate.games.map(row=>({...row,provider:'api-nba'}))};
+  }).catch(()=>console.warn('Basketball final check deferred.')),3600000).unref();
   if(process.env.UNIT501_LINE_HISTORY_FILE && process.env.API_SPORTS_KEY)
     setInterval(()=>footballLearning.refresh(api).catch(()=>console.warn('Football final check deferred.')),3600000).unref();
   console.log('Line history: ' + JSON.stringify(trackedOdds.status()));
