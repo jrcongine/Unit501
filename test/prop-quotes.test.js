@@ -8,9 +8,9 @@ const m=(outcomes=rows(),key='player_pass_yds',at=now)=>({key,last_update:new Da
 const event=ms=>({bookmakers:[{key:'fanduel',markets:ms}]});
 test('audit accounts for every candidate and reports exact missing market coverage',()=>{
  const {props,audit}=auditProps(event([m(),m(rows('Stale'),'player_pass_yds',now-1800001),m(rows('Alternate'),'alternate'),m(rows('One').slice(0,1)),m(rows('Price').map(r=>({...r,price:0})))]),{...markets,player_receptions:'rec'},now);
- assert.equal(props.length,1);assert.equal(audit.quotesReceived,5);assert.equal(audit.outcomesReceived,9);
+ assert.equal(props.length,2);assert.equal(audit.quotesReceived,5);assert.equal(audit.outcomesReceived,9);
  assert.equal(audit.accepted+audit.rejected,audit.quotesReceived);
- assert.deepEqual(audit.reasons,{stale_timestamp:1,unsupported_market:1,unpaired_quote:1,invalid_price:1});
+ assert.deepEqual(audit.reasons,{stale_timestamp:1,unsupported_market:1,invalid_price:1});
  assert.deepEqual(audit.missingMarkets,['player_receptions']);
 });
 test('identical repeats recover once; conflicting duplicates and duplicate bookmakers stay blocked',()=>{
@@ -33,9 +33,9 @@ test('recovered quote reaches shared history with the provider timestamp, audit 
 test('malformed nested provider records cannot erase independent valid paired props',()=>{
  const e=event([null,false,{},m([...rows(),null,7,[]]),m(rows('Unpaired').slice(0,1))]);e.bookmakers.unshift(null,[]);
  const result=auditProps(e,markets,now);
- assert.equal(result.props.length,1);assert.equal(result.props[0].name,'José Player');assert.equal(result.props[0].line,20.5);
+ assert.equal(result.props.length,2);assert.equal(result.props[0].name,'José Player');assert.equal(result.props[0].line,20.5);
  assert.equal(result.audit.accepted+result.audit.rejected,result.audit.quotesReceived);
- assert.equal(result.audit.reasons.unpaired_quote,1);
+ assert.equal(result.audit.reasons.unpaired_quote,undefined);assert.equal(result.props[1].under,null);
  assert.deepEqual(result.audit.malformedRecords,{bookmakers:2,markets:3,outcomes:3});
 });
 

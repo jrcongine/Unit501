@@ -20,8 +20,8 @@ test('only paired fresh main FanDuel props are returned',()=>{
  assert.equal(parseProps(event(outcomes,now,'player_pass_yds_alternate'),now).length,0);
  assert.equal(parseProps(event(outcomes,now,'player_pass_yds','draftkings'),now).length,0);
 });
-test('rejects one-sided and conflicting quotes, recovers identical duplicates',()=>{
- assert.equal(parseProps(event(outcomes.slice(0,1)),now).length,0);
+test('retains numeric one-sided lines without inventing the missing side and rejects conflicts',()=>{
+ const one=parseProps(event(outcomes.slice(0,1)),now);assert.equal(one.length,1);assert.equal(one[0].over,-110);assert.equal(one[0].under,null);assert.equal(one[0].line,250.5);
  assert.equal(parseProps(event([outcomes[0],{...outcomes[1],point:251.5}]),now).length,0);
  assert.equal(parseProps(event([...outcomes,outcomes[0]]),now).length,1);
 });

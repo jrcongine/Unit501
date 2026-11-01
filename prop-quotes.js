@@ -1,5 +1,5 @@
 'use strict';
-// Shared strict main-line parser. Counts refer to player/market quote candidates,
+// Shared strict main-line parser. A numeric one-sided quote retains its supplied price only. Counts refer to player/market quote candidates,
 // while outcomesReceived counts the provider's individual Over/Under selections.
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function auditProps(event,markets,now=Date.now()) {
@@ -25,12 +25,13 @@ function auditProps(event,markets,now=Date.now()) {
    let reason=books.length!==1?'ambiguous_bookmaker':!stat?'unsupported_market':!name?'missing_player_name':!Number.isFinite(at)?'missing_timestamp':at>now+60000?'future_timestamp':now-at>1800000?'stale_timestamp':null;
    const over=rows.filter(r=>r.name==='Over'),under=rows.filter(r=>r.name==='Under');
    if(!reason){
-    if(over.length!==1||under.length!==1||rows.length!==2)reason=over.length>1||under.length>1?'conflicting_quotes':'unpaired_quote';
-    else if(!Number.isFinite(over[0].point)||!Number.isInteger(over[0].point*2)||over[0].point!==under[0].point||(!String(stat).endsWith('Yds')&&over[0].point<0))reason='invalid_or_conflicting_line';
+    if(over.length>1||under.length>1)reason='conflicting_quotes';
+    else if(rows.length<1||rows.length>2||rows.length!==over.length+under.length)reason='unpaired_quote';
+    else if(!rows.every(r=>Number.isFinite(r.point)&&Number.isInteger(r.point*2)&&r.point===rows[0].point&&(String(stat).endsWith('Yds')||r.point>=0)))reason='invalid_or_conflicting_line';
     else if(!rows.every(r=>Number.isInteger(r.price)&&Math.abs(r.price)>=100))reason='invalid_price';
    }
    if(reason){reject(name,market.key,reason);continue;}
-   candidates.push({name,stat,market:market.key,line:over[0].point,updatedAt:at,over:over[0].price,under:under[0].price});
+   candidates.push({name,stat,market:market.key,line:rows[0].point,updatedAt:at,over:over[0]?.price??null,under:under[0]?.price??null});
   }
  }
  // Collapse only identical snapshots; never choose between conflicting lines/prices.

@@ -57,6 +57,42 @@
       if(opponent?.id)record.games.get(gameId).opponentId=opponent.id;
     }
   }
+  // Roster IDs stay in the provider namespace. Never attach ESPN IDs to provider rosters.
+  function seedRoster(records,calendar,snapshot,teams,now=Date.now()) {
+    if(snapshot?.current!==true||!Array.isArray(snapshot.teams))return 0;
+    let added=0;
+    for(const team of teams){
+      const entries=snapshot.teams.filter(t=>String(t.id)===String(team.id));
+      if(entries.length!==1)continue;const roster=entries[0].roster;
+      if(roster?.available!==true||!Number.isFinite(roster.checkedAt)||roster.checkedAt>now||now-roster.checkedAt>3600000||!Array.isArray(roster.rows))continue;
+      for(const player of roster.rows){
+        const playerId=String(player.id||''),name=String(player.name||'').trim();
+        if(!/^\d{1,12}$/.test(playerId)||!name||name==='Unknown player'||!['QB','RB','FB','WR','TE'].includes(player.position)||
+           roster.rows.filter(p=>String(p.id)===playerId||normalize(p.name)===normalize(name)).length!==1||
+           snapshot.rosterOwnership?.conflicts?.some(p=>String(p.id)===playerId))continue;
+        const id=String(team.id)+':'+playerId,old=records.get(id);
+        if(old){if(normalize(old.name)===normalize(name))old.position=player.position;continue;}
+        records.set(id,{id,playerId,teamId:String(team.id),team:team.name,name,position:player.position,games:new Map()});added++;
+      }
+    }
+    completeCalendar(records,calendar);return added;
+  }
+  function missingGames(records) {
+    const games=new Set();
+    for(const record of records.values()){
+      const history=[...record.games.values()];
+      const groups=[
+        {roles:['QB'],usage:['attempts','passYds','passTD'],keys:['attempts','passYds','passTD']},
+        {roles:['QB','RB','FB'],usage:['carries','rushYds','rushTD'],keys:['carries','rushYds','rushTD']},
+        {roles:['RB','FB','WR','TE'],usage:['targets','rec','recYds','recTD'],keys:['rec','recYds','recTD']}
+      ].filter(g=>g.roles.includes(record.position)&&history.some(line=>['attempts','carries','targets','rec','passYds','rushYds','recYds'].some(k=>Number.isFinite(line[k])&&line[k]!==0))||history.some(line=>g.usage.some(k=>Number.isFinite(line[k])&&line[k]!==0)));
+      for(const [id,line]of record.games){
+        if(line.participation==='conflict'||line.participation==='dnp'&&line.verification?.participation)continue;
+        if(groups.some(g=>g.keys.some(k=>!Number.isFinite(line[k]))))games.add(String(id));
+      }
+    }
+    return games;
+  }
   // Reviewed official correction, never a blanket missing-to-zero conversion.
   // Packers season totals confirm seven appearances; the seven game logs account
   // for all six receptions and all 94 yards. Targets remain unknown.
@@ -132,7 +168,7 @@
     ]:[];
     return players.filter(p=>key(p.name)===name||aliases.some(a=>a.teams.includes(key(p.team))&&a.names.includes(name)&&a.names.includes(key(p.name))));
   }
-  const api={definitions,extract,teamYards,accumulate,completeCalendar,applyReviewedHistory,applyParticipation,quotePlayers};
+  const api={definitions,extract,teamYards,accumulate,completeCalendar,seedRoster,missingGames,applyReviewedHistory,applyParticipation,quotePlayers};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   else root.Unit501PlayerStats=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

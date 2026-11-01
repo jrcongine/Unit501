@@ -166,6 +166,9 @@ const server = http.createServer(async (req, res) => {
     if(u.pathname==='/api/football/participation'){
       const q=Object.fromEntries(['game','league','season','date'].map(k=>[k,u.searchParams.get(k)||'']));
       if(!/^\d{1,12}$/.test(q.game)||!['1','2'].includes(q.league)||!/^20\d{2}$/.test(q.season)||!/^20\d{2}-\d{2}-\d{2}$/.test(q.date))return send(res,400,{error:'Valid historical game, league, season and date required'});
+      if(u.searchParams.has('source')&&!['full','official'].includes(u.searchParams.get('source')))return send(res,400,{error:'Invalid history source'});
+      q.officialOnly=u.searchParams.get('source')==='official';
+      q.fullNamesOnly=u.searchParams.get('source')==='full';
       const report=await footballGamebooks(q);
       if(report?.available)observeLearning(()=>footballPropsGrader.put('participation/'+q.game,report));
       return send(res,200,{response:[report]});

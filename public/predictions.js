@@ -1106,8 +1106,9 @@ if (league === '1' && stage !== 'regular season') return false;
         }
       }
       completeCalendar(map,past);
+      Unit501PlayerStats.seedRoster(map,past,window.Unit501Availability?.snapshot(),matchupTeams);
       Unit501PlayerStats.applyReviewedHistory(map,past,{league,season});
-      let reconciled=0;
+      let reconciled=0;const fullReports=new Set();
       for(const [id,g] of past){
         if(task!==sequence)return;
         status.textContent=`Verifying participation: ${ids.indexOf(id)+1} of ${ids.length} season games…`;
@@ -1115,10 +1116,24 @@ if (league === '1' && stage !== 'regular season') return false;
         try{
           const reports=await json(`/api/football/participation?game=${id}&league=${league}&season=${season}&date=${day}`);
           if(task!==sequence)return;
-          if(reports.length===1)reconciled+=Unit501PlayerStats.applyParticipation(map,past,reports[0],{league,season});
+          if(reports.length===1){reconciled+=Unit501PlayerStats.applyParticipation(map,past,reports[0],{league,season});if(reports[0]?.available)fullReports.add(id);}
         }catch{/* Original unknown games remain withheld if official evidence is unavailable. */}
       }
 
+      // A successful source can still lack a participant or individual market.
+      // Fill remaining gaps from official participation tables, never assumed zeros.
+      for(const id of Unit501PlayerStats.missingGames(map)){
+        if(task!==sequence)return;
+        const g=past.get(id);if(!g||!fullReports.has(id))continue;
+        status.textContent='Repairing missing player statistics from official participation…';
+        const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000));
+        try{const reports=await json(`/api/football/participation?game=${id}&league=${league}&season=${season}&date=${day}&source=official`);
+          if(task!==sequence)return;
+          if(reports.length===1)reconciled+=Unit501PlayerStats.applyParticipation(map,past,reports[0],{league,season});
+        }catch{/* Keep genuinely unverified games withheld. */}
+      }
+
+      reconciled=[...map.values()].reduce((count,record)=>count+[...record.games.values()].filter(line=>line.verification?.participation===true).length,0);
       choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
