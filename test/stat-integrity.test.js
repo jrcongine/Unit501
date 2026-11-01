@@ -78,3 +78,28 @@ test('duplicate football kickoffs remain a missing game across every supported p
   assert.equal(project([...history,{...history[1]}],key).withheld,true,'identical duplicates still need identity resolution');
  }
 });
+
+test('Daniels verified absences leave four passing games and the played zero',()=>{
+ const player={name:'Jayden Daniels',team:'Washington Commanders',teamId:'18',games:new Map()};
+ const calendar=new Map(), records=new Map([['qb',player]]);
+ const rows=[
+  ['09-13','Philadelphia Eagles',22,24,164,2],['09-20','Dallas Cowboys',20,37,96,1],
+  ['09-27','Seattle Seahawks',33,31],['10-04','Indianapolis Colts',13,30],
+  ['10-11','New York Giants',27,27,199,0],['10-19','San Francisco 49ers',17,23,300,2]
+ ];
+ for(const [day,name,scored,allowed,passYds,passTD] of rows){
+  const date=Date.parse('2026-'+day+'T18:00:00Z')/1000;
+  calendar.set(day,{date,teams:new Map([['18',{name,scored,allowed}]])});
+  player.games.set(day,{gameDate:date,opponent:name,passYds,passTD});
+ }
+ assert.equal(applyReviewedHistory(records,calendar,{league:'1',season:'2025'}),false);
+ assert.equal(applyReviewedHistory(records,calendar,{league:'1',season:'2026'}),true);
+ for(const [key,line] of [['passYds',198.5],['passTD',1.5]]){
+  const history=[...player.games.values()],form=summarize(history,key);
+  assert.equal(form.coverage.dnp,2);
+  assert.equal(form.values.length,4);
+  assert.equal(form.values.filter(x=>x>line).length,2);
+  assert.equal(form.values.filter(x=>x<line).length,2);
+  assert.ok(!project(history,key).withheld);
+ }
+});

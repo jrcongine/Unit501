@@ -108,16 +108,46 @@
       ['2026-10-18','Dallas Cowboys',23,13,0,0],
       ['2026-10-25','Detroit Lions',17,20,1,9]
     ]};
+  function reviewedGames(calendar,teamId,date,opponent,scored,allowed) {
+      return [...calendar].filter(([,g])=>Number.isFinite(g.date)&&
+        new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000))===date&&
+        g.teams.get(teamId)?.name===opponent&&g.teams.get(teamId)?.scored===scored&&g.teams.get(teamId)?.allowed===allowed);
+  }
+  function applyDanielsAbsences(records,calendar) {
+    const candidates=[...records.values()].filter(r=>r.team==='Washington Commanders' && r.name==='Jayden Daniels');
+    if(candidates.length!==1)return false;
+    const player=candidates[0];
+    let applied=false;
+    for(const [date,opponent,scored,allowed] of [
+      ['2026-09-27','Seattle Seahawks',33,31],
+      ['2026-10-04','Indianapolis Colts',13,30]
+    ]){
+      const games=reviewedGames(calendar,player.teamId,date,opponent,scored,allowed);
+      if(games.length!==1)continue;
+      const [id,game]=games[0], line=player.games.get(id);
+      if(!line || line.gameDate!==game.date || line.opponent!==opponent || line.participation)continue;
+      if([...definitions.map(d=>d.key),'attempts','targets'].some(key=>line[key]!==undefined))continue;
+      line.participation='dnp';
+      line.verification={participation:true,markets:[],reviewedAt:'2026-11-01',
+        source:'https://www.nfl.com/news/commanders-jayden-daniels-elbow-start-giants-week-5',
+        gameLog:'https://www.commanders.com/team/players-roster/jayden-daniels/logs/'};
+      applied=true;
+    }
+    return applied;
+  }
   function applyReviewedHistory(records,calendar,scope) {
+    if(String(scope?.league)!=='1'||String(scope?.season)!=='2026')return false;
+    const daniels=applyDanielsAbsences(records,calendar);
+    return applySmithHistory(records,calendar,scope)||daniels;
+  }
+  function applySmithHistory(records,calendar,scope) {
     const review=smithReview;
     if(String(scope?.league)!==review.league||String(scope?.season)!==review.season)return false;
     const matches=[...records.values()].filter(r=>r.name===review.name&&r.team===review.team);
     if(matches.length!==1)return false;
     const record=matches[0],updates=[];
     for(const [date,opponent,scored,allowed,rec,recYds] of review.rows){
-      const games=[...calendar].filter(([,g])=>Number.isFinite(g.date)&&
-        new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000))===date&&
-        g.teams.get(record.teamId)?.name===opponent&&g.teams.get(record.teamId)?.scored===scored&&g.teams.get(record.teamId)?.allowed===allowed);
+      const games=reviewedGames(calendar,record.teamId,date,opponent,scored,allowed);
       if(games.length!==1)return false;
       const [id]=games[0],line=record.games.get(id);
       if(!line||line.participation==='dnp'||['rec','recYds'].some(k=>line[k]!==undefined&&line[k]!==({rec,recYds})[k]))return false;
