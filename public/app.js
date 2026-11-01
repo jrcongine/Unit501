@@ -83,6 +83,7 @@ function renderAutomaticInjuries(result,applied=false){
   $('injury-adjustment-details').hidden=!details.length;
 }
 function previewAutomaticInjuries(){
+  window.Unit501InjuryChanges?.show(selected?.league,selected,window.Unit501Availability?.snapshot());
   if(!$('autoInjuries').checked||!selected||!window.Unit501AutoInjury)return;
   renderAutomaticInjuries(Unit501AutoInjury.evaluate(window.Unit501Availability?.snapshot(),selected,window.Unit501Lineups?.evaluate(),Date.now(),scoringContext?.game===selected?scoringContext.data:null));
 }
@@ -1036,6 +1037,10 @@ function sim() {
   if (!prediction.available) {
     $('note').textContent = prediction.reason;
     return false;
+  }
+  if(automatic?.ready&&window.Unit501InjuryChanges?.show(selected.league,selected,window.Unit501Availability?.snapshot())){
+    const baseline=Unit501TeamModel.project(data,selected,{...options,injury:{},quarterback:null});
+    window.Unit501InjuryChanges.impact(selected,baseline,prediction);
   }
   window.Unit501SharedUI.showMarketComparison($('football-market-gap'),prediction,{awaySpread:spread,total},'Entered lines');
   renderHomeAdvantage(prediction.venue);

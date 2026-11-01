@@ -78,6 +78,7 @@
 
  function teamProjection(){return window.Unit501BasketballInjuryModel.apply(window.Unit501NCAABModel.project(selected,context,scope.value),selected,context,teamPlayerHistory,injuryData,scope.value,Date.now(),true);}
  function render(){
+  const injuryChanged=window.Unit501InjuryChanges?.show('ncaab',selected,injuryData);
   window.Unit501SharedUI.resultTiles('ncaab',null);
   const lineSource=syncLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);
@@ -93,6 +94,7 @@
    teams.append(card);
   }
   const p=teamProjection();
+  if(injuryChanged)window.Unit501InjuryChanges.impact(selected,window.Unit501NCAABModel.project(selected,context,scope.value),p);
   const value=id=>String($(id).value).trim()===''?null:Number($(id).value);
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),p,{awaySpread:value('ncaab-spread'),total:value('ncaab-total')},lineSource);
   $('ncaab-prediction').textContent=p.available?`${selected.away} ${p.away.toFixed(1)} · ${selected.home} ${p.home.toFixed(1)} | Total ${p.total.toFixed(1)} (${p.awayGames}/${p.homeGames} games)` :p.reason;
@@ -100,6 +102,7 @@
   if(p.available)$('ncaab-prediction').textContent+=' · '+window.Unit501BasketballInjuryModel.describe(p);
  }
  async function choose(game){
+  window.Unit501InjuryChanges?.clear();
   window.Unit501Hook?.select(game.timeKnown&&game.status==='Scheduled'?{league:'ncaab',game:game.id,away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
   resetLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-player-lab').classList.remove('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);$('ncaab-matchup').textContent=game.away+' at '+game.home;

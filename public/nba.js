@@ -22,6 +22,7 @@
  const formWindow=byId('nba-form-window'),headToHead=byId('nba-head-to-head');
  const signed=value=>Number.isFinite(value)?(value>0?'+':'')+value.toFixed(1):'—';
  function renderProjection(){
+  window.Unit501InjuryChanges?.show('nba',activeContext?.game||injuryGame,injuryReport);
   shared.resultTiles('nba',null);
   shared.showMarketComparison(byId('nba-market-gap'),null);
   const output=byId('nba-prediction'),detail=byId('nba-prediction-detail');
@@ -33,6 +34,7 @@
   if(!shared.historyFreshness(data.checkedAt).fresh){output.textContent='Team history is stale or its update time is unverified. Refresh team history.';contextStatus.textContent=output.textContent;return;}
   const baseline=window.Unit501NBAModel.project(game,data,formWindow.value);
   const result=window.Unit501BasketballInjuryModel.apply(baseline,game,data,window.Unit501NBAMarkets?.historyFor?.(game),injuryReport,formWindow.value);
+  window.Unit501InjuryChanges?.impact(game,baseline,result);
   if(!result.available){output.textContent=result.reason;return;}
   output.textContent=game.away+' '+result.away.toFixed(1)+' · '+game.home+' '+result.home.toFixed(1)+' | Total '+result.total.toFixed(1)+' | '+game.home+' spread '+signed(result.homeSpread);
   const line=window.Unit501NBAMarkets?.spreadFor?.(game);

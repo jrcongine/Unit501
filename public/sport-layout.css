@@ -80,3 +80,6 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
 #hook-check{min-height:44px}
 #hook-result p{padding:8px 12px;border-left:3px solid #50d6d7}
 #hook-result p>*{display:block}
+
+#injury-changes:not([hidden]){margin:8px 0;padding:9px 12px;border-left:3px solid #50d6d7;background:#142737;color:#f3f8fc}
+#injury-changes small{display:block;color:#c4e6eb;margin-top:4px}
