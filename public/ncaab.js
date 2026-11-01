@@ -101,8 +101,8 @@
   window.Unit501SharedUI.resultTiles('ncaab',p);
   if(p.available)$('ncaab-prediction').textContent+=' · '+window.Unit501BasketballInjuryModel.describe(p);
  }
- async function choose(game){
-  if(typeof CustomEvent==='function'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'ncaab',away:game.away,home:game.home,game}}));
+ async function choose(game,seasonRecords){
+  if(typeof CustomEvent==='function'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'ncaab',away:game.away,home:game.home,game:{...game,seasonRecords}}}));
   window.Unit501InjuryChanges?.clear();
   window.Unit501Hook?.select(game.timeKnown&&game.status==='Scheduled'?{league:'ncaab',game:game.id,away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
   resetLines();
@@ -130,10 +130,11 @@
   resetLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);clearTimeout(recordExpiry);$('ncaab-props').replaceChildren();selected=null;context=null;games=[];lab.classList.add('hidden');$('ncaab-player-lab').classList.add('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);list.replaceChildren();load.disabled=true;status.textContent='Loading college basketball slate…';
   try{const r=await fetch('/api/ncaab/games?'+new URLSearchParams({date:date.value}),{signal:AbortSignal.timeout(30000)}),data=await r.json();if(task!==serial)return;if(!r.ok||!Array.isArray(data.games))throw Error();games=data.games;status.textContent=games.length?`${games.length} games · ${data.source}`:'No games found for this date.';
-   for(const game of games){const button=node('button','','ncaab-game-card');button.type='button';button.append(window.Unit501SharedUI.matchupHeading(game.away,game.home,game.awayLogo,game.homeLogo,document),node('p',`${game.timeKnown?central(game.tipoff):'Tipoff TBD'} · ${game.status}`));const action=node('span','Open Game Lab →','open-game');button.append(action);button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{for(const card of list.children)card.setAttribute('aria-pressed',card===button?'true':'false');return choose(game);});
+   for(const game of games){const button=node('button','','ncaab-game-card');button.type='button';button.append(window.Unit501SharedUI.matchupHeading(game.away,game.home,game.awayLogo,game.homeLogo,document),node('p',`${game.timeKnown?central(game.tipoff):'Tipoff TBD'} · ${game.status}`));const action=node('span','Open Game Lab →','open-game');button.append(action);button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{for(const card of list.children)card.setAttribute('aria-pressed',card===button?'true':'false');return choose(game,seasonRecords);});
     const record=node('small','','game-records');record.hidden=true;
     const current=Number.isFinite(data.checkedAt)&&data.checkedAt<=Date.now()+60000&&Date.now()-data.checkedAt<=3600000&&game.stage===2&&game.status==='Scheduled'&&game.timeKnown&&Date.parse(game.tipoff)>Date.now();
     const valid=value=>typeof value==='string'&&/^\d{1,3}-\d{1,3}$/.test(value);
+    const seasonRecords=current?{away:valid(game.awayRecord)?game.awayRecord:null,home:valid(game.homeRecord)?game.homeRecord:null,expiresAt:Math.min(data.checkedAt+3600000,Date.parse(game.tipoff))}:null;
     if(current&&(valid(game.awayRecord)||valid(game.homeRecord))){record.textContent='Season · '+game.away+' '+(valid(game.awayRecord)?game.awayRecord:'unavailable')+' · '+game.home+' '+(valid(game.homeRecord)?game.homeRecord:'unavailable');record.title='ESPN overall records · checked '+central(data.checkedAt);record.hidden=false;}
     button.append(record);list.append(button);}
    window.Unit501Worth?.load('ncaab',games.map((g,i)=>({away:g.away,home:g.home,id:g.id,kickoff:Date.parse(g.tipoff),scheduled:g.timeKnown&&g.status==='Scheduled',card:list.children[i]})));

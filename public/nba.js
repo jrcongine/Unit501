@@ -218,7 +218,7 @@
  byId('nba-injuries-refresh').addEventListener('click',()=>{if(injuryGame)loadInjuries(injuryGame);});
  // Refresh only the selected pregame matchup while the page is visible.
  setInterval(()=>{if(!document.hidden&&injuryGame&&injuryGame.statusCode===1&&Date.parse(injuryGame.tipoff)>Date.now())loadInjuries(injuryGame);},15*60000);
-function choose(game){
+function choose(game,standingsSeason){
   window.Unit501Hook?.select(game.status==='Scheduled'?{league:'nba',away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
    window.Unit501NBAMarkets?.select(game,dateInput.value);
    byId('nba-matchup').textContent=shared.matchup(game.away,game.home);
@@ -227,7 +227,7 @@ function choose(game){
     const season=tip.getUTCFullYear()-(tip.getUTCMonth()<6?1:0);
     if(season>=2000&&season<=2100)byId('nba-official-injuries').href='https://official.nba.com/nba-injury-report-'+season+'-'+String((season+1)%100).padStart(2,'0')+'-season/';
    }
-   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home,game}}));
+   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home,game:{...game,standingsSeason}}}));
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
    formWindow.value='season';
@@ -261,7 +261,7 @@ function choose(game){
       away:game.away,home:game.home,awayLogo:game.awayLogo,homeLogo:game.homeLogo,container:games,seasonRecord:{league:'nba',season:Number(data.season)+1,date},
       detailText:shared.timeCentral(game.tipoff)+' | '+game.status+score,
       actionLabel:'Open Game Lab →',cardClass:'card game nba-game',
-      onSelect:()=>choose(game)
+      onSelect:()=>choose(game,Number(data.season)+1)
     });
     games.append(card);
    }

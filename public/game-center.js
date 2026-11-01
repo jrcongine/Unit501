@@ -12,9 +12,9 @@
   if(!game)return null;
   const away=game.a||game.away,home=game.h||game.home;
   if(typeof away!=='string'||typeof home!=='string')return null;
-  const kickoff=game.kickoff??Date.parse(game.tipoff);
-  return {away,home,league,id:String(game.id),kickoff,awayLogo:safeLogo(game.awayLogo)?game.awayLogo:null,homeLogo:safeLogo(game.homeLogo)?game.homeLogo:null,
-   venue:[game.venueName,game.venueCity].filter(Boolean).join(' · '),status:game.status||'Time unconfirmed',awayScore:game.awayScore,homeScore:game.homeScore};
+  const kickoff=game.timeKnown===false?null:game.kickoff??Date.parse(game.tipoff);
+  return {away,home,league,seasonRecords:league==='ncaab'?game.seasonRecords:null,season:game.standingsSeason??game.season,id:String(game.id),kickoff,awayLogo:safeLogo(game.awayLogo)?game.awayLogo:null,homeLogo:safeLogo(game.homeLogo)?game.homeLogo:null,
+   venue:[game.venueName||(typeof game.venue==='string'?game.venue:null),game.venueCity].filter(Boolean).join(' · '),status:game.status||'Time unconfirmed',awayScore:game.awayScore,homeScore:game.homeScore};
  }
  function mount(doc,win){
   const main=doc.querySelector('main'),lab=doc.querySelector('#lab, #nba-lab, #ncaab-lab');
@@ -24,12 +24,19 @@
   const make=(tag,text,cls)=>{const n=doc.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
   const league=()=>football?(byId('league').value==='1'?'nfl':'ncaaf'):prefix==='nba-'?'nba':'ncaab';
   const standings=new Map();
-  let current=null,standing=null,active='overview',pending=false,marketOverview=null;
+  let recordTimer=null,current=null,standing=null,active='overview',pending=false,marketOverview=null;
   doc.body.classList.add('game-center-layout');
   const header=main.querySelector('header'),switcher=main.querySelector('.sport-switch'),controls=main.querySelector('.controls');
   const top=make('div',null,'gc-top');main.prepend(top);
   if(header)top.append(header);
-  if(switcher){switcher.replaceChildren();for(const [key,name,path]of sports){const link=make('a',name);link.href=path;const selectedDate=doc.querySelector('input[type=date]')?.value;if(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate||'')){const target=new URL(path,win.location.href);target.searchParams.set('date',selectedDate);link.href=target.href;}link.dataset.league=key;
+  const dateInput=doc.querySelector('input[type=date]');
+  function setSportHref(link,path){
+   const target=new URL(path,win.location.href);
+   if(/^\d{4}-\d{2}-\d{2}$/.test(dateInput?.value||''))target.searchParams.set('date',dateInput.value);
+   link.href=target.href;
+  }
+  if(switcher){switcher.replaceChildren();for(const [key,name,path]of sports){const link=make('a',name);setSportHref(link,path);link.dataset.league=key;
+   dateInput?.addEventListener('change',()=>setSportHref(link,path));
    link.addEventListener('click',event=>{if(!football||!['nfl','ncaaf'].includes(key))return;event.preventDefault();if(league()===key)return;byId('league').value=key==='nfl'?'1':'2';syncSport();win.history.replaceState(null,'',link.href);byId('load').click();});switcher.append(link);}top.append(switcher);}
   if(controls)top.append(controls);
   const games=byId(prefix+'games');if(games){games.classList.add('gc-game-strip');top.append(games);}
@@ -81,10 +88,16 @@
    const label=make('div',current.league.toUpperCase()+' · '+current.status,'gc-eyebrow');
    const row=make('div',null,'gc-matchup');
    const date=football?byId('date')?.value:byId(prefix+'date')?.value;
-   const getRecord=name=>win.Unit501SharedUI?.currentStanding(standing,current.league,String(date||'').slice(0,4),name,date)?.record;
+   const getRecord=(name,side)=>{
+    if(current.league==='ncaab'){
+     const records=current.seasonRecords;
+     return records?.expiresAt>Date.now()?records[side]:null;
+    }
+    return win.Unit501SharedUI?.currentStanding(standing,current.league,current.season,name,date)?.record;
+   };
    const middle=make('div',null,'gc-kickoff');middle.append(make('span','AT'));middle.append(make('strong',Number.isFinite(current.kickoff)?win.Unit501SharedUI.timeCentral(current.kickoff):'Time unconfirmed'));if(current.venue)middle.append(make('small',current.venue));
    if(current.awayScore!=null&&current.homeScore!=null)middle.append(make('b',current.awayScore+' – '+current.homeScore));
-   row.append(team(current.away,current.awayLogo,getRecord(current.away)),middle,team(current.home,current.homeLogo,getRecord(current.home)));
+   row.append(team(current.away,current.awayLogo,getRecord(current.away,'away')),middle,team(current.home,current.homeLogo,getRecord(current.home,'home')));
    const markets=make('div',null,'gc-market-summary');
    const spread=byId(football?'spread':prefix+'spread'),total=byId(football?'total':prefix+'total');
    for(const [title,value]of (spread||total?[['Away spread',spread?.value],['Game total',total?.value]]:[])){const tile=make('div');tile.append(make('small',title),make('b',value!==''&&value!=null?value:'Unavailable'));markets.append(tile);}
@@ -103,7 +116,11 @@
    injuryPeek.textContent='Key injuries · '+(reports.length?reports.slice(0,4).map(p=>p.name+' ('+p.status+')').join(' · ')+(reports.length>4?' · +'+(reports.length-4)+' more':''):report?.current===false?report.message||'Report coverage unavailable':(football?'Coverage unavailable or loading — open Injuries to review.':injuryText)||'Open Injuries for reports, coverage and confirmed absences.');
   }
   const schedule=()=>{if(pending)return;pending=true;win.requestAnimationFrame(()=>{pending=false;summary();renderHero();});};
-  function select(game,key){current=gameView(game,key);standing=standings.get(key)||null;lock();renderHero();summary();show('overview');}
+  function select(game,key){current=gameView(game,key);
+   win.clearTimeout(recordTimer);
+   const expires=current?.seasonRecords?.expiresAt;
+   if(expires>Date.now())recordTimer=win.setTimeout(renderHero,expires-Date.now()+1);
+   standing=standings.get(key)||null;lock();renderHero();summary();show('overview');}
   doc.addEventListener('unit501:matchup-selected',e=>{if(e.detail?.game)select(e.detail.game,e.detail.league);});
   for(const event of ['unit501:matchup-cleared','unit501:nba-clear','unit501:slate-reset'])doc.addEventListener(event,()=>{current=null;standing=null;lock();renderHero();summary();show('overview');syncSport();});
   doc.addEventListener('unit501:standings-updated',e=>{if(e.detail?.league)standings.set(e.detail.league,e.detail.report);if(current&&e.detail?.league===current.league){standing=e.detail.report;schedule();}});

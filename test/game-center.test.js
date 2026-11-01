@@ -17,3 +17,15 @@ test('every supported client loads the same shell after its existing controllers
   assert.match(html,/game-center\.css/);assert.ok(html.indexOf('game-center.js')>html.indexOf('sport-layout.js'));
  }
 });
+
+test('matchup header keeps provider seasons across New Year and suppresses unconfirmed tipoffs',()=>{
+ const teams={away:'Away',home:'Home'};
+ for(const league of ['nfl','ncaaf']){
+  assert.equal(gameView({...teams,kickoff:Date.UTC(2027,0,2),season:'2026'},league).season,'2026');
+ }
+ assert.equal(gameView({...teams,tipoff:'2026-11-01T22:00:00Z',standingsSeason:2027},'nba').season,2027);
+ const college=gameView({...teams,tipoff:'2026-11-01T00:00:00Z',timeKnown:false,season:2027,venue:'Neutral arena'},'ncaab');
+ assert.equal(college.kickoff,null);
+ assert.equal(college.season,2027);
+ assert.equal(college.venue,'Neutral arena');
+});

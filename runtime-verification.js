@@ -6,6 +6,22 @@ const fs=require('node:fs/promises'),path=require('node:path');
 const assets=['app.js','predictions.js','game-center.js','game-center.css','injury-changes.js','buy-the-hook.js','worth-a-look.js','api-usage.js','index.html','sport-layout.js','sport-layout.css','league-pulse.js','outside-picks.js','unit501-shared-ui.js','nba.js','ncaab.js','player-stats.js','football-position.js','auto-injury.js','nba.html','ncaab.html','basketball-injury-model.js','basketball-history-comparison.js','nba-win-calibration.js','nba-player-model.js','nba-markets.js','last-opponent.js'];
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const states=new Set(['working','empty','partial','failed','unavailable','loading','stale','unchecked']);
+const expectedFeeds=['nfl','ncaaf','nba','ncaab'].flatMap(sport=>
+ ['games','odds','props','injuries','context','player-history'].map(kind=>sport+':'+kind));
+function feedSnapshot(rows){
+ const observations=new Map();
+ for(const row of rows){
+  if(!expectedFeeds.includes(row?.id))continue;
+  // Duplicate observations leave the identity of the current observation ambiguous.
+  observations.set(row.id,observations.has(row.id)?null:row);
+ }
+ return expectedFeeds.map(id=>{
+  const row=observations.get(id);
+  const valid=states.has(row?.status);
+  const sourceTime=valid&&typeof row.sourceAt==='string'?Date.parse(row.sourceAt):NaN;
+  return {id,status:valid?row.status:'unchecked',sourceAt:Number.isFinite(sourceTime)?new Date(sourceTime).toISOString():null};
+ });
+}
 async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}={}){
  const result={commit:/^[a-f0-9]{40}$/.test(commit||'')?commit:null,assets:[],feeds:[]};
  if(!Number.isInteger(Number(port))||Number(port)<1||Number(port)>65535||typeof password!=='string'||password.length<16)return {...result,status:'skipped'};
@@ -21,7 +37,7 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
  try{
   const r=await fetcher(`http://127.0.0.1:${Number(port)}/api/data-health`,options);
   if(!r.ok)throw Error();const data=await r.json();if(!Array.isArray(data.feeds))throw Error();
-  result.feeds=data.feeds.filter(f=>/^(nfl|ncaaf|nba|ncaab):(injuries|props|context|player-history)$/.test(f?.id)&&states.has(f.status)).map(f=>({id:f.id,status:f.status}));
+  result.feeds=feedSnapshot(data.feeds);
   result.feedHealth='read';
   result.footballUsageHistory=Array.isArray(data.footballUsage?.recentDays)?'read':'unavailable';
  }catch{result.feedHealth='unavailable';}
@@ -49,7 +65,10 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
    if(result[field]==='configured')result[sport+'Graded']=review.groups.reduce((sum,g)=>sum+g.graded,0);
   }catch{result[field]='unavailable';}
  }
- result.status=result.assets.every(a=>a.status==='verified')&&result.feedHealth==='read'?'verified':'partial';
+ result.assetStatus=result.assets.every(a=>a.status==='verified')?'verified':'partial';
+ result.savedFeedCoverage=result.feedHealth!=='read'?'unavailable':
+  result.feeds.every(f=>f.status==='working'&&f.sourceAt)?'working':'incomplete';
+ result.status=result.assetStatus==='verified'&&result.savedFeedCoverage==='working'?'verified':'partial';
  return result;
 }
 module.exports={verify};
