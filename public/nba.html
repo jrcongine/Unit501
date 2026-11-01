@@ -60,7 +60,7 @@
 
 <div id="nba-slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div><section aria-label="NBA schedule" id="nba-games" class="nba-games"></section>
 <section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
-  <div class="league-pulse-heading">
+  <details class="phone-fold" open><summary>League rankings &amp; headlines</summary><div class="league-pulse-heading">
     <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
     <div class="league-pulse-actions"><label for="league-pulse-league">League
       <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="ncaab">College Basketball</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
@@ -70,20 +70,29 @@
   <div class="league-pulse-columns">
     <section aria-label="Overall league power index"><h3>League-wide Power Rankings</h3><div id="league-pulse-power"></div></section>
     <section aria-label="Current league headlines"><h3>📰 Around the League</h3><div id="league-pulse-headlines"></div></section>
-  </div>
+  </div></details>
 </section>
 <section id="nba-lab" class="card hidden" aria-label="NBA Game Lab">
 <span class="section-kicker">02 / RUN THE NUMBERS</span><h2 id="nba-matchup">Select an NBA matchup</h2>
 <section id="nba-league-pulse-matchup" class="league-pulse-matchup" aria-label="Selected NBA teams' overall power ranks"></section>
 <p id="nba-game-context" class="war-muted"></p>
+<section class="nba-model-status" aria-label="Experimental NBA team projection"><h3>Score projection &amp; simulation</h3><p class="war-muted">Experimental score estimate · updates automatically.</p><button id="nba-sim" type="button" class="simulation-action">Run 10,000 simulations</button><div class="results" aria-label="Simulation results"><div><small>Projected</small><b id="nba-score">—</b></div><div><small>Away cover</small><b id="nba-cover">—</b></div><div><small>Over</small><b id="nba-over">—</b></div><div><small>Away win</small><b id="nba-win">—</b></div></div>
+<p id="nba-prediction" role="status" aria-live="polite">Choose a matchup to estimate its score.</p>
+<p id="nba-upset-pick" role="status" aria-live="polite" hidden></p>
+<p id="nba-market-gap" class="market-gap" role="status" hidden></p>
+<p id="nba-simulation" role="status" aria-live="polite"></p><details class="simulation-report-details"><summary>Report details</summary><p id="nba-prediction-detail" class="war-muted"></p>
+
+<p id="nba-simulation-detail" class="war-muted"></p></details></section>
 <section class="nba-market-panel" aria-label="FanDuel NBA spread and total">
 <h3>FanDuel spread & total</h3><button id="nba-refresh-odds" type="button">Refresh lines</button>
 <p id="nba-odds-status" role="status" class="war-muted"></p><div id="nba-game-odds" class="nba-market-grid"></div>
+<details class="phone-fold" open><summary>Compare sportsbooks</summary>
 <h3>Moneylines &amp; sportsbook comparison</h3>
 <button id="nba-compare-odds" type="button">Compare FanDuel / DraftKings / BetMGM</button>
 <p id="nba-comparison-status" role="status" class="war-muted">Compare outright-win prices, spreads and totals on demand.</p>
 <div id="nba-book-comparison" class="nba-head-to-head"></div>
 <p class="war-muted">Sportsbook prices, not UNIT501 picks. Comparison loads only when requested and may use additional odds-feed credits. Confirm the exact line and price in your sportsbook.</p>
+</details>
 </section>
 <section class="nba-model-status" aria-label="NBA official injury report">
 <h3>Injuries &amp; availability</h3><button id="nba-injuries-refresh" type="button">Refresh injuries</button>
@@ -91,6 +100,7 @@
 <div id="nba-injuries-list" aria-live="polite"></div>
 <a id="nba-official-injuries" href="https://official.nba.com/nba-injury-report-2026-27-season/" target="_blank" rel="noopener noreferrer">Open official NBA report ↗</a>
 </section>
+<details class="phone-fold" open><summary>Team form &amp; recent games</summary>
 <section aria-label="NBA pregame team comparison" id="nba-team-context" class="nba-context">
 <h3>Pregame matchup comparison</h3>
 <p class="war-muted">Completed games from the same season stage before this matchup only. Descriptive statistics, not predictions.</p>
@@ -102,13 +112,8 @@
 <p class="war-muted">Rest uses Central calendar dates and completed same-stage games. It does not measure travel, player minutes or lineup availability. History is the provider's returned sample; full schedule coverage is not independently verified.</p>
 <div id="nba-team-comparison" class="nba-comparison"></div>
 </section>
-<section class="nba-model-status" aria-label="Experimental NBA team projection"><h3>Score projection &amp; simulation</h3><p class="war-muted">Experimental score estimate · updates automatically.</p><button id="nba-sim" type="button" class="simulation-action">Run 10,000 simulations</button><div class="results" aria-label="Simulation results"><div><small>Projected</small><b id="nba-score">—</b></div><div><small>Away cover</small><b id="nba-cover">—</b></div><div><small>Over</small><b id="nba-over">—</b></div><div><small>Away win</small><b id="nba-win">—</b></div></div>
-<p id="nba-prediction" role="status" aria-live="polite">Choose a matchup to estimate its score.</p>
-<p id="nba-upset-pick" role="status" aria-live="polite" hidden></p>
-<p id="nba-market-gap" class="market-gap" role="status" hidden></p>
-<p id="nba-simulation" role="status" aria-live="polite"></p><details class="simulation-report-details"><summary>Report details</summary><p id="nba-prediction-detail" class="war-muted"></p>
+</details>
 
-<p id="nba-simulation-detail" class="war-muted"></p></details></section>
 <details class="nba-model-status"><summary>Player model & accuracy status</summary>
 <div class="nba-lab-grid">
 
@@ -120,7 +125,7 @@
 <button id="nba-clear" type="button" class="war-secondary" hidden>Back to NBA slate</button>
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
-<span class="section-kicker">03 / PLAYER MARKETS</span><h2>Player Projections</h2>
+<span class="section-kicker">03 / PLAYER MARKETS</span><h2>Player Projections</h2><label class="phone-columns"><input type="checkbox" id="all-prop-columns"> Show full stat table</label>
 <p>Player estimates use up to ten completed team games, recent playing time and production per minute. Adjust a player’s minutes to explore a rotation change; clear the input to restore the estimate.</p>
 <button id="nba-load-props" type="button">Load Player Projections</button>
 <p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>

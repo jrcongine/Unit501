@@ -46,3 +46,25 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
   box-shadow: inset 2px 0 #39d4dc;
   padding: .45rem .65rem;
 }
+
+.phone-columns{display:none}
+.phone-fold>summary{cursor:pointer;font-weight:750;padding:12px 0;color:var(--text)}
+@media(min-width:701px){.phone-fold[open]>summary{display:none}}
+@media(max-width:700px){
+ body[data-sport]{--accent:#45d6dc}
+ body[data-sport] .sport-switch a[aria-current=page]{background:#123640;color:#befaff}
+ body[data-sport] :is(.quick-help,.section-heading-slate p,.section-kicker){display:none}
+ body[data-sport] .sport-switch{margin-bottom:8px}
+ body[data-sport] .quick-nav a{min-height:44px}
+ body[data-sport] .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-sport] .controls .date-control{grid-column:1/-1}
+ body[data-sport] .phone-fold{margin-block:8px;border-block-start:1px solid var(--border)}
+ body[data-sport] .phone-fold>summary{min-height:44px;box-sizing:border-box}
+ body[data-sport] .phone-columns{display:flex;align-items:center;gap:8px;min-height:44px}
+ body[data-sport] .phone-columns input{width:20px;height:20px}
+ body:not(:has(#all-prop-columns:checked)) #nba-prop-lines tr>:nth-child(n+5),
+ body:not(:has(#all-prop-columns:checked)) #ncaab-props tr>:nth-child(n+4),
+ body:not(:has(#all-prop-columns:checked)) [aria-label="Saved player line comparisons"] tr>:not(:nth-child(1),:nth-child(2),:nth-child(5),:nth-child(8)){display:none}
+ body:not(:has(#all-prop-columns:checked)) :is(#nba-prop-lines,#ncaab-props,[aria-label="Saved player line comparisons"]) table{width:100%;min-width:0;table-layout:fixed}
+ body:not(:has(#all-prop-columns:checked)) :is(#nba-prop-lines,#ncaab-props,[aria-label="Saved player line comparisons"]) :is(th,td){padding:6px;overflow-wrap:anywhere;white-space:normal}
+}

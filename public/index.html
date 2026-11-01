@@ -114,7 +114,7 @@
 <div id="slate-section" class="section-heading section-heading-slate"><span class="section-kicker">01 / CHOOSE A MATCHUP</span><h2>Game slate</h2><p>Tap any game to open its Game Lab and player projections.</p></div>
 <section id="games" class="grid" aria-label="Available matchups"></section>
 <section id="league-pulse" class="card league-pulse-panel" hidden aria-label="League-wide power rankings and headlines">
-  <div class="league-pulse-heading">
+  <details class="phone-fold" open><summary>League rankings &amp; headlines</summary><div class="league-pulse-heading">
     <div><span class="section-kicker">AROUND THE LEAGUE</span><h2>🏆 Power Rankings &amp; Headlines</h2></div>
     <div class="league-pulse-actions"><label for="league-pulse-league">League
       <select id="league-pulse-league"><option value="nfl">NFL</option><option value="ncaaf">College Football</option><option value="nba">NBA</option><option value="ncaab">College Basketball</option><option value="mlb">MLB</option><option value="nhl">NHL</option></select>
@@ -124,7 +124,7 @@
   <div class="league-pulse-columns">
     <section aria-label="Overall league power index"><h3>League-wide Power Rankings</h3><div id="league-pulse-power"></div></section>
     <section aria-label="Current league headlines"><h3>📰 Around the League</h3><div id="league-pulse-headlines"></div></section>
-  </div>
+  </div></details>
 </section>
 
 <section id="lab" class="card hidden">
@@ -132,6 +132,19 @@
 <span class="section-kicker">02 / RUN THE NUMBERS</span>
 <div class="matchup-heading">
 <h2 id="matchup">Game Lab</h2>
+</div>
+<button id="sim" class="simulation-action">Run 50,000 simulations</button>
+
+<div class="results">
+
+<div><small>Projected</small><b id="score">—</b></div>
+
+<div><small>Away cover</small><b id="cover">—</b></div>
+
+<div><small>Over</small><b id="over">—</b></div>
+
+<div><small>Away win</small><b id="win">—</b></div>
+
 </div>
 <section id="league-pulse-matchup" class="league-pulse-matchup" aria-label="Selected teams' overall league power ranks"></section>
 
@@ -163,6 +176,7 @@
 
 </div>
 
+<details class="phone-fold" open><summary>Line movement &amp; sportsbook comparison</summary>
 <section id="market-pulse" class="market-pulse" aria-labelledby="market-pulse-title">
   <div class="market-pulse-heading">
     <h3 id="market-pulse-title">📈 Market Pulse — Line Movement</h3>
@@ -181,6 +195,7 @@
 <p>Comparison loads on request and may use odds-feed credits. Confirm prices in your sportsbook.</p>
 </section>
 
+</details>
 <details id="injury-scoring-panel">
 <summary>Injury scoring — automatic or manual</summary>
 <label><input id="autoInjuries" type="checkbox" checked> Auto injuries — NFL & college</label>
@@ -225,19 +240,7 @@
 <label><input id="weatherEnabled" type="checkbox" checked> Apply weather adjustments (experimental)</label>
 
 </details>
-<button id="sim" class="simulation-action">Run 50,000 simulations</button>
 
-<div class="results">
-
-<div><small>Projected</small><b id="score">—</b></div>
-
-<div><small>Away cover</small><b id="cover">—</b></div>
-
-<div><small>Over</small><b id="over">—</b></div>
-
-<div><small>Away win</small><b id="win">—</b></div>
-
-</div>
 
 <section class="outcome-summary" aria-label="Outright winner and underdog outlook" aria-live="polite">
 <h3>Outright winner &amp; underdog outlook</h3>
@@ -267,7 +270,7 @@
 <section id="player-lab" class="card hidden">
 
 <span class="section-kicker">03 / PLAYER MARKETS</span>
-<h2>Player Projections</h2>
+<h2>Player Projections</h2><label class="phone-columns"><input type="checkbox" id="all-prop-columns"> Show full stat table</label>
 
 <p id="predict-status">Select a game to load players.</p>
 

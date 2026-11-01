@@ -40,3 +40,13 @@
   doc.getElementById(prefix+'-load')?.click();
  }
 })();
+
+// Native disclosures keep their contents and live updates mounted. Start compact
+// on phones, including when a tablet changes orientation across the breakpoint.
+(function(){
+ if(typeof window.matchMedia!=='function')return;
+ const phone=window.matchMedia('(max-width: 700px)');
+ const sync=()=>document.querySelectorAll('details.phone-fold').forEach(panel=>{panel.open=!phone.matches;});
+ sync();
+ phone.addEventListener?.('change',sync);
+})();
