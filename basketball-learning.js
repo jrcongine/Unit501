@@ -5,7 +5,7 @@ const {centralDate,validDate}=require('./nba-feed');
 const nba=require('./public/nba-model'),college=require('./public/ncaab-model');
 const calibration=require('./public/nba-win-calibration');
 const {seededRandom}=require('./probability-audit');
-const {publish,summarize}=require('./forecast-store');
+const {publish,summarize,saveForecast}=require('./forecast-store');
 const DAY=86400000;
 const key=g=>[g.league,g.provider,g.season,g.id].join('-');
 function identify(slate,g){
@@ -15,9 +15,9 @@ function identify(slate,g){
     String(g.awayId)===String(g.homeId)||g.stage!==2||league==='ncaab'&&!g.timeKnown)return null;
  const season=league==='nba'?slate.season:g.season,kickoff=Date.parse(g.tipoff);
  if(!/^\d{4}$/.test(String(season))||!Number.isFinite(kickoff)||!validDate(slate.date)||centralDate(kickoff)!==slate.date)return null;
- return {id:String(g.id),league,provider,season,kickoff,date:slate.date,awayId:String(g.awayId),homeId:String(g.homeId)};
+ return {id:String(g.id),league,provider,season,kickoff,date:slate.date,away:g.away,home:g.home,awayId:String(g.awayId),homeId:String(g.homeId)};
 }
-function createBasketballLearning({directory,revision='local',now=Date.now}={}){
+function createBasketballLearning({directory,marketRecorder=null,revision='local',now=Date.now}={}){
  let cursor='',busy=false;
  function records(){
   if(!directory||!fs.existsSync(directory))return [];
@@ -39,8 +39,8 @@ function createBasketballLearning({directory,revision='local',now=Date.now}={}){
   const calibrated=g.league==='nba'?calibration.apply(selected,{...estimate,injury:{applied:[]}},sim):null;
   const forecastAt=now();if(forecastAt>=g.kickoff)return;
   fs.mkdirSync(directory,{recursive:true});
-  publish(file,{game:g,forecastAt,revision,modelVersion:[estimate.version||'ncaab-season-baseline-v1',g.provider,calibrated?.version||'baseline'].join('/'),
-    away:estimate.away,home:estimate.home,awayWinIfDecided:calibrated?.away??(decided>0?sim.awayWin/decided:null)});
+  saveForecast(file,{game:g,forecastAt,revision,modelVersion:[estimate.version||'ncaab-season-baseline-v1',g.provider,calibrated?.version||'baseline'].join('/'),
+    away:estimate.away,home:estimate.home,awayWinIfDecided:calibrated?.away??(decided>0?sim.awayWin/decided:null)},marketRecorder);
  }
  function observe(slate){
   if(!directory||!Array.isArray(slate?.games))return;

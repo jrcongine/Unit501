@@ -2,14 +2,14 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const {publish, summarize} = require('./forecast-store');
+const {publish, summarize, saveForecast} = require('./forecast-store');
 const model = require('./public/team-model');
 const {reconcileGames, readScore} = require('./football-schedule-integrity');
 const {positiveId} = require('./provider-id');
 const {seededRandom} = require('./probability-audit');
 const DAY = 86400000;
 
-function createLearning({directory, now=Date.now, engine=model, revision='local'}={}) {
+function createLearning({directory, now=Date.now, engine=model, marketRecorder=null,revision='local'}={}) {
   const upcoming = new Map();
   const key = g => [g.league,g.season,g.id].join('-');
   let cursor='', running=false;
@@ -26,7 +26,7 @@ function createLearning({directory, now=Date.now, engine=model, revision='local'
       const {game,league,teams}=row;
       const g={id:positiveId(game?.id),league:String(league?.id),season:String(league?.season),
         kickoff:Number(game?.date?.timestamp)*1000,awayId:String(positiveId((teams?.away||teams?.visitors)?.id)),
-        homeId:String(positiveId(teams?.home?.id)),venueName:game?.venue?.name||''};
+        homeId:String(positiveId(teams?.home?.id)),away:(teams?.away||teams?.visitors)?.name,home:teams?.home?.name,venueName:game?.venue?.name||''};
       if(!g.id||!['1','2'].includes(g.league)||!/^\d{4}$/.test(g.season))continue;
       upcoming.delete(key(g));
       if(!positiveId(g.awayId)||!positiveId(g.homeId)||g.awayId===g.homeId||!Number.isSafeInteger(g.kickoff))continue;
@@ -55,8 +55,8 @@ function createLearning({directory, now=Date.now, engine=model, revision='local'
     const forecastAt=now();
     if(forecastAt>=game.kickoff)return;
     fs.mkdirSync(directory,{recursive:true});
-    publish(file,{game,forecastAt,revision,modelVersion:score.modelVersion,away:score.away,home:score.home,
-      awayWinIfDecided:sim.calibrated.win??sim.conditional.win,simulationTie:sim.tie});
+    saveForecast(file,{game,forecastAt,revision,modelVersion:score.modelVersion,away:score.away,home:score.home,
+      awayWinIfDecided:sim.calibrated.win??sim.conditional.win,simulationTie:sim.tie},marketRecorder);
   }
   function summary(){
     return summarize(directory,records(),key,'Server baseline for opened football matchups');

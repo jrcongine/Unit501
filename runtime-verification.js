@@ -32,6 +32,9 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
    if(!response.ok)throw Error();
    const review=await response.json();
    result[field]=review.configured===true && Array.isArray(review.groups)?'configured':'unconfigured';
+   if(review.marketGradesVersion===1 && result[field]==='configured'){
+    result[sport+'MarketGrades']=review.groups.reduce((n,g)=>n+['spread','total'].reduce((s,m)=>s+g[m].wins+g[m].losses+g[m].pushes,0),0);
+   }
    if(result[field]==='configured')result[sport+'Graded']=review.groups.reduce((sum,g)=>sum+g.graded,0);
   }catch{result[field]='unavailable';}
  }

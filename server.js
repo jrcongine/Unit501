@@ -36,7 +36,9 @@ try {
   lineHistory = require('./line-history').createHistory();
 }
 require('./odds-monitor').setObserver(lineHistory.noteQuota);
+const marketRecorder=require('./market-grades').createMarketRecorder();
 const trackedOdds = require('./tracked-odds').createTrackedOdds({history: lineHistory,
+  onGameQuote:(game,quote)=>observeLearning(()=>marketRecorder.quote(game,quote)),
   footballLines: fanduel.getLines, footballProps: require('./fanduel-props').getProps, nbaOdds, ncaabOdds: ncaabMarkets});
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
 const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA,official:require('./nba-official-history').createOfficialNBA()});
@@ -47,11 +49,11 @@ const footballMeter=require('./api-meter').createMeter({
   budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const footballLearning=require('./football-learning').createLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-learning-v1'),
-  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+  marketRecorder,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
 });
 const basketballLearning=require('./basketball-learning').createBasketballLearning({
   directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'basketball-learning-v1'),
-  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+  marketRecorder,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
 });
 function observeLearning(action){
   try { action(); } catch { console.warn('Model grading observation unavailable.'); }

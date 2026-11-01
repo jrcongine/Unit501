@@ -1,0 +1,40 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {createMarketRecorder,grade}=require('../market-grades');
+const {saveForecast,summarize}=require('../forecast-store');
+const epoch=1800000000000;
+for(const league of ['1','2','nba','ncaab'])test(league+' grades first recorded FanDuel lines without using a later market',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'unit-markets-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ let time=epoch;const recorder=createMarketRecorder({now:()=>time});
+ const game={league,provider:'espn',id:'37',away:'Away',home:'Home',kickoff:time+600000};
+ const f={game,away:21,home:24,forecastAt:time,revision:'r',modelVersion:'v',awayWinIfDecided:.4};
+ const quote=(line,stamp)=>({available:true,awaySpread:line,...(['1','2'].includes(league)?{spreadUpdated:stamp,total:46,totalUpdated:stamp}:{spread:{away:line,updatedAt:stamp},total:{line:46,updatedAt:stamp}})});
+ const file=path.join(dir,'key.forecast'),basket=league.length>1;
+ if(basket)recorder.quote(game,quote(4,epoch));
+ saveForecast(file,f,recorder);
+ time+=500;
+ if(!basket)recorder.quote(game,quote(4,epoch));
+ recorder.quote(game,quote(-1,time));
+ const disk=JSON.parse(fs.readFileSync(file+'.spread'));
+ assert.equal(disk.line,4);assert.equal(disk.lean,'away');assert.equal(disk.sourceAt,epoch);
+ fs.writeFileSync(path.join(dir,'key.final'),JSON.stringify({away:20,home:24}));
+ const g=summarize(dir,[JSON.parse(fs.readFileSync(file))],()=>'key','test').groups[0];
+ assert.equal(g.spread.pushes,1);assert.equal(g.total.wins,1);
+});
+test('unmatched, stale, post-forecast and post-kickoff lines are withheld',()=>{
+ let time=epoch;const recorder=createMarketRecorder({now:()=>time}),game={league:'nba',provider:'espn',id:1,away:'A',home:'B',kickoff:epoch+50000};
+ const f={game,away:90,home:97,forecastAt:time},saved=[];
+ recorder.forecast(f,(m,x)=>saved.push(x));
+ const quote=at=>({available:true,spread:{away:7.5,updatedAt:at}});
+ recorder.quote({...game,provider:'api-nba'},quote(time));
+ recorder.quote({...game,id:2},quote(time));
+ recorder.quote(game,quote(time-1800000));time++;
+ recorder.quote(game,quote(time));time=game.kickoff;recorder.quote(game,quote(epoch));
+ assert.equal(saved.length,0);
+});
+test('projected ties have no lean; losing sides and totals remain losses',()=>{
+ assert.equal(grade('spread',{lean:null,line:1},{away:10,home:4}),'noLean');
+ assert.equal(grade('spread',{lean:'home',line:3},{away:17,home:19}),'losses');
+ assert.equal(grade('total',{lean:'under',line:35},{away:17,home:19}),'losses');
+});
