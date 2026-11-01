@@ -90,7 +90,7 @@
    if(side.conflicts||side.unverifiedGames)card.append(node('p','History incomplete · '+(side.unverifiedGames||0)+' unverified · '+(side.conflicts||0)+' conflicting game(s). Estimates withheld.','nba-injury-out'));
    card.append(node('p',r?`${r.games} recorded games · ${r.wins}–${r.losses} · ${r.scored.toFixed(1)} scored · ${r.allowed.toFixed(1)} allowed`:'No completed games in this view.'));
    if(!side.conflicts&&!side.unverifiedGames&&side.recentGames?.length){const day=value=>{const d=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value)).map(x=>[x.type,x.value]));return Date.UTC(+d.year,+d.month-1,+d.day);};const days=Math.max(0,Math.round((day(selected.tipoff)-day(side.recentGames[0].tipoff))/86400000)-1);card.append(node('p',`${days} full day(s) off since last recorded game`));}
-   const last=side.recentGames||[];if(last.length){const detail=node('details',''),title=node('summary','Last '+Math.min(5,last.length)+' results');detail.append(title);for(const g of last.slice(0,5))detail.append(node('p',`${g.scored>g.allowed?'W':'L'} · ${g.venue==='away'?'at ':g.venue==='neutral'?'neutral vs ':'vs '}${g.opponent} · ${g.scored}–${g.allowed}`));card.append(detail);}
+   const last=side.recentGames||[];const strip=node('div','','nba-form-strip');for(const g of last.slice(0,5)){if(!Number.isFinite(g.scored)||!Number.isFinite(g.allowed))continue;const result=g.scored>g.allowed?'W':g.scored<g.allowed?'L':'T';strip.append(node('span',result,'nba-form-chip nba-result-'+result));}if(strip.children.length)card.append(strip);if(last.length){const detail=node('details',''),title=node('summary','Last '+Math.min(5,last.length)+' results');detail.append(title);for(const g of last.slice(0,5))detail.append(node('p',`${g.scored>g.allowed?'W':'L'} · ${g.venue==='away'?'at ':g.venue==='neutral'?'neutral vs ':'vs '}${g.opponent} · ${g.scored}–${g.allowed}`));card.append(detail);}
    teams.append(card);
   }
   const p=teamProjection();
@@ -102,6 +102,7 @@
   if(p.available)$('ncaab-prediction').textContent+=' · '+window.Unit501BasketballInjuryModel.describe(p);
  }
  async function choose(game){
+  if(typeof CustomEvent==='function'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'ncaab',away:game.away,home:game.home,game}}));
   window.Unit501InjuryChanges?.clear();
   window.Unit501Hook?.select(game.timeKnown&&game.status==='Scheduled'?{league:'ncaab',game:game.id,away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
   resetLines();
@@ -123,6 +124,7 @@
  }
  $('ncaab-refresh-context').addEventListener('click',()=>{if(selected)return loadContext(selected);});
  load.addEventListener('click',async()=>{
+  if(typeof Event==='function'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new Event('unit501:slate-reset'));
   window.Unit501Hook?.select(null);
   window.Unit501Worth?.clear();
   resetLines();

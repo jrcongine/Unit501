@@ -2,6 +2,7 @@
   'use strict';
   const panel=document.createElement('section');
   panel.className='card hidden';
+  panel.id='availability-panel';
   document.getElementById('player-lab').before(panel);
   const reportDownload=document.createElement('div');
   let concernLabels=[];

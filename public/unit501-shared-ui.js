@@ -42,6 +42,7 @@
  }
  function updateGameRecords(report,league=report?.league,now=Date.now()){
    if(league)recordReports.set(league,report);
+   if(typeof document!=='undefined'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:standings-updated',{detail:{league,report}}));
    for(const entry of recordCards){
      if(entry.card.isConnected===false){recordCards.delete(entry);continue;}
      const {scope,away,home,node}=entry,data=recordReports.get(scope.league);

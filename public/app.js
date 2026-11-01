@@ -790,6 +790,7 @@ function clearSelection() {
 const today = window.Unit501SharedUI.dateCentral();
 
 $('date').value = today;
+if(typeof location!=='undefined'){const request=new URLSearchParams(location.search);if(['1','2'].includes(request.get('league')))$('league').value=request.get('league');if(/^\d{4}-\d{2}-\d{2}$/.test(request.get('date')||''))$('date').value=request.get('date');}
 
 function showMessage(message) {
   games.innerHTML = '';
@@ -946,7 +947,7 @@ async function choose(game) {
     if (link) { link.classList.remove('is-unavailable'); link.setAttribute('aria-disabled','false'); link.tabIndex = 0; link.textContent = label; }
   }
   $('matchup').textContent = window.Unit501SharedUI.matchup(game.a, game.h);
-  document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:game.league==='1'?'nfl':'ncaaf',away:game.a,home:game.h}}));
+  document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:game.league==='1'?'nfl':'ncaaf',away:game.a,home:game.h,game}}));
 
   // Do not invent a betting line when current odds are unavailable.
   $('spread').value = '';
@@ -980,7 +981,7 @@ async function choose(game) {
   $('note').textContent =
     'Enter the current FanDuel spread and total to run a simulation.';
 
-  $('lab').scrollIntoView({ behavior: 'smooth' });
+  (document.getElementById('game-center')||$('lab')).scrollIntoView({ behavior: 'smooth',block:'start' });
   loadFanDuel();
   loadTeamContext(game);
 }

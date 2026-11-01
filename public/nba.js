@@ -227,7 +227,7 @@ function choose(game){
     const season=tip.getUTCFullYear()-(tip.getUTCMonth()<6?1:0);
     if(season>=2000&&season<=2100)byId('nba-official-injuries').href='https://official.nba.com/nba-injury-report-'+season+'-'+String((season+1)%100).padStart(2,'0')+'-season/';
    }
-   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home}}));
+   if(typeof document.dispatchEvent==='function'&&typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('unit501:matchup-selected',{detail:{league:'nba',away:game.away,home:game.home,game}}));
    byId('nba-game-context').textContent=shared.timeCentral(game.tipoff)+' | '+game.status+
      (game.awayScore!==null&&game.homeScore!==null?' | '+game.away+' '+game.awayScore+' – '+game.home+' '+game.homeScore:'');
    formWindow.value='season';
@@ -236,9 +236,10 @@ function choose(game){
    loadInjuries(game);
    lab.classList.remove('hidden');
    players.classList.remove('hidden');
-   lab.scrollIntoView?.({behavior:'smooth',block:'start'});
+   (document.getElementById('game-center')||lab).scrollIntoView?.({behavior:'smooth',block:'start'});
  }
  async function refresh(){
+  if(typeof Event==='function'&&typeof document.dispatchEvent==='function')document.dispatchEvent(new Event('unit501:slate-reset'));
   const date=dateInput.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){status.textContent='Choose a valid NBA game date.';return;}
   ++contextRequest;activeContext=null;contextGame=null;clearTimeout(contextTimer);injuryGame=null;clearInjuries();window.Unit501NBAMarkets?.clear();
