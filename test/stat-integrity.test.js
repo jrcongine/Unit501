@@ -103,3 +103,21 @@ test('Daniels verified absences leave four passing games and the played zero',()
   assert.ok(!project(history,key).withheld);
  }
 });
+
+test('Washington inactive reports only fill empty slots for the named player and exact game',()=>{
+ const calendar=new Map(),records=new Map();
+ for(const [id,date,name,scored,allowed] of [['4','2026-10-04','Indianapolis Colts',13,30],['5','2026-10-11','New York Giants',27,27]]){
+  calendar.set(id,{date:Date.parse(date+'T17:00Z')/1000,teams:new Map([['18',{name,scored,allowed}]])});
+ }
+ for(const name of ['Rachaad White','Stefon Diggs']){
+  const games=new Map([...calendar].map(([id,g])=>[id,{gameDate:g.date,opponent:g.teams.get('18').name}]));
+  records.set(name,{name,team:'Washington Commanders',teamId:'18',games});
+ }
+ applyReviewedHistory(records,calendar,{league:'1',season:'2026'});
+ for(const [name,id,played] of [['Rachaad White','4','5'],['Stefon Diggs','5','4']]){
+  const games=records.get(name).games;
+  assert.equal(games.get(id).verification.participation,true);
+  assert.equal(games.get(id).participation,'dnp');
+  assert.equal(games.get(played).participation,undefined);
+ }
+});

@@ -10,6 +10,16 @@ sources.push(
  {league:'1',season:'2026',date:'2026-10-11',away:'Chicago Bears',home:'Green Bay Packers',awayScore:7,homeScore:31,url:'https://static.clubs.nfl.com/image/upload/packers/pqpptpb5ckujllxac1md',page:'https://www.packers.com/game-day/2026/reg-week5/packers-vs-bears/'},
  {league:'1',season:'2026',date:'2026-09-20',away:'Green Bay Packers',home:'New York Jets',awayScore:20,homeScore:17,url:'https://static.clubs.nfl.com/image/upload/packers/zu3fdftopjkj8hkcwckc',page:'https://www.packers.com/game-day/2026/reg-week2/packers-at-jets/'}
 );
+// Recorded official links retain access when a team changes its schedule page.
+sources.push(
+ {"league":"1","season":"2026","date":"2026-09-13","away":"Washington Commanders","home":"Philadelphia Eagles","awayScore":22,"homeScore":24,"url":"https://www.nflgsis.com/2026/REG/01/60191/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-09-20","away":"Philadelphia Eagles","home":"Tennessee Titans","awayScore":24,"homeScore":20,"url":"https://www.nflgsis.com/2026/REG/02/60202/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-09-28","away":"Philadelphia Eagles","home":"Chicago Bears","awayScore":7,"homeScore":27,"url":"https://www.nflgsis.com/2026/REG/03/60225/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-10-04","away":"Los Angeles Rams","home":"Philadelphia Eagles","awayScore":24,"homeScore":20,"url":"https://www.nflgsis.com/2026/REG/04/60234/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-10-11","away":"Philadelphia Eagles","home":"Jacksonville Jaguars","awayScore":17,"homeScore":19,"url":"https://www.nflgsis.com/2026/REG/05/60243/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-10-18","away":"Carolina Panthers","home":"Philadelphia Eagles","awayScore":25,"homeScore":14,"url":"https://www.nflgsis.com/2026/REG/06/60264/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"},
+ {"league":"1","season":"2026","date":"2026-10-26","away":"Dallas Cowboys","home":"Philadelphia Eagles","awayScore":38,"homeScore":21,"url":"https://www.nflgsis.com/2026/REG/07/60284/Gamebook.pdf","page":"https://www.philadelphiaeagles.com/schedule/"}
+);
 const dateKey=seconds=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(seconds*1000));
 function lines(items,side,width){
  const groups=[];

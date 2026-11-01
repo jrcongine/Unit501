@@ -113,32 +113,38 @@
         new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(g.date*1000))===date&&
         g.teams.get(teamId)?.name===opponent&&g.teams.get(teamId)?.scored===scored&&g.teams.get(teamId)?.allowed===allowed);
   }
-  function applyDanielsAbsences(records,calendar) {
-    const candidates=[...records.values()].filter(r=>r.team==='Washington Commanders' && r.name==='Jayden Daniels');
-    if(candidates.length!==1)return false;
-    const player=candidates[0];
+  const washingtonAbsences=[
+    ['2026-09-27','Seattle Seahawks',33,31,['Jayden Daniels'],
+      'https://www.nfl.com/news/commanders-jayden-daniels-elbow-start-giants-week-5'],
+    ['2026-10-04','Indianapolis Colts',13,30,['Jayden Daniels','Rachaad White'],
+      'https://www.commanders.com/news/inactives-commanders-vs-colts-week-4-2026'],
+    ['2026-10-11','New York Giants',27,27,['Stefon Diggs'],
+      'https://www.commanders.com/news/inactives-commanders-vs-giants-week-5']
+  ];
+  function applyWashingtonAbsences(records,calendar) {
+    const roster=[...records.values()].filter(r=>r.team==='Washington Commanders');
     let applied=false;
-    for(const [date,opponent,scored,allowed] of [
-      ['2026-09-27','Seattle Seahawks',33,31],
-      ['2026-10-04','Indianapolis Colts',13,30]
-    ]){
+    for(const [date,opponent,scored,allowed,names,source] of washingtonAbsences){
+     for(const name of names){
+      const candidates=roster.filter(r=>r.name===name);
+      if(candidates.length!==1)continue;
+      const player=candidates[0];
       const games=reviewedGames(calendar,player.teamId,date,opponent,scored,allowed);
       if(games.length!==1)continue;
       const [id,game]=games[0], line=player.games.get(id);
       if(!line || line.gameDate!==game.date || line.opponent!==opponent || line.participation)continue;
       if([...definitions.map(d=>d.key),'attempts','targets'].some(key=>line[key]!==undefined))continue;
       line.participation='dnp';
-      line.verification={participation:true,markets:[],reviewedAt:'2026-11-01',
-        source:'https://www.nfl.com/news/commanders-jayden-daniels-elbow-start-giants-week-5',
-        gameLog:'https://www.commanders.com/team/players-roster/jayden-daniels/logs/'};
+      line.verification={participation:true,markets:[],reviewedAt:'2026-11-01',source};
       applied=true;
+     }
     }
     return applied;
   }
   function applyReviewedHistory(records,calendar,scope) {
     if(String(scope?.league)!=='1'||String(scope?.season)!=='2026')return false;
-    const daniels=applyDanielsAbsences(records,calendar);
-    return applySmithHistory(records,calendar,scope)||daniels;
+    const absences=applyWashingtonAbsences(records,calendar);
+    return applySmithHistory(records,calendar,scope)||absences;
   }
   function applySmithHistory(records,calendar,scope) {
     const review=smithReview;
