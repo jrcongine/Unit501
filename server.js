@@ -159,6 +159,7 @@ const footballGamebooks=require('./football-participation').createParticipation(
 
 const lookupBasketballOpponent=require('./basketball-opponent-game').createLookup();
 
+const quoteTraces=require('./football-quote-trace').createTraceStore();
 const server = http.createServer(async (req, res) => {
   if(!require('./private-access').allowRequest(req,res))return;
 
@@ -166,6 +167,20 @@ const server = http.createServer(async (req, res) => {
 
     const u = new URL(req.url, 'http://localhost');
     res.healthURL=u;
+    if(u.pathname==='/api/football/quote-trace'){
+      if(req.method==='GET')return send(res,200,{traces:quoteTraces.latest()});
+      if(req.method!=='POST'||req.headers['content-type']!=='application/json')return send(res,400,{error:'JSON trace required'});
+      const chunks=[];let bytes=0;
+      for await(const chunk of req){
+        bytes+=chunk.length;
+        if(bytes>512000)return send(res,413,{error:'Trace too large'});
+        chunks.push(chunk);
+      }
+      let trace;
+      try{trace=JSON.parse(Buffer.concat(chunks).toString());}catch{return send(res,400,{error:'Invalid JSON'});}
+      const saved=quoteTraces.capture(trace);
+      return send(res,saved?200:400,saved||{error:'Invalid quote trace'});
+    }
     if(u.pathname==='/api/football/participation'){
       const q=Object.fromEntries(['game','league','season','date'].map(k=>[k,u.searchParams.get(k)||'']));
       if(!/^\d{1,12}$/.test(q.game)||!['1','2'].includes(q.league)||!/^20\d{2}$/.test(q.season)||!/^20\d{2}-\d{2}-\d{2}$/.test(q.date))return send(res,400,{error:'Valid historical game, league, season and date required'});

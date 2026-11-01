@@ -1213,3 +1213,36 @@ test('slate cooldown preserves the same loaded games and selection, shows a coun
  assert.equal(h.nodes.get('load').disabled,false);assert.equal(h.nodes.get('slate-refresh-status').hidden,true);
  assert.doesNotMatch(h.nodes.get('games').textContent,/RB 1/);
 });
+
+test('football quote refresh captures each accepted market once with its actual board disposition',async()=>{
+ const h=harness(),original=h.context.fetch;
+ const store=require('../football-quote-trace').createTraceStore();
+ const snapshots=[];
+ h.context.fetch=async(url,options)=>{
+  if(url==='/api/football/quote-trace'){
+   const snapshot=JSON.parse(options.body);
+   snapshots.push(snapshot);
+   assert.deepEqual(store.capture(snapshot),{balanced:true});
+   return {ok:true};
+  }
+  const result=await original(url);
+  if(!String(url).startsWith('/api/football/player-lines?'))return result;
+  const data=await result.json();
+  data.props.push({name:'Absent Receiver',stat:'rec',line:2.5,updatedAt:Date.now()});
+  return {ok:true,json:async()=>data};
+ };
+ await h.settle();h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ assert.equal(snapshots.length,1);
+ const [trace]=store.latest();
+ assert.equal(trace.accepted,4);assert.equal(trace.displayed,3);assert.equal(trace.game,'999');
+ assert.equal(trace.entries.length,4);assert.equal(trace.balanced,true);
+ assert.equal(trace.entries.find(r=>r.name==='Absent Receiver').reason,'Player absent from loaded history');
+ const select=h.nodes.get('prop-filter-direction');select.value='below';await select.dispatchEvent({type:'change'});
+ assert.equal(snapshots.length,1);
+ const refresh=h.created.find(n=>n.tag==='button'&&n.textContent==='Refresh FanDuel props');
+ await refresh.dispatchEvent({type:'click'});
+ assert.equal(snapshots.length,2);assert.equal(store.latest().length,1);
+ assert.equal(store.latest()[0].accepted,4);assert.equal(store.latest()[0].displayed,0);
+ assert.equal(store.latest()[0].entries.filter(r=>r.reason==='Excluded by view filters').length,3);
+});

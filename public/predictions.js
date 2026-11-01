@@ -19,6 +19,7 @@
   let sequence = 0;
   let propSequence = 0;
   let quoteTrace=[];
+  let captureNextTrace=false;
   const propStatus = document.createElement('p');
   propStatus.id = 'prop-feed-status';
   const refreshProps = document.createElement('button');
@@ -96,6 +97,7 @@
       const rejected=audit?` Provider: ${audit.quotesReceived} quote candidates / ${audit.outcomesReceived} outcomes received; ${audit.accepted} accepted, ${audit.rejected} rejected (${Object.entries(audit.reasons).map(([k,v])=>k+': '+v).join(', ')||'none'}); ${audit.duplicatesRemoved} identical outcomes removed.`:'';
       const matchingDetail=` ${data.props.length} usable quotes returned by the feed.${unmatched.length?' Unmatched or ambiguous player names: '+unmatched.join(', ')+'.':''}`;
       propStatus.textContent = `${data.message || ''}${detail}${matchingDetail} ${matched} matched to unique loaded players; ${data.props.length-matched} unmatched or invalid; ${count} player lines filled; ${manual} manual entries preserved.${rejected} ${data.tracking?.message||'Shared tracking status unavailable.'}`;
+      captureNextTrace=true;
       showPlayer();
     } catch (e) {
       if (task === propSequence && selection === sequence) propStatus.textContent = e.message + ' Existing fresh quotes were kept; you can also enter lines manually.';
@@ -419,12 +421,12 @@ for (let i = rows.length - 1; i >= 0; i--) {
     board.append(copy, copyStatus);
     const visibleKeys=new Set(rows.filter(r=>r.line!==null&&r.entry.source==='auto').map(r=>lineKey(r.record,r.def)));
     board.dataset.displayedAutoLines=String(visibleKeys.size);
-    if(quoteTrace.length){
+    if(quoteTrace.length || captureNextTrace){
       const details=document.createElement('details'),summary=document.createElement('summary');
       summary.textContent='Trace '+quoteTrace.length+' accepted quotes · '+visibleKeys.size+' in the comparison table';details.append(summary);
       const missingReasons=new Map(withheldMarkets.map(r=>[lineKey(r.record,r.def),r.reason]));
+      const entries=[];
       for(const t of quoteTrace){
-        if(board.dataset.player&&t.record?.id!==board.dataset.player)continue;
         let reason=t.reason;
         if(!reason){
           const key=lineKey(t.record,t.def),entry=readLine(key);
@@ -432,9 +434,17 @@ for (let i = rows.length - 1; i >= 0; i--) {
             window.Unit501Availability?.assess(t.record.teamId,t.record.playerId).blocked?'Player unavailable':
             missingReasons.get(key)||(!entry.value?'No current line':'Excluded by view filters');
         }
+        entries.push({name:t.quote.name,stat:t.quote.stat,line:t.quote.line,reason});
         const item=document.createElement('p');item.textContent=t.quote.name+' · '+(t.def?.title||t.quote.stat)+' '+t.quote.line+' · '+reason;details.append(item);
       }
       board.append(details);
+      if(captureNextTrace){
+        captureNextTrace=false;
+        const [league,season,,game]=lineScope.split(':');
+        const snapshot={league,season,game,accepted:quoteTrace.length,displayed:visibleKeys.size,entries};
+        fetch('/api/football/quote-trace',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(snapshot)}).catch(()=>{});
+      }
     }
     if (!rows.length) {
       const empty = document.createElement('p');
