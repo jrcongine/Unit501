@@ -1042,7 +1042,7 @@ results.appendChild(workload);
     status.textContent = 'Finding completed season games…';
     try {
       const date = el('date').value;
-      const season = date.slice(0, 4);
+      const season = game.season || window.Unit501SharedUI.footballSeason(date);
       const league = el('league').value;
       const slate = await json(`/api/games?date=${encodeURIComponent(date)}&league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`);
       const target = slate.find(g => String(g.game?.id || g.id) === gameId);

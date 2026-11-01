@@ -728,7 +728,7 @@ function showTeamContext(data, game, {loading=false,warning=''} = {}) {
 function loadTeamContext(game) {
   clearTimeout(contextTimer);
   const task = ++contextSequence;
-  const params = new URLSearchParams({league:$('league').value, season:$('date').value.slice(0,4),
+  const params = new URLSearchParams({league:$('league').value, season:game.season,
     before:game.kickoff,away:game.awayId,home:game.homeId});
   let polls = 0;
   let lastProgress = '', lastChanged = Date.now();
@@ -822,6 +822,7 @@ function parseGame(g) {
 
   return {
     id: g.game?.id || g.id,
+    season: /^20\d{2}$/.test(String(g.league?.season))?String(g.league.season):window.Unit501SharedUI.footballSeason($('date').value),
    awayId: String(away.id || ''),
 homeId: String(home.id || ''),
 venueName: g.game?.venue?.name || '',
@@ -878,7 +879,7 @@ async function load() {
     const params = new URLSearchParams({
       date,
       league,
-      season: date.slice(0, 4),
+      season: window.Unit501SharedUI.footballSeason(date),
       timezone: 'America/Chicago'
     });
 
@@ -956,7 +957,7 @@ async function choose(game) {
   clearAutomaticGameLines();
   scoringContext = null;
   game.league = $('league').value;
-  game.season = $('date').value.slice(0,4);
+  game.season ??= window.Unit501SharedUI.footballSeason($('date').value);
   const priorLeague=selected?.league;
   window.Unit501Hook?.select(game.scheduled?{league:game.league,away:game.a,home:game.h,kickoff:game.kickoff}:null);
   selected = game;

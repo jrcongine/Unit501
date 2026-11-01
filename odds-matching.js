@@ -16,12 +16,15 @@ function teamMatches(provider, requested, college) {
   return Boolean(suffix && !otherSchool);
 }
 function matches(event,q) {
+  const sport=q.league==='1'?'americanfootball_nfl':q.league==='2'?'americanfootball_ncaaf':null;
+  if(!sport||!event||(Object.hasOwn(event,'sport_key')&&event.sport_key!==sport))return false;
+  if(normalize(q.away)===normalize(q.home)||normalize(event.away_team)===normalize(event.home_team))return false;
   return teamMatches(event.away_team,q.away,q.league==='2') &&
     teamMatches(event.home_team,q.home,q.league==='2') &&
     Math.abs(Date.parse(event.commence_time)-q.kickoff)<10800000;
 }
 function missingMatchMessage(events,q) {
-  const names=events.filter(e=>teamMatches(e.away_team,q.away,q.league==='2') && teamMatches(e.home_team,q.home,q.league==='2'));
+  const names=events.filter(e=>e&&matches(e,{...q,kickoff:Date.parse(e.commence_time)}));
   if(events.filter(e=>matches(e,q)).length>1) return 'Multiple matching events returned by the odds feed. Automatic selection withheld; enter lines manually.';
   if(names.length) return 'Teams found in the odds feed, but kickoff differs by three hours or more. Verify the selected date and time; enter lines manually.';
   return 'This matchup was not found under recognized team names in the odds feed. It may be missing from the feed or use another name. Enter lines manually.';

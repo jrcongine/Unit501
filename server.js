@@ -622,6 +622,8 @@ server.listen(PORT, () => {
   console.log('UNIT 501 running on port ' + PORT);
   if(process.env.RAILWAY_PROJECT_ID)require('./runtime-verification').verify({port:PORT,password:process.env.UNIT501_PRIVATE_PASSWORD,commit:process.env.RAILWAY_GIT_COMMIT_SHA})
     .then(result=>console.log('Runtime verification: '+JSON.stringify(result))).catch(()=>console.log('Runtime verification: unavailable'));
+  if(process.env.UNIT501_FOOTBALL_ODDS_AUDIT)require('./football-odds-audit').run({api})
+    .then(result=>console.log('Football odds audit: '+JSON.stringify(result))).catch(()=>console.warn('Football odds audit unavailable'));
   if(process.env.UNIT501_BASKETBALL_ODDS_AUDIT)require('./basketball-odds-audit').run()
     .then(result=>console.log('Basketball odds audit: '+JSON.stringify(result))).catch(()=>console.log('Basketball odds audit: unavailable'));
   trackedOdds.start();

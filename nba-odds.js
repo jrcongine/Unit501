@@ -5,7 +5,7 @@ const BOOKS=Object.freeze({fanduel:'FanDuel',draftkings:'DraftKings',betmgm:'Bet
 const MARKETS={player_points:'Points',player_rebounds:'Rebounds',player_assists:'Assists',player_threes:'Threes made'};
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const team=s=>({laclippers:'losangelesclippers',lalakers:'losangeleslakers'}[normalize(s)]||normalize(s));
-function matches(e,g){return e?.sport_key===SPORT&&team(e.away_team)===team(g.away)&&team(e.home_team)===team(g.home)&&Math.abs(Date.parse(e.commence_time)-Date.parse(g.tipoff))<=15*60000;}
+function matches(e,g){return e?.sport_key===SPORT&&!!team(g?.away)&&!!team(g?.home)&&team(g.away)!==team(g.home)&&team(e.away_team)===team(g.away)&&team(e.home_team)===team(g.home)&&Math.abs(Date.parse(e.commence_time)-Date.parse(g.tipoff))<=15*60000;}
 const gameLines=require('./game-quotes').gameQuotes;
 function auditPlayerLines(e,now=Date.now()){
  const result=require('./prop-quotes').auditProps(e,MARKETS,now);

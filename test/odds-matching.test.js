@@ -48,3 +48,19 @@ test('Sam Houston State Bearkats odds match Sam Houston against Missouri State',
  assert.equal(selectLines([event],query,now).awaySpread,5.5);assert.equal(selectLines([event],query,now).total,52.5);
  assert.equal(teamMatches('Sam Houston State Bearkats','Missouri State',true),false);
 });
+test('football game and prop lookups reject conflicting league identity and same-team matches',()=>{
+ for(const league of ['1','2']){
+  const query={...q,league,away:'Away',home:'Home'};
+  const event={...e,away_team:'Away',home_team:'Home',sport_key:'basketball_nba'};
+  assert.equal(matches(event,query),false);
+  assert.equal(selectLines([event],query).available,false);
+  assert.match(missingMatchMessage([event],query),/not found/);
+  assert.equal(matches({...event,sport_key:league==='1'?'americanfootball_nfl':'americanfootball_ncaaf',home_team:'Away'},{...query,home:'Away'}),false);
+ }
+});
+test('NBA odds cannot attach to absent or identical teams',()=>{
+ const match=require('../nba-odds').matches;
+ for(const name of ['','Home']){
+  assert.equal(match({sport_key:'basketball_nba',away_team:name,home_team:name,commence_time:e.commence_time},{away:name,home:name,tipoff:e.commence_time}),false);
+ }
+});

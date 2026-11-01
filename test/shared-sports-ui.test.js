@@ -119,3 +119,9 @@ test('all sport pages use the shared layout and retain separate selection and pl
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
  }
 });
+
+test('football slate and selected-game season use the season start year through February',()=>{
+ for(const date of ['2026-09-01','2027-01-01','2027-02-28'])assert.equal(shared.footballSeason(date),'2026');
+ assert.equal(shared.footballSeason('2027-03-01'),'2027');
+ assert.equal(shared.footballSeason(''),null);
+});

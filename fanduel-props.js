@@ -51,4 +51,4 @@ async function getProps(q) {
   const audit=parsed.audit,props=parsed.props.map(({market,...p})=>p);
   return {props,audit,eventId:data.id,coverage:marketCoverage(props),message:props.length?'FanDuel props loaded. Missing props can be entered manually.':'No fresh FanDuel props available for this matchup. Enter lines manually.'};
 }
-module.exports={getProps,parseProps,matches,normalize,marketCoverage};
+module.exports={markets,getProps,parseProps,matches,normalize,marketCoverage};

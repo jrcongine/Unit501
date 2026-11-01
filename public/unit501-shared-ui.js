@@ -11,6 +11,10 @@
    const v=t=>parts.find(p=>p.type===t)?.value;
    return v('year')+'-'+v('month')+'-'+v('day');
  }
+ function footballSeason(date){
+   if(!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(date||''))return null;
+   return String(Number(date.slice(0,4))-(Number(date.slice(5,7))<=2?1:0));
+ }
  function timeCentral(value){
    const ms=typeof value==='number'?value:Date.parse(value);
    if(!Number.isFinite(ms))return 'Time TBD';
@@ -154,5 +158,5 @@
      const element=doc?.getElementById(prefix+'-'+key);if(element)element.textContent=value;
    }
  }
- return Object.freeze({resultTiles,historyFreshness,dateCentral,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ return Object.freeze({resultTiles,historyFreshness,dateCentral,footballSeason,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });
