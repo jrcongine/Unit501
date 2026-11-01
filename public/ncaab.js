@@ -54,7 +54,7 @@
    if(!Number.isFinite(d.checkedAt)||d.checkedAt>Date.now()+60000||Date.now()-d.checkedAt>900000||!Array.isArray(d.teams)||d.teams.length!==2||d.teams.some(t=>!Array.isArray(t.players)||t.players.some(p=>typeof p.name!=='string'||!p.name.trim()||typeof p.status!=='string'||!p.status.trim())))throw Error('Invalid availability report');
    injuryData=d;render();
    if(d.teams.some(t=>t.players?.some(p=>/^out$/i.test(p.status))))api('player-history',game).then(h=>{if(current()){teamPlayerHistory=h;render();}}).catch(()=>{if(current()){teamPlayerHistory=null;render();}});
-   $('ncaab-injuries').replaceChildren();$('ncaab-injury-status').textContent='ESPN game report · checked '+central(d.checkedAt);
+   $('ncaab-injuries').replaceChildren();$('ncaab-injury-status').textContent=(d.source||'ESPN game report')+' · checked '+central(d.checkedAt);
    for(const team of d.teams){const card=node('section','','nba-team-history');card.append(node('h4',team.team));
     if(team.available===false)card.append(node('p',team.message||'Team injury report unavailable; player availability is unconfirmed.','nba-injury-out'));
     if(!team.players.length)card.append(node('p','No player reports returned; availability is unconfirmed.'));

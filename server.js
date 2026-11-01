@@ -19,7 +19,7 @@ const nbaContext = nbaSources.context;
 const ncaab = require('./ncaab-feed').createNCAAB();
 const ncaabMarkets=require('./ncaab-markets').createMarkets();
 const ncaaOfficial=require('./ncaa-official-history').createNCAA();
-const ncaabPlayers=require('./ncaab-players').createPlayers({feed:ncaab,official:data=>ncaaOfficial(require('./ncaa-official-history').basketballScope(data))});
+const ncaabPlayers=require('./ncaab-players').createPlayers({feed:ncaab,conferenceReports:require('./ncaab-conference-reports').createReports(),official:data=>ncaaOfficial(require('./ncaa-official-history').basketballScope(data))});
 const nbaTravel = require('./nba-travel').createNBATravel({publicFeed:publicNBA});
 const nbaOdds = require('./nba-odds').createNBAOdds();
 let lineHistory;
