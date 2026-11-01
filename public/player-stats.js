@@ -166,6 +166,9 @@
       {teams:['baylor','baylorbears'],names:['louisbrown','louisbrowniv']},
       {teams:['ucf','ucfknights'],names:['joshderry','joshuaderry']}
     ]:[];
+    if(String(scope.league)==='1' && String(scope.season)==='2026'){
+      aliases.push({teams:['washingtoncommanders'],names:['chigokonkwo','chigoziemokonkwo']});
+    }
     return players.filter(p=>key(p.name)===name||aliases.some(a=>a.teams.includes(key(p.team))&&a.names.includes(name)&&a.names.includes(key(p.name))));
   }
   const api={definitions,extract,teamYards,accumulate,completeCalendar,seedRoster,missingGames,applyReviewedHistory,applyParticipation,quotePlayers};

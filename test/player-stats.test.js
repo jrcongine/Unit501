@@ -64,3 +64,14 @@ test('reviewed college quote aliases require the correct league, season, team an
  assert.deepEqual(quotePlayers({name:'John Doe IV'},[{name:'John Doe',team:'Baylor'}],scope),[]);
  assert.equal(quotePlayers({name:'José Player'},[{name:'Jose Player',team:'Other'}],{}).length,1);
 });
+
+test('Washington prop quotes recognize Okonkwo’s reviewed nickname in 2026',()=>{
+ const {quotePlayers}=require('../public/player-stats');
+ const scope={league:'1',season:'2026'};
+ const player={name:'Chigoziem Okonkwo',team:'Washington Commanders'};
+ const quote={name:'Chig Okonkwo'};
+ assert.deepEqual(quotePlayers(quote,[player],scope),[player]);
+ assert.deepEqual(quotePlayers(quote,[{...player,team:'Tennessee Titans'}],scope),[]);
+ assert.deepEqual(quotePlayers(quote,[player],{...scope,season:'2025'}),[]);
+ assert.deepEqual(quotePlayers(quote,[player],{...scope,league:'2'}),[]);
+});
