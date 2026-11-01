@@ -29,3 +29,26 @@ Integration references: https://docs.stripe.com/testing · https://docs.stripe.c
 - Capture pregame predictions and quotes through settlement. Separate observed production outcomes from archive replays. Record uncertainty by market and league. Recheck close-game bias with held-out seasons before changing weights.
 - Run authenticated live matchup, player selection and War Room checks across device sizes with populated data, provider failures and recovery. Exercise concurrent customer traffic once isolated test accounts exist.
 - Maintain a deployment SHA, production runtime asset result, saved feed coverage, source timestamps and live workflow result as separate release evidence. A successful process startup alone clears only the deployment check.
+
+## Sandbox billing rehearsal
+
+The operator-only script `scripts/billing-sandbox.js` accepts an existing Stripe test customer and an active, fixed monthly test price. Configure STRIPE_TEST_SECRET_KEY, UNIT501_TEST_CUSTOMER_ID, UNIT501_TEST_PRICE_ID and a unique UNIT501_TEST_ATTEMPT_ID in an isolated test environment. Run `node scripts/billing-sandbox.js checkout`. Reuse the same attempt ID for retries. Open the returned hosted test checkout with Stripe test payment details. To inspect its latest subscription and invoice, run the same command with the returned test session ID in place of checkout. Never share the checkout link or enter real card information.
+
+The checker verifies the customer and plan, reads the current subscription and latest invoice, and distinguishes paid, unconfirmed and ended states. These observations confer no access. Production still requires customer identity, a durable entitlement store, signed webhook handling, and provider-backed decline, cancellation and recovery tests.
+
+## Verification record
+
+The November 1 production diagnostics matched independent schedules to the odds provider before parsing FanDuel quotations. The live checks ran at 22:40 UTC for basketball and 22:43 UTC for football.
+
+| League | Matchup | Moneyline / spread / total present | Prop candidates received / accepted / rejected |
+| --- | --- | --- | --- |
+| NFL | Philadelphia at Washington | Yes / yes / yes | 30 / 30 / 0 |
+| CFB | Ohio at Akron | Yes / yes / yes | 15 / 15 / 0 |
+| NBA | LA Clippers at Golden State | Yes / yes / yes | 43 / 43 / 0 |
+| CBB | Liberty vs. High Point, neutral venue | Yes / yes / yes | 0 / 0 / 0 |
+
+The NFL response omitted rush attempts, rushing TDs and receiving TDs. CFB also omitted receptions. The CBB response omitted all four requested prop markets. These are provider/parser counts for individual events. Verified player-to-history matches and customer-visible row counts remain open.
+
+Local Chromium selected a fixture matchup and visited Overview, Player Props and War Room for each of the four leagues at 390, 768 and 1440 pixels, with downstream API failures simulated. All twelve checks finished without page-level horizontal overflow or an uncaught page error. A separate public-source War Room smoke check returned 16 NFL, zero CFB, eight NBA and six CBB selections. Some entries had unverified analysts or event times.
+
+The NFL replay contained 416 evaluated games across 2024 and 2025. Seventy-seven actual margins were at least 21 points. Zero projected margins reached 21. The optional stadium-adjustment candidate also increased held-out margin error from 10.77 to 10.89 over 195 games. The NBA retrospective calibration audit used 1,152 valid observations and classified the candidate as research-only. The selected-team CBB replay had 26 and was insufficient. The production grading snapshot had 73 football props pending, zero settled, and zero basketball props captured. No changes to model weights were promoted.
