@@ -39,7 +39,10 @@ const trackedOdds = require('./tracked-odds').createTrackedOdds({history: lineHi
 const nbaInjuries = require('./nba-injuries').createNBAInjuries();
 const nbaPlayerHistory = require('./nba-player-history').createPlayerHistory({publicFeed:publicNBA,official:require('./nba-official-history').createOfficialNBA()});
 const injurySlate = require('./nba-slate-cache').createSlateCache(nbaGames);
-const footballMeter=require('./api-meter').createMeter({budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
+const footballMeter=require('./api-meter').createMeter({
+  history:require('./football-usage-history').createUsageHistory(process.env.UNIT501_LINE_HISTORY_FILE
+    ? path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-usage-v1') : null),
+  budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);

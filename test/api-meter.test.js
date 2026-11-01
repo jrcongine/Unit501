@@ -194,3 +194,23 @@ test('Retry-After HTTP date pauses requests until the specified time',async()=>{
  await assert.rejects(meter.track('/players',async()=>assert.fail()),/cooldown/);
  clock++;await meter.track('/games',async()=>{});
 });
+
+test('durable history combines instances and restarts; blocked requests do not count',async t=>{
+ const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'football-usage-'));
+ t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ let clock=Date.parse('2026-11-01T23:59:59Z');
+ const open=()=>createMeter({budget:1,now:()=>clock,history:require('../football-usage-history').createUsageHistory(dir)});
+ const a=open(),b=open();
+ await Promise.all([a,b].map(m=>m.track('/games',async()=>1)));
+ await assert.rejects(a.track('/games',async()=>0),/safety budget/);
+ clock+=2000;
+ await assert.rejects(a.track('/games',async()=>{throw Error('timeout');}),/timeout/);
+ assert.deepEqual(open().snapshot().recentDays,[{dateUTC:'2026-11-02',attempts:1},{dateUTC:'2026-11-01',attempts:2}]);
+});
+test('unwritable usage history blocks the provider without spending an attempt',async()=>{
+ const meter=createMeter({history:{record(){throw Error('disk');},recent(){throw Error('disk');}}});
+ await assert.rejects(meter.track('/games',async()=>assert.fail()),/storage unavailable/);
+ assert.equal(meter.snapshot().outboundAttempts,0);
+ assert.equal(meter.snapshot().recentDays,null);
+});

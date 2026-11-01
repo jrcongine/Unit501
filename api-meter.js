@@ -12,7 +12,7 @@ function category(endpoint){
   if(route==='/leagues')return 'leagueCoverage';
   return 'other';
 }
-function createMeter({now=Date.now,budget=7500}={}){
+function createMeter({now=Date.now,budget=7500,history=null}={}){
   const cap=Number(budget);
   if(!Number.isSafeInteger(cap)||cap<1||cap>7500)throw Error('Invalid football daily soft budget');
   const startedAt=new Date(now()).toISOString();
@@ -25,7 +25,9 @@ function createMeter({now=Date.now,budget=7500}={}){
   };
   const snapshot=()=>{
     refresh();
-    return {scope:'This Railway instance only; resets on restart. Not API-Sports account usage.',
+    let recentDays=null;
+    if(history){try{recentDays=history.recent();}catch{/* Preserve the live meter when the volume cannot be read. */}}
+    return {recentDays,scope:'This Railway instance only; resets on restart. Not API-Sports account usage.',
       dateUTC:date,startedAt,budget:cap,outboundAttempts:attempts,failedResponses:failures,blockedByGuard:blocked,
       remaining:Math.max(0,cap-attempts),byCategory:{...byCategory},
       blockedByProviderQuota,blockedByCooldown,cooldownUntil:cooldownUntil>now()?new Date(cooldownUntil).toISOString():null,providerAllowance,providerQuota:providerQuota?{...providerQuota}:null};
@@ -101,6 +103,8 @@ function createMeter({now=Date.now,budget=7500}={}){
       blocked++;
       throw Error('Unit 501 football API safety budget reached for this instance today. Try after the next UTC day or adjust the owner-set budget.');
     }
+    // Do not send an uncounted request when durable metering is configured.
+    if(history){try{history.record(date);}catch{throw Error('Football usage storage unavailable. Request paused before contacting provider.');}}
     if(providerAllowance!==null)providerAllowance=Math.max(0,providerAllowance-1);
     attempts++;
     const group=category(endpoint);

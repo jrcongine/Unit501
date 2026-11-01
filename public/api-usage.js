@@ -32,6 +32,19 @@ async function load(){
     '. Calls blocked by app safety cap: '+format.format(d.blockedByGuard)+
     '. This process started '+new Date(d.startedAt).toLocaleString()+'.';
   details.append(foot);
+  if(Array.isArray(d.recentDays)){
+    const title=document.createElement('strong');
+    title.textContent='Recorded football calls by UTC day';
+    const days=document.createElement('ul');
+    for(const day of d.recentDays){
+      const row=document.createElement('li');
+      row.textContent=day.dateUTC+' · '+format.format(day.attempts);
+      days.append(row);
+    }
+    const note=document.createElement('p');
+    note.textContent='Includes calls recorded on this volume across restarts. Recording starts with this release. Only days with recorded calls appear.';
+    details.append(title,days,note);
+  }
  }catch{
   message.textContent='App request counter unavailable. Check the provider dashboard for account-wide usage.';
   details.replaceChildren();
