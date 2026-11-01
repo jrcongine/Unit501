@@ -18,6 +18,7 @@
   let lineScope = '';
   let sequence = 0;
   let propSequence = 0;
+  let quoteTrace=[];
   const propStatus = document.createElement('p');
   propStatus.id = 'prop-feed-status';
   const refreshProps = document.createElement('button');
@@ -58,17 +59,26 @@
       // A 401, exhausted quota, network failure or invalid response must not erase them.
       for (const [key, entry] of enteredLines) if (entry.source === 'auto') enteredLines.delete(key);
       const links=data.props.map(quote=>({quote,players:Unit501PlayerStats.quotePlayers(quote,choices,{league:game.league||el('league').value,season:lineScope.split(':')[1]})}));
+      quoteTrace=links.map(({quote,players})=>({
+        quote,record:players.length===1?players[0]:null,def:definitions.find(d=>d.key===quote.stat),
+        reason:players.length>1?'Ambiguous player':!players.length?'Player absent from loaded history':'Unverified player or market'
+      }));
       let count = 0, matched = 0, manual = 0;
       for (const record of choices) {
         // Never guess abbreviated names or select between duplicate player names.
         if (choices.filter(p => playerName(p.name) === playerName(record.name)).length !== 1) continue;
         for (const def of definitions) {
           const quotes = links.filter(link=>link.quote.stat===def.key&&link.players.length===1&&link.players[0]===record).map(link=>link.quote);
-          if (quotes.length !== 1) continue;
+          if (quotes.length !== 1) {
+            for(const quote of quotes)quoteTrace.find(t=>t.quote===quote).reason='Multiple quotes for this player and market';
+            continue;
+          }
           const quote = quotes[0];
-          if (!Number.isFinite(quote.line) || !Number.isFinite(quote.updatedAt) || quote.updatedAt > Date.now()+60000 || Date.now() - quote.updatedAt > 1800000) continue;
+          const trace=quoteTrace.find(item=>item.quote===quote);
+          if (!Number.isFinite(quote.line) || !Number.isFinite(quote.updatedAt) || quote.updatedAt > Date.now()+60000 || Date.now() - quote.updatedAt > 1800000){trace.reason='Invalid or expired quote';continue;}
           const key = lineKey(record, def);
           matched++;
+          trace.reason=null;
           const entry = readLine(key);
           if (entry.value !== '') { manual++; continue; }
           const movement=window.Unit501LineWatch?.fromServer(quote.history,quote.line,quote.updatedAt);
@@ -407,12 +417,31 @@ for (let i = rows.length - 1; i >= 0; i--) {
       }
     });
     board.append(copy, copyStatus);
+    const visibleKeys=new Set(rows.filter(r=>r.line!==null&&r.entry.source==='auto').map(r=>lineKey(r.record,r.def)));
+    board.dataset.displayedAutoLines=String(visibleKeys.size);
+    if(quoteTrace.length){
+      const details=document.createElement('details'),summary=document.createElement('summary');
+      summary.textContent='Trace '+quoteTrace.length+' accepted quotes · '+visibleKeys.size+' in the comparison table';details.append(summary);
+      const missingReasons=new Map(withheldMarkets.map(r=>[lineKey(r.record,r.def),r.reason]));
+      for(const t of quoteTrace){
+        if(board.dataset.player&&t.record?.id!==board.dataset.player)continue;
+        let reason=t.reason;
+        if(!reason){
+          const key=lineKey(t.record,t.def),entry=readLine(key);
+          reason=visibleKeys.has(key)?'Displayed':entry.value!==''&&entry.source!=='auto'?'Manual line in use':
+            window.Unit501Availability?.assess(t.record.teamId,t.record.playerId).blocked?'Player unavailable':
+            missingReasons.get(key)||(!entry.value?'No current line':'Excluded by view filters');
+        }
+        const item=document.createElement('p');item.textContent=t.quote.name+' · '+(t.def?.title||t.quote.stat)+' '+t.quote.line+' · '+reason;details.append(item);
+      }
+      board.append(details);
+    }
     if (!rows.length) {
       const empty = document.createElement('p');
      empty.textContent = 'No projections match these filters. Reset the filters, review stat-verification notices above, choose All player data, or refresh player lines.';
      board.append(empty); return;
     }
-    board.dataset.displayedAutoLines = String(rows.filter(r=>r.line!==null&&r.entry.source==='auto').length);
+
     const auditNote=document.createElement('p');auditNote.textContent=board.dataset.displayedAutoLines+' automatic lines displayed in this table after player, availability, projection and view filters.';board.append(auditNote);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'overflow-x:auto;margin-bottom:18px';
@@ -561,6 +590,7 @@ cell.append(details);
           details.append(summary, text);
           cell.append(details);
         } else cell.textContent = value;
+        if(index===1&&board.dataset.player)window.Unit501SharedUI.phonePlayerHistory(cell,row.lastOpponent,row.form.values);
         tr.append(cell);
       });
       body.append(tr);
@@ -962,6 +992,7 @@ results.appendChild(workload);
     refreshProps.disabled = true;
     propStatus.textContent = '';
     loadedFor = null;
+    quoteTrace=[];board.dataset.displayedAutoLines='0';
     choices = [];
     opponentDefense.clear();
     matchupTeams = [];

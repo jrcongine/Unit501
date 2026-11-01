@@ -32,3 +32,15 @@ test('official reconciliation restores uniquely matched omitted-suffix DNP witho
  p.inactive=[];players.set('2',{...p,id:'2',name:'Ernest Udeh III'});assert.equal(reconcile(players,games,reports,'5').verified,0);assert.equal(p.inactive.length,0);
  players.delete('2');p.name='Ernest Udeh III';assert.equal(reconcile(players,games,reports,'5').verified,0);
 });
+
+test('NBA display box reconciles clocks, player totals and explicit inactive comments',()=>{
+ const original=require('./fixtures/nba-official-display-20261021.json');
+ const expected={id:'401909092',season:2026,stage:2,tipoff:'2026-10-22T02:00:00Z',away:{id:'9',code:'GSW',score:105},home:{id:'13',code:'LAL',score:127}};
+ const parse=g=>parseGame(g,original,expected);
+ const report=parse(original),row=report.teams[0].players.find(p=>p.name==='Brandin Podziemski');
+ assert.equal(row.participation,'dnp');
+ for(const mutate of [p=>p.comment='',p=>p.statistics.points=2,p=>p.statistics.minutes='01:00',p=>p.comment='Status uncertain']){
+  const g=structuredClone(original);mutate(g.awayTeam.players.find(p=>p.familyName==='Podziemski'));assert.throws(()=>parse(g));
+ }
+ const g=structuredClone(original);g.awayTeam.statistics.reboundsTotal++;assert.throws(()=>parse(g));
+});

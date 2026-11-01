@@ -47,7 +47,7 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
   padding: .45rem .65rem;
 }
 
-.phone-columns{display:none}
+.phone-columns,.phone-player-history{display:none}
 .phone-fold>summary{cursor:pointer;font-weight:750;padding:12px 0;color:var(--text)}
 @media(min-width:701px){.phone-fold[open]>summary{display:none}}
 @media(max-width:700px){
@@ -61,6 +61,7 @@ body[data-sport] :is(#nba-prop-lines,#ncaab-props) tbody tr{border-bottom:2px so
  body[data-sport] .phone-fold{margin-block:8px;border-block-start:1px solid var(--border)}
  body[data-sport] .phone-fold>summary{min-height:44px;box-sizing:border-box}
  body[data-sport] .phone-columns{display:flex;align-items:center;gap:8px;min-height:44px}
+ body:not(:has(#all-prop-columns:checked)) .phone-player-history{display:grid;gap:.35rem;margin-top:.5rem;color:#b9d1e3;font-size:.76rem;line-height:1.35}
  body[data-sport] .phone-columns input{width:20px;height:20px}
  body:not(:has(#all-prop-columns:checked)) #nba-prop-lines tr>:nth-child(n+5),
  body:not(:has(#all-prop-columns:checked)) #ncaab-props tr>:nth-child(n+4),

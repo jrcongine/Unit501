@@ -44,6 +44,7 @@
   const query=search.value.trim().toLowerCase();
   const catalogRows=root.Unit501NBAPlayerModel.catalogRows(props?.props,history,selected);
   if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(catalogRows.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=catalogRows.some(p=>p.name===previous)?previous:'';}
+  root.Unit501LastOpponent.loadSelected(history,player?.value,selected,'nba',renderProps);
   const source=catalogRows.filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
    const status=root.Unit501NBAPlayerModel.injuryStatus(injuries,p,selected,Date.now());
@@ -55,6 +56,7 @@
    prediction=root.Unit501NBAPlayerModel?.withScenario?.(prediction,playerScenarios.get(name))||prediction;
    return {p,status,prediction,splits,scenario:injuryScenarios.get(name),minutes};
   });
+  ui.basketballQuoteTrace(propBoard,props?.props,rows.map(r=>({quote:r.p,prediction:r.prediction})),player?.value,selected.tipoff);
   propBoard.setAttribute('data-displayed-lines',String(rows.filter(r=>Number.isFinite(r.p.line)).length));propBoard.append(node('p',rows.filter(r=>Number.isFinite(r.p.line)).length+' betting lines · '+rows.length+' player/stat rows displayed; history-only rows have no betting line.'));
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
   const catalog=['player_points','player_rebounds','player_assists','player_threes'];
@@ -75,6 +77,7 @@
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
    for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():' · AVAILABILITY UNCONFIRMED'),p.label,p.line??'Line unavailable',prediction.available?prediction.projection.toFixed(1):prediction.reason,root.Unit501LastOpponent.basketball(history,p,selected)].entries()){
     const cell=node('td',value);
+    if(index===1&&player?.value)ui.phonePlayerHistory(cell,root.Unit501LastOpponent.basketball(history,p,selected),root.Unit501LastOpponent.recentBasketball(history,p,selected));
     if(index===4)cell.className='last-opponent-stat';
         if(index===0&&prediction.minuteChange){
      cell.append(node('strong',root.Unit501NBAPlayerModel.minuteChangeText(prediction),'nba-minutes-trend'));

@@ -158,5 +158,33 @@
      const element=doc?.getElementById(prefix+'-'+key);if(element)element.textContent=value;
    }
  }
- return Object.freeze({resultTiles,historyFreshness,dateCentral,footballSeason,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
+ function basketballQuoteTrace(board,quotes,shown,player,kickoff){
+   if(!Array.isArray(quotes)||!quotes.length)return;
+   const visible=new Map(shown.map(row=>[row.quote,row.prediction]));
+   const relevant=quotes.filter(q=>!player||q.name===player);
+   const details=document.createElement('details'),summary=document.createElement('summary');
+   const count=relevant.filter(q=>visible.has(q)).length;
+   summary.textContent='Trace '+relevant.length+' accepted quotes · '+count+' in this view';details.append(summary);
+   const counts=new Map();
+   for(const quote of relevant){
+     const prediction=visible.get(quote);
+     const expired=Date.parse(kickoff)<=Date.now()||!Number.isFinite(quote.updatedAt)||Date.now()-quote.updatedAt>1800000||quote.updatedAt>Date.now()+60000;
+     const reason=prediction?(prediction.available?'Displayed with projection':'Displayed · '+(prediction.reason||'Projection unavailable')):expired?'Expired quote':'Excluded by view filters';
+     counts.set(reason,(counts.get(reason)||0)+1);
+   }
+   for(const [reason,total] of counts){const line=document.createElement('p');line.textContent=total+' · '+reason;details.append(line);}
+   board.append(details);
+ }
+ function phonePlayerHistory(cell,lastOpponent,recent){
+   const context=document.createElement('small');
+   context.className='phone-player-history';
+   const last=document.createElement('span');
+   last.textContent='Last vs opponent · '+(lastOpponent||'Unavailable');
+   const games=document.createElement('span');
+   const values=Array.isArray(recent)?recent.slice(0,5):[];
+   games.textContent=values.length?'Recent, newest first · '+values.join(' / '):'Recent results unavailable';
+   context.append(last,games);
+   cell.append(context);
+ }
+ return Object.freeze({basketballQuoteTrace,phonePlayerHistory,resultTiles,historyFreshness,dateCentral,footballSeason,timeCentral,matchup,matchupHeading,renderVenueDistance,gameCard,selection,upsetOutlook,marketComparison,showMarketComparison,seasonStanding,currentStanding,updateGameRecords});
 });

@@ -18,7 +18,7 @@ function harness(){
    {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:25},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:22}]}]},
    {available:true,players:[{name:'Player B',results:[{gameId:3,tipoff:'2026-10-23T00:00:00Z',player_rebounds:10},{gameId:4,tipoff:'2026-10-21T00:00:00Z',player_rebounds:8}]}]}]})};
   return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
- vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/last-opponent.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/basketball-history-comparison.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/unit501-shared-ui.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/last-opponent.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/basketball-history-comparison.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,context,calls,timers,game,data,settle,select:async(g=game)=>{context.Unit501NBAMarkets.select(g,'2026-10-24');await settle();},advance:ms=>{clock+=ms;}};
 }
@@ -311,7 +311,7 @@ test('exact NBA player selection shows only that player and preserves catalog or
  };
  await h.nodes.get('nba-load-props').events.click();
  const player=h.nodes.get('nba-prop-player'),before=h.calls.length;player.value='Player A';player.events.change();
- const text=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(text,/Player B/);
+ const text=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(text,/Player B/);assert.match(text,/Last vs opponent/);
  assert.ok(text.indexOf('Points')<text.indexOf('Rebounds'));assert.ok(text.indexOf('Rebounds')<text.indexOf('Assists'));
  assert.equal(h.calls.length,before);h.context.Unit501NBAMarkets.clear();assert.equal(player.value,'');
 });

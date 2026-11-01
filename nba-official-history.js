@@ -15,10 +15,27 @@ function findCard(data,e){const cards=(data?.gameCardFeed?.modules||[]).flatMap(
  const c=matches[0],links=c.actions?.filter(a=>a.title==='Box Score').map(a=>a.resourceLocator?.resourceUrl)||[];
  if(!/^00[24]\d{7}$/.test(c.gameId)||links.length!==1||!new RegExp('^/game/[a-z]{2,3}-vs-[a-z]{2,3}-'+c.gameId+'/box-score$').test(links[0]))throw Error('Official NBA box score link unavailable');return {card:c,url:'https://www.nba.com'+links[0]};
 }
+// NBA box pages also publish a display schema with a clock and explicit bench comments.
+function displayTeam(team){
+ if(!team?.players?.length||team.players.some(p=>Object.hasOwn(p,'played')))return team;
+ function clock(value){
+  const match=/^(\d{1,3}):([0-5]\d)$/.exec(value);
+  if(!match)throw Error('Official NBA clock unavailable');
+  return 'PT'+match[1]+'M'+match[2]+'S';
+ }
+ const players=team.players.map(p=>{
+  if(!p.firstName||!p.familyName||typeof p.comment!=='string')throw Error('Official NBA player identity incomplete');
+  const inactive=/^(?:DNP|Inactive|DND) - .+$/i.test(p.comment);
+  const minutes=inactive&&p.statistics?.minutes===''?'PT0M00S':clock(p.statistics?.minutes);
+  if(!inactive&&(p.comment!==''||duration(minutes)<=0))throw Error('Official NBA participation unclear');
+  return {...p,name:p.firstName+' '+p.familyName,played:inactive?'0':'1',statistics:{...p.statistics,minutes}};
+ });
+ return {...team,players,statistics:{...team.statistics,minutes:clock(team.statistics?.minutes),reboundsPersonal:team.statistics?.reboundsPersonal??team.statistics?.reboundsTotal}};
+}
 function parseGame(game,card,e){
  if(game?.gameId!==card.gameId||game.gameStatus!==3||Date.parse(game.gameTimeUTC)!==Date.parse(e.tipoff))throw Error('Official NBA box identity mismatch');
  const teams=[];
- for(const side of ['away','home']){const t=game[side+'Team'],expected=e[side];if(t?.teamId!==card[side+'Team'].teamId||t.teamTricode!==expected.code||t.score!==expected.score||!Array.isArray(t.players)||t.players.length<5||t.players.length>25||!Array.isArray(t.inactives)||t.inactives.length>20)throw Error('Official NBA roster unavailable');
+ for(const side of ['away','home']){const t=displayTeam(game[side+'Team']),expected=e[side];if(t?.teamId!==card[side+'Team'].teamId||t.teamTricode!==expected.code||t.score!==expected.score||!Array.isArray(t.players)||t.players.length<5||t.players.length>25||!Array.isArray(t.inactives)||t.inactives.length>20)throw Error('Official NBA roster unavailable');
   const players=[],seen=new Set();
   for(const p of t.players){const id=String(p.personId),name=p.name,stats=p.statistics,min=duration(stats?.minutes);if(!/^\d+$/.test(id)||!name||seen.has(id)||!['0','1'].includes(p.played)||min===null||min>75||Object.values(fields).some(k=>!Number.isInteger(stats?.[k])||stats[k]<0))throw Error('Official NBA player invalid');seen.add(id);
    if(p.played==='0'&&(min!==0||Object.values(stats).some(v=>typeof v==='number'&&v!==0)))throw Error('Official NBA DNP conflict');

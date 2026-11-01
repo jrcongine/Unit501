@@ -23,3 +23,11 @@ test('basketball resolves player and opponent by verified game and team identity
  history.teams[1].players=[player];
  assert.equal(basketball(history,quote,game),'Unavailable');
 });
+
+test('selected basketball player shows actuals, played zero, DNP and missing team games in order',()=>{
+ const now=Date.parse('2026-11-01T12:00:00Z'),game={id:9,tipoff:'2026-11-02T01:00:00Z'};
+ const history={gameId:9,tipoff:game.tipoff,checkedAt:now,teams:[{id:'1',name:'Away',available:true,gameLog:[1,2,3,4].map(i=>({id:i,tipoff:'2026-10-0'+i+'T12:00:00Z',opponentId:'2'})),players:[{name:'Example',available:true,results:[{gameId:1,player_points:19},{gameId:4,player_points:0}],inactive:[{gameId:3}]}]},{id:'2',name:'Home',available:true,players:[]}]};
+ const api=require('../public/last-opponent'),quote={name:'Example',market:'player_points'};
+ assert.deepEqual(api.recentBasketball(history,quote,game,now),[0,'DNP','Missing',19]);
+ assert.deepEqual(api.recentBasketball(history,quote,game,now+1800001),[]);
+});

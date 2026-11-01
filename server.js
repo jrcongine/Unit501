@@ -157,6 +157,8 @@ async function providerAPI(endpoint) {
 
 const footballGamebooks=require('./football-participation').createParticipation({api,ncaa:ncaaOfficial});
 
+const lookupBasketballOpponent=require('./basketball-opponent-game').createLookup();
+
 const server = http.createServer(async (req, res) => {
   if(!require('./private-access').allowRequest(req,res))return;
 
@@ -205,6 +207,11 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/basketball/last-opponent'){
+      const q=u.searchParams;
+      const result=await lookupBasketballOpponent(q.get('league'),q.get('player'),q.get('opponent'),Number(q.get('kickoff')));
+      return send(res,200,{result});
     }
     if(u.pathname==='/api/ncaab/games'){
       const date=u.searchParams.get('date');

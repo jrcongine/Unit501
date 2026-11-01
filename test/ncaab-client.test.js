@@ -68,7 +68,7 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,message:'Loaded',teams:[],props:String(url).includes('/props?')?quotes:[]})});
  await h.nodes.get('ncaab-load-props').events.click();
  const board=h.nodes.get('ncaab-props'),sort=h.nodes.get('ncaab-prop-sort');sort.value='most';sort.events.change();
- assert.ok(board.textContent.indexOf('A ·')<board.textContent.indexOf('B ·'));assert.doesNotMatch(board.textContent,/Expired/);
+ assert.ok(board.textContent.indexOf('A ·')<board.textContent.indexOf('B ·'));assert.doesNotMatch(board.textContent,/Expired · player_points/);assert.match(board.textContent,/Trace 4 accepted quotes · 3 in this view/);assert.match(board.textContent,/1 · Expired quote/);
  sort.value='least';sort.events.change();assert.ok(board.textContent.indexOf('B ·')<board.textContent.indexOf('A ·'));
  const player=h.nodes.get('ncaab-prop-player');player.value='A';player.events.change();assert.doesNotMatch(board.textContent,/B ·/);
  assert.ok(board.textContent.indexOf('player_points')<board.textContent.indexOf('player_assists'));

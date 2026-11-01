@@ -7,7 +7,27 @@ const {reconcileGames}=require('../football-schedule-integrity');
 const model=require('../public/team-model');
 const {summarize:metrics}=require('../public/score-audit');
 const hour=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',hourCycle:'h23'});
+const {fit}=require('../backtest');
 const results=[];
+function tails(rows,history){
+ let expected=0,defaultExpected=0,fitted=0,strongCount=0,predictedMargin=0,realMargin=0;
+ for(const r of rows){
+  const earlier=history.filter(p=>p.kickoff<r.kickoff-86400000);
+  const calibration=fit(earlier.map(p=>({away:p.actualAway-p.projectedAway,home:p.actualHome-p.projectedHome})));
+  const prediction={available:true,away:r.projectedAway,home:r.projectedHome};
+  const run=fit=>{
+   let state=Number(r.id)>>>0;
+   const random=()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296);
+   // Thresholds for unrelated cover/over counters have no effect on the score draws.
+   return model.simulate({...prediction,calibration:fit},0,1,10000,random).blowout.any;
+  };
+  const raw=run(null);defaultExpected+=raw;expected+=calibration?run(calibration):raw;
+  if(calibration)fitted++;
+  const margin=r.projectedHome-r.projectedAway;
+  if(Math.abs(margin)>=7){strongCount++;predictedMargin+=Math.abs(margin);realMargin+=Math.sign(margin)*(r.actualHome-r.actualAway);}
+ }
+ return {games:rows.length,fitted,expected,defaultExpected,observed:rows.filter(r=>Math.abs(r.actualHome-r.actualAway)>=21).length,strongCount,predictedMargin:strongCount?predictedMargin/strongCount:null,actualMargin:strongCount?realMargin/strongCount:null};
+}
 for(const season of ['2024','2025']) {
  const raw=source.filter(r=>r.season===season);
  const games=reconcileGames(raw.map(r=>({league:{id:'1',season},game:{id:r.id,stage:r.stage,status:{short:r.status},date:{timestamp:r.kickoff/1000},venue:{name:r.venue}},teams:{away:{id:r.awayId,name:r.awayName},home:{id:r.homeId,name:r.homeName}},scores:{away:{total:r.awayScore},home:{total:r.homeScore}}})));
@@ -27,7 +47,7 @@ for(const season of ['2024','2025']) {
   const decided=rows.filter(r=>r.projectedHome!==r.projectedAway&&r.actualHome!==r.actualAway);
   return {...metrics(rows),winnerDecisions:decided.length,winnerAccuracy:decided.length?decided.filter(r=>Math.sign(r.projectedHome-r.projectedAway)===Math.sign(r.actualHome-r.actualAway)).length/decided.length:null};
  };
- results.push({season,eligible:records.length,warmupExcluded:records.length-later.length,overall:segment(later),
+ results.push({season,eligible:records.length,warmupExcluded:records.length-later.length,simulatedMargins:tails(later,records),overall:segment(later),
   modelFavorite:{home:segment(later.filter(r=>r.projectedHome>r.projectedAway)),away:segment(later.filter(r=>r.projectedAway>r.projectedHome)),pickem:segment(later.filter(r=>r.projectedAway===r.projectedHome))},
   centralKickoff:{evening18OrLater:segment(later.filter(r=>Number(hour.format(r.kickoff))>=18)),earlier:segment(later.filter(r=>Number(hour.format(r.kickoff))<18))},
   teams:roster.map(t=>({id:t.id,name:t.name,...segment(later.filter(r=>r.awayId===t.id||r.homeId===t.id))}))});
