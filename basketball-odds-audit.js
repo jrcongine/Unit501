@@ -35,17 +35,23 @@ async function run({env=process.env,fetcher=fetch,now=Date.now,files=fs,sources}
    row.unmatched=pairs.filter(p=>p.found.length!==1).slice(0,3).map(p=>({away:p.game.away,home:p.game.home,tipoff:p.game.tipoff,matches:p.found.length}));
    const pair=pairs.find(p=>p.found.length===1);
    if(!pair){row.status='no-matched-game';row.providerSample=events.slice(0,3).map(e=>({away:e.away_team,home:e.home_team,tipoff:e.commence_time}));continue;}
-   const {game,found}=pair;row.game={away:game.away,home:game.home,tipoff:game.tipoff};
+   const {game,found}=pair;row.game={away:game.away,home:game.home,tipoff:game.tipoff,neutral:game.neutral===true};
    const r=await fetcher('https://api.the-odds-api.com/v4/sports/'+sport+'/events/'+encodeURIComponent(found[0].id)+'/odds?'+new URLSearchParams({apiKey:key,bookmakers:'fanduel',markets:'h2h,spreads,totals,player_points,player_rebounds,player_assists,player_threes',oddsFormat:'american'}),{signal:AbortSignal.timeout(15000)});
    require('./odds-monitor').observe(r);row.oddsStatus=r.status;
    if(!r.ok){row.status='odds-request-failed';continue;}
    const data=await r.json();if(data.id!==found[0].id||!matching(data,game)){row.status='identity-mismatch';continue;}
    const propData={...data,bookmakers:(data.bookmakers||[]).map(b=>({...b,markets:(b.markets||[]).filter(m=>m?.key?.startsWith('player_'))}))};
    const {props,audit}=require('./nba-odds').auditPlayerLines(propData,now());
-   const lines=require('./game-quotes').gameQuotes(data,now());
+   const aligned=league==='ncaab'?require('./ncaab-markets').alignEvent(data,game):data;
+   const lines=require('./game-quotes').gameQuotes(aligned,now());
+   row.orientation=league==='ncaab'?require('./ncaab-markets').orientation(data,game):'direct';
    row.status='verified-response';row.gameLines={moneyline:!!lines.moneyline,spread:!!lines.spread,total:!!lines.total};
    row.bookmakers=(data.bookmakers||[]).map(b=>b.key);row.returnedMarkets=[...new Set((data.bookmakers||[]).flatMap(b=>(b.markets||[]).map(m=>m.key)))];
    row.props={received:audit.quotesReceived,accepted:props.length,rejected:audit.rejected,reasons:audit.reasons,missingMarkets:audit.missingMarkets};
+   const replay=async url=>({ok:true,headers:{get:()=>null},json:async()=>url.includes('/events/')?data:url.includes('/events?')?events:[data]});
+   const adapter=league==='nba'?require('./nba-odds').createNBAOdds({fetcher:replay,key:()=>key,now}):require('./ncaab-markets').createMarkets({fetcher:replay,key:()=>key,now});
+   const gameResult=await adapter(game,'game'),propResult=await adapter(game,'props');
+   row.adapter={gameAvailable:gameResult.available,propLines:propResult.props.length,spread:gameResult.spread,moneyline:gameResult.moneyline,total:gameResult.total};
    row.sample=props.slice(0,3).map(p=>({name:p.name,market:p.market,line:p.line,over:p.over,under:p.under}));
   }catch{row.status='source-unavailable';}
  }

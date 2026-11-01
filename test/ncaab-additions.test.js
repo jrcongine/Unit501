@@ -61,3 +61,35 @@ test('college history refuses a conflicting same-ID suffix rather than merging p
  const fetcher=async url=>{const id=new URL(url).searchParams.get('event'),d=structuredClone(summary);d.header.id=id;d.header.competitions[0].date=priors.find(p=>p.id===id).tipoff;d.boxscore.players[0].statistics[0].athletes[0].athlete.displayName=['Test Player Jr.','Test Player','Test Player III'][Number(id)-1];return {ok:true,json:async()=>d};};
  const out=await createPlayers({feed,fetcher,now:()=>now}).history(game);assert.equal(out.teams[0].available,false);assert.equal(out.teams[0].players[0].coverage.missing,1);
 });
+
+test('neutral-site reversed feeds preserve team-specific spreads and moneyline prices',async()=>{
+ const selected={...game,neutral:true};
+ const reverse={...event,away_team:event.home_team,home_team:event.away_team};
+ const {alignEvent}=require('../ncaab-markets');
+ assert(matches(reverse,selected));assert(!matches(reverse,{...selected,neutral:false}));
+ assert(!matches(reverse,{...selected,neutral:undefined}));
+ assert(!matches({...reverse,commence_time:'2020-01-01'},selected));
+ assert(!matches({...reverse,sport_key:'basketball_nba'},selected));
+ const at=new Date(now).toISOString();
+ reverse.bookmakers=[{key:'fanduel',markets:[
+ {key:'spreads',last_update:at,outcomes:[{name:event.away_team,point:3.5,price:-105},{name:event.home_team,point:-3.5,price:-115}]},
+ {key:'h2h',last_update:at,outcomes:[{name:event.away_team,price:145},{name:event.home_team,price:-170}]},
+ {key:'totals',last_update:at,outcomes:[{name:'Over',point:150.5,price:-110},{name:'Under',point:150.5,price:-110}]}
+ ]}];
+ const original=JSON.stringify(reverse);
+ const get=createMarkets({now:()=>now,key:()=> 'test',fetcher:async()=>({ok:true,json:async()=>[reverse]})});
+ const out=await get(selected,'game');
+ assert.equal(out.available,true);assert.equal(out.spread.away,3.5);assert.equal(out.spread.awayPrice,-105);assert.equal(out.moneyline.away,145);assert.equal(out.moneyline.home,-170);assert.equal(out.total.line,150.5);
+ assert.equal(JSON.stringify(reverse),original);assert.equal(alignEvent(reverse,selected).away_team,event.away_team);
+ const duplicate=createMarkets({now:()=>now,key:()=> 'test',fetcher:async()=>({ok:true,json:async()=>[reverse,event]})});
+ assert.equal((await duplicate(selected,'game')).available,false);
+});
+
+test('neutral-site props still require matching event ID, teams and tipoff',async()=>{
+ const selected={...game,neutral:true},reverse={...event,away_team:event.home_team,home_team:event.away_team};
+ const detail={...reverse,bookmakers:[{key:'fanduel',markets:[{key:'player_points',last_update:new Date(now).toISOString(),outcomes:[{name:'Over',description:'Player A',point:12.5,price:-110},{name:'Under',description:'Player A',point:12.5,price:-110}]}]}]};
+ const get=createMarkets({now:()=>now,key:()=> 'test',fetcher:async url=>({ok:true,json:async()=>url.includes('/odds?')?detail:[reverse]})});
+ assert.equal((await get(selected,'props')).props[0].line,12.5);
+ const wrong=createMarkets({now:()=>now,key:()=> 'test',fetcher:async url=>({ok:true,json:async()=>url.includes('/odds?')?{...detail,id:'wrong'}:[reverse]})});
+ await assert.rejects(wrong(selected,'props'),/matchup/);
+});
