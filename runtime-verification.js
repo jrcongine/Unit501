@@ -25,6 +25,12 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
   result.feedHealth='read';
   result.footballUsageHistory=Array.isArray(data.footballUsage?.recentDays)?'read':'unavailable';
  }catch{result.feedHealth='unavailable';}
+ try{
+  const response=await fetcher('http://127.0.0.1:'+Number(port)+'/api/football/model-review',options);
+  if(!response.ok)throw Error();
+  const review=await response.json();
+  result.footballLearning=review.configured===true && Array.isArray(review.groups)?'configured':'unconfigured';
+ }catch{result.footballLearning='unavailable';}
  result.status=result.assets.every(a=>a.status==='verified')&&result.feedHealth==='read'?'verified':'partial';
  return result;
 }

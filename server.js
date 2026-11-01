@@ -43,6 +43,13 @@ const footballMeter=require('./api-meter').createMeter({
   history:require('./football-usage-history').createUsageHistory(process.env.UNIT501_LINE_HISTORY_FILE
     ? path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-usage-v1') : null),
   budget:Number(process.env.UNIT501_FOOTBALL_DAILY_BUDGET||7500)});
+const footballLearning=require('./football-learning').createLearning({
+  directory:process.env.UNIT501_LINE_HISTORY_FILE && path.join(path.dirname(process.env.UNIT501_LINE_HISTORY_FILE),'football-learning-v1'),
+  revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local'
+});
+function observeLearning(action){
+  try { action(); } catch { console.warn('Football learning observation unavailable.'); }
+}
 const cachedAPI=require('./api-cache').createCachedAPI(providerAPI);
 async function api(endpoint){
   const data=await cachedAPI(endpoint);
@@ -242,6 +249,7 @@ const server = http.createServer(async (req, res) => {
       if(!['nfl','ncaaf','mlb','nba','nhl','ncaab'].includes(league))return send(res,400,{error:'Choose NFL, college football, MLB, NBA, college basketball or NHL.'});
       return send(res,200,await outsidePicks(league));
     }
+    if(u.pathname==='/api/football/model-review')return send(res,200,footballLearning.summary());
     if(u.pathname==='/api/provider-usage')return send(res,200,footballMeter.snapshot());
     if(u.pathname==='/api/roster-maintenance')return send(res,200,rosterMaintenance.status());
     if (u.pathname === '/api/player-ratings') {
@@ -303,7 +311,9 @@ const server = http.createServer(async (req, res) => {
           query.before > Date.now() + 366 * 86400000) {
         return send(res,400,{error:'Valid season, league, team IDs and cutoff required.'});
       }
-      return send(res,200,getRankings(query));
+      const result=getRankings(query);
+      if(result.state!=='error')observeLearning(()=>footballLearning.capture(query,result.data));
+      return send(res,200,result);
     }
     if (u.pathname === '/api/fanduel' || u.pathname === '/api/fanduel-props' || u.pathname === '/api/football/player-lines' || u.pathname === '/api/football/comparison') {
       const query = Object.fromEntries(u.searchParams);
@@ -414,7 +424,9 @@ if (u.pathname === '/api/team-games') {
 
       });
 
-      return send(res, 200, await api('/games?' + params));
+      const slate=await api('/games?' + params);
+      observeLearning(()=>footballLearning.observe(slate));
+      return send(res,200,slate);
 
     }
 
@@ -564,6 +576,8 @@ server.listen(PORT, () => {
   if(process.env.UNIT501_BASKETBALL_ODDS_AUDIT)require('./basketball-odds-audit').run()
     .then(result=>console.log('Basketball odds audit: '+JSON.stringify(result))).catch(()=>console.log('Basketball odds audit: unavailable'));
   trackedOdds.start();
+  if(process.env.UNIT501_LINE_HISTORY_FILE && process.env.API_SPORTS_KEY)
+    setInterval(()=>footballLearning.refresh(api).catch(()=>console.warn('Football final check deferred.')),3600000).unref();
   console.log('Line history: ' + JSON.stringify(trackedOdds.status()));
   // Heavy full-league roster sweeps are opt-in, and never run on startup.
   if(process.env.API_SPORTS_KEY && process.env.UNIT501_ENABLE_ROSTER_SWEEPS==='1')rosterMaintenance.start();
