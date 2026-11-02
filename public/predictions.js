@@ -494,11 +494,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
       if(compact){
         const identity=document.createElement('div');
-        const label=document.createElement('label'),check=document.createElement('input');
-        const key=lineKey(row.record,row.def);check.type='checkbox';check.id='shortlist-'+row.record.id+'-'+row.def.key;check.checked=shortlisted.has(key);
-        check.setAttribute('aria-label','Shortlist '+row.record.name+' '+row.def.title);
-        check.addEventListener('change',()=>{if(check.checked)shortlisted.add(key);else shortlisted.delete(key);renderComparisons();});
-        label.append(check);identity.append(label,ui.playerLink(picker,row.record.id,row.record.name+' — '+row.record.team));
+        identity.append(ui.playerLink(picker,row.record.id,row.record.name+' — '+row.record.team));
         const logo=matchupTeams.find(t=>t.id===row.record.teamId)?.logo;
         if(logo){const img=document.createElement('img');img.src=logo;img.alt='';identity.append(img);}
         if(fields[2]!=='Available'){const badge=document.createElement('small');badge.className='availability-flag';badge.textContent=fields[2];identity.append(badge);}

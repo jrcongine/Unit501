@@ -497,6 +497,8 @@ test('shortlist preserves chosen markets through filters, copies current rows an
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
+ assert.equal(h.nodes.has('shortlist-1:7-carries'),false);
+ await selectPlayer(h,'1:7');
  const select=h.nodes.get('shortlist-1:7-carries');assert.ok(select);
  select.checked=true;await select.dispatchEvent({type:'change'});
  const change=async(key,value)=>{const node=h.nodes.get('prop-filter-'+key);node.value=value;await node.dispatchEvent({type:'change'});};
