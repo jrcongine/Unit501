@@ -179,6 +179,7 @@
     }
   }
   function renderComparisons() {
+    const availabilityOpen=board.dataset.scope===lineScope&&Boolean(board.querySelector?.('.market-availability')?.open);
     board.replaceChildren();
     if (!loadedFor) return;
     const title = document.createElement('h3');
@@ -187,13 +188,11 @@
     if(!picker.value&&selected)board.append(window.Unit501PlayerControls.matchupBanner(selected.a,selected.h,selected.awayLogo,selected.homeLogo));
     const rows = [];
     const withheldMarkets = [];
+    const blockedPlayers=[];
     for (const record of choices) {
       const assessment=window.Unit501Availability?.assess(record.teamId,record.playerId);
       if(assessment?.blocked){
-        if(!picker.value||picker.value===record.id){
-          const flag=window.Unit501PlayerControls.playerLink(picker,record.id,record.name+' — '+Unit501InjuryModel.statusLabel(assessment)+' · Projection withheld');
-          board.append(flag);
-        }
+        if(!picker.value)blockedPlayers.push({record,status:Unit501InjuryModel.statusLabel(assessment)});
         continue;
       }
       for (const def of definitions) {
@@ -214,6 +213,7 @@
         rows.push({record, def, entry, line, checks, support, ...model});
       }
     }
+    if(blockedPlayers.length)board.append(window.Unit501PlayerControls.availabilitySummary(picker,blockedPlayers,matchupTeams,availabilityOpen));
     if (board.dataset.scope !== lineScope) {
   shortlisted.clear();
   board.dataset.shortlist = '';

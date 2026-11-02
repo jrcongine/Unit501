@@ -124,15 +124,34 @@
     hero.append(text,playerLink(select,'','← All Players'));return hero;
   }
   function matchupBanner(away,home,awayLogo,homeLogo){
-    const banner=node('header',null,'board-matchup');
+    const banner=node('section',null,'board-matchup');
     banner.append(node('small','UNIT 501  /  PLAYER MARKETS'));
     const line=node('div');
     for(const [name,logo] of [[away,awayLogo],[home,homeLogo]]){
-      if(line.children.length)line.append(node('small','@'));
-      if(logo){const img=node('img');img.src=logo;img.alt='';line.append(img);}
-      line.append(node('strong',name));
+      if(line.children.length)line.append(node('small','at','matchup-at'));
+      const side=node('span',null,'matchup-side');
+      if(logo){const img=node('img');img.src=logo;img.alt='';side.append(img);}
+      side.append(node('strong',name));line.append(side);
     }
     banner.append(line);return banner;
+  }
+  function availabilitySummary(select,players,teams,open){
+    const panel=node('details',null,'market-availability');panel.open=open;
+    const summary=node('summary');summary.append(node('strong','Player availability'),node('span',players.length+' with projections withheld'));
+    panel.append(summary);
+    const groups=node('div',null,'availability-teams');
+    for(const team of teams){
+      const roster=players.filter(p=>p.record.teamId===team.id);
+      if(!roster.length)continue;
+      const section=node('section');section.append(node('h4',team.name));
+      for(const {record,status} of roster){
+        const row=node('div',null,'availability-player');
+        row.append(playerLink(select,record.id,record.name),node('span',status));
+        section.append(row);
+      }
+      groups.append(section);
+    }
+    panel.append(groups);return panel;
   }
   const photoRequests=new Map();
   function showPortrait(hero,identity){
@@ -266,5 +285,5 @@
     select.before(back,menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
-  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,matchupBanner,dashboard,research,basketballDashboard,chart,basketballRow,basketballLogo,byHitRate};
+  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,matchupBanner,availabilitySummary,dashboard,research,basketballDashboard,chart,basketballRow,basketballLogo,byHitRate};
 })(typeof window==='undefined'?globalThis:window);
