@@ -69,7 +69,8 @@
     root.Unit501PlayerControls.byHitRate(a.prediction,b.prediction,sort.value)||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label));
 
   const controls=window.Unit501PlayerControls,detail=player?.value;
-  if(detail)propBoard.append(controls.profile(player,controls.teamLabel(detail,history),[selected.away,selected.home].join(' vs '),controls.basketballLogo(detail,history,selected)));
+  if(!detail)propBoard.append(controls.matchupBanner(selected.away,selected.home,selected.awayLogo,selected.homeLogo));
+  if(detail)propBoard.append(controls.basketballDashboard(player,detail,history,selected,rows.map(r=>({quote:r.p,p:r.prediction}))));
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   table.className=detail?'market-profile-table':'projection-board';
   if(!detail)controls.boardHeader(header);else for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
@@ -131,7 +132,7 @@
    }
    for(const value of [prediction.available?prediction.games:'—',signed(p.over),signed(p.under),p.unpriced?'History only':ui.timeCentral(new Date(p.updatedAt).toISOString())])row.append(node('td',value));Array.from(row.children).forEach((c,i)=>c.setAttribute('data-label',header.children[i].textContent));body.append(row);
   }
-  table.append(node('caption',rows.length+' player/stat rows · missing FanDuel lines remain unavailable; use Compare player history for a chosen threshold'),body);propBoard.append(table);
+  table.append(node('caption',rows.length+' player/stat rows · missing FanDuel lines remain unavailable; use Compare player history for a chosen threshold'),body);propBoard.append(detail?controls.research("Workload, availability and market details",table):table);
  }
  async function loadPlayerHistory(game,serial){
   const task=++historyTask;

@@ -164,6 +164,7 @@
   scenarioControls.className='player-scenario-controls';
   scenarioControls.hidden=true;
   board.before(scenarioControls);
+  const spotlight=document.createElement("div");scenarioControls.before(spotlight);
   function roleFor(record,key){
     const team=window.Unit501Availability?.snapshot()?.teams?.find(t=>String(t.id)===String(record.teamId));
     return Unit501PlayerForm.roleContext(Array.from(record.games.values()),key,team,record.playerId,selected,roleReviews.get(record.id)||'');
@@ -183,6 +184,7 @@
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
     board.append(title);
+    if(!picker.value&&selected)board.append(window.Unit501PlayerControls.matchupBanner(selected.a,selected.h,selected.awayLogo,selected.homeLogo));
     const rows = [];
     const withheldMarkets = [];
     for (const record of choices) {
@@ -588,10 +590,10 @@ cell.append(details);
     }
     table.append(body);
     wrap.append(table);
-    board.append(wrap);
+    board.append(compact?wrap:ui.research("Detailed comparison and shortlist",wrap));
     return report.join('\n');
   }
-  function addLineComparison(card, record, def, projection, values, missing) {
+  function addLineComparison(card, record, def, projection, values, missing, refreshSummary) {
     const key = lineKey(record, def);
     let entry = readLine(key);
     const label = document.createElement('label');
@@ -627,6 +629,7 @@ cell.append(details);
         enteredLines.set(key, entry);
         price.value = '';
         renderComparisons();
+        refreshSummary?.();
       }
       savedInfo.textContent = entry.source === 'auto' && valid
         ? `FanDuel feed updated ${new Date(entry.savedAt).toLocaleString('en-US', {timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} CT. Refresh to check for changes.`
@@ -755,6 +758,7 @@ cell.append(details);
     slot.hidden=Boolean(blocked||(!record&&picker.value));
     if(!slot.hidden)window.Unit501PlayerControls.showScenarios(starScenarios,record?.id||'',showPlayer,record?.name);
     renderComparisons();
+    spotlight.replaceChildren();
     results.replaceChildren();
     scenarioControls.replaceChildren();scenarioControls.hidden=true;
     if (!record) {
@@ -762,7 +766,9 @@ cell.append(details);
       return;
     }
     const team=matchupTeams.find(t=>t.id===record.teamId),opponent=matchupTeams.find(t=>t.id!==record.teamId);
-    results.appendChild(window.Unit501PlayerControls.profile(picker,record.name,[record.position,team?.name,opponent&&'vs '+opponent.name].filter(Boolean).join(' · '),team?.logo));
+    const markets=[];
+    const drawSpotlight=()=>spotlight.replaceChildren(window.Unit501PlayerControls.dashboard(picker,record.name,[record.position,team?.name,opponent&&'vs '+opponent.name].filter(Boolean).join(' · '),team?.logo,opponent?.logo,markets));
+    drawSpotlight();
     const availability = document.createElement('p');
     availability.textContent = window.Unit501Availability?.describe(record.teamId, record.playerId) || 'Availability unknown.';
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
@@ -851,6 +857,10 @@ results.appendChild(workload);
         const saved=Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
         const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
       }
+      const entry=readLine(lineKey(record,def)),line=n(entry.value),ordered=[...values].sort((a,b)=>a-b),mid=Math.floor(values.length/2);
+      markets.push({stat:def.title,line,manual:entry.source!=='auto',projection:adjusted,average,games:values.length,values,
+        median:values.length%2?ordered[mid]:(ordered[mid-1]+ordered[mid])/2,last:model.lastOpponent,
+        above:values.filter(v=>v>line).length,below:values.filter(v=>v<line).length});
       const trend = model.form.trend + ' • ' + model.form.sample;
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #45495b;border-radius:12px;padding:12px;margin:10px 0';
@@ -927,7 +937,7 @@ results.appendChild(workload);
       rangeCheck.textContent=rangeAudit.available
         ? `Historical range check: ${rangeAudit.covered}/${rangeAudit.count} later recorded outcomes inside the range (${(rangeAudit.coverage*100).toFixed(0)}%); ${rangeAudit.below} below, ${rangeAudit.above} above. Average range width ${rangeAudit.meanWidth.toFixed(1)}. Each range uses only earlier errors, with the same 24-hour buffer. ${rangeAudit.count<30?'Limited evidence: fewer than 30 evaluated outcomes. ':''}Observed coverage is not a probability for this prop or proof of future accuracy.`
         : `Historical range check unavailable: ${rangeAudit.reason}`;
-      notes.append(rangeCheck);results.appendChild(card);
+      notes.append(rangeCheck);results.appendChild(window.Unit501PlayerControls.research(def.title+" · workload, line entry and model details",card));
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
@@ -951,17 +961,21 @@ results.appendChild(workload);
   notes.appendChild(explanation);
 }
       const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${model.beforeScenario.toFixed(1)} (before manual game-day scenario).`;notes.append(weatherNote);
-      addLineComparison(card, record, def, adjusted, values, model.form.coverage.missing);
+      addLineComparison(card, record, def, adjusted, values, model.form.coverage.missing,()=>{
+        const m=markets.find(m=>m.stat===def.title),entry=readLine(lineKey(record,def));
+        m.line=n(entry.value);m.manual=entry.source!=='auto';m.above=values.filter(v=>v>m.line).length;m.below=values.filter(v=>v<m.line).length;drawSpotlight();
+      });
       card.append(notes);
       shown++;
     }
+    drawSpotlight();
     if (!shown) {
       const empty=document.createElement('p');empty.textContent='No supported projection available from this player’s recorded stats.';results.append(empty);
     }
     const note = document.createElement('p');
     note.style.opacity = '.8';
     note.textContent = 'Workload blends season and recent form; yardage uses workload × efficiency when at least two paired records exist, blending pooled and median efficiency to limit single-game spikes. Otherwise it uses a conservative season/form yardage fallback that dampens extreme single-game spikes when at least four recorded games exist. Missing statistics remain unknown, never automatically treated as zero. This is an experimental assumption, not a player overall rating; confirmed replacement scenarios adjust transferred workload and team scores when coverage permits. Any workload percentage entered here is additional to the lineup scenario. Confirm current roster, injury status, weather and expected playing time before comparing with a betting line.';
-    results.appendChild(note);
+    results.appendChild(window.Unit501PlayerControls.research('Projection methodology',note));
   }
   function reset() {
     sequence++;
@@ -1046,6 +1060,7 @@ results.appendChild(workload);
     button.disabled = true;
     picker.disabled = true;
     picker.replaceChildren();
+    spotlight.replaceChildren();
     results.replaceChildren();
     status.textContent = 'Finding completed season games…';
     try {

@@ -100,12 +100,61 @@
     const text=node('div');text.append(node('small','UNIT 501   /   PLAYER PROJECTIONS'),node('h3',label),node('p',context));
     hero.append(text,playerLink(select,'','← All Players'));return hero;
   }
+  function matchupBanner(away,home,awayLogo,homeLogo){
+    const banner=node('header',null,'board-matchup');
+    banner.append(node('small','UNIT 501  /  PLAYER MARKETS'));
+    const line=node('div');
+    for(const [name,logo] of [[away,awayLogo],[home,homeLogo]]){
+      if(line.children.length)line.append(node('small','@'));
+      if(logo){const img=node('img');img.src=logo;img.alt='';line.append(img);}
+      line.append(node('strong',name));
+    }
+    banner.append(line);return banner;
+  }
+  function dashboard(select,name,context,logo,opponentLogo,markets){
+    const panel=node('section',null,'athlete-dashboard');
+    const hero=profile(select,name,context,logo);
+    if(opponentLogo){const mark=node('img',null,'opponent-mark');mark.src=opponentLogo;mark.alt='Opponent';hero.append(mark);}
+    panel.append(hero);
+    const strip=node('div',null,'athlete-summary'),totals=node('section'),tiles=node('div',null,'athlete-tiles');
+    totals.append(node('h4','Recorded stats'),tiles);
+    const samples=markets.filter(m=>Number.isFinite(m.average)&&m.games>0);
+    for(const m of samples.slice(0,4)){
+      const tile=node('div');tile.append(node('small',m.stat),node('b',m.average.toFixed(1)),node('small','avg · '+m.games+' GP'));tiles.append(tile);
+    }
+    if(samples.length)strip.append(totals);
+    const recent=markets.find(m=>m.values?.length);
+    if(recent){const trend=node('section');trend.append(node('h4',recent.stat+' · last '+Math.min(5,recent.values.length)),chart(recent.values.slice(0,5)));strip.append(trend);}
+    if(samples.length||recent)panel.append(strip);
+    if(!markets.length)return panel;
+    const table=node('table',null,'athlete-markets'),head=node('thead'),titles=node('tr'),body=node('tbody');
+    const labels=['Stat','FanDuel line','Projection','Difference','Median','Last vs opponent','Above / Below'];
+    for(const title of labels)titles.append(node('th',title));head.append(titles);table.append(head,body);
+    for(const m of markets){
+      const row=node('tr'),projection=Number.isFinite(m.projection)?Number(m.projection.toFixed(1)):null;
+      const diff=projection!==null&&Number.isFinite(m.line)?Number((projection-m.line).toFixed(1)):null;
+      const fields=[m.stat,m.line==null?'Unavailable':String(m.line)+(m.manual?' (manual)':''),projection??'—',diff===null?'—':diff===0?'Equal':Math.abs(diff)+' '+(diff>0?'above':'below'),Number.isFinite(m.median)?Number(m.median.toFixed(1)):'—',m.last||'Unavailable'];
+      fields.forEach((value,i)=>{const cell=node('td',String(value));cell.setAttribute('data-label',labels[i]);row.append(cell);});
+      const rates=node('td');rates.setAttribute('data-label',labels[6]);recentRates(rates,m.line,m.above,m.below,m.games);row.append(rates);body.append(row);
+    }
+    panel.append(table);return panel;
+  }
+  function research(label,content){
+    const details=node('details',null,'profile-research');details.append(node('summary',label),content);return details;
+  }
+  function basketballDashboard(select,name,history,game,rows){
+    const logo=basketballLogo(name,history,game);
+    const opponentLogo=logo===game.awayLogo?game.homeLogo:logo===game.homeLogo?game.awayLogo:null;
+    return dashboard(select,teamLabel(name,history),game.away+' vs '+game.home,logo,logo?opponentLogo:null,
+      rows.map(({quote,p})=>({...p,stat:quote.label,line:quote.line,values:p.recentValues,last:root.Unit501LastOpponent.basketball(history,quote,game)})));
+  }
   function chart(values){
     const figure=node('figure',null,'recent-chart');
     if(!values?.length)return figure;
     figure.append(node('figcaption','Recent games · newest first'));
     const bars=node('div'),max=Math.max(1,...values.map(Math.abs));
     for(const value of values){const bar=node('span');const meter=node('meter');meter.min=0;meter.max=max;meter.value=Math.abs(value);
+      bar.setAttribute('style','--observed-height:'+Math.round(100*Math.abs(value)/max)+'%');
       meter.setAttribute('aria-label',String(value));bar.append(node('b',String(value)),meter);bars.append(bar);}
     figure.append(bars);return figure;
   }
@@ -161,5 +210,5 @@
     select.before(menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
-  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,chart,basketballRow,basketballLogo,byHitRate};
+  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,matchupBanner,dashboard,research,basketballDashboard,chart,basketballRow,basketballLogo,byHitRate};
 })(typeof window==='undefined'?globalThis:window);

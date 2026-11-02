@@ -181,7 +181,8 @@
   board.setAttribute('data-displayed-lines',String(rows.filter(r=>Number.isFinite(r.q.line)).length));board.append(node('p',rows.filter(r=>Number.isFinite(r.q.line)).length+' betting lines · '+rows.length+' player/stat rows displayed; history-only rows have no betting line.'));
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
   const controls=window.Unit501PlayerControls,detail=player;
-  if(detail)board.append(controls.profile($('ncaab-prop-player'),controls.teamLabel(detail,comparisonHistory),[selected.away,selected.home].join(' vs '),controls.basketballLogo(detail,comparisonHistory,selected)));
+  if(!detail)board.append(controls.matchupBanner(selected.away,selected.home,selected.awayLogo,selected.homeLogo));
+  if(detail)board.append(controls.basketballDashboard($('ncaab-prop-player'),detail,comparisonHistory,selected,rows.map(r=>({quote:r.q,p:r.p}))));
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   table.className=detail?'market-profile-table':'projection-board';
   if(!detail)controls.boardHeader(tr);else for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
@@ -219,7 +220,7 @@
     tr.append(cell);
    }Array.from(tr.children).forEach((c,i)=>c.setAttribute('data-label',head.children[0].children[i].textContent));body.append(tr);
   }
-  table.append(body);board.append(table);
+  table.append(body);board.append(detail?controls.research("Workload, availability and market details",table):table);
   const expiries=[Date.parse(selected.tipoff),...rows.map(r=>r.q.updatedAt+1800001),...rows.map(r=>r.history?.checkedAt+1800001),injuryData?.checkedAt+900001].filter(at=>Number.isFinite(at)&&at>Date.now());
   const next=Math.min(...expiries);propExpiry=setTimeout(renderProps,Math.max(1,next-Date.now()));
  }
