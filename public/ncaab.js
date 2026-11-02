@@ -169,30 +169,31 @@
    let scenario=injuryScenarios.get(r.q.name);
    if(scenario&&(status==='Out'||!(window.Unit501NBARotationContext?.compare(r.history,scenario.quote,injuryData,selected,Date.now(),{official:false})||[]).some(s=>JSON.stringify(s)===scenario.evidence))){injuryScenarios.delete(r.q.name);scenario=null;}
    const prediction=staleInjuries?{available:false,reason:'Refresh availability'}:window.Unit501NBAPlayerModel.project(r.history,r.q,selected,status,Date.now(),{regulationMinutes:40,minutes:scenario?.minutes,allowUnpriced:true});
+   if(!prediction.available)Object.assign(prediction,window.Unit501NBAPlayerModel.historicalCounts?.(r.history,r.q,selected));
    return {...r,status,splits,scenario,p:window.Unit501NBAPlayerModel.withScenario?.(prediction,playerScenarios.get(r.q.name))||prediction};
   });
   rows.sort((a,b)=>{
    const order=()=>a.q.name.localeCompare(b.q.name)||catalog.indexOf(a.q.market)-catalog.indexOf(b.q.market);
-   if(sort==='name'||!sort)return order();
-   if(a.p.available!==b.p.available)return a.p.available?-1:1;
-   if(!a.p.available)return order();
-   if(a.q.unpriced!==b.q.unpriced)return a.q.unpriced?1:-1;
-   if(a.q.unpriced)return order();
-   if(sort==='most'||sort==='least'){const field=sort==='most'?'above':'below';return b.p[field]*a.p.games-a.p[field]*b.p.games||b.p.games-a.p.games||order();}
-   return Math.abs(b.p.projection-b.q.line)-Math.abs(a.p.projection-a.q.line)||order();
+   if(player||sort==='name'||!sort)return order();
+   return window.Unit501PlayerControls.byHitRate(a.p,b.p,sort)||order();
   });
   window.Unit501SharedUI.basketballQuoteTrace(board,acceptedQuotes,rows.map(r=>({quote:r.q,prediction:r.p})),player,selected.tipoff);
   board.setAttribute('data-displayed-lines',String(rows.filter(r=>Number.isFinite(r.q.line)).length));board.append(node('p',rows.filter(r=>Number.isFinite(r.q.line)).length+' betting lines · '+rows.length+' player/stat rows displayed; history-only rows have no betting line.'));
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
+  const controls=window.Unit501PlayerControls,detail=player;
+  if(detail)board.append(controls.profile($('ncaab-prop-player'),controls.teamLabel(detail,comparisonHistory),[selected.away,selected.home].join(' vs '),controls.basketballLogo(detail,comparisonHistory,selected)));
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
-  for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
+  table.className=detail?'market-profile-table':'projection-board';
+  if(!detail)controls.boardHeader(tr);else for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
   for(const {q,p,status,splits,scenario,history} of rows){const tr=node('tr','');
+   if(!detail){controls.basketballRow(tr,$('ncaab-prop-player'),q,p,status,history,selected);body.append(tr);continue;}
    const observed=window.Unit501LineWatch?.fromServer(q.history,q.line,q.updatedAt);
    const movement=q.unpriced?'No betting line':observed?window.Unit501LineWatch.describe(observed):'Movement unknown';
    const pct=field=>p.available&&Number.isFinite(q.line)?p[field]+' ('+(100*p[field]/p.games).toFixed(1)+'%)':'—';
    const values=[q.name+' · '+q.label+' · '+(status||'Availability unconfirmed'),q.line??'Line unavailable',p.available?p.projection.toFixed(1):p.reason||'Unavailable',window.Unit501LastOpponent.basketball(history,q,selected),p.available?p.median.toFixed(1):'—',p.available&&Number.isFinite(q.line)?(p.projection-q.line).toFixed(1):'—',p.available?p.recentValues.join(' · ')+(Number.isFinite(p.projectedMinutes)?' · '+p.projectedMinutes.toFixed(1)+' projected min':' · minutes unavailable')+(p.thin?' · small sample':''):'History incomplete or unavailable',pct('above'),pct('below'),pct('equal'),p.available?p.games:'—',movement];
    for(const [index,value] of values.entries()){
     const cell=node('td',value);
+    if(index===0)cell.append(controls.chart(p.recentValues));
     if(index===0)window.Unit501PlayerControls.recentRates(cell,q.line,p.above,p.below,p.games);
     if(index===0&&player)window.Unit501SharedUI.phonePlayerHistory(cell,values[3],window.Unit501LastOpponent.recentBasketball(history,q,selected));
     if(index===3)cell.className='last-opponent-stat';
@@ -216,7 +217,7 @@
      if(p.scenario?.applied)cell.append(node('small','Manual, uncalibrated · before scenario '+p.scenario.baseline.toFixed(1)));
     }
     tr.append(cell);
-   }body.append(tr);
+   }Array.from(tr.children).forEach((c,i)=>c.setAttribute('data-label',head.children[0].children[i].textContent));body.append(tr);
   }
   table.append(body);board.append(table);
   const expiries=[Date.parse(selected.tipoff),...rows.map(r=>r.q.updatedAt+1800001),...rows.map(r=>r.history?.checkedAt+1800001),injuryData?.checkedAt+900001].filter(at=>Number.isFinite(at)&&at>Date.now());

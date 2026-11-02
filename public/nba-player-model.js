@@ -90,6 +90,25 @@
    above:Number.isFinite(quote.line)?values.filter(n=>n>quote.line).length:null,below:Number.isFinite(quote.line)?values.filter(n=>n<quote.line).length:null,equal:Number.isFinite(quote.line)?values.filter(n=>n===quote.line).length:null,
    thin:values.length<5};
  }
+ function historicalCounts(history,quote,game,now=Date.now()){
+  if(!history||!game||String(history.gameId)!==String(game.id)||history.tipoff!==game.tipoff||
+     !Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||
+     history.teams?.length!==2||!markets.has(quote.market))return {};
+  const candidates=history.teams.flatMap(team=>(team.players||[]).map(player=>({...player,team})));
+  const {player}=matchPlayer(candidates,quote.name);
+  if(!player?.team.available||!Array.isArray(player.results)||player.available===false&&!player.unverified?.length)return {};
+  const excluded=new Set([...(player.inactive||[]),...(player.unverified||[]),...(player.missing||[])].map(r=>String(r.gameId??r.id??r)));
+  const occurrences=new Map();
+  for(const r of player.results){const id=String(r.gameId);occurrences.set(id,(occurrences.get(id)||0)+1);}
+  const cutoff=Math.min(now,Date.parse(game.tipoff));
+  const values=player.results.filter(r=>/^\d{1,12}$/.test(String(r.gameId))&&!excluded.has(String(r.gameId))&&
+   occurrences.get(String(r.gameId))===1&&Date.parse(r.tipoff)<cutoff&&Number.isInteger(r[quote.market])&&r[quote.market]>=0)
+   .sort((a,b)=>Date.parse(b.tipoff)-Date.parse(a.tipoff)).map(r=>r[quote.market]);
+  if(!values.length)return {};
+  const priced=Number.isFinite(quote.line);
+  return {games:values.length,recentValues:values.slice(0,5),above:priced?values.filter(v=>v>quote.line).length:null,
+   below:priced?values.filter(v=>v<quote.line).length:null,equal:priced?values.filter(v=>v===quote.line).length:null};
+ }
  function catalogRows(quotes,history,game,now=Date.now()){
   const rows=(quotes||[]).filter(q=>Number.isFinite(q.updatedAt)&&q.updatedAt<=now+60000&&now-q.updatedAt<=1800000&&Date.parse(game?.tipoff)>now);
   if(!history||String(history.gameId)!==String(game?.id)||history.tipoff!==game.tipoff||!Number.isFinite(history.checkedAt)||history.checkedAt>now+60000||now-history.checkedAt>1800000||Date.parse(game.tipoff)<=now)return rows;
@@ -118,5 +137,5 @@
   if(!change||![change.recent,change.previous].every(Number.isFinite))return null;
   return 'Recent minutes '+change.direction+' · '+change.previous.toFixed(1)+' → '+change.recent.toFixed(1)+' · last '+change.recentGames+' vs earlier '+change.previousGames+' games';
  }
- const api={catalogRows,project,withScenario,minuteChangeText,injuryStatus,matchPlayer,availabilityNote};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
+ const api={historicalCounts,catalogRows,project,withScenario,minuteChangeText,injuryStatus,matchPlayer,availabilityNote};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Unit501NBAPlayerModel=api;
 })(typeof window!=='undefined'?window:globalThis);

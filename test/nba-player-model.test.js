@@ -180,3 +180,11 @@ test('history-backed catalog preserves zero stats without fabricating sportsbook
  assert.equal(model.project(missing,rows[0],game,null,now,{allowUnpriced:true}).available,false);
  for(const line of [undefined,NaN,'',0/0])assert.equal(model.project(h,{...q,line},game,null,now,{allowUnpriced:true}).available,false);
 });
+test('historical rates survive a withheld projection and exclude ambiguous or missing appearances',()=>{
+ const h=data(),p=h.teams[0].players[0];
+ p.missing=[{gameId:4}];p.inactive=[{gameId:5}];
+ p.results.push({...p.results[0],gameId:4,player_points:0},{...p.results[0],gameId:5,player_points:0});
+ const counts=require('../public/nba-player-model').historicalCounts(h,q,game,now);
+ assert.deepEqual([counts.above,counts.below,counts.equal,counts.games],[1,1,1,3]);
+ assert.equal(project(h,q,game,'Out',now).available,false);
+});

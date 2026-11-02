@@ -198,6 +198,7 @@ test('college prop UI passes its regulation cap and displays historical minutes 
  const results=Array.from({length:5},(_,i)=>({gameId:String(i+1),tipoff:new Date(h.now()-(i+1)*86400000).toISOString(),minutes:i<2?45:32,player_points:20}));
  h.context.fetch=async url=>({ok:true,json:async()=>({gameId:h.game.id,tipoff:h.game.tipoff,checkedAt:h.now(),message:'Loaded',props:[{name:'Player A',market:'player_points',label:'Points',line:18.5,updatedAt:h.now()}],teams:[{available:true,players:[{name:'Player A',results}]},{available:true,players:[]}]})});
  await h.nodes.get('ncaab-load-props').events.click();
+ const selectedPlayer=h.nodes.get('ncaab-prop-player');selectedPlayer.value='Player A';selectedPlayer.events.change();
  assert.equal(seen.regulationMinutes,40);
  assert.match(h.nodes.get('ncaab-props').textContent,/Recent minutes up · 32.0 → 45.0 · last 2 vs earlier 3 games/);
  assert.doesNotMatch(h.nodes.get('ncaab-props').textContent,/confirmed starter/);
@@ -290,6 +291,7 @@ test('college verified teammate-absence scenario changes projections, preserves 
  };
  await h.nodes.get('ncaab-load').events.click();await h.nodes.get('ncaab-games').children[0].events.click();await h.settle();await h.nodes.get('ncaab-load-props').events.click();
  const board=h.nodes.get('ncaab-props');
+ const selectedPlayer=h.nodes.get('ncaab-prop-player');selectedPlayer.value='Player A';selectedPlayer.events.change();
  // The harness does not track tag names; button event plus exact label identifies the control.
  const all=n=>n.children.flatMap(c=>[c,...all(c)]),button=()=>all(board).find(c=>c.events?.click&&c.textContent==='Try 40.0 minutes without Teammate B');
  assert.ok(button());const before=board.textContent;button().events.click();

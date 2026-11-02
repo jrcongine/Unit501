@@ -481,7 +481,7 @@ test('copy prop board respects filters, rechecks stale quotes and offers clipboa
  const filter=h.nodes.get('prop-filter-stat');filter.value='carries';await filter.dispatchEvent({type:'change'});
  let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
- assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Line 19.5/);assert.match(copied,/FanDuel automatic/);assert.match(copied,/Verify participation/);assert.match(copied,/Carries: 20, 20/);assert.match(h.nodes.get('saved-line-comparisons').textContent,/Carries: 20, 20/);assert.doesNotMatch(copied,/Line 22.5/);
+ assert.match(copied,/RB 1 — Team A/);assert.match(copied,/Line 19.5/);assert.match(copied,/FanDuel automatic/);assert.match(copied,/Verify participation/);assert.match(copied,/Carries: 20, 20/);assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/Carries: 20, 20/);assert.doesNotMatch(copied,/Line 22.5/);
  assert.match(h.nodes.get('copy-prop-board-status').textContent,/copied/);
  h.context.navigator.clipboard.writeText=async()=>{throw Error('Denied');};
  await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
@@ -733,11 +733,11 @@ test('prop history uses numeric game counts and manual enhance can be switched o
  const table=board.find(n=>n.tag==='table');
  const rows=walk(table).filter(n=>n.tag==='tr').slice(1);
  assert.ok(rows.length>0);
- assert.ok(rows.every(r=>/^\d+\/\d+$/.test(r.children[3].textContent)));
- const history=board.filter(n=>n.className==='prop-recent');
+ assert.ok(rows.every(r=>r.children.length===8&&/^\d+$/.test(r.children[2].textContent)));
+ const history=board.filter(n=>n.className==='hit-rates');
  assert.ok(history.length>0);
- assert.ok(history.every(n=>n.children.length===3));
- assert.match(history[0].children[0].className,/is-leading/);
+ assert.ok(history.every(n=>n.children.length===2));
+ assert.match(history[0].children[0].textContent,/Above\d+\/\d+[\d.]+%/);
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const values=()=>walk(h.nodes.get('predict-results')).find(n=>n.className==='scenario-comparison').children.map(n=>Number(n.children[1].textContent));
  const baseline=values();assert.equal(baseline[0],baseline[1]);
@@ -1101,7 +1101,7 @@ test('projection board lists usable no-line markets without invented comparisons
  const rows=()=>walk(board,'tbody')[0].children;
  const missing=rows().filter(r=>r.textContent.includes('Line unavailable'));
  assert.equal(rows().length,8);assert.equal(missing.length,5);
- for(const row of missing){assert.equal(row.children[8].textContent,'—');assert.equal(row.children[9].textContent,'Line required');assert.notEqual(row.children[4].textContent,'');}
+ for(const row of missing){assert.equal(row.children[5].textContent,'—');assert.equal(row.children[7].textContent,'Line required');assert.notEqual(row.children[4].textContent,'');}
  const target=missing.find(row=>row.children[1].textContent==='Rushing yards');
  const open=walk(target,'button')[0];await open.dispatchEvent({type:'click'});
  const input=h.nodes.get('line-1:7-rushYds');assert.ok(input);input.value='45.5';await input.dispatchEvent({type:'input'});
@@ -1174,7 +1174,7 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  const walk=n=>[n,...n.children.filter(c=>typeof c!=='string').flatMap(walk)];
  const rows=walk(h.nodes.get('saved-line-comparisons')).filter(n=>n.tag==='tr'&&n.children[1]?.textContent==='Rushing TDs');
  assert.equal(rows.length,2);
- for(const row of rows){assert.equal(row.children[7].textContent,'Line unavailable');assert.equal(row.children[8].textContent,'—');assert.match(row.children[9].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
+ for(const row of rows){assert.equal(row.children[3].textContent,'Line unavailable');assert.equal(row.children[5].textContent,'—');assert.match(row.children[7].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Fixed history threshold; no betting line used/);
 });
@@ -1281,7 +1281,7 @@ test('player menu includes roster-only players while comparative rates require a
  h.context.Unit501Availability={...availability,snapshot:()=>({...snapshot,current:true,teams:snapshot.teams.map((team,i)=>i?team:{...team,roster:{...team.roster,available:true,rows:[...(team.roster?.rows||[]),{id:'222',name:'Roster Only'}]}})})};
  await selectPlayer(h,'');
  assert.match(h.nodes.get('predict-player').textContent,/Roster Only/);
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/Above [\d.]+% · Below [\d.]+% · \d+ GP/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Above\d+\/\d+[\d.]+%Below\d+\/\d+[\d.]+%/);
  await selectPlayer(h,'1:222');
  assert.match(h.nodes.get('predict-results').textContent,/insufficient/);
  assert.equal(h.nodes.get('saved-line-comparisons').dataset.displayedAutoLines,'0');

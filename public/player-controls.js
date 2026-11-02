@@ -60,10 +60,80 @@
     return teams.length===1&&teams[0].name ? name+' — '+teams[0].name : name;
   }
   function recentRates(cell,line,above,below,games){
-    const label=Number.isFinite(line)&&Number.isInteger(games)&&games>0&&Number.isInteger(above)&&Number.isInteger(below)
-      ? 'Above '+(100*above/games).toFixed(1)+'% · Below '+(100*below/games).toFixed(1)+'% · '+games+' GP'
-      : 'Above/Below unavailable';
-    cell.append(node('small',label,'prop-rate-summary'));
+    if(!Number.isFinite(line)||!Number.isInteger(games)||games<1||![above,below].every(Number.isInteger)){
+      cell.append(node('small','Above/Below unavailable'));return;
+    }
+    const group=node('div',null,'hit-rates');
+    for(const [label,count] of [['Above',above],['Below',below]]){
+      const side=node('span');side.append(node('small',label),node('strong',count+'/'+games),node('small',(100*count/games).toFixed(1)+'%'));group.append(side);
+    }
+    cell.append(group);
+    const pushes=games-above-below;
+    if(pushes)cell.append(node('small',pushes+' push'+(pushes===1?'':'es'),'push-count'));
+  }
+  const columns=['Player / Team','Stat','Games','FanDuel Line','Projection','Difference','Last vs Opponent','Above / Below'];
+  function boardHeader(header){
+    for(const label of columns){const cell=node('th',label);cell.scope='col';header.append(cell);}
+  }
+  function boardRow(row,player,market,games,line,projection,difference,last,rates){
+    const values=[player,market,games,line,projection,difference,last,rates];
+    row.addEventListener('click',event=>{
+      if(event.target.closest('button,input,label,a,select,details'))return;
+      row.querySelector('.player-link')?.click();
+    });
+    values.forEach((value,i)=>{
+      const cell=node('td');cell.setAttribute('data-label',columns[i]);
+      if(value&&typeof value==='object')cell.append(value);else cell.textContent=String(value??'—');
+      row.append(cell);
+    });
+  }
+  function selectPlayer(select,value){
+    select.value=value;select.dispatchEvent(new Event('change'));
+  }
+  function playerLink(select,value,label){
+    const button=node('button',label,'player-link');button.type='button';
+    button.addEventListener('click',()=>selectPlayer(select,value));return button;
+  }
+  function profile(select,label,context,logo){
+    const hero=node('header',null,'player-profile');
+    if(logo){const img=node('img');img.src=logo;img.alt='';hero.append(img);}
+    const text=node('div');text.append(node('small','UNIT 501   /   PLAYER PROJECTIONS'),node('h3',label),node('p',context));
+    hero.append(text,playerLink(select,'','← All Players'));return hero;
+  }
+  function chart(values){
+    const figure=node('figure',null,'recent-chart');
+    if(!values?.length)return figure;
+    figure.append(node('figcaption','Recent games · newest first'));
+    const bars=node('div'),max=Math.max(1,...values.map(Math.abs));
+    for(const value of values){const bar=node('span');const meter=node('meter');meter.min=0;meter.max=max;meter.value=Math.abs(value);
+      meter.setAttribute('aria-label',String(value));bar.append(node('b',String(value)),meter);bars.append(bar);}
+    figure.append(bars);return figure;
+  }
+  function basketballLogo(name,history,game){
+    const teams=(history?.teams||[]).filter(t=>t.players?.some(p=>norm(p.name)===norm(name)));
+    if(teams.length!==1)return null;
+    const id=teams[0].selectedTeamId??teams[0].id;
+    if(id==null)return null;
+    return String(id)===String(game.awayId)?game.awayLogo:String(id)===String(game.homeId)?game.homeLogo:null;
+  }
+  function byHitRate(a,b,mode){
+    const side=mode==='most'||mode==='above-asc'?'above':'below';
+    const valid=r=>r.games>0&&Number.isInteger(r[side]);
+    if(!valid(a)||!valid(b))return Number(valid(b))-Number(valid(a));
+    const compare=a[side]*b.games-b[side]*a.games;
+    return (mode.endsWith('-asc')?compare:-compare)||b.games-a.games;
+  }
+  function basketballRow(row,select,quote,prediction,status,history,game){
+    const identity=node('div');
+    const logo=basketballLogo(quote.name,history,game);
+    if(logo){const img=node('img');img.src=logo;img.alt='';identity.append(img);}
+    identity.append(playerLink(select,quote.name,teamLabel(quote.name,history)));
+    if(!/^(active|available)$/i.test(status||''))identity.append(node('small','· '+(status?status.toUpperCase():'Availability unconfirmed'),'availability-flag'));
+    const rates=node('div');recentRates(rates,quote.line,prediction.above,prediction.below,prediction.games);
+    const projected=prediction.available?prediction.projection.toFixed(1):null;
+    const gap=projected!==null&&Number.isFinite(quote.line)?Number((projected-quote.line).toFixed(1)):null;
+    boardRow(row,identity,quote.label,prediction.games,quote.line??'Line unavailable',projected??prediction.reason,
+      gap===null?'—':gap===0?'Equal':Math.abs(gap)+' '+(gap>0?'above':'below'),root.Unit501LastOpponent.basketball(history,quote,game),rates);
   }
   function playerMenu(select) {
     if(!select || typeof MutationObserver==='undefined')return;
@@ -91,5 +161,5 @@
     select.before(menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
-  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates};
+  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,chart,basketballRow,basketballLogo,byHitRate};
 })(typeof window==='undefined'?globalThis:window);

@@ -8,3 +8,31 @@
 @media(max-width:760px){.scenario-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.scenario-tile strong{font-size:.85rem}.scenario-tile img{height:54px}}
 .projection-primary{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.projection-primary>*{flex:1 1 10rem}.nba-prop-filters>details:not(.player-menu){order:3}.nba-prop-filters>[hidden]{display:none!important}
 .player-options{max-height:min(48vh,25rem)}.player-options button{padding:6px 10px;min-height:32px;line-height:1.2}.player-count,.prop-rate-summary{display:block;font-size:.8rem;line-height:1.3}.player-count{padding:4px 0}.prop-rate-summary{margin:4px 0;color:#a7e7ef;font-weight:650}
+
+.projection-board{width:100%;border-collapse:collapse;font-size:.88rem;background:#101c2c;color:#edf6ff}
+.projection-board th,.projection-board td{padding:.45rem .5rem;text-align:left;border-bottom:1px solid #39495c}
+.projection-board th{font-size:.74rem;color:#b6c9db;background:#172639}
+.projection-board td:nth-child(4){font-weight:800;font-size:1.08rem;color:#7beafa}
+.projection-board img{width:22px;height:22px;object-fit:contain;vertical-align:middle}
+.player-link{border:0;background:transparent;color:#8ee7fa;font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:.3rem}
+.availability-flag,.push-count{display:block;color:#edc681;font-size:.72rem}
+.hit-rates{display:flex;gap:.65rem;font-variant-numeric:tabular-nums}.hit-rates span>*{display:block}.hit-rates strong{font-size:1.08rem;color:#fff}.hit-rates small{font-size:.68rem;color:#b7cddc}
+.player-profile,.market-profile,.market-profile-table tbody tr{background:linear-gradient(115deg,#172f46,#101a29 74%);color:#eff8ff}
+.player-profile{border-left:4px solid #54deef;padding:clamp(.8rem,2vw,1.8rem);border-radius:.7rem;display:flex;align-items:center;gap:1rem;margin:.7rem 0}
+.player-profile h3{font-size:clamp(1.5rem,4vw,2.6rem);color:white;margin:.25rem 0}.player-profile small{color:#80e5f4;letter-spacing:.12em}.player-profile p{margin:0}.player-profile img{width:clamp(48px,9vw,96px);object-fit:contain}.player-profile button{margin-left:auto}
+.market-profile-table,.market-profile-table tbody{display:block;width:100%;min-width:0}.market-profile-table thead{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.market-profile-table tbody tr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:.6rem;border:1px solid #426078;padding:.9rem;border-radius:.8rem;margin:.6rem 0}
+body[data-sport] .market-profile-table tbody tr td{display:block!important;white-space:normal;min-width:0}
+.market-profile-table td::before,.projection-board td::before{font-size:.68rem;color:#a9c4d8;font-weight:650}
+.market-profile-table td::before{display:block;content:attr(data-label)}
+.recent-chart{margin:.5rem 0;color:#e2f3fc}.recent-chart figcaption{font-size:.72rem;color:#adccdb}.recent-chart>div{display:flex;gap:5px}.recent-chart span{display:grid;min-width:0;max-width:4rem;flex:1}.recent-chart meter{width:100%;accent-color:#31cadd}
+@media(max-width:760px){
+body[data-sport] table.projection-board,body[data-sport] .projection-board tbody{display:block;min-width:0;width:100%}
+.projection-board thead{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.projection-board tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.25rem .55rem;padding:.65rem;border-bottom:1px solid #45566b}
+body[data-sport] .projection-board tbody tr td{display:block!important;white-space:normal;min-width:0;padding:0;border:0;overflow-wrap:anywhere}
+.projection-board td::before{content:attr(data-label);display:block}.projection-board td:first-child{grid-column:span 2}.projection-board td:nth-child(2){grid-column:3}.projection-board td:last-child{grid-column:span 2}
+}
+.projection-board tbody tr{cursor:pointer}.projection-board tbody tr:hover,.projection-board tbody tr:focus-within{background:#1d3042}
+.market-profile h4{margin:.2rem 0;color:#8fe7f5;font-size:1.35rem}.market-profile details{margin-top:.65rem}.recent-chart meter::-webkit-meter-optimum-value{background:#4ccfe7}
+body:has(.projection-board) .phone-columns,body:has(.market-profile-table) .phone-columns{display:none}

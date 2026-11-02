@@ -155,13 +155,13 @@ test('official injury statuses highlight matching props and withdraw on expiry o
 test('NBA props show recent baselines, cover counts, sorting and OUT suppression',async()=>{
  const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
  let text=h.nodes.get('nba-prop-lines').textContent;
- assert.match(text,/Player A.*Points.*20\.5.*23\.5.*2.*0.*0.*2/);
- assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*1.*1.*0.*2/);
- assert.match(text,/Last 2: 25 · 22 \(newest first\)/);
+ assert.match(text,/Player A.*Points.*20\.5.*23\.5.*Above 2\/2 100.0% Below 0\/2/);
+ assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*Above 1\/2 50.0% Below 1\/2/);
+ assert.doesNotMatch(text,/Last 2:/);
  const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
  text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));
  sort.value='most';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));
- sort.value='gap';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));assert.match(text,/Projection vs line: \+3\.0/);assert.match(text,/Projection vs line: -0\.5/);
+ sort.value='below-asc';sort.events.change();text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player A')<text.indexOf('Player B'));assert.match(text,/3 above/);assert.match(text,/0.5 below/);
  assert.equal(h.calls.length,count);
  h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:Date.parse('2026-10-24T20:00:00Z'),teams:[{available:true,players:[{name:'Player A',status:'Out'}]},{available:true,players:[]}]});
  assert.match(h.nodes.get('nba-prop-lines').textContent,/Player A · OUT.*Points.*20\.5.*OUT/);
@@ -178,6 +178,7 @@ test('an OUT teammate shows verified past splits without changing the player pro
  await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
  const before=h.nodes.get('nba-prop-lines').textContent;assert.match(before,/Player A.*15\.8/);
  h.context.Unit501NBAMarkets.setInjuries(h.game,{gameId:h.game.id,tipoff:h.game.tipoff,reportAt:clock,teams:[{name:'LA Clippers',available:true,players:[{name:'Player C',status:'Out'}]},{name:'Chicago Bulls',available:true,players:[]}]});
+ const selectA=h.nodes.get('nba-prop-player');selectA.value='Player A';selectA.events.change();
  const after=h.nodes.get('nba-prop-lines').textContent;assert.doesNotMatch(after,/minutes scenario/);assert.match(after,/Player C didn't play: 20\.0 in 2 games.*played: 10\.0 in 2/);
  assert.match(after,/Player A.*15\.8/);
  const board=h.nodes.get('nba-prop-lines'),flatten=n=>[n,...n.children.flatMap(flatten)];
@@ -214,6 +215,7 @@ async function scenarioHarness(reportAge=0){
 }
 test('NBA absence scenario expires locally and cannot be reapplied from an old control',async()=>{
  const h=await scenarioHarness(7190000),calls=h.calls.length;
+ const selectA=h.nodes.get('nba-prop-player');selectA.value='Player A';selectA.events.change();
  const oldButton=h.button('Try 40.0 minutes without Player C');oldButton.events.click();
  assert.deepEqual(h.inputs().map(n=>n.value),[40,40]);
  h.advance(10001);h.timers.at(-1)();
@@ -228,10 +230,11 @@ test('NBA absence scenario expires locally and cannot be reapplied from an old c
 });
 test('NBA shared player minutes survive filters, reset together and detach from injury evidence when edited',async()=>{
  const h=await scenarioHarness(),calls=h.calls.length;
+ const selectA=h.nodes.get('nba-prop-player');selectA.value='Player A';selectA.events.change();
  h.button('Try 40.0 minutes without Player C').events.click();
  assert.deepEqual(h.inputs().map(n=>n.value),[40,40]);
- assert.match(h.board.textContent,/Points 20\.5.*?20\.0Projection/);
- assert.match(h.board.textContent,/Rebounds 9\.5.*?10\.0Projection/);
+ assert.match(h.board.textContent,/Points.*?20\.5.*?20\.0Projection/);
+ assert.match(h.board.textContent,/Rebounds.*?9\.5.*?10\.0Projection/);
  const filter=h.nodes.get('nba-prop-market');filter.value='player_rebounds';filter.events.change();
  assert.deepEqual(h.inputs().map(n=>n.value),[40]);
  h.button('Reset minutes').events.click();filter.value='';filter.events.change();
@@ -240,12 +243,12 @@ test('NBA shared player minutes survive filters, reset together and detach from 
  const input=h.inputs()[1];input.value='36';input.events.change();
  assert.deepEqual(h.inputs().map(n=>n.value),[36,36]);
  h.context.Unit501NBAMarkets.setInjuries(h.game,null);
- assert.deepEqual(h.inputs().map(n=>n.value),[36,36,'','']); // Unpriced Player C history is visible too.
+ assert.deepEqual(h.inputs().map(n=>n.value),[36,36]); // Player detail stays scoped to the selection.
  assert.match(h.board.textContent,/Manual minutes scenario/);
  assert.doesNotMatch(h.board.textContent,/Teammate absence minutes scenario/);
  assert.equal(h.calls.length,calls);
  await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
- assert.deepEqual(h.inputs().map(n=>n.value),['','','','']);
+ assert.deepEqual(h.inputs().map(n=>n.value),[]); // New game returns to the compact board.
 });
 
 test('late player history cannot replace the new matchup projection',async()=>{
@@ -274,6 +277,7 @@ test('NBA minutes controls update estimates locally and clear when changing matc
  };
  await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();
  const board=h.nodes.get('nba-prop-lines'),flatten=n=>[n,...n.children.flatMap(flatten)];
+ const selectA=h.nodes.get('nba-prop-player');selectA.value='Player A';selectA.events.change();
  let input=flatten(board).find(n=>n.type==='number');assert.ok(input);assert.equal(input.placeholder,'30.0');
  const calls=h.calls.length;input.value='40';input.events.change();
  assert.match(board.textContent,/manual minutes/);assert.equal(h.calls.length,calls);

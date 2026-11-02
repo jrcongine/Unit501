@@ -186,7 +186,14 @@
     const rows = [];
     const withheldMarkets = [];
     for (const record of choices) {
-      if (window.Unit501Availability?.assess(record.teamId, record.playerId).blocked) continue;
+      const assessment=window.Unit501Availability?.assess(record.teamId,record.playerId);
+      if(assessment?.blocked){
+        if(!picker.value||picker.value===record.id){
+          const flag=window.Unit501PlayerControls.playerLink(picker,record.id,record.name+' — '+Unit501InjuryModel.statusLabel(assessment)+' · Projection withheld');
+          board.append(flag);
+        }
+        continue;
+      }
       for (const def of definitions) {
         const entry = readLine(lineKey(record, def));
         const line = n(entry.value);
@@ -442,7 +449,9 @@ for (let i = rows.length - 1; i >= 0; i--) {
     table.append(caption);
     const head = document.createElement('thead');
     const header = document.createElement('tr');
-    for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Last vs opponent', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
+    const compact=!picker.value,ui=window.Unit501PlayerControls;
+    if(compact){table.className='projection-board';ui.boardHeader(header);}
+    else for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Last vs opponent', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
       cell.textContent = name;
@@ -481,6 +490,22 @@ for (let i = rows.length - 1; i >= 0; i--) {
       report.push(row.workloadHistory.text);
       for(const alert of row.role.alerts)report.push(alert.label+': '+alert.detail);
       report.push(`Review: ${row.checks.join('; ')}. ${window.Unit501Availability?.describe(row.record.teamId, row.record.playerId) || 'Availability not checked yet.'}`, '');
+      if(compact){
+        const identity=document.createElement('div');
+        const label=document.createElement('label'),check=document.createElement('input');
+        const key=lineKey(row.record,row.def);check.type='checkbox';check.id='shortlist-'+row.record.id+'-'+row.def.key;check.checked=shortlisted.has(key);
+        check.setAttribute('aria-label','Shortlist '+row.record.name+' '+row.def.title);
+        check.addEventListener('change',()=>{if(check.checked)shortlisted.add(key);else shortlisted.delete(key);renderComparisons();});
+        label.append(check);identity.append(label,ui.playerLink(picker,row.record.id,row.record.name+' — '+row.record.team));
+        const logo=matchupTeams.find(t=>t.id===row.record.teamId)?.logo;
+        if(logo){const img=document.createElement('img');img.src=logo;img.alt='';identity.append(img);}
+        if(fields[2]!=='Available'){const badge=document.createElement('small');badge.className='availability-flag';badge.textContent=fields[2];identity.append(badge);}
+        roleBadges(identity,row.role);
+        const rates=document.createElement('div');if(row.line===null)rates.textContent=fields[9];else ui.recentRates(rates,row.line,above,below,row.values.length);
+        if(row.form.coverage.missing){const note=document.createElement('small');note.textContent=row.form.coverage.missing+' missing';rates.append(note);}
+        ui.boardRow(tr,identity,row.def.title,row.values.length,row.line===null?'Line unavailable':fields[7]+(row.entry.source==='auto'?'':' (manual)'),fields[4],fields[8],row.lastOpponent,rates);
+        body.append(tr);continue;
+      }
       fields.forEach((value, index) => {
         const cell = document.createElement('td');
         if(index===5)cell.className='last-opponent-stat';
@@ -631,6 +656,7 @@ cell.append(details);
         ? 'Projection equals the line.'
         : `Projection is ${Math.abs(difference).toFixed(1)} ${difference > 0 ? 'above' : 'below'} the line.`;
       comparison.textContent = `${summary} Recorded season games: ${above} above, ${below} below, ${equal} equal (${values.length} games). Historical comparison only; not a win probability.`;
+      window.Unit501PlayerControls.recentRates(comparison,line,above,below,values.length);
     }
     const direction=document.createElement('select');direction.id=`pick-direction-${record.id}-${def.key}`;
     for(const side of ['over','under']){const option=document.createElement('option');option.value=side;option.textContent=side;direction.append(option);}
@@ -735,9 +761,8 @@ cell.append(details);
       if(picker.value)results.textContent='Player listed for this matchup. Verified stat history is insufficient for a projection.';
       return;
     }
-    const title = document.createElement('h3');
-    title.textContent = `${record.name} — ${record.team}`;
-    results.appendChild(title);
+    const team=matchupTeams.find(t=>t.id===record.teamId),opponent=matchupTeams.find(t=>t.id!==record.teamId);
+    results.appendChild(window.Unit501PlayerControls.profile(picker,record.name,[record.position,team?.name,opponent&&'vs '+opponent.name].filter(Boolean).join(' · '),team?.logo));
     const availability = document.createElement('p');
     availability.textContent = window.Unit501Availability?.describe(record.teamId, record.playerId) || 'Availability unknown.';
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
@@ -832,7 +857,11 @@ results.appendChild(workload);
       const support = Unit501PlayerForm.dataSupport(model, window.Unit501Availability?.assess(record.teamId, record.playerId));
       const supportInfo = document.createElement('p');
       supportInfo.textContent = 'Data support: ' + support.label + '. Not a win probability; verify current participation, role and price.';
-      card.append(supportInfo);
+      card.className='market-profile';
+      const marketTitle=document.createElement('h4');marketTitle.textContent=def.title;
+      const notes=document.createElement('details'),notesLabel=document.createElement('summary');
+      notesLabel.textContent='Workload, model and game history';notes.append(notesLabel,supportInfo);
+      card.append(marketTitle,window.Unit501PlayerControls.chart(model.form.values.slice(0,5)));
       const comparisonPanel=document.createElement('div');comparisonPanel.className='scenario-comparison';
       for(const [label,value] of [['Original',model.beforeScenario],['Adjusted',adjusted]]){
         const metric=document.createElement('div');
@@ -877,7 +906,7 @@ results.appendChild(workload);
       const context = document.createElement('p');
       context.style.cssText = 'margin:6px 0 0;opacity:.82';
      context.textContent = `Recorded season games (${values.length}, newest first): ${gameDetails.map(g => `${new Date(g.gameDate * 1000).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })} vs ${g.opponent}: ${g[def.key]}`).join(' • ')} • observed range ${Math.min(...values)}–${Math.max(...values)} • ${trend}`;
-      card.append(heading, context);
+      card.append(heading);notes.append(context);
       if(model.form.coverage.dnp){const note=document.createElement('p');note.textContent=`${model.form.coverage.dnp} verified DNP game(s) excluded from averages, medians and Above/Below percentages; ${model.form.coverage.teamGames} completed team games checked.`;card.append(note);}
       const audit=Unit501PlayerBacktest.validate(history,def.key);
       const historical=document.createElement('p');
@@ -886,19 +915,19 @@ results.appendChild(workload);
         ? `Historical baseline check: ${audit.count} replayed games${audit.count<30?' — limited evidence':''}. Average absolute miss ${audit.mae.toFixed(1)}; bias ${audit.bias>=0?'+':''}${audit.bias.toFixed(1)} (positive means too high). Earlier-game mean miss ${audit.meanMAE.toFixed(1)}.`
         : 'Historical baseline check: not enough eligible earlier games to measure error.';
       historical.textContent+=` Skipped: ${audit.dnp} verified DNP, ${audit.insufficient} insufficient history, ${audit.withheld} withheld, ${audit.missingActual} missing actual stats, ${audit.ambiguous} ambiguous dates. Uses only games starting more than 24 hours earlier. Recorded appearances only; missing stats are not zeros. Excludes matchup, injury and lineup adjustments; no historical betting lines or profit measurement.`;
-      card.append(historical);
+      notes.append(historical);
       const band=Unit501PlayerBacktest.range(history,def.key,selected?.kickoff/1000);
       const uncertainty=document.createElement('p');
       uncertainty.textContent=band.available
         ? `Historical-error range for the unadjusted baseline: ${band.low.toFixed(1)}–${band.high.toFixed(1)} (baseline ${band.baseline.toFixed(1)}, ${band.count} earlier replay errors). Uses the 10th–90th percentiles of earlier errors; future coverage is unvalidated. Actual results can fall outside this range. Excludes matchup, injury and workload adjustments; it is not the range for the adjusted projection above.`
         : `Historical-error range unavailable: ${band.reason}${Number.isFinite(band.count)?' Available replay errors: '+band.count+'.':''}`;
-      card.append(uncertainty);
+      notes.append(uncertainty);
       const rangeAudit=Unit501PlayerBacktest.validateRanges(history,def.key,selected?.kickoff/1000);
       const rangeCheck=document.createElement('p');
       rangeCheck.textContent=rangeAudit.available
         ? `Historical range check: ${rangeAudit.covered}/${rangeAudit.count} later recorded outcomes inside the range (${(rangeAudit.coverage*100).toFixed(0)}%); ${rangeAudit.below} below, ${rangeAudit.above} above. Average range width ${rangeAudit.meanWidth.toFixed(1)}. Each range uses only earlier errors, with the same 24-hour buffer. ${rangeAudit.count<30?'Limited evidence: fewer than 30 evaluated outcomes. ':''}Observed coverage is not a probability for this prop or proof of future accuracy.`
         : `Historical range check unavailable: ${rangeAudit.reason}`;
-      card.append(rangeCheck);results.appendChild(card);
+      notes.append(rangeCheck);results.appendChild(card);
      if (def.key === 'rushYds' || def.key === 'passYds' || def.key === 'recYds') {
   const allowed = opponentStats?.[
     def.key === 'rushYds' ? 'rushAllowed' : 'passAllowed'
@@ -908,21 +937,22 @@ results.appendChild(workload);
     const defense=document.createElement('p');
     const metric=model.matchupDefense;
     defense.textContent=`${opponent?.name || 'Opponent'} defense: ${metric.average.toFixed(1)} team yards allowed per game (${metric.games} games), rank ${metric.rank}/${metric.pool}. Matchup compares this with the same league metric.`;
-    card.appendChild(defense);
+    notes.appendChild(defense);
   } else if (allowed.length) {
     const avgAllowed = allowed.reduce((a, b) => a + b, 0) / allowed.length;
     const defense = document.createElement('p');
     defense.textContent = `${opponent?.name || 'Opponent'} defense: ${avgAllowed.toFixed(1)} team yards allowed per game (${allowed.length} ${allowed.length === 1 ? 'game' : 'games'}, from recorded player stats).`;
-    card.appendChild(defense);
+    notes.appendChild(defense);
   }
   const explanation = document.createElement('p');
   explanation.textContent = adjustment === null
     ? `Usage/form baseline: ${model.form.baseline.toFixed(1)}. No defense adjustment: need complete league yardage rankings and at least two opponent games.`
     : `Usage/form baseline: ${model.form.baseline.toFixed(1)}. Matchup adjustment: ${adjustment >= 0 ? '+' : ''}${(adjustment * 100).toFixed(1)}% (limited to ±7.5%).`;
-  card.appendChild(explanation);
+  notes.appendChild(explanation);
 }
-      const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${model.beforeScenario.toFixed(1)} (before manual game-day scenario).`;card.append(weatherNote);
+      const weatherNote=document.createElement('p');weatherNote.textContent=model.weather.reason+` Before weather: ${model.preWeather.toFixed(1)} → ${model.beforeScenario.toFixed(1)} (before manual game-day scenario).`;notes.append(weatherNote);
       addLineComparison(card, record, def, adjusted, values, model.form.coverage.missing);
+      card.append(notes);
       shown++;
     }
     if (!shown) {
@@ -1062,7 +1092,7 @@ if (league === '1' && stage !== 'regular season') return false;
       status.textContent = `Reading player stats from ${past.size} season team games…`;
       const ids = Array.from(past.keys());
       const map = new Map();
-      matchupTeams = teams.map(team => ({ id: String(team.id), name: team.name || 'Opponent' }));
+      matchupTeams = teams.map(team => ({ id: String(team.id), name: team.name || 'Opponent', logo:team.logo || (String(team.id)===String(selected.awayId)?selected.awayLogo:String(team.id)===String(selected.homeId)?selected.homeLogo:null) }));
       opponentDefense = new Map(teamIds.map(id => [
   id, { rushAllowed: [], passAllowed: [] }
 ]));
