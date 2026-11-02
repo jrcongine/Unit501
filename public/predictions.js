@@ -165,6 +165,10 @@
   scenarioControls.hidden=true;
   board.before(scenarioControls);
   const spotlight=document.createElement("div");scenarioControls.before(spotlight);
+  const playerExtras=document.createElement('details'),extrasLabel=document.createElement('summary'),playerNotice=document.createElement('p');
+  playerExtras.id='player-research-details';playerExtras.className='profile-research';playerExtras.hidden=true;
+  extrasLabel.textContent='Player details and controls';playerExtras.append(extrasLabel);
+  spotlight.after(playerNotice,playerExtras);playerNotice.hidden=true;
   function roleFor(record,key){
     const team=window.Unit501Availability?.snapshot()?.teams?.find(t=>String(t.id)===String(record.teamId));
     return Unit501PlayerForm.roleContext(Array.from(record.games.values()),key,team,record.playerId,selected,roleReviews.get(record.id)||'');
@@ -753,6 +757,12 @@ cell.append(details);
     const slot=el('scenario-picker');
     slot.hidden=Boolean(blocked||(!record&&picker.value));
     if(!slot.hidden)window.Unit501PlayerControls.showScenarios(starScenarios,record?.id||'',showPlayer,record?.name);
+    const detailKey=record?lineScope+'|'+record.id:'';
+    if(playerExtras.dataset.player!==detailKey)playerExtras.open=false;
+    playerExtras.dataset.player=detailKey;playerExtras.hidden=!record;
+    if(record)playerExtras.append(scenarioControls,board,results);
+    else playerExtras.after(scenarioControls,board,results);
+    playerNotice.hidden=true;playerNotice.textContent='';
     renderComparisons();
     spotlight.replaceChildren();
     results.replaceChildren();
@@ -770,6 +780,11 @@ cell.append(details);
     availability.style.cssText = 'border-left:3px solid #e8b95b;padding:10px';
     results.appendChild(availability);
     const assessment = window.Unit501Availability?.assess(record.teamId, record.playerId);
+    const designation=Unit501InjuryModel.statusLabel(assessment);
+    if(designation!=='Available'){
+      playerNotice.textContent=assessment?.blocked?designation+' · Projection withheld':designation;
+      playerNotice.hidden=false;
+    }
     if (assessment?.blocked) {
       const withheld = document.createElement('p');
       withheld.textContent = assessment.reason;
@@ -836,6 +851,7 @@ workload.textContent = workloadParts.length
   ? workloadParts.join(' • ')
   : 'Pass attempts, carries and targets unavailable in the recent box scores.';
 results.appendChild(workload);
+    const archiveNotes=new Set();
     let shown = 0;
     for (const def of definitions) {
       const coverageReview=Unit501PlayerForm.project(history,def.key);
@@ -851,10 +867,10 @@ results.appendChild(workload);
       const {values, gameDetails, average, weighted, adjusted, adjustment, opponent, opponentStats, workload} = model;
       if(window.Unit501ForecastArchive && !model.starPower.applied){
         const saved=Unit501ForecastArchive.save(localStorage,propSnapshot(record,def,model));
-        const info=document.createElement('p');info.textContent=def.title+': '+saved.message;results.append(info);
+        if(saved.message)archiveNotes.add(saved.message);
       }
       const entry=readLine(lineKey(record,def)),line=n(entry.value),ordered=[...values].sort((a,b)=>a-b),mid=Math.floor(values.length/2);
-      markets.push({stat:def.title,line,manual:entry.source!=='auto',projection:adjusted,average,games:values.length,values,
+      markets.push({stat:def.title,tdHistory:def.key.endsWith('TD'),line,manual:entry.source!=='auto',projection:adjusted,average,games:values.length,values,
         median:values.length%2?ordered[mid]:(ordered[mid-1]+ordered[mid])/2,last:model.lastOpponent,
         above:values.filter(v=>v>line).length,below:values.filter(v=>v<line).length});
       const trend = model.form.trend + ' • ' + model.form.sample;
@@ -965,8 +981,9 @@ results.appendChild(workload);
       shown++;
     }
     drawSpotlight();
+    for(const message of archiveNotes){const info=document.createElement('p');info.textContent=message;results.append(info);}
     if (!shown) {
-      const empty=document.createElement('p');empty.textContent='No supported projection available from this player’s recorded stats.';results.append(empty);
+      const empty=document.createElement('p');empty.textContent='No supported projection available from this player’s recorded stats.';playerNotice.textContent=empty.textContent;playerNotice.hidden=false;
     }
     const note = document.createElement('p');
     note.style.opacity = '.8';

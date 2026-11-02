@@ -203,7 +203,11 @@
       const diff=projection!==null&&Number.isFinite(m.line)?Number((projection-m.line).toFixed(1)):null;
       const fields=[m.stat,m.line==null?'Unavailable':String(m.line)+(m.manual?' (manual)':''),projection??'—',diff===null?'—':diff===0?'Equal':Math.abs(diff)+' '+(diff>0?'above':'below'),Number.isFinite(m.median)?Number(m.median.toFixed(1)):'—',m.last||'Unavailable'];
       fields.forEach((value,i)=>{const cell=node('td',String(value));cell.setAttribute('data-label',labels[i]);row.append(cell);});
-      const rates=node('td');rates.setAttribute('data-label',labels[6]);recentRates(rates,m.line,m.above,m.below,m.games);row.append(rates);body.append(row);
+      const rates=node('td');rates.setAttribute('data-label',labels[6]);if(m.tdHistory&&!Number.isFinite(m.line)&&m.values?.length){
+        rates.append(node('small','TD history · 1+ TD vs 0 TD'));
+        recentRates(rates,0.5,m.values.filter(v=>v>=1).length,m.values.filter(v=>v===0).length,m.values.length);
+      }else recentRates(rates,m.line,m.above,m.below,m.games);
+      row.append(rates);body.append(row);
     }
     panel.append(table);return panel;
   }

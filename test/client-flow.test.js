@@ -1179,6 +1179,13 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  for(const row of rows){assert.equal(row.children[3].textContent,'Line unavailable');assert.equal(row.children[5].textContent,'—');assert.match(row.children[7].textContent,/1\+ TDs: 1.*0 TDs: 1.*2 recorded games/);}
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/Fixed history threshold; no betting line used/);
+ const research=h.nodes.get('player-research-details');
+ assert.equal(research.open,false);
+ assert.equal(h.nodes.get('predict-results').parentNode,research);
+ const dashboard=h.created.filter(n=>n.className==='athlete-markets').at(-1);
+ const td=walk(dashboard).find(n=>n.tag==='tr'&&n.children[0]?.textContent==='Rushing TDs');
+ assert.equal(td.children[1].textContent,'Unavailable');
+ assert.match(td.children[6].textContent,/1\+ TD vs 0 TDAbove1\/250.0%Below1\/250.0%/);
 });
 
 test('first matchup this season displays prior-season actuals without changing the projected sample',async()=>{
