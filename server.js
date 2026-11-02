@@ -1,5 +1,6 @@
 
 
+const lookupPortrait=require('./player-portraits').createPortraitLookup();
 const http = require('http');
 
 const {withRecovery} = require('./provider-retry');
@@ -222,6 +223,11 @@ const server = http.createServer(async (req, res) => {
       const q=Object.fromEntries(u.searchParams);q.kickoff=Number(q.kickoff);
       if(!['1','2'].includes(q.league)||!/^\d{4}$/.test(q.season||'')||!/^\d+$/.test(q.game||'')||!Number.isFinite(q.kickoff)||!q.home||!q.away||q.home.length>120||q.away.length>120)return send(res,400,{error:'Valid matchup required.'});
       return send(res,200,await getBettingSplits(q));
+    }
+    if(u.pathname==='/api/player-portrait'){
+      const q=u.searchParams;
+      try{return send(res,200,{portrait:await lookupPortrait(q.get('league'),q.get('team')||'',q.get('name')||'')});}
+      catch{return send(res,503,{portrait:null});}
     }
     if(u.pathname==='/api/basketball/last-opponent'){
       const q=u.searchParams;

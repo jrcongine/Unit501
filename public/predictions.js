@@ -767,7 +767,7 @@ cell.append(details);
     }
     const team=matchupTeams.find(t=>t.id===record.teamId),opponent=matchupTeams.find(t=>t.id!==record.teamId);
     const markets=[];
-    const drawSpotlight=()=>spotlight.replaceChildren(window.Unit501PlayerControls.dashboard(picker,record.name,[record.position,team?.name,opponent&&'vs '+opponent.name].filter(Boolean).join(' · '),team?.logo,opponent?.logo,markets));
+    const drawSpotlight=()=>spotlight.replaceChildren(window.Unit501PlayerControls.dashboard(picker,record.name,[record.position,team?.name,opponent&&'vs '+opponent.name].filter(Boolean).join(' · '),team?.logo,opponent?.logo,markets,{name:record.name,team:record.team,league:el('league').value==='1'?'nfl':'cfb'}));
     drawSpotlight();
     const availability = document.createElement('p');
     availability.textContent = window.Unit501Availability?.describe(record.teamId, record.playerId) || 'Availability unknown.';

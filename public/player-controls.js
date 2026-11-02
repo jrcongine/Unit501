@@ -111,9 +111,29 @@
     }
     banner.append(line);return banner;
   }
-  function dashboard(select,name,context,logo,opponentLogo,markets){
+  const photoRequests=new Map();
+  function showPortrait(hero,identity){
+    if(!identity?.team||!identity.name||typeof Image==='undefined')return;
+    const query=new URLSearchParams(identity).toString();
+    let request=photoRequests.get(query);
+    if(!request){
+      request=fetch('/api/player-portrait?'+query,{signal:AbortSignal.timeout(17000)}).then(async r=>{
+        if(!r.ok)throw Error();return (await r.json()).portrait?.url;
+      }).catch(()=>{photoRequests.delete(query);return null;});
+      if(photoRequests.size>=80)photoRequests.delete(photoRequests.keys().next().value);
+      photoRequests.set(query,request);
+    }
+    request.then(url=>{
+      if(!url||!hero.isConnected)return;
+      const photo=new Image();photo.className='athlete-portrait';photo.alt=identity.name;
+      photo.onload=()=>{if(hero.isConnected)hero.prepend(photo);};
+      photo.src=url;
+    });
+  }
+  function dashboard(select,name,context,logo,opponentLogo,markets,identity){
     const panel=node('section',null,'athlete-dashboard');
     const hero=profile(select,name,context,logo);
+    showPortrait(hero,identity);
     if(opponentLogo){const mark=node('img',null,'opponent-mark');mark.src=opponentLogo;mark.alt='Opponent';hero.append(mark);}
     panel.append(hero);
     const strip=node('div',null,'athlete-summary'),totals=node('section'),tiles=node('div',null,'athlete-tiles');
@@ -144,9 +164,11 @@
   }
   function basketballDashboard(select,name,history,game,rows){
     const logo=basketballLogo(name,history,game);
+    const teams=(history?.teams||[]).filter(t=>t.players?.some(p=>norm(p.name)===norm(name)));
+    const identity=teams.length===1?{team:teams[0].name,name,league:select.id==='nba-prop-player'?'nba':'cbb'}:null;
     const opponentLogo=logo===game.awayLogo?game.homeLogo:logo===game.homeLogo?game.awayLogo:null;
     return dashboard(select,teamLabel(name,history),game.away+' vs '+game.home,logo,logo?opponentLogo:null,
-      rows.map(({quote,p})=>({...p,stat:quote.label,line:quote.line,values:p.recentValues,last:root.Unit501LastOpponent.basketball(history,quote,game)})));
+      rows.map(({quote,p})=>({...p,stat:quote.label,line:quote.line,values:p.recentValues,last:root.Unit501LastOpponent.basketball(history,quote,game)})),identity);
   }
   function chart(values){
     const figure=node('figure',null,'recent-chart');
@@ -189,7 +211,12 @@
     const menu=node('details',null,'player-menu'),title=node('summary'),list=node('div',null,'player-options');
     const count=node('small',null,'player-count');
     const search=node('input');search.type='search';search.placeholder='Search name or nickname';search.setAttribute('aria-label',search.placeholder);
-    function sync(){title.textContent='Player · '+(select.selectedOptions[0]?.textContent||'All Players');}
+    const back=node('button','← Back to All Players','all-players-back');back.type='button';
+    back.addEventListener('click',()=>{
+      menu.open=false;selectPlayer(select,'');title.focus({preventScroll:true});
+      title.scrollIntoView({block:'nearest'});
+    });
+    function sync(){back.hidden=!select.value;title.textContent='Player · '+(select.selectedOptions[0]?.textContent||'All Players');}
     function draw(){
       list.replaceChildren();
       let shown=0;
@@ -207,7 +234,7 @@
     menu.addEventListener('toggle',()=>{if(menu.open){search.value='';draw();search.focus();}});
     menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;title.focus();}});
     search.addEventListener('input',draw);menu.append(title,search,count,list);
-    select.before(menu);select.hidden=true;select.addEventListener('change',sync);
+    select.before(back,menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
   root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates,boardHeader,boardRow,playerLink,profile,matchupBanner,dashboard,research,basketballDashboard,chart,basketballRow,basketballLogo,byHitRate};
