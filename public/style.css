@@ -304,20 +304,10 @@ a{color:#97e3fc}
 
 .player-scenario-controls{border:1px solid #55c8ec;border-radius:12px;padding:14px;margin:16px 0;background:#102839}
 .player-scenario-controls h3{margin-top:0}.player-scenario-controls>label{display:block;margin:12px 0}
-/* Shared sport-neutral role/usage highlights: 50%-lighter ivory instead
-   of the original yellow (#f6efc8), with dark row text and Shortlist labels. */
-tbody tr.prop-role-alert{background:#faf7e3;color:#13263a}
-tbody tr.prop-role-alert td,
-tbody tr.prop-role-alert td label{color:#13263a}
-tbody tr.prop-role-alert .prop-shortlist-label{color:#13263a;font-weight:850}
-tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
-tbody tr.prop-role-alert details{color:#284057 !important}
 /* One slimmer separator between every pair of prop rows.
    Suppress the legacy inline cell-bottom border to prevent double lines. */
 #saved-line-comparisons tbody td{border-bottom:0 !important}
 #saved-line-comparisons tbody tr + tr > td{border-top:5px solid #15283d !important}
-/* A warm blush callout distinguishes the REASON from the ivory table row.
-   White-on-dark-red title stays readable, without coloring the whole row red. */
 .prop-role-badge{color:#192b40;line-height:1.35;font-size:12px;margin:8px 0;padding:10px;border:2px solid #c66b78;border-radius:9px;background:#fff0ec;min-width:180px;max-width:250px;display:grid;gap:6px;box-shadow:inset 4px 0 #921d30}
 .prop-role-badge strong{display:block;color:#8b1e2d;font-size:16px;font-weight:900;line-height:1.25}
 .prop-role-detail{display:block;color:#20364b;font-size:12px;line-height:1.45}
