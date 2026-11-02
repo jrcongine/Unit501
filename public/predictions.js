@@ -452,7 +452,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     const head = document.createElement('thead');
     const header = document.createElement('tr');
     const compact=!picker.value,ui=window.Unit501PlayerControls;
-    if(compact){table.className='projection-board';ui.boardHeader(header);}
+    if(compact){table.className='projection-board';ui.boardHeader(header,el('prop-filter-sort'));}
     else for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Last vs opponent', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
@@ -1180,7 +1180,7 @@ if (league === '1' && stage !== 'regular season') return false;
   document.addEventListener('unit501:weather-updated',()=>{if(loadedFor)showPlayer();});
   el('weatherEnabled')?.addEventListener('change',()=>{if(loadedFor)showPlayer();});
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
-  el('prop-filter-sort').addEventListener('change',()=>{board.dataset.sort=el('prop-filter-sort').value;renderComparisons();});
+  el('prop-filter-sort').addEventListener('change',()=>{board.dataset.sort=el('prop-filter-sort').value;if(picker.value)showPlayer();else renderComparisons();});
   window.Unit501PlayerControls.playerMenu(picker);
   picker.addEventListener('change',showPlayer);
   reset();

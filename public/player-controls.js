@@ -72,8 +72,31 @@
     if(pushes)cell.append(node('small',pushes+' push'+(pushes===1?'':'es'),'push-count'));
   }
   const columns=['Player / Team','Stat','Games','FanDuel Line','Projection','Difference','Last vs Opponent','Above / Below'];
-  function boardHeader(header){
-    for(const label of columns){const cell=node('th',label);cell.scope='col';header.append(cell);}
+  function sortMode(control){
+    return ({most:'above-desc',least:'below-desc'})[control.value]||control.value||'';
+  }
+  function columnHeader(label,control){
+    const cell=node('th',label);cell.scope='col';
+    if(label!=='Above / Below'||!control)return cell;
+    cell.className='hit-sort-header';
+    const buttons=node('div',null,'hit-sort-buttons'),mode=sortMode(control);
+    for(const side of ['above','below']){
+      const active=mode.startsWith(side+'-'),ascending=active&&mode.endsWith('-asc');
+      const next=side+(active&&!ascending?'-asc':'-desc');
+      const title=side==='above'?'Above':'Below';
+      const button=node('button',title+' '+(active?(ascending?'↑':'↓'):'↕'));
+      button.type='button';button.setAttribute('aria-label','Sort '+title+' percentage '+(next.endsWith('asc')?'lowest':'highest')+' first');
+      button.setAttribute('aria-pressed',String(active));
+      button.addEventListener('click',()=>{
+        control.value=control.id==='prop-filter-sort'?next:({'above-desc':'most','below-desc':'least'})[next]||next;
+        control.dispatchEvent(new Event('change'));
+      });
+      buttons.append(button);
+    }
+    cell.append(buttons);return cell;
+  }
+  function boardHeader(header,control){
+    for(const label of columns)header.append(columnHeader(label,control));
   }
   function boardRow(row,player,market,games,line,projection,difference,last,rates){
     const values=[player,market,games,line,projection,difference,last,rates];
@@ -149,8 +172,14 @@
     if(!markets.length)return panel;
     const table=node('table',null,'athlete-markets'),head=node('thead'),titles=node('tr'),body=node('tbody');
     const labels=['Stat','FanDuel line','Projection','Difference','Median','Last vs opponent','Above / Below'];
-    for(const title of labels)titles.append(node('th',title));head.append(titles);table.append(head,body);
-    for(const m of markets){
+    const sort=document.getElementById(({'predict-player':'prop-filter-sort','nba-prop-player':'nba-prop-sort','ncaab-prop-player':'ncaab-prop-sort'})[select.id]);
+    for(const title of labels)titles.append(columnHeader(title,sort));head.append(titles);table.append(head,body);
+    const mode=sort&&sortMode(sort);
+    const ranked=/^(above|below)-(asc|desc)$/.test(mode)?[...markets].sort((a,b)=>{
+      const priced=Number(Number.isFinite(b.line))-Number(Number.isFinite(a.line));
+      return priced||byHitRate(a,b,mode==='above-desc'?'most':mode);
+    }):markets;
+    for(const m of ranked){
       const row=node('tr'),projection=Number.isFinite(m.projection)?Number(m.projection.toFixed(1)):null;
       const diff=projection!==null&&Number.isFinite(m.line)?Number((projection-m.line).toFixed(1)):null;
       const fields=[m.stat,m.line==null?'Unavailable':String(m.line)+(m.manual?' (manual)':''),projection??'—',diff===null?'—':diff===0?'Equal':Math.abs(diff)+' '+(diff>0?'above':'below'),Number.isFinite(m.median)?Number(m.median.toFixed(1)):'—',m.last||'Unavailable'];

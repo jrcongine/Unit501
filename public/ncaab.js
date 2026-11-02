@@ -185,7 +185,7 @@
   if(detail)board.append(controls.basketballDashboard($('ncaab-prop-player'),detail,comparisonHistory,selected,rows.map(r=>({quote:r.q,p:r.p}))));
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   table.className=detail?'market-profile-table':'projection-board';
-  if(!detail)controls.boardHeader(tr);else for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
+  if(!detail)controls.boardHeader(tr,$('ncaab-prop-sort'));else for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
   for(const {q,p,status,splits,scenario,history} of rows){const tr=node('tr','');
    if(!detail){controls.basketballRow(tr,$('ncaab-prop-player'),q,p,status,history,selected);body.append(tr);continue;}
    const observed=window.Unit501LineWatch?.fromServer(q.history,q.line,q.updatedAt);

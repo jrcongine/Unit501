@@ -73,7 +73,7 @@
   if(detail)propBoard.append(controls.basketballDashboard(player,detail,history,selected,rows.map(r=>({quote:r.p,p:r.prediction}))));
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   table.className=detail?'market-profile-table':'projection-board';
-  if(!detail)controls.boardHeader(header);else for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
+  if(!detail)controls.boardHeader(header,sort);else for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');
   for(const {p,status,prediction,splits,scenario,minutes} of rows){
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
