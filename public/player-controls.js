@@ -271,13 +271,25 @@
     function sync(){back.hidden=!select.value;title.textContent='Player · '+(select.selectedOptions[0]?.textContent||'All Players');}
     function draw(){
       list.replaceChildren();
+      const teams=new Map();
       let shown=0;
       for(const option of select.options){
         const name=norm(option.textContent),q=norm(search.value);
         if(!name.includes(q)&&!Object.entries(aliases).some(([full,aka])=>name.includes(full)&&aka.some(a=>a.includes(q))))continue;
-        const item=node('button',option.textContent.split(' — ').slice(0,2).join(' — '));if(option.value)shown++;item.type='button';
+        const [player,team]=option.textContent.split(' — ');
+        const item=node('button',player);item.type='button';
         item.addEventListener('click',()=>{select.value=option.value;menu.open=false;select.dispatchEvent(new Event('change'));sync();title.focus();});
-        list.append(item);
+        if(!option.value){list.append(item);continue;}
+        shown++;
+        const label=team||'Team unavailable';
+        if(!teams.has(label)){
+          const section=node('section');section.append(node('h4',label));teams.set(label,section);
+        }
+        teams.get(label).append(item);
+      }
+      if(teams.size){
+        const columns=node('div',null,'player-team-columns');
+        columns.append(...teams.values());list.append(columns);
       }
       const total=Array.from(select.options).filter(option=>option.value).length;
       count.textContent=shown+' of '+total+' players';
