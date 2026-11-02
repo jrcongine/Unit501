@@ -142,8 +142,8 @@
     const groups=node('div',null,'availability-teams');
     for(const team of teams){
       const roster=players.filter(p=>p.record.teamId===team.id);
-      if(!roster.length)continue;
       const section=node('section');section.append(node('h4',team.name));
+      if(!roster.length)section.append(node('small','No projections withheld'));
       for(const {record,status} of roster){
         const row=node('div',null,'availability-player');
         row.append(playerLink(select,record.id,record.name),node('span',status));
