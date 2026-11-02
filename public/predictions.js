@@ -8,6 +8,7 @@
   const results = el('predict-results');
   let loadedFor = null;
   let choices = [];
+  let historyPlayers=[];
   let opponentDefense = new Map();
   let matchupTeams = [];
   const enteredLines = new Map();
@@ -554,6 +555,7 @@ cell.append(details);
           details.append(summary, text);
           cell.append(details);
         } else cell.textContent = value;
+        if(index===0)window.Unit501PlayerControls.recentRates(cell,row.line,above,below,row.form.coverage.missing?null:row.values.length);
         if(index===1&&board.dataset.player)window.Unit501SharedUI.phonePlayerHistory(cell,row.lastOpponent,row.form.values);
         tr.append(cell);
       });
@@ -701,21 +703,38 @@ cell.append(details);
         availability:window.Unit501Availability?.snapshot(),lineupInputs:window.Unit501Lineups?.snapshot()}},Date.now());
   }
   function showPlayer() {
-    for (const option of Array.from(picker.children)) {
-      const player=choices.find(p=>p.id===option.value);
-      if(!player)continue;
-      const assessment=window.Unit501Availability?.assess(player.teamId,player.playerId);
-      option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?' — '+Unit501InjuryModel.statusLabel(assessment):''}`;
+    if(loadedFor){
+      const previous=picker.value;
+      const names=new Map(historyPlayers.map(p=>[p.id,p.name+' — '+p.team]));
+      const report=window.Unit501Availability?.snapshot();
+      for(const team of report?.current ? report.teams||[] : []){
+        if(!team.roster?.available)continue;
+        for(const p of team.roster.rows||[]){
+          if(p.id&&p.name)names.set(team.id+':'+p.id,p.name+' — '+(team.name||matchupTeams.find(t=>t.id===String(team.id))?.name||'Team unknown'));
+        }
+      }
+      const all=document.createElement('option');all.value='';all.textContent='All Players';
+      picker.replaceChildren(all);
+      for(const [id,label] of [...names].sort((a,b)=>a[1].localeCompare(b[1]))){
+        const option=document.createElement('option');option.value=id;option.textContent=label;
+        const player=choices.find(p=>p.id===id);
+        if(player && window.Unit501Availability?.assess(player.teamId,player.playerId)?.blocked)option.textContent+=' — Projection withheld';
+        picker.append(option);
+      }
+      picker.value=names.has(previous)?previous:'';
     }
     const record = choices.find(x => x.id === picker.value);
     const blocked=record && window.Unit501Availability?.assess(record.teamId,record.playerId)?.blocked;
     const slot=el('scenario-picker');
-    slot.hidden=Boolean(blocked);
-    if(!blocked)window.Unit501PlayerControls.showScenarios(starScenarios,record?.id||'',showPlayer,record?.name);
+    slot.hidden=Boolean(blocked||(!record&&picker.value));
+    if(!slot.hidden)window.Unit501PlayerControls.showScenarios(starScenarios,record?.id||'',showPlayer,record?.name);
     renderComparisons();
     results.replaceChildren();
     scenarioControls.replaceChildren();scenarioControls.hidden=true;
-    if (!record) return;
+    if (!record) {
+      if(picker.value)results.textContent='Player listed for this matchup. Verified stat history is insufficient for a projection.';
+      return;
+    }
     const title = document.createElement('h3');
     title.textContent = `${record.name} — ${record.team}`;
     results.appendChild(title);
@@ -921,7 +940,7 @@ results.appendChild(workload);
     propStatus.textContent = '';
     loadedFor = null;
     quoteTrace=[];board.dataset.displayedAutoLines='0';
-    choices = [];
+    choices = [];historyPlayers=[];
     opponentDefense.clear();
     matchupTeams = [];
     enteredLines.clear();
@@ -1093,21 +1112,15 @@ if (league === '1' && stage !== 'regular season') return false;
       }
 
       reconciled=[...map.values()].reduce((count,record)=>count+[...record.games.values()].filter(line=>line.verification?.participation===true).length,0);
-      choices = Array.from(map.values()).filter(x => x.games.size >= 2 &&
+      historyPlayers=Array.from(map.values());
+      choices = historyPlayers.filter(x => x.games.size >= 2 &&
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
-      if (!choices.length) throw new Error('Player box scores are missing or too sparse for recent-game projections.');
-      const all=document.createElement('option');all.value='';all.textContent='All Players';picker.append(all);
-      for (const player of choices) {
-        const option = document.createElement('option');
-        option.value = player.id;
-        option.textContent = `${player.name} — ${player.team}`;
-        picker.appendChild(option);
-      }
+      if (!historyPlayers.length && !window.Unit501Availability?.snapshot()?.teams?.some(t=>t.roster?.available&&t.roster.rows?.length)) throw new Error('Player box scores are missing or too sparse for recent-game projections.');
       loadedFor = gameId;
       lineScope = `${league}:${season}:${date}:${gameId}`;
       picker.value='';picker.disabled = false;
-      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against gamebooks or completed box scores. `;
+      status.textContent = `${choices.length} players with modeled stats. ${reconciled} player-game records verified against gamebooks or completed box scores. `;
       showPlayer();
       loadProps();
       priorOpponentHistory(map,teamIds,league,season,kickoff,task).catch(()=>{});

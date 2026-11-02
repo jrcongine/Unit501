@@ -193,6 +193,7 @@
    const values=[q.name+' · '+q.label+' · '+(status||'Availability unconfirmed'),q.line??'Line unavailable',p.available?p.projection.toFixed(1):p.reason||'Unavailable',window.Unit501LastOpponent.basketball(history,q,selected),p.available?p.median.toFixed(1):'—',p.available&&Number.isFinite(q.line)?(p.projection-q.line).toFixed(1):'—',p.available?p.recentValues.join(' · ')+(Number.isFinite(p.projectedMinutes)?' · '+p.projectedMinutes.toFixed(1)+' projected min':' · minutes unavailable')+(p.thin?' · small sample':''):'History incomplete or unavailable',pct('above'),pct('below'),pct('equal'),p.available?p.games:'—',movement];
    for(const [index,value] of values.entries()){
     const cell=node('td',value);
+    if(index===0)window.Unit501PlayerControls.recentRates(cell,q.line,p.above,p.below,p.games);
     if(index===0&&player)window.Unit501SharedUI.phonePlayerHistory(cell,values[3],window.Unit501LastOpponent.recentBasketball(history,q,selected));
     if(index===3)cell.className='last-opponent-stat';
         if(index===0){const change=window.Unit501NBAPlayerModel.minuteChangeText?.(p);if(change)cell.append(node('strong',change,'nba-minutes-trend'));}

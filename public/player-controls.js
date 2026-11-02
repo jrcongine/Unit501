@@ -59,27 +59,37 @@
     const teams=(history?.teams||[]).filter(team=>team.players?.some(p=>norm(p.name)===norm(name)));
     return teams.length===1&&teams[0].name ? name+' — '+teams[0].name : name;
   }
+  function recentRates(cell,line,above,below,games){
+    const label=Number.isFinite(line)&&Number.isInteger(games)&&games>0&&Number.isInteger(above)&&Number.isInteger(below)
+      ? 'Above '+(100*above/games).toFixed(1)+'% · Below '+(100*below/games).toFixed(1)+'% · '+games+' GP'
+      : 'Above/Below unavailable';
+    cell.append(node('small',label,'prop-rate-summary'));
+  }
   function playerMenu(select) {
     if(!select || typeof MutationObserver==='undefined')return;
     const menu=node('details',null,'player-menu'),title=node('summary'),list=node('div',null,'player-options');
+    const count=node('small',null,'player-count');
     const search=node('input');search.type='search';search.placeholder='Search name or nickname';search.setAttribute('aria-label',search.placeholder);
     function sync(){title.textContent='Player · '+(select.selectedOptions[0]?.textContent||'All Players');}
     function draw(){
       list.replaceChildren();
+      let shown=0;
       for(const option of select.options){
         const name=norm(option.textContent),q=norm(search.value);
         if(!name.includes(q)&&!Object.entries(aliases).some(([full,aka])=>name.includes(full)&&aka.some(a=>a.includes(q))))continue;
-        const item=node('button',option.textContent);item.type='button';
+        const item=node('button',option.textContent.split(' — ').slice(0,2).join(' — '));if(option.value)shown++;item.type='button';
         item.addEventListener('click',()=>{select.value=option.value;menu.open=false;select.dispatchEvent(new Event('change'));sync();title.focus();});
         list.append(item);
       }
+      const total=Array.from(select.options).filter(option=>option.value).length;
+      count.textContent=shown+' of '+total+' players';
       if(!list.children.length)list.append(node('small','No matching players'));
     }
     menu.addEventListener('toggle',()=>{if(menu.open){search.value='';draw();search.focus();}});
     menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;title.focus();}});
-    search.addEventListener('input',draw);menu.append(title,search,list);
+    search.addEventListener('input',draw);menu.append(title,search,count,list);
     select.before(menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
-  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel};
+  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel,recentRates};
 })(typeof window==='undefined'?globalThis:window);

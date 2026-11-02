@@ -80,6 +80,7 @@
    const row=node('tr','',status==='Out'?'nba-injury-out':'');
    for(const [index,value] of [p.name+(status?' · '+status.toUpperCase():' · AVAILABILITY UNCONFIRMED'),p.label,p.line??'Line unavailable',prediction.available?prediction.projection.toFixed(1):prediction.reason,root.Unit501LastOpponent.basketball(history,p,selected)].entries()){
     const cell=node('td',value);
+    if(index===0)root.Unit501PlayerControls.recentRates(cell,p.line,prediction.above,prediction.below,prediction.games);
     if(index===1&&player?.value)ui.phonePlayerHistory(cell,root.Unit501LastOpponent.basketball(history,p,selected),root.Unit501LastOpponent.recentBasketball(history,p,selected));
     if(index===4)cell.className='last-opponent-stat';
         if(index===0&&prediction.minuteChange){

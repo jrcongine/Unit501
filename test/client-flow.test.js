@@ -1272,3 +1272,17 @@ test('football quote refresh captures each accepted market once with its actual 
  assert.equal(store.latest()[0].accepted,4);assert.equal(store.latest()[0].displayed,0);
  assert.equal(store.latest()[0].entries.filter(r=>r.reason==='Excluded by view filters').length,3);
 });
+
+test('player menu includes roster-only players while comparative rates require a verified line and history',async()=>{
+ const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
+ await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ const availability=h.context.Unit501Availability;
+ const snapshot=availability.snapshot();
+ h.context.Unit501Availability={...availability,snapshot:()=>({...snapshot,current:true,teams:snapshot.teams.map((team,i)=>i?team:{...team,roster:{...team.roster,available:true,rows:[...(team.roster?.rows||[]),{id:'222',name:'Roster Only'}]}})})};
+ await selectPlayer(h,'');
+ assert.match(h.nodes.get('predict-player').textContent,/Roster Only/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Above [\d.]+% · Below [\d.]+% · \d+ GP/);
+ await selectPlayer(h,'1:222');
+ assert.match(h.nodes.get('predict-results').textContent,/insufficient/);
+ assert.equal(h.nodes.get('saved-line-comparisons').dataset.displayedAutoLines,'0');
+});
