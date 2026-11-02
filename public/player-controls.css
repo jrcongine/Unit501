@@ -71,3 +71,9 @@ button.all-players-back[hidden]{display:none!important}
 .player-team-columns section{display:grid;min-width:0}
 .player-team-columns h4{margin:.5rem 0;color:inherit}
 .player-team-columns button{width:100%;overflow-wrap:anywhere}
+
+/* Keep usage alerts legible on either stripe of the projections board. */
+.projection-board tbody tr.prop-role-alert{background:#242b35;color:#edf6ff}
+.projection-board tbody tr.prop-role-alert td{color:inherit}
+.projection-board tbody tr.prop-role-alert td:nth-child(4){color:#7beafa}
+.projection-board tbody tr.prop-role-alert td:first-child{border-left:4px solid #d4b24c}
