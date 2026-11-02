@@ -5,12 +5,22 @@
     off: {label:'Standard projection',factor:1},
     boost: {label:'⚡ Star Power',factor:1.10},
     dud: {label:'⚡ Rivalry Dud',factor:0.90},
+    rivalry: {label:'Rivalry Boost',factor:1.10},
+    early: {label:'Early Kickoff Hangover',factor:0.90},
+    defense: {label:'Defensive Dogfight',factor:0.90},
     fatigue: {label:'😴 Fatigue',factor:0.95}
   });
   function adjust(value, mode = 'off', game = null) {
     if (!Number.isFinite(value) || value < 0) return null;
-    const key = Object.hasOwn(modes,mode) ? mode : 'off';
-    const setting = modes[key];
+    const keys = [...new Set(Array.isArray(mode) ? mode : [mode])]
+      .filter(key => key !== 'off' && Object.hasOwn(modes,key));
+    const key = keys.join('+') || 'off';
+    // Count the strongest performance boost and recovery penalty once each.
+    const positive = keys.some(k => k === 'boost' || k === 'rivalry') ? 10 : 0;
+    const recovery = keys.includes('early') ? -10 : keys.includes('fatigue') ? -5 : 0;
+    const matchup = keys.includes('defense') || keys.includes('dud') ? -10 : 0;
+    const setting = {factor:1+(positive+recovery+matchup)/100,
+      label:keys.map(k=>modes[k].label).join(' + ') || modes.off.label};
     let weekday = null;
     if (Number.isFinite(game?.kickoff)) {
       weekday = new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',weekday:'long'}).format(new Date(game.kickoff));

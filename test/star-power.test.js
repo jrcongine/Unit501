@@ -21,3 +21,10 @@ test('invalid numbers are withheld, and no gameday fixture is required',()=>{
  assert.equal(adjust(0,'boost').adjusted,0);
  assert.equal(adjust(20,'boost').weekday,null);
 });
+test('overlapping scenarios use one boost and the strongest recovery penalty',()=>{
+ assert.equal(adjust(100,['boost','rivalry','boost']).factor,1.1);
+ assert.equal(adjust(100,['early','fatigue']).adjusted,90);
+ assert.equal(adjust(100,['early','boost']).adjusted,100);
+ assert.equal(adjust(100,['early','boost']).applied,true);
+ assert.equal(adjust(100,['defense','early']).adjusted,80);
+});

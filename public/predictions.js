@@ -26,7 +26,9 @@
   refreshProps.type = 'button';
   refreshProps.textContent = 'Refresh FanDuel props';
   refreshProps.disabled = true;
-  results.before(refreshProps, propStatus);
+  const sourceDetails=document.createElement('details'),sourceTitle=document.createElement('summary');
+  sourceTitle.textContent='FanDuel feed details';sourceDetails.append(sourceTitle,propStatus);
+  results.before(refreshProps,sourceDetails);
   const playerName = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   async function loadProps() {
     if (!loadedFor || !selected) return;
@@ -179,16 +181,7 @@
     if (!loadedFor) return;
     const title = document.createElement('h3');
     title.textContent = 'Our projections vs FanDuel';
-    const note = document.createElement('p');
-    note.textContent = 'Selected game • Props with lines are shown by default. Choose All player data to inspect other markets or enter a missing line. Unavailable players are excluded. Open Report details for sources and missing data; no injury listed does not confirm participation.';
-    note.style.cssText = 'font-size:.9em;opacity:.8';
-    board.append(title, note);
-    if (starScenarios.size) {
-      const flag=document.createElement('p');
-      flag.textContent='🎮 Manual game-day scenarios active for '+starScenarios.size+' player(s). Experimental +10% Star Power / −10% Rivalry Dud / −5% Short-week Fatigue, not calibrated; automatic research queue excludes altered projections.';
-      flag.style.cssText='color:#b0eaff;font-weight:600';
-      board.append(flag);
-    }
+    board.append(title);
     const rows = [];
     const withheldMarkets = [];
     for (const record of choices) {
@@ -225,6 +218,13 @@
   board.dataset.sort = '';
 }
 
+board.dataset.player = picker.value || '';
+const diagnostics = document.createElement('details');
+diagnostics.open=board.dataset.diagnostics==='open';
+diagnostics.addEventListener('toggle',()=>{if(diagnostics.isConnected)board.dataset.diagnostics=diagnostics.open?'open':'';});
+const diagnosticsTitle = document.createElement('summary');
+diagnosticsTitle.textContent = 'More filters and diagnostics';
+diagnostics.append(diagnosticsTitle);
 const filters = document.createElement('div');
 filters.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin:12px 0';
 
@@ -252,7 +252,6 @@ function addFilter(key, title, options) {
 }
 
 addFilter('markets', 'Markets', [['', 'Props with lines'], ['all', 'All player data']]);
-addFilter('player', 'Player', [['', 'All players'], ...choices.map(player => [player.id, `${player.name} — ${player.team}`])]);
 addFilter('team', 'Team', [
   ['', 'Both teams'],
   ...matchupTeams.map(team => [team.id, team.name])
@@ -287,20 +286,9 @@ addFilter('direction', 'Projection', [
   ['above', 'Above line'],
   ['below', 'Below line']
 ]);
-addFilter('sort', 'Order', [
-  ['', 'Player order'],
-  ['reviewed-gap', 'Cleaner data first — biggest difference'],
-  ['gap', 'Largest discrepancy overall'],
-  ['stat-gap', 'Largest difference within each stat'],
-  ['above-desc', 'Highest Above %'],
-  ['above-asc', 'Lowest Above %'],
-  ['below-desc', 'Highest Below %'],
-  ['below-asc', 'Lowest Below %'],
-  ['most-covers', 'Most Covers'],
-  ['least-covers', 'Least Covers'],
-  ['sample', 'Most recorded games']
-]);
-board.append(filters);
+diagnostics.append(filters);
+el('prop-filter-sort').value=board.dataset.sort;
+board.append(diagnostics);
 const shortlistNote = document.createElement('p');
 shortlistNote.textContent = `${shortlisted.size} shortlisted for this matchup. My shortlist follows all active filters; unavailable players and expired automatic lines are omitted. This is not a ranked recommendation.`;
 const clearShortlist = document.createElement('button');
@@ -309,24 +297,11 @@ clearShortlist.type = 'button';
 clearShortlist.textContent = 'Clear shortlist';
 clearShortlist.disabled = !shortlisted.size;
 clearShortlist.addEventListener('click', () => { shortlisted.clear(); renderComparisons(); });
-board.append(shortlistNote, clearShortlist);
+diagnostics.append(shortlistNote, clearShortlist);
 const researchNote = document.createElement('p');
  researchNote.textContent = 'Automatic research queue only: fresh FanDuel lines with at least one quoted side, 5+ recorded games, no model data-review flags, full recorded workload and a projection different from the line. Players still require independent starter, injury and price verification. This is not a betting edge, prediction confidence or automatic board vote.';
  researchNote.style.cssText='font-size:.9em;opacity:.85';
  if(board.dataset.shortlist==='automatic')board.append(researchNote);
- const orderingNote = document.createElement('p');
-orderingNote.textContent = /^(above|below)-(asc|desc)$/.test(board.dataset.sort)
-   ? 'Sorted by percentage '+(board.dataset.sort.startsWith('above')?'above':'below')+' the line, '+(board.dataset.sort.endsWith('desc')?'highest':'lowest')+' first. Incomplete stat histories are unverified and rank last. Equal results are non-hits; ties use more recorded games.'
-   : ['most-covers','least-covers'].includes(board.dataset.sort)
-   ? 'Sorted across visible props by percentage above the current line. Equal results remain separate; ties favor more below-line results for Least Covers, then more recorded games. Historical frequency, not win probability.'
-   : board.dataset.sort === 'reviewed-gap'
-   ? 'Cleaner data first sorts props with at least five recorded games and no statistical or workload flags ahead of those needing review, then orders by absolute projection-versus-line difference. It is not a betting-edge ranking; playing status, odds and model calibration still need verification.'
-   : board.dataset.sort === 'gap'
-   ? 'Largest discrepancy overall ranks every visible prop by the absolute distance between projection and line, biggest first. It mixes yards, attempts and counts, so this is a raw numerical comparison, not betting value or a win probability.'
-   : 'Largest difference within each stat keeps stat categories separate and sorts by absolute projection-versus-line distance inside each category. Neither sort predicts the chance of winning; verify participation, prices and model reliability.';
-orderingNote.style.cssText = 'font-size:.85em;opacity:.8';
-board.append(orderingNote);
-
 const missing = withheldMarkets.filter(row =>
   (board.dataset.markets === 'all' || row.line !== null) &&
   (!board.dataset.player || row.record.id === board.dataset.player) &&
@@ -437,7 +412,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
         entries.push({name:t.quote.name,stat:t.quote.stat,line:t.quote.line,reason});
         const item=document.createElement('p');item.textContent=t.quote.name+' · '+(t.def?.title||t.quote.stat)+' '+t.quote.line+' · '+reason;details.append(item);
       }
-      board.append(details);
+      diagnostics.append(details);
       if(captureNextTrace){
         captureNextTrace=false;
         const [league,season,,game]=lineScope.split(':');
@@ -452,7 +427,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
      board.append(empty); return;
     }
 
-    const auditNote=document.createElement('p');auditNote.textContent=board.dataset.displayedAutoLines+' automatic lines displayed in this table after player, availability, projection and view filters.';board.append(auditNote);
+    const auditNote=document.createElement('p');auditNote.textContent=board.dataset.displayedAutoLines+' automatic lines displayed in this table after player, availability, projection and view filters.';diagnostics.append(auditNote);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'overflow-x:auto;margin-bottom:18px';
     wrap.tabIndex = 0;
@@ -469,28 +444,7 @@ for (let i = rows.length - 1; i >= 0; i--) {
     for (const name of ['Player / team', 'Stat', 'Status', 'Stat games', 'Projection', 'Last vs opponent', 'Median', 'Line', 'Difference', 'Recent above / below / equal', 'Recorded workload', 'Observed line movement']) {
       const cell = document.createElement('th');
       cell.scope = 'col';
-      if(name==='Recent above / below / equal'){
-        const heading=document.createElement('span');heading.textContent='Recent ';
-        cell.append(heading);
-        for(const [index,side] of ['above','below'].entries()){
-          if(index)cell.append(' / ');
-          const sort=document.createElement('button');sort.type='button';
-          sort.id='sort-recent-'+side;
-          const active=board.dataset.sort.startsWith(side+'-');
-          const ascending=board.dataset.sort===side+'-asc';
-          sort.textContent=side[0].toUpperCase()+side.slice(1)+(active?(ascending?' ↑':' ↓'):'');
-          sort.setAttribute('aria-label','Sort by '+side+' percentage, '+(active&&!ascending?'lowest':'highest')+' first');
-          sort.setAttribute('aria-pressed',String(active));
-          sort.addEventListener('click',()=>{
-            board.dataset.sort=active&&!ascending?side+'-asc':side+'-desc';
-            renderComparisons();
-            el('sort-recent-'+side)?.focus({preventScroll:true});
-          });
-          cell.append(sort);
-          if(active)cell.setAttribute('aria-sort',ascending?'ascending':'descending');
-        }
-        cell.append(' / Equal');
-      }else cell.textContent = name;
+      cell.textContent = name;
       if(name==='Last vs opponent')cell.className='last-opponent-stat';
         cell.style.cssText = 'padding:10px;border-bottom:1px solid #45495b';
       header.append(cell);
@@ -777,8 +731,9 @@ cell.append(details);
     const scenarioTitle=document.createElement('h3');
     scenarioTitle.textContent='Player controls — '+record.name+' — '+record.team;
     scenarioControls.append(scenarioTitle);
-    const scopeNote=document.createElement('p');scopeNote.textContent='These controls apply to this selected player. Changes update their rows in the table below.';
-    scenarioControls.append(scopeNote);
+    const advanced=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent='Role and workload';advanced.append(summary);
+    scenarioControls.append(window.Unit501PlayerControls.scenarios(starScenarios,record.id,showPlayer),advanced);
     const roleLabel=document.createElement('label');roleLabel.textContent='Role review: ';
     const roleSelect=document.createElement('select');roleSelect.id='player-role-review';
     for(const [value,label] of [['','Automatic evidence'],['new','New starter'],['returning','Back to starter role'],['primary','Primary option'],['increase','Significant usage increase']]){
@@ -789,9 +744,9 @@ cell.append(details);
       if(roleSelect.value)roleReviews.set(record.id,roleSelect.value);else roleReviews.delete(record.id);
       showPlayer();
     });
-    roleLabel.append(roleSelect);scenarioControls.append(roleLabel);
+    roleLabel.append(roleSelect);advanced.append(roleLabel);
     const roleNote=document.createElement('p');roleNote.textContent='Role review highlights the player; their projection still uses recorded history. Season averages can lag a new or larger role.';
-    scenarioControls.append(roleNote);
+    advanced.append(roleNote);
     const scenarioLabel = document.createElement('label');
     scenarioLabel.textContent = 'Workload scenario (% of recorded baseline): ';
     const scenario = document.createElement('select');
@@ -809,51 +764,10 @@ cell.append(details);
       showPlayer();
     };
     scenarioLabel.appendChild(scenario);
-    scenarioControls.appendChild(scenarioLabel);
+    advanced.appendChild(scenarioLabel);
     const scenarioNote = document.createElement('p');
     scenarioNote.textContent = '100% keeps the recorded baseline. For a new starter or expanded role, 125%, 150% and 200% model 25%, 50% and 100% more workload. These are manual assumptions, not an automatic promotion or a chance of playing. This scales this player’s props linearly without redistributing teammates’ touches or changing team scores. Avoid adding another increase for work already transferred in a confirmed replacement scenario. A 0% scenario is not an under recommendation; check sportsbook participation rules.';
-    scenarioControls.appendChild(scenarioNote);
-    // Manual player scenario switches affect only the selected player's props, not team scores.
-    const powerPanel=document.createElement('div');
-    powerPanel.id='player-power-controls';
-    powerPanel.style.cssText='border:1px solid #55c8ec;border-radius:12px;background:#122c40;padding:12px;margin:12px 0';
-    const powerHeading=document.createElement('strong');
-    powerHeading.textContent='🎮 Player scenarios';
-    powerPanel.append(powerHeading);
-    const powerButtons=document.createElement('div');
-    powerButtons.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
-    const activeMode=starScenarios.get(record.id) || 'off';
-    for (const [mode,label] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],
-      ['dud','⚡ Rivalry Dud −10%'],['fatigue','😴 Fatigue −5%']]) {
-      const control=document.createElement('button');
-      control.type='button';control.textContent=label;
-      control.setAttribute('aria-pressed',String(activeMode===mode));
-      control.style.cssText='padding:8px 10px;border-radius:9px;border:1px solid #55c8ec;cursor:pointer;'+
-        (activeMode===mode?'background:#087b70;color:white;font-weight:bold':'background:#19384a;color:#e2f5ff');
-      control.addEventListener('click',()=>{
-        if(mode==='off')starScenarios.delete(record.id);else starScenarios.set(record.id,mode);
-        showPlayer();
-      });
-      powerButtons.append(control);
-    }
-    const enhanceLabel=document.createElement('label');enhanceLabel.className='prime-time-toggle';
-    const enhance=document.createElement('input');enhance.type='checkbox';enhance.id='prime-time-enhance';
-    enhance.checked=activeMode==='boost';
-    enhance.addEventListener('change',()=>{
-      if(enhance.checked)starScenarios.set(record.id,'boost');else starScenarios.delete(record.id);
-      showPlayer();
-    });
-    enhanceLabel.append(enhance,' Prime-Time Enhance — '+(enhance.checked?'ON':'OFF'));
-    powerPanel.append(enhanceLabel,powerButtons);
-    const powerNote=document.createElement('p');
-    const preview=window.Unit501StarPower?.adjust(100,activeMode,selected) ||
-      {applied:false,label:'Standard projection',factor:1,warning:'Game-day modifiers unavailable.'};
-    powerNote.textContent=(preview.applied?preview.label+' changes only this player’s projected stats by '+
-      Math.round((preview.factor-1)*100)+'%. ':'Standard projections active. ')+preview.warning+
-      ' Experimental scenario only; not a validated betting edge or automatic player boost. Changes do not affect team totals.';
-    powerNote.style.cssText='font-size:.9em;color:#c8dbe6;margin:0';
-    powerPanel.append(powerNote);
-    scenarioControls.append(powerPanel);
+    advanced.appendChild(scenarioNote);
     const workload = document.createElement('p');
 const history = Array.from(record.games.values())
   .sort((a, b) => b.gameDate - a.gameDate);
@@ -1179,6 +1093,7 @@ if (league === '1' && stage !== 'regular season') return false;
         Array.from(x.games.values()).some(line => definitions.some(d => line[d.key] !== undefined))
       ).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
       if (!choices.length) throw new Error('Player box scores are missing or too sparse for recent-game projections.');
+      const all=document.createElement('option');all.value='';all.textContent='All Players';picker.append(all);
       for (const player of choices) {
         const option = document.createElement('option');
         option.value = player.id;
@@ -1187,8 +1102,8 @@ if (league === '1' && stage !== 'regular season') return false;
       }
       loadedFor = gameId;
       lineScope = `${league}:${season}:${date}:${gameId}`;
-      picker.disabled = false;
-      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against gamebooks or completed box scores. All supported projections are listed below; select a player for a detailed breakdown.`;
+      picker.value='';picker.disabled = false;
+      status.textContent = `${choices.length} players loaded. ${reconciled} player-game records verified against gamebooks or completed box scores. `;
       showPlayer();
       loadProps();
       priorOpponentHistory(map,teamIds,league,season,kickoff,task).catch(()=>{});
@@ -1203,6 +1118,8 @@ if (league === '1' && stage !== 'regular season') return false;
   document.addEventListener('unit501:weather-updated',()=>{if(loadedFor)showPlayer();});
   el('weatherEnabled')?.addEventListener('change',()=>{if(loadedFor)showPlayer();});
   document.addEventListener('unit501:availability-updated', () => { if (loadedFor) showPlayer(); });
-  picker.addEventListener('change', () => {   showPlayer();   scenarioControls.scrollIntoView({     behavior: 'smooth',     block: 'start'   }); });
+  el('prop-filter-sort').addEventListener('change',()=>{board.dataset.sort=el('prop-filter-sort').value;renderComparisons();});
+  window.Unit501PlayerControls.playerMenu(picker);
+  picker.addEventListener('change',showPlayer);
   reset();
 })();

@@ -3,7 +3,8 @@
 // credential logging, or production-data writes. Failures never stop the app.
 const {createHash}=require('node:crypto');
 const fs=require('node:fs/promises'),path=require('node:path');
-const assets=['app.js','predictions.js','game-center.js','game-center.css','injury-changes.js','buy-the-hook.js','worth-a-look.js','api-usage.js','index.html','sport-layout.js','sport-layout.css','league-pulse.js','outside-picks.js','unit501-shared-ui.js','nba.js','ncaab.js','player-stats.js','football-position.js','auto-injury.js','nba.html','ncaab.html','basketball-injury-model.js','basketball-history-comparison.js','nba-win-calibration.js','nba-player-model.js','nba-markets.js','last-opponent.js'];
+const assets=['app.js','predictions.js','game-center.js','game-center.css','injury-changes.js','buy-the-hook.js','worth-a-look.js','api-usage.js','index.html','sport-layout.js','sport-layout.css','league-pulse.js','outside-picks.js','unit501-shared-ui.js','nba.js','ncaab.js','player-stats.js','football-position.js','auto-injury.js','nba.html','ncaab.html','basketball-injury-model.js','basketball-history-comparison.js','nba-win-calibration.js','nba-player-model.js','nba-markets.js','last-opponent.js','player-controls.js','player-controls.css','star-power.js',
+ ...['off','boost','rivalry','early','defense','fatigue'].map(key=>'scenario-art/'+key+'.webp')];
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const states=new Set(['working','empty','partial','failed','unavailable','loading','stale','unchecked']);
 const expectedFeeds=['nfl','ncaaf','nba','ncaab'].flatMap(sport=>
@@ -30,7 +31,7 @@ async function verify({port,password,commit,fetcher=fetch,readFile=fs.readFile}=
   try{
    const r=await fetcher(`http://127.0.0.1:${Number(port)}/${file}`,options);
    if(!r.ok){result.assets.push({file,status:'http-failed'});continue;}
-   const served=await r.text(),expected=await readFile(path.join(__dirname,'public',file),'utf8');
+   const served=Buffer.from(await r.arrayBuffer()),expected=await readFile(path.join(__dirname,'public',file));
    result.assets.push({file,status:hash(served)===hash(expected)?'verified':'mismatch'});
   }catch{result.assets.push({file,status:'unavailable'});}
  }

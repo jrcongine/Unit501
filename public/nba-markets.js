@@ -34,6 +34,7 @@
   if(ml&&fresh(ml.updatedAt))card('Moneyline',[selected.away+' '+signed(ml.away),historyText(quotes.history?.awayMoneyline,ml.away,ml.updatedAt),selected.home+' '+signed(ml.home),historyText(quotes.history?.homeMoneyline,ml.home,ml.updatedAt)],ml.updatedAt);
   else card('Moneyline',['No current paired moneyline available. Refresh game lines.']);
  }
+ window.Unit501PlayerControls.playerMenu(player);
  function renderProps(){
   historyComparison?.update(history,selected);propBoard.replaceChildren();if(!selected||(!props&&!history))return;
   for(const [name,scenario] of injuryScenarios){
@@ -43,7 +44,7 @@
   const audit=props?.audit;if(audit)propBoard.append(node('p',`${audit.quotesReceived} quote candidates received; ${audit.accepted} accepted; ${audit.rejected} rejected (${Object.entries(audit.reasons).map(([k,v])=>k+': '+v).join(', ')||'none'}).`));
   const query=search.value.trim().toLowerCase();
   const catalogRows=root.Unit501NBAPlayerModel.catalogRows(props?.props,history,selected);
-  if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(catalogRows.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=catalogRows.some(p=>p.name===previous)?previous:'';}
+  if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(catalogRows.map(p=>p.name))].sort()){const option=node('option',window.Unit501PlayerControls.teamLabel(name,history));option.value=name;player.append(option);}player.value=catalogRows.some(p=>p.name===previous)?previous:'';}
   root.Unit501LastOpponent.loadSelected(history,player?.value,selected,'nba',renderProps);
   const source=catalogRows.filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
@@ -61,7 +62,7 @@
   if(!rows.length){propBoard.append(node('p','No current player quotes match this view. Change the filters or refresh props.'));return;}
   const catalog=['player_points','player_rebounds','player_assists','player_threes'];
   if(player?.value||sort?.value==='name')rows.sort((a,b)=>a.p.name.localeCompare(b.p.name)||catalog.indexOf(a.p.market)-catalog.indexOf(b.p.market));
-  if(!player?.value&&(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap'))rows.sort((a,b)=>{
+  if(sort?.value==='most'||sort?.value==='least'||sort?.value==='gap')rows.sort((a,b)=>{
    if(a.prediction.available!==b.prediction.available)return a.prediction.available?-1:1;
    if(!a.prediction.available)return a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
    if(a.p.unpriced!==b.p.unpriced)return a.p.unpriced?1:-1;
@@ -70,6 +71,7 @@
    const field=sort.value==='most'?'above':'below';
    return b.prediction[field]*a.prediction.games-a.prediction[field]*b.prediction.games||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
   });
+  if(player?.value)propBoard.append(window.Unit501PlayerControls.scenarios(playerScenarios,normalizedName(player.value),renderProps));
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');
@@ -86,10 +88,6 @@
      const gap=Number.isFinite(p.line)?prediction.projection-p.line:null;
      if(gap!==null)cell.append(node('small','Projection vs line: '+(gap>=0?'+':'')+gap.toFixed(1),'nba-line-history'));
      cell.append(node('small',root.Unit501NBAPlayerModel.availabilityNote(status),'nba-line-history'));
-     const label=node('label','Manual scenario '),select=node('select');
-     for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
-     select.value=playerScenarios.get(normalizedName(p.name))||'off';
-     select.addEventListener('change',()=>{playerScenarios.set(normalizedName(p.name),select.value);renderProps();});label.append(select);cell.append(label);
      if(prediction.scenario?.applied)cell.append(node('small','Manual, uncalibrated · before scenario '+prediction.scenario.baseline.toFixed(1),'nba-line-history'));
      if(Array.isArray(prediction.recentValues)&&prediction.recentValues.length)cell.append(node('small','Last '+prediction.recentValues.length+': '+prediction.recentValues.join(' · ')+' (newest first)','nba-line-history'));
      for(const split of splits.slice(0,2)){
@@ -215,7 +213,7 @@
    if(kind==='game'){quotes=data;renderGames();}
    else{
     if(!Array.isArray(data.props))throw Error('NBA player quotes were not returned as a list.');
-    props=data;if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(data.props.map(p=>p.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=data.props.some(p=>p.name===previous)?previous:'';}renderProps();
+    props=data;if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(data.props.map(p=>p.name))].sort()){const option=node('option',window.Unit501PlayerControls.teamLabel(name,history));option.value=name;player.append(option);}player.value=data.props.some(p=>p.name===previous)?previous:'';}renderProps();
    }
    const coverage=kind==='props'?(data.coverage||[]).map(m=>m.label+': '+m.lines).join(' · '):'';
    status.textContent=(data.message||'NBA FanDuel quotes checked.')+(coverage?' '+coverage+'.':'')+' '+(data.tracking?.message||'Shared tracking status unavailable.')+' Quotes expire after 30 minutes or at tipoff.';

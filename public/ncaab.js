@@ -147,11 +147,12 @@
   try{const [quotes,history]=await Promise.all([api('props',game).then(q=>{if(!Array.isArray(q.props))throw Error('Player lines unavailable: invalid provider response.');return q;}).catch(error=>({props:[],message:error.message||'Player lines unavailable.'})),api('player-history',game).then(h=>Array.isArray(h.teams)&&h.teams.length===2&&h.teams.every(t=>typeof t.available==='boolean'&&Array.isArray(t.players))?h:null).catch(()=>null),injuryPromise||Promise.resolve()]);if(task!==serial)return;$('ncaab-props-status').textContent=quotes.message+(quotes.audit?' '+quotes.audit.quotesReceived+' quote candidates received; '+quotes.audit.accepted+' accepted; '+quotes.audit.rejected+' rejected ('+Object.entries(quotes.audit.reasons).map(([k,v])=>k+': '+v).join(', ')+').':'')+(history?' · '+history.teams.reduce((n,t)=>n+(t.verification?.verified||0),0)+' player-game records checked against NCAA official statistics.':'');const rows=[];
    for(const q of window.Unit501NBAPlayerModel.catalogRows(quotes.props,history,game))rows.push({q,history});
    acceptedQuotes=quotes.props;comparisonHistory=history;propRows=rows;const player=$('ncaab-prop-player'),previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);
-   for(const name of [...new Set(rows.map(r=>r.q.name))].sort()){const option=node('option',name);option.value=name;player.append(option);}player.value=rows.some(r=>r.q.name===previous)?previous:'';
+   for(const name of [...new Set(rows.map(r=>r.q.name))].sort()){const option=node('option',window.Unit501PlayerControls.teamLabel(name,history));option.value=name;player.append(option);}player.value=rows.some(r=>r.q.name===previous)?previous:'';
    renderProps();
 
   }catch(error){if(task===serial)$('ncaab-props-status').textContent=error.message||'Player props unavailable. Try again later.';}finally{if(task===serial)button.disabled=false;}
  });
+ window.Unit501PlayerControls.playerMenu($('ncaab-prop-player'));
  function renderProps(){
   historyComparison?.update(comparisonHistory,selected);clearTimeout(propExpiry);const board=$('ncaab-props');board.replaceChildren();if(!selected)return;
   const player=$('ncaab-prop-player').value,sort=$('ncaab-prop-sort').value,catalog=['player_points','player_rebounds','player_assists','player_threes'];
@@ -168,7 +169,7 @@
   });
   rows.sort((a,b)=>{
    const order=()=>a.q.name.localeCompare(b.q.name)||catalog.indexOf(a.q.market)-catalog.indexOf(b.q.market);
-   if(player||sort==='name')return order();
+   if(sort==='name'||!sort)return order();
    if(a.p.available!==b.p.available)return a.p.available?-1:1;
    if(!a.p.available)return order();
    if(a.q.unpriced!==b.q.unpriced)return a.q.unpriced?1:-1;
@@ -179,6 +180,7 @@
   window.Unit501SharedUI.basketballQuoteTrace(board,acceptedQuotes,rows.map(r=>({quote:r.q,prediction:r.p})),player,selected.tipoff);
   board.setAttribute('data-displayed-lines',String(rows.filter(r=>Number.isFinite(r.q.line)).length));board.append(node('p',rows.filter(r=>Number.isFinite(r.q.line)).length+' betting lines · '+rows.length+' player/stat rows displayed; history-only rows have no betting line.'));
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
+  if(player)board.append(window.Unit501PlayerControls.scenarios(playerScenarios,player,renderProps));
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
   for(const {q,p,status,splits,scenario,history} of rows){const tr=node('tr','');
@@ -207,9 +209,6 @@
       cell.append(node('small','Teammate absence minutes scenario · uses overall stat rate; not a confirmed rotation.'));
       const reset=node('button','Reset minutes');reset.type='button';reset.addEventListener('click',()=>{injuryScenarios.delete(q.name);renderProps();});cell.append(reset);
      }
-     const label=node('label','Manual scenario '),select=node('select');
-     for(const [value,text] of [['off','Normal 0%'],['boost','⚡ Star Power +10%'],['dud','⚡ Rivalry Dud −10%'],['fatigue','Fatigue −5%']]){const option=node('option',text);option.value=value;select.append(option);}
-     select.value=playerScenarios.get(q.name)||'off';select.addEventListener('change',()=>{playerScenarios.set(q.name,select.value);renderProps();});label.append(select);cell.append(label);
      if(p.scenario?.applied)cell.append(node('small','Manual, uncalibrated · before scenario '+p.scenario.baseline.toFixed(1)));
     }
     tr.append(cell);

@@ -62,7 +62,7 @@ function harness(storage=new Map(),extras=false) {
   return {ok:true,json:async()=>response};
  };
  const run=source=>vm.runInContext(source,context);
- for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','football-position.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','football-travel.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','star-power.js','last-opponent.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
+ for(const file of ['weather-model.js','probability-calibration.js','pace-model.js','team-model.js','forecast-archive.js','forecast-results.js','score-audit.js','score-audit-ui.js','market-reliability.js','injury-backtest.js','forecast-dashboard.js','venue-weather.js','football-position.js','auto-injury.js','line-watch.js','market-pulse.js','unit501-shared-ui.js','league-pulse.js','football-travel.js','app.js','injury-model.js','player-form.js','player-stats.js','player-backtest.js','player-controls.js','star-power.js','last-opponent.js','predictions.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  if(extras)for(const file of ['availability.js','lineup-model.js','player-ratings-ui.js','auto-prep.js'])run(fs.readFileSync(path.join(__dirname,'../public',file),'utf8'));
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,storage,run,game,data,timers,settle,context,created};
@@ -162,11 +162,17 @@ test('verified league yardage ranks appear without replacing the paid scoring or
  assert.equal(h.data.teams[0].metrics.rushFor.rank,null);
 });
 
+async function selectPlayer(h,value='1:7'){
+ const picker=h.nodes.get('predict-player');picker.value=value;
+ await picker.dispatchEvent({type:'change'});
+}
+
 test('actual client flow allows scoring during ranking build and persists manual RB prop lines across reload/refresh',async()=>{
  const h=harness();await h.settle();h.run('$("league").value="1"');h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.match(h.nodes.get('team-context').textContent,/Scoring is ready/);
  h.run('sim()');assert.equal(h.nodes.get('score').textContent,'23–26');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.match(h.nodes.get('prop-feed-status').textContent,/3\/8 modeled markets/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/No usable lines returned for: Passing yards/);
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
@@ -175,6 +181,7 @@ test('actual client flow allows scoring during ranking build and persists manual
  assert.ok([...h.storage].some(([k,v])=>k.endsWith(':1:7:carries')&&JSON.parse(v).value==='21.5'));
  const next=harness(h.storage);await next.settle();next.run('$("league").value="1"');next.run(`choose(parseGame(${JSON.stringify(next.game)}))`);await next.settle();
  await next.nodes.get('predict').dispatchEvent({type:'click'});await next.settle();
+ await selectPlayer(next);
  assert.equal(next.nodes.get('line-1:7-carries').value,'21.5');
  // A new ranking response must not discard a saved manual line.
  next.run(`showTeamContext(${JSON.stringify(next.data)},selected)`);await next.settle();assert.equal(next.nodes.get('line-1:7-carries').value,'21.5');
@@ -214,6 +221,7 @@ test('actual ratings, roster, replacement, score and prop flows share one scenar
  h.run('sim()');assert.equal(h.nodes.get('score').textContent,'21–26');
  h.run("document.dispatchEvent(new Event('unit501:team-context-updated'))");assert.equal(h.nodes.get('score').textContent,'21–26');
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.match(h.nodes.get('predict-results').textContent,/0.0 projected/);
  h.nodes.get('predict-player').value='1:9';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  assert.match(h.nodes.get('predict-results').textContent,/75.0 projected/);
@@ -287,6 +295,7 @@ test('simulation archives ordinary forecasts and keeps the first forecast across
 test('ordinary prop forecasts and chosen picks stay separate with exact line and price',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  const archive=()=>h.run('Unit501ForecastArchive.read(localStorage).snapshots');
  assert.ok(archive().some(s=>s.kind==='prop'&&!s.selection&&s.records[0].market==='carries'));
  const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
@@ -302,6 +311,7 @@ test('ordinary prop forecasts and chosen picks stay separate with exact line and
 test('switching matchups clears scenarios and ignores late injury, rating, ranking, odds and prop responses',async()=>{
  const h=harness(new Map(),true);await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.settle();
  await h.nodes.get('build-player-ratings').onclick();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  const replacement=h.nodes.get('replacement-1:7'),workload=h.nodes.get('workload-1:7'),confirm=h.nodes.get('baseline-1:7');
  replacement.value='9';replacement.onchange();workload.value='0';workload.onchange();confirm.checked=true;confirm.onchange();
  assert.equal(h.run('Unit501Lineups.evaluate().applied'),true);
@@ -338,6 +348,7 @@ test('switching matchups clears scenarios and ignores late injury, rating, ranki
 test('player view shows quoted comparisons without the unpriced overview',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ await selectPlayer(h);
  assert.equal(h.nodes.get('all-player-projections'),undefined);
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Our projections vs FanDuel/);
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
@@ -361,13 +372,16 @@ test('saved manual lines stay scoped to a game and return only when that exact g
  const original=h.context.fetch;
  h.context.fetch=async url=>{const u=new URL(url,'http://localhost');if(u.pathname==='/api/games')return {ok:true,json:async()=>({response:[h.game,next]})};return original(url);};
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  const workload=h.nodes.get('player-workload-scenario');workload.value='50';workload.onchange();
  const line=h.nodes.get('line-1:7-carries');line.value='21.5';await line.dispatchEvent({type:'input'});
  h.run(`choose(parseGame(${JSON.stringify(next)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
  assert.equal(h.nodes.get('player-workload-scenario').value,'100');
  assert.ok(![...h.storage].some(([k,v])=>k.includes(':1000:')&&JSON.parse(v).value==='21.5'));
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.equal(h.nodes.get('line-1:7-carries').value,'21.5');
 });
 
@@ -415,12 +429,14 @@ test('weather displays retractable and covered venues as context and skips fixed
 test('prop board sorts largest raw discrepancy across stats or within a stat, with reset on game selection',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  const input=h.nodes.get('line-1:7-carries');input.value='21.5';await input.dispatchEvent({type:'input'});
  const board=h.nodes.get('saved-line-comparisons');
  const walk=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.filter(c=>typeof c!=='string').flatMap(c=>walk(c,tag))];
  const rows=()=>walk(board,'tbody')[0]?.children||[];
  const change=async(key,value)=>{const select=h.nodes.get('prop-filter-'+key);select.value=value;await select.dispatchEvent({type:'change'});};
+ await selectPlayer(h,'');
  await change('direction','below');assert.equal(rows().length,1);assert.match(rows()[0].textContent,/1.5 below/);
  await change('direction','above');assert.equal(rows().length,2);assert.ok(rows().every(r=>r.textContent.includes('above')));
  await change('direction','');await change('sort','gap');assert.equal(rows().length,8);
@@ -429,6 +445,7 @@ test('prop board sorts largest raw discrepancy across stats or within a stat, wi
  h.nodes.get('predict-player').value='2:8';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const second=h.nodes.get('line-2:8-carries');second.value='25.5';await second.dispatchEvent({type:'input'});
  const receiving=h.nodes.get('line-1:7-recYds');receiving.value='6.5';await receiving.dispatchEvent({type:'input'});
+ await selectPlayer(h,'');
  await change('stat','');
  await change('sort','gap');
  assert.equal(rows().length,8);
@@ -490,6 +507,7 @@ test('shortlist preserves chosen markets through filters, copies current rows an
  assert.match(copied,/RB 1 — Team A/);
  assert.match(copied,/Rushing attempts/);
  assert.doesNotMatch(copied,/Receiving yards/);
+ await selectPlayer(h,'');
  await change('direction','below');
  assert.equal(h.nodes.get('copy-prop-board').disabled,true);
  await change('direction','');
@@ -531,6 +549,7 @@ test('failed FanDuel props refresh keeps fresh automatic quotes and table lines'
  const h=harness();await h.settle();
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ await selectPlayer(h);
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/19.5/);
  const original=h.context.fetch;
@@ -722,10 +741,10 @@ test('prop history uses numeric game counts and manual enhance can be switched o
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const values=()=>walk(h.nodes.get('predict-results')).find(n=>n.className==='scenario-comparison').children.map(n=>Number(n.children[1].textContent));
  const baseline=values();assert.equal(baseline[0],baseline[1]);
- let toggle=h.nodes.get('prime-time-enhance');assert.equal(toggle.checked,false);
+ let toggle=h.nodes.get('scenario-boost');assert.equal(toggle.checked,false);
  toggle.checked=true;await toggle.dispatchEvent({type:'change'});
  const boosted=values();assert.equal(boosted[0],baseline[0]);assert.equal(boosted[1],Number((baseline[0]*1.1).toFixed(1)));
- toggle=h.nodes.get('prime-time-enhance');toggle.checked=false;await toggle.dispatchEvent({type:'change'});
+ toggle=h.nodes.get('scenario-boost');toggle.checked=false;await toggle.dispatchEvent({type:'change'});
  assert.deepEqual(values(),baseline);
 });
 
@@ -748,11 +767,11 @@ test('Game Lab removes tracking controls and result polling while simulations st
  h.run('sim()');assert.notEqual(h.nodes.get('score').textContent,'—');
  assert.equal(h.timers.some(t=>String(t.fn).includes('checkForecastResults')),false);
 });
-test('Above and Below header clicks sort visible player props by counts and reverse on another click',async()=>{
+test('Above/Below control ranks visible props by the selected historical percentage',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
  const check=async(side,expected)=>{
-  await h.nodes.get('sort-recent-'+side).dispatchEvent({type:'click'});
+  const sort=h.nodes.get('prop-filter-sort');sort.value=expected;await sort.dispatchEvent({type:'change'});
   assert.equal(h.nodes.get('prop-filter-sort').value,expected);
   let copied='';h.context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
   await h.nodes.get('copy-prop-board').dispatchEvent({type:'click'});
@@ -761,18 +780,19 @@ test('Above and Below header clicks sort visible player props by counts and reve
   const sign=expected.endsWith('desc')?-1:1;
   assert.deepEqual(counts,[...counts].sort((a,b)=>sign*(a-b)));
  };
- await check('above','above-desc');await check('above','above-asc');
- await check('below','below-desc');await check('below','below-asc');
+ await check('above','above-desc');
+ await check('below','below-desc');
 });
 
 
 test('selected-player controls precede comparisons and role reviews highlight every affected prop',async()=>{
  const h=harness();await h.settle();h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  const controls=h.nodes.get('player-scenario-controls');
  assert.equal(controls.hidden,false);assert.match(controls.textContent,/Player controls.*RB 1/);
  assert.equal(h.nodes.get('player-power-controls').parentNode,controls);
- assert.equal(h.nodes.get('prime-time-enhance').parentNode.parentNode.parentNode,controls);
+ assert.equal(h.nodes.get('scenario-boost').checked,false);
  const role=h.nodes.get('player-role-review');role.value='primary';await role.dispatchEvent({type:'change'});
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Primary option.*Your role review/);
  assert.doesNotMatch(h.nodes.get('saved-line-comparisons').textContent,/WHY HIGHLIGHTED/);
@@ -842,6 +862,7 @@ test('expanded-role scenarios adjust only the selected player and reset on a new
  const h=harness(new Map(),true);await h.settle();
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ await selectPlayer(h);
  const control=h.nodes.get('player-workload-scenario');
  assert.deepEqual(control.children.map(c=>c.value),['100','125','150','200','75','50','25','0']);
  const walk=root=>[root,...root.children.flatMap(c=>typeof c==='object'?walk(c):[])];
@@ -867,6 +888,7 @@ test('expanded-role scenarios adjust only the selected player and reset on a new
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  assert.equal(h.nodes.get('player-scenario-controls').hidden,true);
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.equal(h.nodes.get('player-workload-scenario').value,'100');
 });
 
@@ -1002,6 +1024,7 @@ test('official historical DNP reaches the prop UI and is excluded without invent
  };
  h.run('choose(parseGame('+JSON.stringify(h.game)+'))');await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.match(h.nodes.get('predict-status').textContent,/1 player-game records verified/);
  assert.match(h.nodes.get('predict-results').textContent,/1 verified DNP game\(s\) excluded/);
  assert.match(h.nodes.get('predict-results').textContent,/100.0 average/);
@@ -1082,6 +1105,7 @@ test('projection board lists usable no-line markets without invented comparisons
  const target=missing.find(row=>row.children[1].textContent==='Rushing yards');
  const open=walk(target,'button')[0];await open.dispatchEvent({type:'click'});
  const input=h.nodes.get('line-1:7-rushYds');assert.ok(input);input.value='45.5';await input.dispatchEvent({type:'input'});
+ await selectPlayer(h,'');
  assert.equal(rows().filter(r=>r.textContent.includes('Line unavailable')).length,4);
  for(const sort of ['above-desc','above-asc','below-desc','below-asc','most-covers','least-covers','gap','reviewed-gap']){
   const select=h.nodes.get('prop-filter-sort');select.value=sort;await select.dispatchEvent({type:'change'});
@@ -1101,6 +1125,7 @@ test('reviewed Baylor and UCF quote spellings populate real client fields withou
  };
  await h.settle();h.run('$("league").value="2"');const game=JSON.parse(JSON.stringify(h.game));game.league.id=2;game.teams.away.name='Baylor';game.teams.home.name='UCF';h.run(`choose(parseGame(${JSON.stringify(game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();
+ await selectPlayer(h);
  assert.doesNotMatch(h.nodes.get('predict-status').textContent,/Could not load/);
  assert.match(h.nodes.get('prop-feed-status').textContent,/4 matched to unique loaded players; 0 unmatched or invalid; 4 player lines filled/);
  assert.equal(h.nodes.get('line-1:7-recYds').value,'22.5');
@@ -1120,6 +1145,7 @@ test('player lines recover from one network failure and populate comparisons',as
  };
  h.run(`choose(parseGame(${JSON.stringify(h.game)}))`);await h.settle();
  await h.nodes.get('predict').dispatchEvent({type:'click'});await h.settle();await h.settle();
+ await selectPlayer(h);
  assert.equal(attempts,2);
  assert.equal(h.nodes.get('line-1:7-carries').value,'19.5');
  assert.match(h.nodes.get('prop-feed-status').textContent,/3 player lines filled/);
@@ -1193,7 +1219,7 @@ test('first matchup this season displays prior-season actuals without changing t
  const rows=()=>walk(board).filter(n=>n.tag==='tbody').flatMap(n=>n.children);
  assert.equal(rows().length,2);assert.ok(rows().every(r=>!r.textContent.includes('Line unavailable')));
  assert.match(h.nodes.get('prop-missing-markets').textContent,/RB 1 — Receiving yards.*Line 22.5.*Fewer than two verified/);
- const player=h.nodes.get('prop-filter-player');player.value='2:8';await player.dispatchEvent({type:'change'});
+ const player=h.nodes.get('predict-player');player.value='2:8';await player.dispatchEvent({type:'change'});
  assert.equal(rows().length,0);assert.match(board.textContent,/No projections match/);
  const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});
  assert.equal(rows().length,4);assert.ok(rows().every(r=>r.children[0].textContent.includes('RB 2')));

@@ -610,6 +610,7 @@ if (u.pathname === '/api/team-games') {
       '.css': 'text/css',
 
       '.png': 'image/png',
+      '.webp': 'image/webp',
 
       '.svg': 'image/svg+xml',
 

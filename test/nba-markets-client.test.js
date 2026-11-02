@@ -18,7 +18,7 @@ function harness(){
    {available:true,players:[{name:'Player A',results:[{gameId:1,tipoff:'2026-10-23T00:00:00Z',player_points:25},{gameId:2,tipoff:'2026-10-21T00:00:00Z',player_points:22}]}]},
    {available:true,players:[{name:'Player B',results:[{gameId:3,tipoff:'2026-10-23T00:00:00Z',player_rebounds:10},{gameId:4,tipoff:'2026-10-21T00:00:00Z',player_rebounds:8}]}]}]})};
   return {ok:true,json:async()=>data(game,String(url).includes('/props?'))};};
- vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/unit501-shared-ui.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/last-opponent.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/basketball-history-comparison.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(require.resolve('../public/player-controls.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/unit501-shared-ui.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/last-opponent.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-player-model.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-rotation-context.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/basketball-history-comparison.js'),'utf8'),context);vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),context);
  const settle=()=>new Promise(resolve=>setImmediate(resolve));
  return {nodes,context,calls,timers,game,data,settle,select:async(g=game)=>{context.Unit501NBAMarkets.select(g,'2026-10-24');await settle();},advance:ms=>{clock+=ms;}};
 }
@@ -319,17 +319,18 @@ test('exact NBA player selection shows only that player and preserves catalog or
 test('NBA manual scenarios update a player across markets and reset on game selection',async()=>{
  const h=await scenarioHarness(),calls=h.calls.length;
  const flatten=n=>[n,...n.children.flatMap(flatten)];
- const selects=()=>flatten(h.board).filter(n=>n.children.length===4&&n.children[0].value==='off');
- selects()[0].value='boost';selects()[0].events.change();
- assert.deepEqual(selects().map(n=>n.value),['boost','boost']);
+ const player=h.nodes.get('nba-prop-player');player.value='Player A';player.events.change();
+ const switchFor=key=>flatten(h.board).find(n=>n.id==='scenario-'+key);
+ const toggle=(key,on)=>{const el=switchFor(key);el.checked=on;el.events.change();};
+ toggle('boost',true);
  assert.match(h.board.textContent,/Manual, uncalibrated/);
  const projection=h.board.textContent;
- selects()[0].value='boost';selects()[0].events.change();assert.equal(h.board.textContent,projection);
- selects()[1].value='off';selects()[1].events.change();assert.doesNotMatch(h.board.textContent,/Manual, uncalibrated/);
+ toggle('boost',true);assert.equal(h.board.textContent,projection);
+ toggle('off',true);assert.doesNotMatch(h.board.textContent,/Manual, uncalibrated/);
  assert.equal(h.calls.length,calls);
- selects()[0].value='dud';selects()[0].events.change();
+ toggle('defense',true);
  await h.select();await h.nodes.get('nba-load-props').events.click();
- assert.ok(selects().every(n=>n.value==='off'));
+ player.value='Player A';player.events.change();assert.equal(switchFor('off').checked,true);
 });
 
 test('NBA prop display carries suffix-formatted Out and conflicting identities into projection gating',async()=>{

@@ -9,7 +9,7 @@ function setup(quotes={}){
  const data={checkedAt:clock,gameId:'10',tipoff:future,away:side('1','Away'),home:side('2','Home'),source:'ESPN'};
  const document={getElementById:id=>nodes.get(id),createElement:()=>new E()},context={document,Date:class extends Date{static now(){return clock;}},Intl,URLSearchParams,AbortSignal,setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},clearTimeout(){}};context.window=context;
  context.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>String(url).includes('/games?')?{source:'ESPN',games:[game]}:String(url).includes('/odds?')?{...data,bookmaker:'FanDuel',...quotes}:data};};
- vm.createContext(context);for(const p of ['unit501-shared-ui.js','star-power.js','last-opponent.js','nba-player-model.js','basketball-history-comparison.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
+ vm.createContext(context);for(const p of ['unit501-shared-ui.js','player-controls.js','star-power.js','last-opponent.js','nba-player-model.js','basketball-history-comparison.js','nba-rotation-context.js','market-pulse.js','ncaab-model.js','basketball-injury-model.js','ncaab.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+p),'utf8'),context);
  const settle=()=>new Promise(r=>setImmediate(r));return {nodes,game,data,requests,settle,context,timers,advance:ms=>{clock+=ms;},now:()=>clock};
 }
 test('college slate loads, selects a game, displays form and simulates manual lines',async()=>{
@@ -74,12 +74,11 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  assert.ok(board.textContent.indexOf('player_points')<board.textContent.indexOf('player_assists'));
  assert.match(board.textContent,/Movement unknown/);
  const flatten=n=>[n,...n.children.flatMap(flatten)];
- const controls=()=>flatten(board).filter(n=>n.children.length===4&&n.children[0].value==='off');
- controls()[0].value='boost';controls()[0].events.change();
- assert.deepEqual(controls().map(n=>n.value),['boost','boost']);
+ const toggle=(key,on)=>{const el=flatten(board).find(n=>n.id==='scenario-'+key);el.checked=on;el.events.change();};
+ toggle('boost',true);
  assert.match(board.textContent,/13.2/);assert.match(board.textContent,/Manual, uncalibrated/);
- controls()[0].value='fatigue';controls()[0].events.change();assert.match(board.textContent,/11.4/);
- controls()[0].value='off';controls()[0].events.change();assert.doesNotMatch(board.textContent,/Manual, uncalibrated/);
+ toggle('boost',false);toggle('fatigue',true);assert.match(board.textContent,/11.4/);
+ toggle('off',true);assert.doesNotMatch(board.textContent,/Manual, uncalibrated/);
  assert.match(board.textContent,/100.0%/);
 });
 

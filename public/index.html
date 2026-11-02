@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="light.css">
 <link rel="stylesheet" href="sport-layout.css">
 <link rel="stylesheet" href="game-center.css">
+<link rel="stylesheet" href="player-controls.css">
 </head>
 
 <body data-sport="football">
@@ -278,11 +279,11 @@
 
 <p id="predict-status">Select a game to load players.</p>
 
-<select id="predict-player" disabled>
+<div class="projection-primary"><select aria-label="Player" id="predict-player" disabled>
 
-<option value="">Select a player</option>
+<option value="">All Players</option>
 
-</select>
+</select><label>Above/Below <select id="prop-filter-sort"><option value="">All</option><option value="above-desc">Most Above</option><option value="below-desc">Most Below</option></select></label></div>
 
 <button id="predict" disabled>Load Player Projections</button>
 
@@ -323,7 +324,7 @@
 <script src="player-form.js"></script>
 <script src="player-stats.js"></script>
 <script src="player-backtest.js"></script>
-<script src="star-power.js"></script>
+<script src="player-controls.js"></script><script src="star-power.js"></script>
 <script src="last-opponent.js"></script><script src="predictions.js"></script>
 <script src="war-room-core.js"></script>
 <script src="war-room.js"></script>

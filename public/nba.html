@@ -3,6 +3,7 @@
 <title>NBA — UNIT 501</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="nba.css"><link rel="stylesheet" href="light.css">
 <link rel="stylesheet" href="sport-layout.css">
 <link rel="stylesheet" href="game-center.css">
+<link rel="stylesheet" href="player-controls.css">
 </head>
 <body data-sport="basketball"><main>
 <nav class="sport-switch" aria-label="Sport"><a href="/">🏈 Football</a><a href="ncaab.html" aria-current="page">🏀 Basketball</a></nav>
@@ -130,16 +131,15 @@
 </section>
 <section id="nba-player-lab" class="card hidden" aria-label="NBA Player Lab">
 <span class="section-kicker">03 / PLAYER MARKETS</span><h2>Player Projections</h2><label class="phone-columns"><input type="checkbox" id="all-prop-columns"> Show full stat table</label>
-<p>Player estimates use up to ten completed team games, recent playing time and production per minute. Adjust a player’s minutes to explore a rotation change; clear the input to restore the estimate.</p>
 <button id="nba-load-props" type="button">Load Player Projections</button>
 <p id="nba-props-status" role="status" class="war-muted">Choose a game, then load its player lines.</p>
-<div class="nba-prop-filters"><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label>
-<label for="nba-prop-player">Player <select id="nba-prop-player"><option value="">All players</option></select></label>
-<label for="nba-prop-search">Search <input id="nba-prop-search" type="search" placeholder="Search player name"></label>
-<label for="nba-prop-sort">Sort <select id="nba-prop-sort"><option value="name">Player / catalog order</option><option value="gap">Largest projection gap</option><option value="most">Above: highest %</option><option value="least">Below: highest %</option></select></label></div>
+<div class="nba-prop-filters"><details><summary>Market filter</summary><label for="nba-prop-market">Stat <select id="nba-prop-market"><option value="">All stats</option><option value="player_points">Points</option><option value="player_rebounds">Rebounds</option><option value="player_assists">Assists</option><option value="player_threes">Threes made</option></select></label></details>
+<select aria-label="Player" id="nba-prop-player"><option value="">All players</option></select>
+<label hidden for="nba-prop-search">Search <input id="nba-prop-search" type="search" placeholder="Search player name"></label>
+<label for="nba-prop-sort">Above/Below <select id="nba-prop-sort"><option value="name">All</option><option value="most">Most Above</option><option value="least">Most Below</option></select></label></div>
 <p id="nba-player-history-status" role="status" class="war-muted"></p>
 <div id="nba-history-comparison"></div><div id="nba-prop-lines" class="nba-head-to-head"></div>
-<p class="war-muted">Estimates assume the player plays. Recent minutes changes describe past appearances, not confirmed promotions. Opponent matchups and injury replacement minutes are not automatically adjusted. Two to four games is a small sample; accuracy is not established.</p>
+<details><summary>Projection methodology</summary><p class="war-muted">Estimates assume the player plays. Recent minutes changes describe past appearances, not confirmed promotions. Opponent matchups and injury replacement minutes are not automatically adjusted. Two to four games is a small sample; accuracy is not established.</p></details>
 </section>
 <p class="war-muted">Data: API-NBA by API-Sports, with a labeled ESPN public NBA fallback when unavailable. Check official schedule and current sportsbook lines separately. Unit 501 football models remain unchanged.</p>
-</main><script src="line-watch.js"></script><script src="league-pulse.js"></script><script src="injury-changes.js"></script><script src="buy-the-hook.js"></script><script src="worth-a-look.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba-player-model.js"></script><script src="basketball-history-comparison.js"></script><script src="basketball-injury-model.js"></script><script src="nba-win-calibration.js"></script><script src="nba.js"></script><script src="star-power.js"></script><script src="nba-rotation-context.js"></script><script src="last-opponent.js"></script><script src="nba-markets.js"></script><script src="outside-picks.js"></script><script src="sport-layout.js"></script><script src="game-center.js"></script></body></html>
+</main><script src="line-watch.js"></script><script src="league-pulse.js"></script><script src="injury-changes.js"></script><script src="buy-the-hook.js"></script><script src="worth-a-look.js"></script><script src="unit501-shared-ui.js"></script><script src="nba-alerts.js"></script><script src="nba-model.js"></script><script src="nba-player-model.js"></script><script src="basketball-history-comparison.js"></script><script src="basketball-injury-model.js"></script><script src="nba-win-calibration.js"></script><script src="nba.js"></script><script src="player-controls.js"></script><script src="star-power.js"></script><script src="nba-rotation-context.js"></script><script src="last-opponent.js"></script><script src="nba-markets.js"></script><script src="outside-picks.js"></script><script src="sport-layout.js"></script><script src="game-center.js"></script></body></html>
