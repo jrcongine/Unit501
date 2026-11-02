@@ -65,7 +65,7 @@
     }
     const group=node('div',null,'hit-rates');
     for(const [label,count] of [['Above',above],['Below',below]]){
-      const side=node('span');side.append(node('small',label),node('strong',count+'/'+games),node('small',(100*count/games).toFixed(1)+'%'));group.append(side);
+      const side=node('span');side.append(node('small',label),node('strong',String(count)),node('small',(100*count/games).toFixed(1)+'%'));group.append(side);
     }
     cell.append(group);
     const pushes=games-above-below;
@@ -207,6 +207,7 @@
         rates.append(node('small','TD history · 1+ TD vs 0 TD'));
         recentRates(rates,0.5,m.values.filter(v=>v>=1).length,m.values.filter(v=>v===0).length,m.values.length);
       }else recentRates(rates,m.line,m.above,m.below,m.games);
+      if(Number.isInteger(m.games)&&m.games>0)rates.append(node('small',m.games+(m.games===1?' game':' games'),'push-count'));
       row.append(rates);body.append(row);
     }
     panel.append(table);return panel;

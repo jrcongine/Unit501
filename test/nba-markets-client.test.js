@@ -155,8 +155,8 @@ test('official injury statuses highlight matching props and withdraw on expiry o
 test('NBA props show recent baselines, cover counts, sorting and OUT suppression',async()=>{
  const h=harness();await h.select();await h.nodes.get('nba-load-props').events.click();await h.settle();await h.settle();
  let text=h.nodes.get('nba-prop-lines').textContent;
- assert.match(text,/Player A.*Points.*20\.5.*23\.5.*Above 2\/2 100.0% Below 0\/2/);
- assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*Above 1\/2 50.0% Below 1\/2/);
+ assert.match(text,/Player A.*Points.*20\.5.*23\.5.*Above 2 100.0% Below 0/);
+ assert.match(text,/Player B.*Rebounds.*9\.5.*9\.0.*Above 1 50.0% Below 1/);
  assert.doesNotMatch(text,/Last 2:/);
  const count=h.calls.length,sort=h.nodes.get('nba-prop-sort');sort.value='least';sort.events.change();
  text=h.nodes.get('nba-prop-lines').textContent;assert.ok(text.indexOf('Player B')<text.indexOf('Player A'));

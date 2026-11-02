@@ -739,7 +739,7 @@ test('prop history uses numeric game counts and manual enhance can be switched o
  const history=board.filter(n=>n.className==='hit-rates');
  assert.ok(history.length>0);
  assert.ok(history.every(n=>n.children.length===2));
- assert.match(history[0].children[0].textContent,/Above\d+\/\d+[\d.]+%/);
+ assert.match(history[0].children[0].textContent,/Above\d+[\d.]+%/);
  h.nodes.get('predict-player').value='1:7';await h.nodes.get('predict-player').dispatchEvent({type:'change'});
  const values=()=>walk(h.nodes.get('predict-results')).find(n=>n.className==='scenario-comparison').children.map(n=>Number(n.children[1].textContent));
  const baseline=values();assert.equal(baseline[0],baseline[1]);
@@ -1185,7 +1185,7 @@ test('TD history shows scoring games without inventing a betting line',async()=>
  const dashboard=h.created.filter(n=>n.className==='athlete-markets').at(-1);
  const td=walk(dashboard).find(n=>n.tag==='tr'&&n.children[0]?.textContent==='Rushing TDs');
  assert.equal(td.children[1].textContent,'Unavailable');
- assert.match(td.children[6].textContent,/1\+ TD vs 0 TDAbove1\/250.0%Below1\/250.0%/);
+ assert.match(td.children[6].textContent,/1\+ TD vs 0 TDAbove150\.0%Below150\.0%2 games/);
 });
 
 test('first matchup this season displays prior-season actuals without changing the projected sample',async()=>{
@@ -1210,7 +1210,7 @@ test('first matchup this season displays prior-season actuals without changing t
  const markets=h.nodes.get('prop-filter-markets');markets.value='all';await markets.dispatchEvent({type:'change'});await h.settle();
  const board=h.nodes.get('saved-line-comparisons');
  assert.match(board.textContent,/100 vs Team B · Dec 25, 2025/);
- assert.match(board.textContent,/2\/2/);
+ assert.match(board.textContent,/Above2100\.0%Below00\.0%/);
 });
 
  test('bettable board defaults to quoted markets and exposes a quoted player with missing stats',async()=>{
@@ -1290,7 +1290,7 @@ test('player menu includes roster-only players while comparative rates require a
  h.context.Unit501Availability={...availability,snapshot:()=>({...snapshot,current:true,teams:snapshot.teams.map((team,i)=>i?team:{...team,roster:{...team.roster,available:true,rows:[...(team.roster?.rows||[]),{id:'222',name:'Roster Only'}]}})})};
  await selectPlayer(h,'');
  assert.match(h.nodes.get('predict-player').textContent,/Roster Only/);
- assert.match(h.nodes.get('saved-line-comparisons').textContent,/Above\d+\/\d+[\d.]+%Below\d+\/\d+[\d.]+%/);
+ assert.match(h.nodes.get('saved-line-comparisons').textContent,/Above\d+[\d.]+%Below\d+[\d.]+%/);
  await selectPlayer(h,'1:222');
  assert.match(h.nodes.get('predict-results').textContent,/insufficient/);
  assert.equal(h.nodes.get('saved-line-comparisons').dataset.displayedAutoLines,'0');
