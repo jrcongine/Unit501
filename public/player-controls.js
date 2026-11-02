@@ -14,7 +14,15 @@
     if(cls)el.className=cls;
     return el;
   }
-  function scenarios(map,id,render) {
+  function showScenarios(map,id,render,name) {
+    // The empty key holds an unapplied draft for the next selected player.
+    if(id && map.has('')){
+      map.set(id,[...new Set([...(map.get(id)||[]),...map.get('')])]);
+      map.delete('');
+    }
+    document.getElementById('scenario-picker').replaceChildren(scenarios(map,id,render,name));
+  }
+  function scenarios(map,id,render,name) {
     const panel=node('section',null,'scenario-deck');
     panel.id='player-power-controls';
     const selected=map.get(id)||[];
@@ -29,7 +37,7 @@
     }
     const reset=node('button','Reset');reset.type='button';reset.id='scenario-reset';
     reset.addEventListener('click',()=>update([],reset.id));
-    bar.append(node('strong','Player Scenarios'),status,reset);panel.append(bar);
+    bar.append(node('strong','Player Scenarios'),node('small',id?'For '+(name||id):'Applies to the next player you choose.'),status,reset);panel.append(bar);
     const grid=node('div',null,'scenario-grid');panel.append(grid);
     for(const [key,title,description] of cards) {
       const label=node('label',null,'scenario-tile');
@@ -73,5 +81,5 @@
     select.before(menu);select.hidden=true;select.addEventListener('change',sync);
     new MutationObserver(()=>{sync();if(menu.open)draw();}).observe(select,{subtree:true,childList:true,attributes:true});sync();
   }
-  root.Unit501PlayerControls={scenarios,playerMenu,teamLabel};
+  root.Unit501PlayerControls={scenarios,showScenarios,playerMenu,teamLabel};
 })(typeof window==='undefined'?globalThis:window);

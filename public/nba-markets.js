@@ -36,7 +36,8 @@
  }
  window.Unit501PlayerControls.playerMenu(player);
  function renderProps(){
-  historyComparison?.update(history,selected);propBoard.replaceChildren();if(!selected||(!props&&!history))return;
+  historyComparison?.update(history,selected);propBoard.replaceChildren();if(!selected)return;
+  if(!props&&!history){root.Unit501PlayerControls.showScenarios(playerScenarios,'',renderProps);return;}
   for(const [name,scenario] of injuryScenarios){
    const current=root.Unit501NBARotationContext?.compare(history,scenario.quote,injuries,selected,Date.now())||[];
    if(!current.some(s=>JSON.stringify(s)===scenario.evidence))injuryScenarios.delete(name);
@@ -45,6 +46,7 @@
   const query=search.value.trim().toLowerCase();
   const catalogRows=root.Unit501NBAPlayerModel.catalogRows(props?.props,history,selected);
   if(player){const previous=player.value;player.replaceChildren();const all=node('option','All players');all.value='';player.append(all);for(const name of [...new Set(catalogRows.map(p=>p.name))].sort()){const option=node('option',window.Unit501PlayerControls.teamLabel(name,history));option.value=name;player.append(option);}player.value=catalogRows.some(p=>p.name===previous)?previous:'';}
+  root.Unit501PlayerControls.showScenarios(playerScenarios,normalizedName(player?.value),renderProps,player?.value);
   root.Unit501LastOpponent.loadSelected(history,player?.value,selected,'nba',renderProps);
   const source=catalogRows.filter(p=>fresh(p.updatedAt)&&(!market.value||p.market===market.value)&&(!query||p.name.toLowerCase().includes(query))&&(!player?.value||p.name===player.value));
   const rows=source.map(p=>{
@@ -71,7 +73,6 @@
    const field=sort.value==='most'?'above':'below';
    return b.prediction[field]*a.prediction.games-a.prediction[field]*b.prediction.games||b.prediction.games-a.prediction.games||a.p.name.localeCompare(b.p.name)||a.p.label.localeCompare(b.p.label);
   });
-  if(player?.value)propBoard.append(window.Unit501PlayerControls.scenarios(playerScenarios,normalizedName(player.value),renderProps));
   const table=node('table','', 'nba-form-table'),head=node('thead',''),header=node('tr','');
   for(const label of ['Player','Stat','Line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Equal','Games','Over','Under','Source update']){const cell=node('th',label);cell.scope='col';header.append(cell);}head.append(header);table.append(head);
   const body=node('tbody','');

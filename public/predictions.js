@@ -707,10 +707,14 @@ cell.append(details);
       const assessment=window.Unit501Availability?.assess(player.teamId,player.playerId);
       option.textContent=`${player.name} — ${player.team}${assessment?.blocked?' — Projection withheld':assessment?' — '+Unit501InjuryModel.statusLabel(assessment):''}`;
     }
+    const record = choices.find(x => x.id === picker.value);
+    const blocked=record && window.Unit501Availability?.assess(record.teamId,record.playerId)?.blocked;
+    const slot=el('scenario-picker');
+    slot.hidden=Boolean(blocked);
+    if(!blocked)window.Unit501PlayerControls.showScenarios(starScenarios,record?.id||'',showPlayer,record?.name);
     renderComparisons();
     results.replaceChildren();
     scenarioControls.replaceChildren();scenarioControls.hidden=true;
-    const record = choices.find(x => x.id === picker.value);
     if (!record) return;
     const title = document.createElement('h3');
     title.textContent = `${record.name} — ${record.team}`;
@@ -733,7 +737,7 @@ cell.append(details);
     scenarioControls.append(scenarioTitle);
     const advanced=document.createElement('details'),summary=document.createElement('summary');
     summary.textContent='Role and workload';advanced.append(summary);
-    scenarioControls.append(window.Unit501PlayerControls.scenarios(starScenarios,record.id,showPlayer),advanced);
+    scenarioControls.append(advanced);
     const roleLabel=document.createElement('label');roleLabel.textContent='Role review: ';
     const roleSelect=document.createElement('select');roleSelect.id='player-role-review';
     for(const [value,label] of [['','Automatic evidence'],['new','New starter'],['returning','Back to starter role'],['primary','Primary option'],['increase','Significant usage increase']]){
@@ -929,7 +933,7 @@ results.appendChild(workload);
     board.replaceChildren();
     picker.disabled = true;
     picker.replaceChildren();
-    results.replaceChildren();
+    showPlayer();
     status.textContent = 'Tap Load Player Projections for this matchup.';
     button.disabled = typeof selected === 'undefined' || !selected;
   }

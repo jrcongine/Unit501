@@ -160,6 +160,7 @@ test('actual NBA market refresh and reset drive automatic upset headline without
   h.requests.push(url);
   return {ok:true,json:async()=>({gameId:h.games[0].id,tipoff:h.games[0].tipoff,bookmaker:'FanDuel',spread:{away:spread,home:-spread,awayPrice:-110,homePrice:-110,updatedAt:Date.now()}})};
  };
+ vm.runInContext(fs.readFileSync(require.resolve('../public/star-power.js'),'utf8'),h.context);
  vm.runInContext(fs.readFileSync(require.resolve('../public/player-controls.js'),'utf8'),h.context);
  vm.runInContext(fs.readFileSync(require.resolve('../public/nba-markets.js'),'utf8'),h.context);
  await h.load();await h.choose(0);

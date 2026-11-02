@@ -791,7 +791,7 @@ test('selected-player controls precede comparisons and role reviews highlight ev
  await selectPlayer(h);
  const controls=h.nodes.get('player-scenario-controls');
  assert.equal(controls.hidden,false);assert.match(controls.textContent,/Player controls.*RB 1/);
- assert.equal(h.nodes.get('player-power-controls').parentNode,controls);
+ assert.equal(h.nodes.get('player-power-controls').parentNode,h.nodes.get('scenario-picker'));
  assert.equal(h.nodes.get('scenario-boost').checked,false);
  const role=h.nodes.get('player-role-review');role.value='primary';await role.dispatchEvent({type:'change'});
  assert.match(h.nodes.get('saved-line-comparisons').textContent,/Primary option.*Your role review/);

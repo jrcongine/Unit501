@@ -107,6 +107,9 @@
   window.Unit501Hook?.select(game.timeKnown&&game.status==='Scheduled'?{league:'ncaab',game:game.id,away:game.away,home:game.home,kickoff:Date.parse(game.tipoff)}:null);
   resetLines();
   window.Unit501SharedUI.showMarketComparison($('ncaab-market-gap'),null);const task=++serial;propRows=[];acceptedQuotes=[];comparisonHistory=null;historyComparison?.update(null,null);playerScenarios.clear();injuryScenarios.clear();clearTimeout(propExpiry);$('ncaab-prop-player').value='';selected=game;context=null;scope.value='season';$('ncaab-spread').value='';$('ncaab-total').value='';lab.classList.remove('hidden');$('ncaab-player-lab').classList.remove('hidden');window.Unit501SharedUI.resultTiles('ncaab',null);$('ncaab-matchup').textContent=game.away+' at '+game.home;
+  const playerPicker=$('ncaab-prop-player'),all=node('option','All Players');
+  all.value='';playerPicker.replaceChildren(all);
+  window.Unit501PlayerControls.showScenarios(playerScenarios,'',renderProps);
   $('ncaab-game-info').textContent=(game.timeKnown?central(game.tipoff):'Tipoff TBD')+' · '+game.status+(game.neutral?' · Neutral site':'')+(game.status==='Final'||game.status==='Live'?` · ${game.awayScore??'—'}–${game.homeScore??'—'}`:'');
   teams.replaceChildren();$('ncaab-simulation').textContent='';$('ncaab-prediction').textContent='Team history unavailable.';loadExtras(game,task);
   return loadContext(game,task);
@@ -156,6 +159,7 @@
  function renderProps(){
   historyComparison?.update(comparisonHistory,selected);clearTimeout(propExpiry);const board=$('ncaab-props');board.replaceChildren();if(!selected)return;
   const player=$('ncaab-prop-player').value,sort=$('ncaab-prop-sort').value,catalog=['player_points','player_rebounds','player_assists','player_threes'];
+  window.Unit501PlayerControls.showScenarios(playerScenarios,player,renderProps);
   window.Unit501LastOpponent.loadSelected(comparisonHistory,player,selected,'ncaab',renderProps);
   const fresh=r=>Number.isFinite(r.q.updatedAt)&&r.q.updatedAt<=Date.now()+60000&&Date.now()-r.q.updatedAt<=1800000&&Date.parse(selected.tipoff)>Date.now();
   const rows=propRows.filter(r=>fresh(r)&&(!player||r.q.name===player)).map(r=>{
@@ -180,7 +184,6 @@
   window.Unit501SharedUI.basketballQuoteTrace(board,acceptedQuotes,rows.map(r=>({quote:r.q,prediction:r.p})),player,selected.tipoff);
   board.setAttribute('data-displayed-lines',String(rows.filter(r=>Number.isFinite(r.q.line)).length));board.append(node('p',rows.filter(r=>Number.isFinite(r.q.line)).length+' betting lines · '+rows.length+' player/stat rows displayed; history-only rows have no betting line.'));
   if(!rows.length){board.append(node('p','No current player quotes match this view. Reload props for current lines.'));return;}
-  if(player)board.append(window.Unit501PlayerControls.scenarios(playerScenarios,player,renderProps));
   const table=node('table','','nba-form-table'),head=node('thead',''),tr=node('tr','');
   for(const label of ['Player / stat','FanDuel line','Projection','Last vs opponent','Median','Difference','Recent / workload','Above','Below','Push','Games','Movement'])tr.append(node('th',label));head.append(tr);table.append(head);const body=node('tbody','');
   for(const {q,p,status,splits,scenario,history} of rows){const tr=node('tr','');

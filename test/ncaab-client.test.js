@@ -74,7 +74,7 @@ test('college props sort by percentage, filter exact player, and suppress stale 
  assert.ok(board.textContent.indexOf('player_points')<board.textContent.indexOf('player_assists'));
  assert.match(board.textContent,/Movement unknown/);
  const flatten=n=>[n,...n.children.flatMap(flatten)];
- const toggle=(key,on)=>{const el=flatten(board).find(n=>n.id==='scenario-'+key);el.checked=on;el.events.change();};
+ const toggle=(key,on)=>{const el=flatten(h.nodes.get('scenario-picker')).find(n=>n.id==='scenario-'+key);el.checked=on;el.events.change();};
  toggle('boost',true);
  assert.match(board.textContent,/13.2/);assert.match(board.textContent,/Manual, uncalibrated/);
  toggle('boost',false);toggle('fatigue',true);assert.match(board.textContent,/11.4/);

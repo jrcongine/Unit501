@@ -5,7 +5,7 @@ function harness(){
  class Node{
   constructor(){this.children=[];this.events={};this.value='';this._text='';this.disabled=false;}
   set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(n=>n.textContent).join(' ');}
-  append(...n){this.children.push(...n);}replaceChildren(){this.children=[];this._text='';}setAttribute(){}addEventListener(e,f){this.events[e]=f;}
+  append(...n){this.children.push(...n);}replaceChildren(...n){this.children=n;this._text='';}setAttribute(){}addEventListener(e,f){this.events[e]=f;}
  }
  const html=fs.readFileSync(require.resolve('../public/nba.html'),'utf8');for(const m of html.matchAll(/id="([^"]+)"/g))nodes.set(m[1],new Node());
  const document={getElementById:id=>nodes.get(id),createElement:()=>new Node(),addEventListener(){},hidden:false};
@@ -319,10 +319,14 @@ test('exact NBA player selection shows only that player and preserves catalog or
 test('NBA manual scenarios update a player across markets and reset on game selection',async()=>{
  const h=await scenarioHarness(),calls=h.calls.length;
  const flatten=n=>[n,...n.children.flatMap(flatten)];
- const player=h.nodes.get('nba-prop-player');player.value='Player A';player.events.change();
- const switchFor=key=>flatten(h.board).find(n=>n.id==='scenario-'+key);
+ const player=h.nodes.get('nba-prop-player');
+ const switchFor=key=>flatten(h.nodes.get('scenario-picker')).find(n=>n.id==='scenario-'+key);
  const toggle=(key,on)=>{const el=switchFor(key);el.checked=on;el.events.change();};
  toggle('boost',true);
+ assert.doesNotMatch(h.board.textContent,/Manual, uncalibrated/);
+ player.value='Player A';player.events.change();assert.equal(switchFor('boost').checked,true);
+ player.value='Player C';player.events.change();assert.equal(switchFor('boost').checked,false);
+ player.value='Player A';player.events.change();
  assert.match(h.board.textContent,/Manual, uncalibrated/);
  const projection=h.board.textContent;
  toggle('boost',true);assert.equal(h.board.textContent,projection);
